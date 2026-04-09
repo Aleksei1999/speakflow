@@ -25,6 +25,7 @@ export default async function StudentAchievementsPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) redirect("/login")
 
   const [
     progressResult,

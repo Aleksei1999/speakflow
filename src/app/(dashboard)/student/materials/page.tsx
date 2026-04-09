@@ -64,6 +64,9 @@ export default async function StudentMaterialsPage({
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect("/login")
+  }
 
   let query = supabase
     .from("materials")

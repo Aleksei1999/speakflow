@@ -18,7 +18,7 @@ export default async function MarketingLayout({
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single()
+      .single<{ role: string }>();
     role = profile?.role ?? "student"
   }
 
