@@ -24,6 +24,7 @@ export default async function StudentSummariesPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) redirect("/login")
 
   const { data: summaries } = await supabase
     .from("lesson_summaries")
