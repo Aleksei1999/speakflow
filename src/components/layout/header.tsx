@@ -17,8 +17,23 @@ const navLinks = [
   { href: "/level-test", label: "Тест уровня" },
 ]
 
-export function MarketingHeader() {
+const dashboardByRole: Record<string, string> = {
+  student: "/student",
+  teacher: "/teacher",
+  admin: "/admin",
+}
+
+interface MarketingHeaderProps {
+  isAuthenticated?: boolean
+  role?: string | null
+}
+
+export function MarketingHeader({
+  isAuthenticated = false,
+  role = null,
+}: MarketingHeaderProps) {
   const [open, setOpen] = useState(false)
+  const dashboardHref = dashboardByRole[role ?? "student"] ?? "/student"
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -48,16 +63,28 @@ export function MarketingHeader() {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" size="sm" render={<Link href="/login" />}>
-            Войти
-          </Button>
-          <Button
-            size="sm"
-            className="bg-[#722F37] text-white hover:bg-[#5a252c]"
-            render={<Link href="/register" />}
-          >
-            Регистрация
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              size="sm"
+              className="bg-[#722F37] text-white hover:bg-[#5a252c]"
+              render={<Link href={dashboardHref} />}
+            >
+              Личный кабинет
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" render={<Link href="/login" />}>
+                Войти
+              </Button>
+              <Button
+                size="sm"
+                className="bg-[#722F37] text-white hover:bg-[#5a252c]"
+                render={<Link href="/register" />}
+              >
+                Регистрация
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -88,21 +115,33 @@ export function MarketingHeader() {
                 </Link>
               ))}
               <div className="mt-4 flex flex-col gap-3">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  render={<Link href="/login" />}
-                  onClick={() => setOpen(false)}
-                >
-                  Войти
-                </Button>
-                <Button
-                  className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
-                  render={<Link href="/register" />}
-                  onClick={() => setOpen(false)}
-                >
-                  Регистрация
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                    render={<Link href={dashboardHref} />}
+                    onClick={() => setOpen(false)}
+                  >
+                    Личный кабинет
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      render={<Link href="/login" />}
+                      onClick={() => setOpen(false)}
+                    >
+                      Войти
+                    </Button>
+                    <Button
+                      className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                      render={<Link href="/register" />}
+                      onClick={() => setOpen(false)}
+                    >
+                      Регистрация
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </SheetContent>
