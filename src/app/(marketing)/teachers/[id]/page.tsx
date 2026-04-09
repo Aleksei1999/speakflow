@@ -223,7 +223,7 @@ export default async function TeacherProfilePage({
                           href={`/teachers/${id}${p > 1 ? `?review_page=${p}` : ""}`}
                           className={`inline-flex size-8 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                             p === reviewPage
-                              ? "bg-[#722F37] text-white"
+                              ? "bg-[#CC3A3A] text-white"
                               : "border border-input hover:bg-muted"
                           }`}
                           aria-current={p === reviewPage ? "page" : undefined}

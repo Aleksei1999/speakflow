@@ -478,7 +478,7 @@ function AdminPaymentsContent() {
                   <div className="flex items-center justify-center gap-2">
                     <div
                       className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent"
-                      style={{ color: '#722F37' }}
+                      style={{ color: '#CC3A3A' }}
                     />
                     <span className="text-sm text-muted-foreground">
                       Загрузка...

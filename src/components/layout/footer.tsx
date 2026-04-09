@@ -38,7 +38,7 @@ export function MarketingFooter() {
             <Link href="/" className="inline-flex items-center">
               <span
                 className="text-xl font-bold tracking-tight"
-                style={{ color: "#722F37" }}
+                style={{ color: "#CC3A3A" }}
               >
                 RAW English
               </span>

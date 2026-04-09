@@ -96,7 +96,7 @@ export function BookingModal({
           {/* Booking details */}
           <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center gap-2 text-sm">
-              <CalendarDays className="size-4 text-[#722F37]" />
+              <CalendarDays className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Дата:</span>
               <span className="font-medium">
                 {format(date, 'd MMMM yyyy, EEEE', { locale: ru })}
@@ -104,7 +104,7 @@ export function BookingModal({
             </div>
 
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="size-4 text-[#722F37]" />
+              <Clock className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Время:</span>
               <span className="font-medium">
                 {formatTimeUTC(startTime)} &mdash; {endTimeStr} (UTC)
@@ -112,15 +112,15 @@ export function BookingModal({
             </div>
 
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="size-4 text-[#722F37]" />
+              <Clock className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Длительность:</span>
               <Badge variant="secondary">{durationMinutes} мин</Badge>
             </div>
 
             <div className="flex items-center gap-2 text-sm">
-              <CreditCard className="size-4 text-[#722F37]" />
+              <CreditCard className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Стоимость:</span>
-              <span className="text-base font-semibold text-[#722F37]">
+              <span className="text-base font-semibold text-[#CC3A3A]">
                 {formatPrice(price)}
               </span>
             </div>
@@ -138,7 +138,7 @@ export function BookingModal({
           <Button
             onClick={onConfirm}
             disabled={isLoading}
-            className="bg-[#722F37] text-white hover:bg-[#722F37]/90"
+            className="bg-[#CC3A3A] text-white hover:bg-[#CC3A3A]/90"
           >
             {isLoading ? (
               <>

@@ -43,7 +43,7 @@ export function RoleGuard({
         <div className="flex flex-col items-center gap-3">
           <div
             className="size-8 animate-spin rounded-full border-2 border-current border-t-transparent"
-            style={{ color: '#722F37' }}
+            style={{ color: '#CC3A3A' }}
           />
           <p className="text-sm text-muted-foreground">Загрузка...</p>
         </div>

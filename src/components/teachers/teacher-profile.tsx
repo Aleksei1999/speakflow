@@ -53,7 +53,7 @@ export function TeacherProfileHeader({
           </h1>
           {teacher.is_verified && (
             <BadgeCheck
-              className="size-6 text-[#722F37]"
+              className="size-6 text-[#CC3A3A]"
               aria-label="Подтвержденный преподаватель"
             />
           )}
@@ -119,7 +119,7 @@ export function TeacherInfoCards({ teacher }: { teacher: TeacherProfile }) {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="size-4 text-[#722F37]" />
+            <Clock className="size-4 text-[#CC3A3A]" />
             Опыт
           </CardTitle>
         </CardHeader>
@@ -135,7 +135,7 @@ export function TeacherInfoCards({ teacher }: { teacher: TeacherProfile }) {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Globe className="size-4 text-[#722F37]" />
+            <Globe className="size-4 text-[#CC3A3A]" />
             Языки
           </CardTitle>
         </CardHeader>
@@ -155,7 +155,7 @@ export function TeacherInfoCards({ teacher }: { teacher: TeacherProfile }) {
         <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="size-4 text-[#722F37]" />
+              <GraduationCap className="size-4 text-[#CC3A3A]" />
               Образование
             </CardTitle>
           </CardHeader>
@@ -172,7 +172,7 @@ export function TeacherInfoCards({ teacher }: { teacher: TeacherProfile }) {
         <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Award className="size-4 text-[#722F37]" />
+              <Award className="size-4 text-[#CC3A3A]" />
               Сертификаты
             </CardTitle>
           </CardHeader>
@@ -251,7 +251,7 @@ export function TeacherPricingCard({
 
         <a
           href={`/student/book/${teacher.user_id}`}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#722F37] px-6 text-sm font-medium text-white transition-colors hover:bg-[#5a252c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#CC3A3A] px-6 text-sm font-medium text-white transition-colors hover:bg-[#a32e2e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Записаться на урок
         </a>
@@ -293,7 +293,7 @@ export function TeacherAvailabilityPreview({
             key={i}
             className={`flex flex-col items-center rounded-lg border p-2 text-center ${
               day.slots > 0
-                ? "border-[#722F37]/20 bg-[#722F37]/5"
+                ? "border-[#CC3A3A]/20 bg-[#CC3A3A]/5"
                 : "border-border bg-muted/30"
             }`}
           >
@@ -303,7 +303,7 @@ export function TeacherAvailabilityPreview({
             <span className="text-sm font-semibold">{day.date}</span>
             <span
               className={`mt-1 text-xs ${
-                day.slots > 0 ? "text-[#722F37] font-medium" : "text-muted-foreground"
+                day.slots > 0 ? "text-[#CC3A3A] font-medium" : "text-muted-foreground"
               }`}
             >
               {day.slots > 0 ? `${day.slots} слотов` : "—"}

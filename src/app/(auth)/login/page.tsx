@@ -145,14 +145,14 @@ function LoginPageContent() {
           disabled={isSubmitting}
           className="w-full"
           size="lg"
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
         >
           {isSubmitting && <Loader2 className="animate-spin" />}
           Войти
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Нет аккаунта?{' '}
-          <Link href="/register" className="font-medium hover:underline" style={{ color: '#722F37' }}>
+          <Link href="/register" className="font-medium hover:underline" style={{ color: '#CC3A3A' }}>
             Зарегистрироваться
           </Link>
         </p>
@@ -163,7 +163,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="size-8 animate-spin" style={{ color: '#722F37' }} /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="size-8 animate-spin" style={{ color: '#CC3A3A' }} /></div>}>
       <LoginPageContent />
     </Suspense>
   )

@@ -164,7 +164,7 @@ function TeacherCard({
                 <Button
                   size="sm"
                   onClick={() => onVerify(teacher.id)}
-                  style={{ backgroundColor: '#722F37' }}
+                  style={{ backgroundColor: '#CC3A3A' }}
                   className="text-white hover:opacity-90"
                 >
                   <CheckCircle className="size-4" />
@@ -390,7 +390,7 @@ function AdminTeachersContent() {
           <TabsTrigger value="pending">
             На модерации ({pendingTeachers.length})
             {pendingTeachers.length > 0 && (
-              <span className="ml-1.5 flex size-5 items-center justify-center rounded-full bg-[#722F37] text-xs text-white">
+              <span className="ml-1.5 flex size-5 items-center justify-center rounded-full bg-[#CC3A3A] text-xs text-white">
                 {pendingTeachers.length}
               </span>
             )}
@@ -402,7 +402,7 @@ function AdminTeachersContent() {
             <div className="flex items-center justify-center py-12">
               <div
                 className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-                style={{ color: '#722F37' }}
+                style={{ color: '#CC3A3A' }}
               />
               <span className="ml-2 text-sm text-muted-foreground">
                 Загрузка...
@@ -438,7 +438,7 @@ function AdminTeachersContent() {
             <div className="flex items-center justify-center py-12">
               <div
                 className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-                style={{ color: '#722F37' }}
+                style={{ color: '#CC3A3A' }}
               />
               <span className="ml-2 text-sm text-muted-foreground">
                 Загрузка...

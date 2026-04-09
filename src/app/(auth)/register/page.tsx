@@ -77,7 +77,7 @@ export default function RegisterPage() {
           <CardTitle className="text-xl">Регистрация завершена</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4 py-6">
-          <CheckCircle2 className="size-12" style={{ color: '#722F37' }} />
+          <CheckCircle2 className="size-12" style={{ color: '#CC3A3A' }} />
           <p className="text-center text-sm text-muted-foreground">
             Проверьте email для подтверждения. Мы отправили вам письмо со ссылкой
             для активации аккаунта.
@@ -197,14 +197,14 @@ export default function RegisterPage() {
           disabled={isSubmitting}
           className="w-full"
           size="lg"
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
         >
           {isSubmitting && <Loader2 className="animate-spin" />}
           Зарегистрироваться
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Уже есть аккаунт?{' '}
-          <Link href="/login" className="font-medium hover:underline" style={{ color: '#722F37' }}>
+          <Link href="/login" className="font-medium hover:underline" style={{ color: '#CC3A3A' }}>
             Войти
           </Link>
         </p>

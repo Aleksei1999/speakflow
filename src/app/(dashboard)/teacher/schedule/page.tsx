@@ -81,7 +81,7 @@ function getInitials(name: string): string {
 }
 
 const statusColors: Record<string, string> = {
-  booked: "bg-[#722F37]/10 border-[#722F37]/30 text-[#722F37]",
+  booked: "bg-[#CC3A3A]/10 border-[#CC3A3A]/30 text-[#CC3A3A]",
   in_progress: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30",
   completed: "bg-green-50 border-green-200 text-green-700 dark:bg-green-950/30",
   cancelled: "bg-red-50 border-red-200 text-red-400 dark:bg-red-950/30 line-through",
@@ -170,7 +170,7 @@ function WeekSchedule() {
     <Card className="mt-4">
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Calendar className="size-4 text-[#722F37]" />
+          <Calendar className="size-4 text-[#CC3A3A]" />
           {format(weekStart, "d MMM", { locale: ru })} --{" "}
           {format(weekEnd, "d MMM yyyy", { locale: ru })}
         </CardTitle>
@@ -216,7 +216,7 @@ function WeekSchedule() {
                   <div
                     key={i}
                     className={`border-l p-2 text-center text-sm ${
-                      isToday ? "bg-[#722F37]/5 font-bold" : ""
+                      isToday ? "bg-[#CC3A3A]/5 font-bold" : ""
                     }`}
                   >
                     <span className="text-muted-foreground">{DAY_NAMES[i]}</span>
@@ -224,7 +224,7 @@ function WeekSchedule() {
                     <span
                       className={
                         isToday
-                          ? "inline-flex size-7 items-center justify-center rounded-full bg-[#722F37] text-white"
+                          ? "inline-flex size-7 items-center justify-center rounded-full bg-[#CC3A3A] text-white"
                           : ""
                       }
                     >
@@ -251,7 +251,7 @@ function WeekSchedule() {
                     <div
                       key={dayIdx}
                       className={`min-h-[50px] border-l p-0.5 ${
-                        isToday ? "bg-[#722F37]/[0.02]" : ""
+                        isToday ? "bg-[#CC3A3A]/[0.02]" : ""
                       }`}
                     >
                       {dayLessons.map((lesson) => (
@@ -445,7 +445,7 @@ function AvailabilityEditor() {
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Clock className="size-4 text-[#722F37]" />
+            <Clock className="size-4 text-[#CC3A3A]" />
             Еженедельная доступность
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -461,7 +461,7 @@ function AvailabilityEditor() {
               size="sm"
               onClick={handleSave}
               disabled={isSaving}
-              style={{ backgroundColor: "#722F37" }}
+              style={{ backgroundColor: "#CC3A3A" }}
               className="text-white hover:opacity-90"
             >
               {isSaving ? (
@@ -490,7 +490,7 @@ function AvailabilityEditor() {
                   aria-label={`${DAY_FULL_NAMES[dayIdx]}: ${day.active ? "активен" : "выключен"}`}
                   onClick={() => toggleDay(dayIdx)}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                    day.active ? "bg-[#722F37]" : "bg-muted-foreground/20"
+                    day.active ? "bg-[#CC3A3A]" : "bg-muted-foreground/20"
                   }`}
                 >
                   <span
@@ -590,7 +590,7 @@ function AvailabilityEditor() {
             <Button
               onClick={handleBlockDate}
               disabled={!blockDate}
-              style={{ backgroundColor: "#722F37" }}
+              style={{ backgroundColor: "#CC3A3A" }}
               className="text-white hover:opacity-90"
             >
               Заблокировать

@@ -234,7 +234,7 @@ function StudentRow({
           <TableCell colSpan={5} className="p-4">
             <div className="space-y-2">
               <h4 className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="size-3.5 text-[#722F37]" />
+                <Calendar className="size-3.5 text-[#CC3A3A]" />
                 История уроков
               </h4>
               {recentLessons.length === 0 ? (

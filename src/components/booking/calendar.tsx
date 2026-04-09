@@ -57,7 +57,7 @@ export function BookingCalendar({
         modifiers={modifiers}
         modifiersClassNames={{
           available:
-            'relative after:absolute after:bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-[#722F37]',
+            'relative after:absolute after:bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-[#CC3A3A]',
         }}
         fromDate={today}
         toDate={maxDate}

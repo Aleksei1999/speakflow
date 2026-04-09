@@ -82,9 +82,9 @@ export function TimeSlotsGrid({
             className={cn(
               'flex flex-col items-center justify-center rounded-lg border px-2 py-3 text-sm transition-all',
               isAvailable && !isSelected &&
-                'border-border bg-card hover:border-[#722F37]/50 hover:bg-[#722F37]/5 cursor-pointer',
+                'border-border bg-card hover:border-[#CC3A3A]/50 hover:bg-[#CC3A3A]/5 cursor-pointer',
               isSelected &&
-                'border-[#722F37] bg-[#722F37]/10 ring-1 ring-[#722F37] cursor-pointer',
+                'border-[#CC3A3A] bg-[#CC3A3A]/10 ring-1 ring-[#CC3A3A] cursor-pointer',
               !isAvailable &&
                 'cursor-not-allowed border-border/50 bg-muted/50 text-muted-foreground/50 line-through'
             )}
@@ -92,7 +92,7 @@ export function TimeSlotsGrid({
             <span
               className={cn(
                 'font-medium',
-                isSelected && 'text-[#722F37]'
+                isSelected && 'text-[#CC3A3A]'
               )}
             >
               {formatTimeUTC(slot.startTime)}

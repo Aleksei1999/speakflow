@@ -236,7 +236,7 @@ export default function TeacherMaterialsPage() {
         </div>
         <Button
           onClick={() => setShowUploadDialog(true)}
-          style={{ backgroundColor: "#722F37" }}
+          style={{ backgroundColor: "#CC3A3A" }}
           className="text-white hover:opacity-90"
         >
           <Plus className="size-4" />
@@ -253,7 +253,7 @@ export default function TeacherMaterialsPage() {
         onClick={() => fileInputRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
           isDragging
-            ? "border-[#722F37] bg-[#722F37]/5"
+            ? "border-[#CC3A3A] bg-[#CC3A3A]/5"
             : "border-muted-foreground/20 hover:border-muted-foreground/40"
         }`}
         role="button"
@@ -268,7 +268,7 @@ export default function TeacherMaterialsPage() {
       >
         <Upload
           className={`mb-2 size-8 ${
-            isDragging ? "text-[#722F37]" : "text-muted-foreground/50"
+            isDragging ? "text-[#CC3A3A]" : "text-muted-foreground/50"
           }`}
         />
         <p className="text-sm font-medium">
@@ -456,7 +456,7 @@ export default function TeacherMaterialsPage() {
                 aria-label="Публичный доступ"
                 onClick={() => setUploadPublic(!uploadPublic)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  uploadPublic ? "bg-[#722F37]" : "bg-muted-foreground/20"
+                  uploadPublic ? "bg-[#CC3A3A]" : "bg-muted-foreground/20"
                 }`}
               >
                 <span
@@ -484,7 +484,7 @@ export default function TeacherMaterialsPage() {
             <Button
               onClick={handleUpload}
               disabled={!uploadFile || !uploadTitle || isUploading}
-              style={{ backgroundColor: "#722F37" }}
+              style={{ backgroundColor: "#CC3A3A" }}
               className="text-white hover:opacity-90"
             >
               {isUploading ? (

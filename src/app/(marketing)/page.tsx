@@ -135,13 +135,13 @@ export default function MarketingPage() {
   return (
     <>
       {/* ===== Hero ===== */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#722F37]/5 to-background">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#CC3A3A]/5 to-background">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-36">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="flex flex-col gap-6">
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
                 Учи английский с{" "}
-                <span style={{ color: "#722F37" }}>лучшими преподавателями</span>
+                <span style={{ color: "#CC3A3A" }}>лучшими преподавателями</span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground">
                 Онлайн-уроки с профессиональными преподавателями, AI-конспекты
@@ -151,7 +151,7 @@ export default function MarketingPage() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="bg-[#722F37] text-white hover:bg-[#5a252c]"
+                  className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                   render={<Link href="/register" />}
                 >
                   Начать бесплатно
@@ -179,10 +179,10 @@ export default function MarketingPage() {
 
             {/* Hero illustration placeholder */}
             <div className="relative hidden lg:block">
-              <div className="flex aspect-square items-center justify-center rounded-3xl bg-gradient-to-br from-[#722F37]/10 via-[#722F37]/5 to-transparent">
+              <div className="flex aspect-square items-center justify-center rounded-3xl bg-gradient-to-br from-[#CC3A3A]/10 via-[#CC3A3A]/5 to-transparent">
                 <div className="flex flex-col items-center gap-4 text-center">
-                  <div className="flex size-24 items-center justify-center rounded-full bg-[#722F37]/10">
-                    <Video className="size-12" style={{ color: "#722F37" }} />
+                  <div className="flex size-24 items-center justify-center rounded-full bg-[#CC3A3A]/10">
+                    <Video className="size-12" style={{ color: "#CC3A3A" }} />
                   </div>
                   <p className="max-w-[200px] text-sm font-medium text-muted-foreground">
                     Интерактивные видеоуроки с лучшими преподавателями
@@ -213,9 +213,9 @@ export default function MarketingPage() {
                 <CardHeader>
                   <div
                     className="mb-2 flex size-10 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "#722F37" + "1a" }}
+                    style={{ backgroundColor: "#CC3A3A" + "1a" }}
                   >
-                    <feature.icon className="size-5" style={{ color: "#722F37" }} />
+                    <feature.icon className="size-5" style={{ color: "#CC3A3A" }} />
                   </div>
                   <CardTitle>{feature.title}</CardTitle>
                   <CardDescription>{feature.description}</CardDescription>
@@ -244,13 +244,13 @@ export default function MarketingPage() {
                 <div className="relative mb-4">
                   <div
                     className="flex size-16 items-center justify-center rounded-2xl"
-                    style={{ backgroundColor: "#722F37" + "1a" }}
+                    style={{ backgroundColor: "#CC3A3A" + "1a" }}
                   >
-                    <step.icon className="size-7" style={{ color: "#722F37" }} />
+                    <step.icon className="size-7" style={{ color: "#CC3A3A" }} />
                   </div>
                   <span
                     className="absolute -top-2 -right-2 flex size-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: "#722F37" }}
+                    style={{ backgroundColor: "#CC3A3A" }}
                   >
                     {step.step}
                   </span>
@@ -314,7 +314,7 @@ export default function MarketingPage() {
                     <span className="text-sm text-muted-foreground">
                       Опыт: {teacher.experience} лет
                     </span>
-                    <span className="text-lg font-bold" style={{ color: "#722F37" }}>
+                    <span className="text-lg font-bold" style={{ color: "#CC3A3A" }}>
                       {teacher.price} &#8381;
                       <span className="text-sm font-normal text-muted-foreground">
                         /урок
@@ -365,7 +365,7 @@ export default function MarketingPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold" style={{ color: "#722F37" }}>
+                  <span className="text-4xl font-bold" style={{ color: "#CC3A3A" }}>
                     от 500 &#8381;
                   </span>
                   <span className="text-muted-foreground"> / 30 мин</span>
@@ -389,7 +389,7 @@ export default function MarketingPage() {
                   </li>
                 </ul>
                 <Button
-                  className="mt-6 w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                  className="mt-6 w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                   size="lg"
                   render={<Link href="/register" />}
                 >
@@ -399,17 +399,17 @@ export default function MarketingPage() {
             </Card>
 
             {/* Standard */}
-            <Card className="relative ring-2 ring-[#722F37] transition-shadow hover:shadow-md">
+            <Card className="relative ring-2 ring-[#CC3A3A] transition-shadow hover:shadow-md">
               <div
                 className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs font-semibold text-white"
-                style={{ backgroundColor: "#722F37" }}
+                style={{ backgroundColor: "#CC3A3A" }}
               >
                 Популярный
               </div>
               <CardHeader>
                 <Badge
                   variant="outline"
-                  className="w-fit border-[#722F37]/30 text-[#722F37]"
+                  className="w-fit border-[#CC3A3A]/30 text-[#CC3A3A]"
                 >
                   Регулярные занятия
                 </Badge>
@@ -420,7 +420,7 @@ export default function MarketingPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold" style={{ color: "#722F37" }}>
+                  <span className="text-4xl font-bold" style={{ color: "#CC3A3A" }}>
                     от 1 500 &#8381;
                   </span>
                   <span className="text-muted-foreground"> / 50 мин</span>
@@ -448,7 +448,7 @@ export default function MarketingPage() {
                   </li>
                 </ul>
                 <Button
-                  className="mt-6 w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                  className="mt-6 w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                   size="lg"
                   render={<Link href="/register" />}
                 >
@@ -467,7 +467,7 @@ export default function MarketingPage() {
             className="overflow-hidden rounded-3xl px-6 py-16 text-center sm:px-12 sm:py-20"
             style={{
               background:
-                "linear-gradient(135deg, #722F37 0%, #5a252c 50%, #3d1a1e 100%)",
+                "linear-gradient(135deg, #CC3A3A 0%, #a32e2e 50%, #3d1a1e 100%)",
             }}
           >
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -480,7 +480,7 @@ export default function MarketingPage() {
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Button
                 size="lg"
-                className="bg-white text-[#722F37] hover:bg-white/90"
+                className="bg-white text-[#CC3A3A] hover:bg-white/90"
                 render={<Link href="/register" />}
               >
                 Начать бесплатно

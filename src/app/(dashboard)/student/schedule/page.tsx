@@ -211,7 +211,7 @@ export default function StudentSchedulePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="size-4 text-[#722F37]" />
+              <CalendarIcon className="size-4 text-[#CC3A3A]" />
               {format(selectedDate, "d MMMM, EEEE", { locale: ru })}
             </CardTitle>
           </CardHeader>
@@ -226,7 +226,7 @@ export default function StudentSchedulePage() {
               <TabsContent value={filter}>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-[#722F37]" />
+                    <div className="size-6 animate-spin rounded-full border-2 border-muted border-t-[#CC3A3A]" />
                   </div>
                 ) : filteredLessons.length === 0 ? (
                   <p className="py-12 text-center text-sm text-muted-foreground">
@@ -295,7 +295,7 @@ export default function StudentSchedulePage() {
                               >
                                 <Button
                                   size="sm"
-                                  style={{ backgroundColor: "#722F37" }}
+                                  style={{ backgroundColor: "#CC3A3A" }}
                                   className="text-white hover:opacity-90"
                                 >
                                   <Video className="size-3.5" />

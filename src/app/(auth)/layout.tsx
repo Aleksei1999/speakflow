@@ -15,11 +15,11 @@ export default function AuthLayout({
       <div className="mb-8 flex flex-col items-center gap-2">
         <div
           className="flex size-12 items-center justify-center rounded-xl text-xl font-bold text-white"
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
         >
           RE
         </div>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#722F37' }}>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#CC3A3A' }}>
           RAW English
         </h1>
       </div>

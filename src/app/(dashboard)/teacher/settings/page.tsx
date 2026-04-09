@@ -282,7 +282,7 @@ export default function TeacherSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera className="size-4 text-[#722F37]" />
+            <Camera className="size-4 text-[#CC3A3A]" />
             Фото профиля
           </CardTitle>
         </CardHeader>
@@ -337,7 +337,7 @@ export default function TeacherSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <User className="size-4 text-[#722F37]" />
+            <User className="size-4 text-[#CC3A3A]" />
             Профиль преподавателя
           </CardTitle>
         </CardHeader>
@@ -380,7 +380,7 @@ export default function TeacherSettingsPage() {
                     onClick={() => toggleSpecialization(spec.value)}
                     className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                       isSelected
-                        ? "border-[#722F37] bg-[#722F37]/10 text-[#722F37]"
+                        ? "border-[#CC3A3A] bg-[#CC3A3A]/10 text-[#CC3A3A]"
                         : "border-border hover:bg-muted"
                     }`}
                     aria-pressed={isSelected}
@@ -482,7 +482,7 @@ export default function TeacherSettingsPage() {
                     onClick={() => toggleLanguage(lang.value)}
                     className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                       isSelected
-                        ? "border-[#722F37] bg-[#722F37]/10 text-[#722F37]"
+                        ? "border-[#CC3A3A] bg-[#CC3A3A]/10 text-[#CC3A3A]"
                         : "border-border hover:bg-muted"
                     }`}
                     aria-pressed={isSelected}
@@ -555,7 +555,7 @@ export default function TeacherSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="size-4 text-[#722F37]" />
+            <Bell className="size-4 text-[#CC3A3A]" />
             Уведомления
           </CardTitle>
         </CardHeader>
@@ -573,7 +573,7 @@ export default function TeacherSettingsPage() {
               aria-checked={emailNotif}
               onClick={() => setEmailNotif(!emailNotif)}
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                emailNotif ? "bg-[#722F37]" : "bg-muted-foreground/20"
+                emailNotif ? "bg-[#CC3A3A]" : "bg-muted-foreground/20"
               }`}
             >
               <span
@@ -599,7 +599,7 @@ export default function TeacherSettingsPage() {
               aria-checked={telegramNotif}
               onClick={() => setTelegramNotif(!telegramNotif)}
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                telegramNotif ? "bg-[#722F37]" : "bg-muted-foreground/20"
+                telegramNotif ? "bg-[#CC3A3A]" : "bg-muted-foreground/20"
               }`}
             >
               <span
@@ -618,7 +618,7 @@ export default function TeacherSettingsPage() {
           onClick={handleSave}
           disabled={isSaving}
           size="lg"
-          style={{ backgroundColor: "#722F37" }}
+          style={{ backgroundColor: "#CC3A3A" }}
           className="text-white hover:opacity-90"
         >
           {isSaving ? (

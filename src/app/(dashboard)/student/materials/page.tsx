@@ -130,7 +130,7 @@ export default async function StudentMaterialsPage({
               variant={!params.teacher ? "default" : "outline"}
               className={
                 !params.teacher
-                  ? "bg-[#722F37] text-white cursor-pointer"
+                  ? "bg-[#CC3A3A] text-white cursor-pointer"
                   : "cursor-pointer"
               }
             >
@@ -143,7 +143,7 @@ export default async function StudentMaterialsPage({
                 variant={params.teacher === id ? "default" : "outline"}
                 className={
                   params.teacher === id
-                    ? "bg-[#722F37] text-white cursor-pointer"
+                    ? "bg-[#CC3A3A] text-white cursor-pointer"
                     : "cursor-pointer"
                 }
               >

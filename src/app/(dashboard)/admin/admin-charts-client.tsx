@@ -22,7 +22,7 @@ interface AdminChartsClientProps {
   lessonsTrend: { date: string; count: number }[]
 }
 
-const BRAND_COLOR = '#722F37'
+const BRAND_COLOR = '#CC3A3A'
 const BRAND_COLOR_LIGHT = 'rgba(114, 47, 55, 0.15)'
 
 function formatRub(value: number): string {
