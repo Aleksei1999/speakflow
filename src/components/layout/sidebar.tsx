@@ -30,11 +30,11 @@ interface NavItem {
 
 const navigationByRole: Record<Role, NavItem[]> = {
   student: [
-    { href: "/dashboard", label: "Главная", icon: Home },
-    { href: "/dashboard/schedule", label: "Расписание", icon: Calendar },
-    { href: "/dashboard/materials", label: "Материалы", icon: FileText },
-    { href: "/dashboard/ai-summary", label: "AI Саммари", icon: Brain },
-    { href: "/dashboard/achievements", label: "Достижения", icon: Trophy },
+    { href: "/student", label: "Главная", icon: Home },
+    { href: "/student/schedule", label: "Расписание", icon: Calendar },
+    { href: "/student/materials", label: "Материалы", icon: FileText },
+    { href: "/student/summaries", label: "AI Саммари", icon: Brain },
+    { href: "/student/achievements", label: "Достижения", icon: Trophy },
   ],
   teacher: [
     { href: "/teacher", label: "Главная", icon: Home },
@@ -44,12 +44,11 @@ const navigationByRole: Record<Role, NavItem[]> = {
     { href: "/teacher/settings", label: "Настройки", icon: Settings },
   ],
   admin: [
-    { href: "/dashboard", label: "Обзор", icon: BarChart3 },
-    { href: "/dashboard/users", label: "Пользователи", icon: Users },
-    { href: "/dashboard/teachers", label: "Преподаватели", icon: BookOpen },
-    { href: "/dashboard/payments", label: "Платежи", icon: CreditCard },
-    { href: "/dashboard/content", label: "Контент", icon: FileText },
-    { href: "/dashboard/settings", label: "Настройки", icon: Settings },
+    { href: "/admin", label: "Обзор", icon: BarChart3 },
+    { href: "/admin/users", label: "Пользователи", icon: Users },
+    { href: "/admin/teachers", label: "Преподаватели", icon: BookOpen },
+    { href: "/admin/payments", label: "Платежи", icon: CreditCard },
+    { href: "/admin/content", label: "Контент", icon: FileText },
   ],
 }
 
@@ -105,7 +104,10 @@ export function DashboardSidebar({
       <nav className="flex-1 overflow-y-auto p-2" aria-label="Навигация панели управления">
         <ul className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const isHome = item.href === "/dashboard" || item.href === "/teacher"
+            const isHome =
+              item.href === "/student" ||
+              item.href === "/teacher" ||
+              item.href === "/admin"
             const isActive =
               pathname === item.href ||
               (!isHome && pathname.startsWith(item.href))

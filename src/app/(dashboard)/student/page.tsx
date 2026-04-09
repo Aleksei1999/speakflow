@@ -42,6 +42,9 @@ export default async function StudentDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect("/login")
+  }
 
   const now = new Date().toISOString()
 
