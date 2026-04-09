@@ -118,7 +118,7 @@ export function LessonControls({
           <Button
             variant="ghost"
             size="icon-sm"
-            className={`rounded-full ${showMaterials ? 'bg-[#722F37]/30 text-[#722F37]' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
+            className={`rounded-full ${showMaterials ? 'bg-[#CC3A3A]/30 text-[#CC3A3A]' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
             onClick={onToggleMaterials}
             aria-label="Материалы"
           >

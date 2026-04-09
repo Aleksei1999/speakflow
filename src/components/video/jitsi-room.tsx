@@ -207,7 +207,7 @@ export function JitsiRoom({
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-900">
           <div className="flex flex-col items-center gap-4">
-            <div className="size-10 animate-spin rounded-full border-4 border-gray-700 border-t-[#722F37]" />
+            <div className="size-10 animate-spin rounded-full border-4 border-gray-700 border-t-[#CC3A3A]" />
             <p className="text-sm text-gray-400">Подключение к видеоконференции...</p>
           </div>
         </div>

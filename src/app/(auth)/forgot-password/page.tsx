@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
           <CardTitle className="text-xl">Письмо отправлено</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4 py-6">
-          <CheckCircle2 className="size-12" style={{ color: '#722F37' }} />
+          <CheckCircle2 className="size-12" style={{ color: '#CC3A3A' }} />
           <p className="text-center text-sm text-muted-foreground">
             Ссылка для сброса пароля отправлена на email. Проверьте почту и
             следуйте инструкциям в письме.
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
           disabled={isSubmitting}
           className="w-full"
           size="lg"
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
         >
           {isSubmitting && <Loader2 className="animate-spin" />}
           Отправить ссылку

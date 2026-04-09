@@ -2,10 +2,10 @@
  * HTML-шаблоны email-уведомлений SpeakFlow / RAW English.
  *
  * Все шаблоны используют inline-стили для максимальной совместимости
- * с почтовыми клиентами. Основной цвет бренда: #722F37 (RAW English).
+ * с почтовыми клиентами. Основной цвет бренда: #CC3A3A (RAW English).
  */
 
-const BRAND_COLOR = '#722F37'
+const BRAND_COLOR = '#CC3A3A'
 const BRAND_COLOR_LIGHT = '#f3e8ea'
 const TEXT_COLOR = '#1a1a1a'
 const TEXT_SECONDARY = '#666666'

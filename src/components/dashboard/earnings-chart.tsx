@@ -33,7 +33,7 @@ function CustomTooltip({
   return (
     <div className="rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10">
       <p className="font-medium">{label}</p>
-      <p className="text-[#722F37]">
+      <p className="text-[#CC3A3A]">
         {new Intl.NumberFormat("ru-RU", {
           style: "currency",
           currency: "RUB",
@@ -58,8 +58,8 @@ export function EarningsChart({ data }: EarningsChartProps) {
       <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
         <defs>
           <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#722F37" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#722F37" stopOpacity={0} />
+            <stop offset="5%" stopColor="#CC3A3A" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#CC3A3A" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -84,7 +84,7 @@ export function EarningsChart({ data }: EarningsChartProps) {
         <Area
           type="monotone"
           dataKey="amount"
-          stroke="#722F37"
+          stroke="#CC3A3A"
           strokeWidth={2}
           fill="url(#earningsGradient)"
         />

@@ -282,7 +282,7 @@ export default function BookTeacherPage() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="size-8 animate-spin text-[#722F37]" />
+          <Loader2 className="size-8 animate-spin text-[#CC3A3A]" />
           <p className="text-sm text-muted-foreground">
             Загрузка информации о преподавателе...
           </p>
@@ -356,9 +356,9 @@ export default function BookTeacherPage() {
                 }}
                 className={cn(
                   'flex w-full flex-col items-center gap-1 rounded-lg p-2 text-xs transition-colors',
-                  isActive && 'bg-[#722F37]/10 text-[#722F37]',
+                  isActive && 'bg-[#CC3A3A]/10 text-[#CC3A3A]',
                   isCompleted &&
-                    'cursor-pointer text-[#722F37] hover:bg-[#722F37]/5',
+                    'cursor-pointer text-[#CC3A3A] hover:bg-[#CC3A3A]/5',
                   !isActive &&
                     !isCompleted &&
                     'text-muted-foreground/50'
@@ -367,8 +367,8 @@ export default function BookTeacherPage() {
                 <Icon
                   className={cn(
                     'size-4',
-                    isActive && 'text-[#722F37]',
-                    isCompleted && 'text-[#722F37]'
+                    isActive && 'text-[#CC3A3A]',
+                    isCompleted && 'text-[#CC3A3A]'
                   )}
                 />
                 <span className="hidden sm:inline">{s.label}</span>
@@ -377,7 +377,7 @@ export default function BookTeacherPage() {
                 <div
                   className={cn(
                     'mx-1 h-px w-4 flex-shrink-0',
-                    isCompleted ? 'bg-[#722F37]' : 'bg-border'
+                    isCompleted ? 'bg-[#CC3A3A]' : 'bg-border'
                   )}
                 />
               )}
@@ -398,7 +398,7 @@ export default function BookTeacherPage() {
       <Card className={cn(step !== 'date' && currentStepIndex > 0 && 'opacity-60')}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarDays className="size-4 text-[#722F37]" />
+            <CalendarDays className="size-4 text-[#CC3A3A]" />
             Выберите дату
           </CardTitle>
           {selectedDate && step !== 'date' && (
@@ -428,7 +428,7 @@ export default function BookTeacherPage() {
         <Card className={cn(step !== 'time' && currentStepIndex > 1 && 'opacity-60')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="size-4 text-[#722F37]" />
+              <Clock className="size-4 text-[#CC3A3A]" />
               Выберите время
             </CardTitle>
             {selectedSlot && step !== 'time' && (
@@ -452,7 +452,7 @@ export default function BookTeacherPage() {
                     onClick={() => setSelectedDuration(opt.value)}
                     className={cn(
                       selectedDuration === opt.value &&
-                        'bg-[#722F37] text-white hover:bg-[#722F37]/90'
+                        'bg-[#CC3A3A] text-white hover:bg-[#CC3A3A]/90'
                     )}
                   >
                     {opt.label}
@@ -476,7 +476,7 @@ export default function BookTeacherPage() {
         <Card className={cn(step !== 'duration' && currentStepIndex > 2 && 'opacity-60')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Timer className="size-4 text-[#722F37]" />
+              <Timer className="size-4 text-[#CC3A3A]" />
               Длительность урока
             </CardTitle>
           </CardHeader>
@@ -499,14 +499,14 @@ export default function BookTeacherPage() {
                       className={cn(
                         'flex flex-col items-center gap-2 rounded-lg border p-4 transition-all',
                         isSelected
-                          ? 'border-[#722F37] bg-[#722F37]/10 ring-1 ring-[#722F37]'
-                          : 'border-border hover:border-[#722F37]/50 hover:bg-[#722F37]/5'
+                          ? 'border-[#CC3A3A] bg-[#CC3A3A]/10 ring-1 ring-[#CC3A3A]'
+                          : 'border-border hover:border-[#CC3A3A]/50 hover:bg-[#CC3A3A]/5'
                       )}
                     >
                       <span
                         className={cn(
                           'text-lg font-semibold',
-                          isSelected && 'text-[#722F37]'
+                          isSelected && 'text-[#CC3A3A]'
                         )}
                       >
                         {opt.label}
@@ -518,7 +518,7 @@ export default function BookTeacherPage() {
                         variant={isSelected ? 'default' : 'secondary'}
                         className={cn(
                           isSelected &&
-                            'bg-[#722F37] text-white'
+                            'bg-[#CC3A3A] text-white'
                         )}
                       >
                         {formatPrice(price)}
@@ -537,7 +537,7 @@ export default function BookTeacherPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <CheckCircle2 className="size-4 text-[#722F37]" />
+              <CheckCircle2 className="size-4 text-[#CC3A3A]" />
               Подтверждение
             </CardTitle>
           </CardHeader>
@@ -566,7 +566,7 @@ export default function BookTeacherPage() {
               <div className="border-t pt-3">
                 <div className="flex justify-between">
                   <span className="font-medium">Стоимость</span>
-                  <span className="text-lg font-semibold text-[#722F37]">
+                  <span className="text-lg font-semibold text-[#CC3A3A]">
                     {formatPrice(calculatePrice())}
                   </span>
                 </div>
@@ -574,7 +574,7 @@ export default function BookTeacherPage() {
             </div>
 
             <Button
-              className="mt-4 w-full bg-[#722F37] text-white hover:bg-[#722F37]/90"
+              className="mt-4 w-full bg-[#CC3A3A] text-white hover:bg-[#CC3A3A]/90"
               size="lg"
               onClick={() => setShowConfirmModal(true)}
               disabled={bookingLoading}

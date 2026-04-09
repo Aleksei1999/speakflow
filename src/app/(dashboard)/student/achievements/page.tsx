@@ -114,7 +114,7 @@ export default async function StudentAchievementsPage() {
       {/* Achievements Grid */}
       <div className="flex flex-col gap-4">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Medal className="size-5 text-[#722F37]" />
+          <Medal className="size-5 text-[#CC3A3A]" />
           Награды
           <Badge variant="secondary" className="text-xs">
             {earnedAchievements.length} / {allAchievements.length}
@@ -162,7 +162,7 @@ export default async function StudentAchievementsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Trophy className="size-4 text-[#722F37]" />
+            <Trophy className="size-4 text-[#CC3A3A]" />
             Таблица лидеров
           </CardTitle>
         </CardHeader>
@@ -184,14 +184,14 @@ export default async function StudentAchievementsPage() {
                     key={entry.user_id}
                     className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
                       isCurrentUser
-                        ? "bg-[#722F37]/5 ring-1 ring-[#722F37]/20"
+                        ? "bg-[#CC3A3A]/5 ring-1 ring-[#CC3A3A]/20"
                         : "hover:bg-muted/50"
                     }`}
                   >
                     <span
                       className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
                         rank <= 3
-                          ? "bg-[#722F37] text-white"
+                          ? "bg-[#CC3A3A] text-white"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -212,7 +212,7 @@ export default async function StudentAchievementsPage() {
                       <p className="truncate text-sm font-medium">
                         {name}
                         {isCurrentUser && (
-                          <span className="ml-1 text-xs text-[#722F37]">
+                          <span className="ml-1 text-xs text-[#CC3A3A]">
                             (вы)
                           </span>
                         )}

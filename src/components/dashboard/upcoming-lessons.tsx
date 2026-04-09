@@ -72,7 +72,7 @@ export function UpcomingLessons({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Calendar className="size-4 text-[#722F37]" />
+          <Calendar className="size-4 text-[#CC3A3A]" />
           {title}
         </CardTitle>
         {showViewAll && (
@@ -147,7 +147,7 @@ export function UpcomingLessons({
                       <Link href={`/lesson/${lesson.jitsi_room_name}`}>
                         <Button
                           size="sm"
-                          style={{ backgroundColor: "#722F37" }}
+                          style={{ backgroundColor: "#CC3A3A" }}
                           className="text-white hover:opacity-90"
                         >
                           <Video className="size-3.5" />

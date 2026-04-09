@@ -47,7 +47,7 @@ export function AchievementBadge({
       className={cn(
         "relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all",
         earned
-          ? "border-[#722F37]/20 bg-[#722F37]/5"
+          ? "border-[#CC3A3A]/20 bg-[#CC3A3A]/5"
           : "border-muted bg-muted/30 opacity-60",
         className
       )}
@@ -66,7 +66,7 @@ export function AchievementBadge({
       <div
         className={cn(
           "flex size-12 items-center justify-center rounded-full text-2xl",
-          earned ? "bg-[#722F37]/10" : "bg-muted grayscale"
+          earned ? "bg-[#CC3A3A]/10" : "bg-muted grayscale"
         )}
       >
         {emoji}
@@ -78,7 +78,7 @@ export function AchievementBadge({
       </div>
 
       {earned && earnedAt && (
-        <p className="text-xs text-[#722F37]">
+        <p className="text-xs text-[#CC3A3A]">
           Получено {format(new Date(earnedAt), "d MMM yyyy", { locale: ru })}
         </p>
       )}

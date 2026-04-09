@@ -48,37 +48,49 @@ export default async function StudentDashboardPage() {
 
   const now = new Date().toISOString()
 
-  const [lessonsResult, progressResult, summariesResult, profileResult] =
-    await Promise.all([
-      supabase
-        .from("lessons")
-        .select(
-          "id, scheduled_at, duration_minutes, status, jitsi_room_name, price, teacher_id, profiles!lessons_teacher_id_fkey(full_name, avatar_url)"
-        )
-        .eq("student_id", user.id)
-        .eq("status", "booked")
-        .gte("scheduled_at", now)
-        .order("scheduled_at", { ascending: true })
-        .limit(5),
-      supabase
-        .from("user_progress")
-        .select("*")
-        .eq("user_id", user.id)
-        .single(),
-      supabase
-        .from("lesson_summaries")
-        .select(
-          "id, summary_text, vocabulary, cefr_level, created_at, lesson_id, lessons!lesson_summaries_lesson_id_fkey(scheduled_at, profiles!lessons_teacher_id_fkey(full_name, avatar_url))"
-        )
-        .eq("student_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3),
-      supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single(),
-    ])
+  let lessonsResult, progressResult, summariesResult, profileResult
+  try {
+    ;[lessonsResult, progressResult, summariesResult, profileResult] =
+      await Promise.all([
+        supabase
+          .from("lessons")
+          .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, price, teacher_id")
+          .eq("student_id", user.id)
+          .eq("status", "booked")
+          .gte("scheduled_at", now)
+          .order("scheduled_at", { ascending: true })
+          .limit(5),
+        supabase
+          .from("user_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("lesson_summaries")
+          .select("id, summary_text, vocabulary, created_at, lesson_id")
+          .eq("student_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single(),
+      ])
+  } catch (e: any) {
+    return <div className="p-8"><h1 className="text-xl font-bold text-red-600">Debug: Promise.all threw</h1><pre className="mt-4 whitespace-pre-wrap text-sm">{e?.message ?? JSON.stringify(e)}</pre></div>
+  }
+
+  const errors = [
+    lessonsResult?.error && `lessons: ${lessonsResult.error.message}`,
+    progressResult?.error && `progress: ${progressResult.error.message}`,
+    summariesResult?.error && `summaries: ${summariesResult.error.message}`,
+    profileResult?.error && `profile: ${profileResult.error.message}`,
+  ].filter(Boolean)
+
+  if (errors.length > 0) {
+    return <div className="p-8"><h1 className="text-xl font-bold text-red-600">Debug: Supabase errors</h1><pre className="mt-4 whitespace-pre-wrap text-sm">{errors.join("\n")}</pre></div>
+  }
 
   const lessons = (lessonsResult.data ?? []).map((l: any) => ({
     id: l.id,
@@ -87,9 +99,7 @@ export default async function StudentDashboardPage() {
     status: l.status,
     jitsi_room_name: l.jitsi_room_name,
     price: l.price ?? 0,
-    teacher: l.profiles
-      ? { full_name: l.profiles.full_name, avatar_url: l.profiles.avatar_url }
-      : null,
+    teacher: null,
   }))
 
   const progress = progressResult.data
@@ -156,7 +166,7 @@ export default async function StudentDashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <BookOpen className="size-4 text-[#722F37]" />
+                <BookOpen className="size-4 text-[#CC3A3A]" />
                 AI-саммари
               </CardTitle>
               <Link href="/student/summaries">
@@ -172,8 +182,6 @@ export default async function StudentDashboardPage() {
                 </p>
               ) : (
                 summaries.map((summary: any) => {
-                  const lesson = summary.lessons
-                  const teacher = lesson?.profiles
                   const vocabList = Array.isArray(summary.vocabulary)
                     ? summary.vocabulary
                     : []
@@ -186,39 +194,20 @@ export default async function StudentDashboardPage() {
                       className="group flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Avatar size="sm">
-                            {teacher?.avatar_url ? (
-                              <AvatarImage
-                                src={teacher.avatar_url}
-                                alt={teacher.full_name}
-                              />
-                            ) : null}
-                            <AvatarFallback>
-                              {teacher
-                                ? getInitials(teacher.full_name)
-                                : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">
-                            {teacher?.full_name ?? "Преподаватель"}
-                          </span>
-                        </div>
-                        {summary.cefr_level && (
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(summary.created_at), "d MMM yyyy", {
+                            locale: ru,
+                          })}
+                        </span>
+                        {vocabList.length > 0 && (
                           <Badge
                             variant="outline"
-                            className="text-[#722F37] border-[#722F37]/30"
+                            className="text-[#CC3A3A] border-[#CC3A3A]/30"
                           >
-                            {summary.cefr_level}
+                            {vocabList.length} слов
                           </Badge>
                         )}
                       </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(summary.created_at), "d MMM yyyy", {
-                          locale: ru,
-                        })}
-                      </p>
 
                       {vocabPreview.length > 0 && (
                         <div className="flex flex-wrap gap-1">

@@ -180,7 +180,7 @@ function AchievementsTab() {
         <h2 className="text-lg font-semibold">Достижения</h2>
         <Button
           onClick={openCreate}
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
           className="text-white hover:opacity-90"
         >
           <Plus className="size-4" />
@@ -192,7 +192,7 @@ function AchievementsTab() {
         <div className="flex items-center justify-center py-12">
           <div
             className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-            style={{ color: '#722F37' }}
+            style={{ color: '#CC3A3A' }}
           />
         </div>
       ) : achievements.length === 0 ? (
@@ -365,7 +365,7 @@ function AchievementsTab() {
             <Button
               onClick={handleSave}
               disabled={saving || !formSlug || !formTitle}
-              style={{ backgroundColor: '#722F37' }}
+              style={{ backgroundColor: '#CC3A3A' }}
               className="text-white hover:opacity-90"
             >
               {saving ? 'Сохранение...' : 'Сохранить'}
@@ -458,7 +458,7 @@ function LevelTestTab() {
         <div className="flex items-center justify-center py-12">
           <div
             className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-            style={{ color: '#722F37' }}
+            style={{ color: '#CC3A3A' }}
           />
         </div>
       ) : (
@@ -494,7 +494,7 @@ function LevelTestTab() {
                           name="correct"
                           checked={editCorrect === oi}
                           onChange={() => setEditCorrect(oi)}
-                          className="accent-[#722F37]"
+                          className="accent-[#CC3A3A]"
                         />
                       </div>
                     ))}
@@ -512,7 +512,7 @@ function LevelTestTab() {
                       <Button
                         size="sm"
                         onClick={saveEdit}
-                        style={{ backgroundColor: '#722F37' }}
+                        style={{ backgroundColor: '#CC3A3A' }}
                         className="text-white hover:opacity-90"
                       >
                         <Save className="size-4" />
@@ -561,7 +561,7 @@ function LevelTestTab() {
                             }
                             className={
                               oi === q.correctAnswer
-                                ? 'bg-[#722F37] text-white'
+                                ? 'bg-[#CC3A3A] text-white'
                                 : ''
                             }
                           >
@@ -665,7 +665,7 @@ function SiteSettingsTab() {
         <Button
           onClick={handleSave}
           disabled={saving || saved}
-          style={{ backgroundColor: '#722F37' }}
+          style={{ backgroundColor: '#CC3A3A' }}
           className="text-white hover:opacity-90"
         >
           <Save className="size-4" />

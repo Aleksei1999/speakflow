@@ -102,7 +102,7 @@ export default async function StudentSummariesPage() {
                       {summary.cefr_level && (
                         <Badge
                           variant="outline"
-                          className="text-[#722F37] border-[#722F37]/30"
+                          className="text-[#CC3A3A] border-[#CC3A3A]/30"
                         >
                           {summary.cefr_level}
                         </Badge>

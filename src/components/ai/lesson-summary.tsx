@@ -125,7 +125,7 @@ export function LessonSummary({ summary, className }: LessonSummaryProps) {
                     key={index}
                     className="border-b border-gray-100 last:border-0 dark:border-gray-800"
                   >
-                    <td className="py-2.5 pr-4 font-medium text-[#722F37] dark:text-[#d4737d]">
+                    <td className="py-2.5 pr-4 font-medium text-[#CC3A3A] dark:text-[#d4737d]">
                       {item.word}
                     </td>
                     <td className="py-2.5 pr-4 text-gray-700 dark:text-gray-300">
@@ -151,7 +151,7 @@ export function LessonSummary({ summary, className }: LessonSummaryProps) {
                 key={index}
                 className="flex gap-2 text-gray-700 dark:text-gray-300"
               >
-                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#722F37]" />
+                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#CC3A3A]" />
                 <span className="leading-relaxed">{point}</span>
               </li>
             ))}
@@ -162,7 +162,7 @@ export function LessonSummary({ summary, className }: LessonSummaryProps) {
       {/* Домашнее задание */}
       {summary.homework && (
         <Section title="Домашнее задание" icon="homework">
-          <div className="rounded-lg border border-[#722F37]/20 bg-[#722F37]/5 p-4 dark:border-[#722F37]/30 dark:bg-[#722F37]/10">
+          <div className="rounded-lg border border-[#CC3A3A]/20 bg-[#CC3A3A]/5 p-4 dark:border-[#CC3A3A]/30 dark:bg-[#CC3A3A]/10">
             <p className="whitespace-pre-line text-gray-800 leading-relaxed dark:text-gray-200">
               {summary.homework}
             </p>
@@ -221,7 +221,7 @@ function Section({
     <div className="space-y-3">
       <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-50">
         <svg
-          className="h-5 w-5 text-[#722F37] dark:text-[#d4737d]"
+          className="h-5 w-5 text-[#CC3A3A] dark:text-[#d4737d]"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}

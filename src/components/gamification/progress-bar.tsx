@@ -28,7 +28,7 @@ export function XpProgressBar({
         <div className="flex items-center gap-2">
           <div
             className="flex size-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: "#722F37" }}
+            style={{ backgroundColor: "#CC3A3A" }}
           >
             <Trophy className="size-4 text-white" />
           </div>
@@ -45,17 +45,17 @@ export function XpProgressBar({
           </p>
         )}
         {isMaxLevel && (
-          <p className="text-xs font-medium text-[#722F37]">
+          <p className="text-xs font-medium text-[#CC3A3A]">
             Максимальный уровень!
           </p>
         )}
       </div>
-      <div className="relative h-3 w-full overflow-hidden rounded-full bg-[#722F37]/10">
+      <div className="relative h-3 w-full overflow-hidden rounded-full bg-[#CC3A3A]/10">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
           style={{
             width: `${progress}%`,
-            backgroundColor: "#722F37",
+            backgroundColor: "#CC3A3A",
           }}
         />
       </div>

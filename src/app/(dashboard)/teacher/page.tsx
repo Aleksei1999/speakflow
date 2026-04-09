@@ -236,7 +236,7 @@ export default async function TeacherDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Star className="size-4 text-[#722F37]" />
+              <Star className="size-4 text-[#CC3A3A]" />
               Последние отзывы
             </CardTitle>
           </CardHeader>
@@ -278,7 +278,7 @@ export default async function TeacherDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-[#722F37]" />
+            <TrendingUp className="size-4 text-[#CC3A3A]" />
             Динамика заработка
           </CardTitle>
         </CardHeader>

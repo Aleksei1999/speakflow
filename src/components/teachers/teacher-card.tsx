@@ -89,7 +89,7 @@ export function TeacherCard({ teacher }: { teacher: TeacherCardData }) {
                 </h3>
                 {teacher.is_verified && (
                   <BadgeCheck
-                    className="size-5 shrink-0 text-[#722F37]"
+                    className="size-5 shrink-0 text-[#CC3A3A]"
                     aria-label="Подтвержденный преподаватель"
                   />
                 )}
@@ -141,7 +141,7 @@ export function TeacherCard({ teacher }: { teacher: TeacherCardData }) {
 
             <Button
               size="sm"
-              className="bg-[#722F37] text-white hover:bg-[#5a252c] shrink-0"
+              className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e] shrink-0"
               tabIndex={-1}
             >
               Подробнее

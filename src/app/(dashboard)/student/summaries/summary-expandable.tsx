@@ -31,7 +31,7 @@ export function SummaryExpandable({
 
   return (
     <Card
-      className="cursor-pointer transition-all hover:ring-[#722F37]/20 hover:ring-2"
+      className="cursor-pointer transition-all hover:ring-[#CC3A3A]/20 hover:ring-2"
       onClick={() => setExpanded((prev) => !prev)}
     >
       <CardContent className="flex flex-col gap-0">
@@ -54,7 +54,7 @@ export function SummaryExpandable({
             {summaryText && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <BookOpen className="size-4 text-[#722F37]" />
+                  <BookOpen className="size-4 text-[#CC3A3A]" />
                   Резюме урока
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -67,7 +67,7 @@ export function SummaryExpandable({
             {vocabulary.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <PenLine className="size-4 text-[#722F37]" />
+                  <PenLine className="size-4 text-[#CC3A3A]" />
                   Словарь ({vocabulary.length})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -97,13 +97,13 @@ export function SummaryExpandable({
             {grammarPoints.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Lightbulb className="size-4 text-[#722F37]" />
+                  <Lightbulb className="size-4 text-[#CC3A3A]" />
                   Грамматика
                 </div>
                 <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
                   {grammarPoints.map((point: any, i: number) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#722F37]" />
+                      <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[#CC3A3A]" />
                       {typeof point === "string" ? point : point?.topic ?? point?.point ?? ""}
                     </li>
                   ))}
@@ -115,7 +115,7 @@ export function SummaryExpandable({
             {homework && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <PenLine className="size-4 text-[#722F37]" />
+                  <PenLine className="size-4 text-[#CC3A3A]" />
                   Домашнее задание
                 </div>
                 <p className="text-sm text-muted-foreground">{homework}</p>

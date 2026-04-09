@@ -122,7 +122,7 @@ export default function StudentLessonPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-[#722F37]" />
+          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-[#CC3A3A]" />
           <p className="text-sm text-muted-foreground">Подключение к уроку...</p>
         </div>
       </div>
@@ -170,7 +170,7 @@ export default function StudentLessonPage() {
             )}
             <div className="flex flex-col gap-2 w-full">
               <Button
-                style={{ backgroundColor: '#722F37' }}
+                style={{ backgroundColor: '#CC3A3A' }}
                 className="w-full text-white hover:opacity-90"
                 onClick={() => router.push(`/student/summaries`)}
               >
@@ -214,7 +214,7 @@ export default function StudentLessonPage() {
           <div className="w-1/3 min-w-[280px] max-w-[400px] border-l bg-background overflow-y-auto">
             <div className="p-4">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="size-4 text-[#722F37]" />
+                <BookOpen className="size-4 text-[#CC3A3A]" />
                 <h3 className="font-medium text-sm">Материалы урока</h3>
               </div>
               <div className="flex flex-col gap-3">

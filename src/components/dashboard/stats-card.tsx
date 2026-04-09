@@ -23,7 +23,7 @@ export function StatsCard({
           className="flex size-10 shrink-0 items-center justify-center rounded-lg"
           style={{ backgroundColor: "rgba(114, 47, 55, 0.1)" }}
         >
-          <span className="text-[#722F37]">{icon}</span>
+          <span className="text-[#CC3A3A]">{icon}</span>
         </div>
         <div className="flex flex-1 flex-col gap-1">
           <p className="text-sm text-muted-foreground">{title}</p>

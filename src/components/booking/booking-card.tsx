@@ -158,7 +158,7 @@ export function BookingCard({
             </span>
           </div>
 
-          <div className="text-sm font-medium text-[#722F37]">
+          <div className="text-sm font-medium text-[#CC3A3A]">
             {formatPrice(lesson.price)}
           </div>
         </div>
@@ -171,7 +171,7 @@ export function BookingCard({
               size="sm"
               onClick={() => onJoin(lesson.id)}
               disabled={isActionLoading}
-              className="bg-[#722F37] text-white hover:bg-[#722F37]/90"
+              className="bg-[#CC3A3A] text-white hover:bg-[#CC3A3A]/90"
             >
               {isActionLoading ? (
                 <Loader2 className="mr-1 size-3.5 animate-spin" />

@@ -69,7 +69,7 @@ type SortDir = 'asc' | 'desc'
 const roleBadgeColors: Record<string, string> = {
   student: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   teacher: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  admin: 'bg-[#722F37]/10 text-[#722F37] dark:bg-[#722F37]/20',
+  admin: 'bg-[#CC3A3A]/10 text-[#CC3A3A] dark:bg-[#CC3A3A]/20',
 }
 
 const roleLabels: Record<string, string> = {
@@ -286,7 +286,7 @@ function AdminUsersContent() {
                   <div className="flex items-center justify-center gap-2">
                     <div
                       className="size-5 animate-spin rounded-full border-2 border-current border-t-transparent"
-                      style={{ color: '#722F37' }}
+                      style={{ color: '#CC3A3A' }}
                     />
                     <span className="text-sm text-muted-foreground">
                       Загрузка...
@@ -485,7 +485,7 @@ function AdminUsersContent() {
               disabled={
                 actionLoading || newRole === selectedUser?.role
               }
-              style={{ backgroundColor: '#722F37' }}
+              style={{ backgroundColor: '#CC3A3A' }}
               className="text-white hover:opacity-90"
             >
               {actionLoading ? 'Сохранение...' : 'Сохранить'}

@@ -215,7 +215,7 @@ function FilterControls({
                 type="checkbox"
                 checked={filters.specializations.includes(spec.value)}
                 onChange={() => toggleSpec(spec.value)}
-                className="size-4 rounded border-input accent-[#722F37]"
+                className="size-4 rounded border-input accent-[#CC3A3A]"
               />
               {spec.label}
             </label>
@@ -309,7 +309,7 @@ function FilterControls({
                 type="checkbox"
                 checked={filters.languages.includes(lang.value)}
                 onChange={() => toggleLang(lang.value)}
-                className="size-4 rounded border-input accent-[#722F37]"
+                className="size-4 rounded border-input accent-[#CC3A3A]"
               />
               {lang.label}
             </label>
@@ -422,7 +422,7 @@ export function TeacherFiltersMobile() {
               <Filter className="mr-2 size-4" />
               Фильтры
               {activeCount > 0 && (
-                <span className="ml-1.5 flex size-5 items-center justify-center rounded-full bg-[#722F37] text-[10px] font-bold text-white">
+                <span className="ml-1.5 flex size-5 items-center justify-center rounded-full bg-[#CC3A3A] text-[10px] font-bold text-white">
                   {activeCount}
                 </span>
               )}
@@ -447,7 +447,7 @@ export function TeacherFiltersMobile() {
             )}
             <Button
               onClick={applyAndClose}
-              className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+              className="w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
             >
               Применить
             </Button>
@@ -529,7 +529,7 @@ export function TeacherPagination({
             aria-current={page === currentPage ? "page" : undefined}
             className={
               page === currentPage
-                ? "bg-[#722F37] text-white hover:bg-[#5a252c]"
+                ? "bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                 : ""
             }
           >
