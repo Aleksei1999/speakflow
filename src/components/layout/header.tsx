@@ -40,12 +40,7 @@ export function MarketingHeader({
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <span
-            className="text-xl font-bold tracking-tight"
-            style={{ color: "#722F37" }}
-          >
-            RAW English
-          </span>
+          <img src="/logo-raw.svg" alt="RAW English" className="h-8" />
         </Link>
 
         {/* Desktop nav */}
@@ -66,7 +61,7 @@ export function MarketingHeader({
           {isAuthenticated ? (
             <Button
               size="sm"
-              className="bg-[#722F37] text-white hover:bg-[#5a252c]"
+              className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
               render={<Link href={dashboardHref} />}
             >
               Личный кабинет
@@ -78,7 +73,7 @@ export function MarketingHeader({
               </Button>
               <Button
                 size="sm"
-                className="bg-[#722F37] text-white hover:bg-[#5a252c]"
+                className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                 render={<Link href="/register" />}
               >
                 Регистрация
@@ -98,9 +93,7 @@ export function MarketingHeader({
           <SheetContent side="right" className="w-72">
             <SheetHeader>
               <SheetTitle>
-                <span style={{ color: "#722F37" }} className="font-bold">
-                  RAW English
-                </span>
+                <img src="/logo-raw.svg" alt="RAW English" className="h-7" />
               </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-4 px-4" aria-label="Мобильная навигация">
@@ -117,7 +110,7 @@ export function MarketingHeader({
               <div className="mt-4 flex flex-col gap-3">
                 {isAuthenticated ? (
                   <Button
-                    className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                    className="w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                     render={<Link href={dashboardHref} />}
                     onClick={() => setOpen(false)}
                   >
@@ -134,7 +127,7 @@ export function MarketingHeader({
                       Войти
                     </Button>
                     <Button
-                      className="w-full bg-[#722F37] text-white hover:bg-[#5a252c]"
+                      className="w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
                       render={<Link href="/register" />}
                       onClick={() => setOpen(false)}
                     >

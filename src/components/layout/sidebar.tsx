@@ -69,20 +69,15 @@ export function DashboardSidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r bg-sidebar transition-[width] duration-200",
+        "flex h-full flex-col bg-[#1E1E1E] text-white transition-[width] duration-200",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Brand */}
-      <div className="flex h-16 items-center justify-between border-b px-4">
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         {!collapsed && (
-          <Link href="/" className="flex items-center">
-            <span
-              className="text-lg font-bold tracking-tight"
-              style={{ color: "#722F37" }}
-            >
-              RAW English
-            </span>
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/logo-raw.svg" alt="RAW English" className="h-8 invert" />
           </Link>
         )}
         <Button
@@ -90,7 +85,7 @@ export function DashboardSidebar({
           size="icon-sm"
           onClick={onToggleCollapse}
           aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
-          className={cn(collapsed && "mx-auto")}
+          className={cn("text-white/70 hover:text-white hover:bg-white/10", collapsed && "mx-auto")}
         >
           {collapsed ? (
             <PanelLeft className="size-4" />
@@ -116,16 +111,16 @@ export function DashboardSidebar({
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-[#722F37]/10 text-[#722F37]"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      ? "bg-[#DFED8C] text-[#1E1E1E]"
+                      : "text-white/70 hover:bg-white/10 hover:text-white",
                     collapsed && "justify-center px-2"
                   )}
                   title={collapsed ? item.label : undefined}
                 >
                   <item.icon
-                    className={cn("size-5 shrink-0", isActive && "text-[#722F37]")}
+                    className={cn("size-5 shrink-0", isActive && "text-[#1E1E1E]")}
                   />
                   {!collapsed && <span>{item.label}</span>}
                 </Link>
@@ -135,13 +130,11 @@ export function DashboardSidebar({
         </ul>
       </nav>
 
-      <Separator />
-
       {/* Footer */}
-      <div className="p-2">
+      <div className="border-t border-white/10 p-2">
         {!collapsed && (
-          <p className="px-3 py-2 text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} RAW English
+          <p className="px-3 py-2 text-xs text-white/40">
+            &copy; {new Date().getFullYear()} RAW English by V. Kratkovskaya
           </p>
         )}
       </div>

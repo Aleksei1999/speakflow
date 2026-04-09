@@ -36,7 +36,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, profile, role, isLoading } = useUser()
+  const { user, profile, role, isLoading, error } = useUser()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const router = useRouter()
@@ -58,18 +58,6 @@ export default function DashboardLayout({
 
   const currentRole = role ?? "student"
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="size-8 animate-spin rounded-full border-4 border-muted border-t-[#722F37]"
-          />
-          <p className="text-sm text-muted-foreground">Загрузка...</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -111,12 +99,7 @@ export default function DashboardLayout({
 
             {/* Mobile logo */}
             <Link href="/" className="md:hidden">
-              <span
-                className="text-lg font-bold"
-                style={{ color: "#722F37" }}
-              >
-                RAW
-              </span>
+              <img src="/logo-raw.svg" alt="RAW English" className="h-7" />
             </Link>
           </div>
 
