@@ -85,22 +85,32 @@ export default function StudentLessonPage() {
           teacher_avatar: null,
         })
 
-        // Получаем JWT для Jitsi
-        const tokenResponse = await fetch('/api/jitsi/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lessonId }),
-        })
+        // Try to get JWT for Jitsi, fallback to public meet.jit.si
+        try {
+          const tokenResponse = await fetch('/api/jitsi/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lessonId }),
+          })
 
-        if (!tokenResponse.ok) {
-          const tokenError = await tokenResponse.json().catch(() => ({}))
-          setError((tokenError as { error?: string }).error ?? 'Не удалось подключиться к уроку')
-          setPageState('error')
-          return
+          if (tokenResponse.ok) {
+            const tokenData: JitsiTokenData = await tokenResponse.json()
+            setJitsiData(tokenData)
+          } else {
+            // Fallback to public Jitsi
+            setJitsiData({
+              token: '',
+              domain: 'meet.jit.si',
+              roomName: lessonData.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`,
+            })
+          }
+        } catch {
+          setJitsiData({
+            token: '',
+            domain: 'meet.jit.si',
+            roomName: lessonData.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`,
+          })
         }
-
-        const tokenData: JitsiTokenData = await tokenResponse.json()
-        setJitsiData(tokenData)
         setPageState('lesson')
       } catch {
         setError('Произошла ошибка при загрузке урока')

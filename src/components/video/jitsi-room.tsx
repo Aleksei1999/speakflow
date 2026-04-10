@@ -68,7 +68,7 @@ export function JitsiRoom({
   )
 
   useEffect(() => {
-    if (!domain || !roomName || !token) return
+    if (!domain || !roomName) return
 
     let disposed = false
 
@@ -98,7 +98,7 @@ export function JitsiRoom({
       try {
         const api = new window.JitsiMeetExternalAPI(domain, {
           roomName,
-          jwt: token,
+          ...(token ? { jwt: token } : {}),
           parentNode: containerRef.current,
           width: '100%',
           height: '100%',
