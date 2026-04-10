@@ -150,6 +150,61 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['telegram_linking_codes']['Row']> & { user_id: string; code: string; expires_at: string }
         Update: Partial<Database['public']['Tables']['telegram_linking_codes']['Row']>
       }
+      homework: {
+        Row: {
+          id: string; student_id: string; teacher_id: string; lesson_id: string | null
+          title: string; description: string | null; due_date: string
+          status: 'pending' | 'in_progress' | 'submitted' | 'reviewed' | 'overdue'
+          submission_text: string | null; teacher_feedback: string | null
+          grade: number | null; created_at: string; updated_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['homework']['Row']> & { student_id: string; teacher_id: string; title: string; due_date: string }
+        Update: Partial<Database['public']['Tables']['homework']['Row']>
+      }
+      skill_progress: {
+        Row: {
+          id: string; user_id: string
+          skill: 'grammar' | 'vocabulary' | 'speaking' | 'listening'
+          percentage: number; target_level: string | null; updated_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['skill_progress']['Row']> & { user_id: string; skill: 'grammar' | 'vocabulary' | 'speaking' | 'listening' }
+        Update: Partial<Database['public']['Tables']['skill_progress']['Row']>
+      }
+      calendar_events: {
+        Row: {
+          id: string; user_id: string; title: string
+          event_type: 'lesson' | 'speaking_club' | 'workshop' | 'challenge' | 'other'
+          starts_at: string; ends_at: string; lesson_id: string | null
+          metadata: Json; created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['calendar_events']['Row']> & { user_id: string; title: string; starts_at: string; ends_at: string }
+        Update: Partial<Database['public']['Tables']['calendar_events']['Row']>
+      }
+      lesson_messages: {
+        Row: {
+          id: string; lesson_id: string; sender_id: string
+          message: string; created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['lesson_messages']['Row']> & { lesson_id: string; sender_id: string; message: string }
+        Update: Partial<Database['public']['Tables']['lesson_messages']['Row']>
+      }
+      lesson_notes: {
+        Row: {
+          id: string; lesson_id: string; user_id: string
+          content: string; updated_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['lesson_notes']['Row']> & { lesson_id: string; user_id: string }
+        Update: Partial<Database['public']['Tables']['lesson_notes']['Row']>
+      }
+      lesson_materials: {
+        Row: {
+          id: string; lesson_id: string; teacher_id: string
+          title: string; file_url: string | null; content: string | null
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['lesson_materials']['Row']> & { lesson_id: string; teacher_id: string; title: string }
+        Update: Partial<Database['public']['Tables']['lesson_materials']['Row']>
+      }
     }
     Functions: {
       is_slot_available: {

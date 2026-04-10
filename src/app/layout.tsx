@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Gluten } from "next/font/google";
+import { Preloader } from "@/components/layout/preloader";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,7 +29,10 @@ export default function RootLayout({
       lang="ru"
       className={`${inter.variable} ${gluten.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Preloader />
+        {children}
+      </body>
     </html>
   );
 }

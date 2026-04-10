@@ -1,64 +1,62 @@
 import Link from "next/link"
-import { Separator } from "@/components/ui/separator"
 
 const footerLinks = [
   {
     title: "Платформа",
     links: [
       { href: "/teachers", label: "Преподаватели" },
-      { href: "/level-test", label: "Тест уровня" },
-      { href: "/pricing", label: "Цены" },
+      { href: "/#pricing", label: "Тарифы" },
+      { href: "/#formats", label: "Speaking Clubs" },
+      { href: "/get-started", label: "Тест уровня" },
     ],
   },
   {
-    title: "Компания",
+    title: "Поддержка",
     links: [
-      { href: "/about", label: "О нас" },
-      { href: "/blog", label: "Блог" },
-      { href: "/contacts", label: "Контакты" },
+      { href: "/#faq", label: "FAQ" },
+      { href: "#", label: "Контакты" },
+      { href: "#", label: "Помощь" },
     ],
   },
   {
-    title: "Правовая информация",
+    title: "Документы",
     links: [
-      { href: "/privacy", label: "Политика конфиденциальности" },
-      { href: "/terms", label: "Пользовательское соглашение" },
-      { href: "/offer", label: "Оферта" },
+      { href: "#", label: "Оферта" },
+      { href: "#", label: "Политика конфиденциальности" },
+      { href: "#", label: "Правила платформы" },
     ],
   },
 ]
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t bg-muted/30">
+    <footer className="bg-[#1E1E1E] text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
-          <div className="flex flex-col gap-3">
-            <Link href="/" className="inline-flex items-center">
-              <span
-                className="text-xl font-bold tracking-tight"
-                style={{ color: "#CC3A3A" }}
-              >
-                RAW English
-              </span>
+          <div className="flex flex-col gap-4">
+            <Link href="/">
+              <img
+                src="/logo-raw-full.svg"
+                alt="RAW English"
+                className="h-8 brightness-0 invert"
+              />
             </Link>
-            <p className="text-sm text-muted-foreground">
-              Онлайн-платформа для изучения английского языка с лучшими
-              преподавателями, AI-инструментами и геймификацией.
+            <p className="text-sm text-white/60 leading-relaxed">
+              Онлайн-школа английского языка. Учитесь говорить, а не молчать.
             </p>
           </div>
 
           {/* Link groups */}
           {footerLinks.map((group) => (
             <div key={group.title} className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold">{group.title}</h3>
+              <h3 className="text-sm font-semibold text-white">{group.title}</h3>
               <ul className="flex flex-col gap-2">
                 {group.links.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-white/60 transition-colors hover:text-white"
                     >
                       {link.label}
                     </Link>
@@ -69,28 +67,10 @@ export function MarketingFooter() {
           ))}
         </div>
 
-        <Separator className="my-8" />
-
-        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} RAW English. Все права защищены.
+        <div className="mt-10 border-t border-white/10 pt-6">
+          <p className="text-center text-sm text-white/40">
+            &copy; {new Date().getFullYear()} RAW English by V. Kratkovskaya. Все права защищены.
           </p>
-          <div className="flex items-center gap-4">
-            <Link
-              href="https://t.me/rawenglish"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Telegram
-            </Link>
-            <Link
-              href="mailto:info@rawenglish.ru"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              info@rawenglish.ru
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

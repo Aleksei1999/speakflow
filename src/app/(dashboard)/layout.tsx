@@ -99,7 +99,7 @@ export default function DashboardLayout({
 
             {/* Mobile logo */}
             <Link href="/" className="md:hidden">
-              <img src="/logo-raw.svg" alt="RAW English" className="h-7" />
+              <img src="/logo-raw-full.svg" alt="RAW English" className="h-6" />
             </Link>
           </div>
 
