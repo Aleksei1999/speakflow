@@ -22,7 +22,7 @@ interface LessonRow {
   duration_minutes: number
   status: string
   jitsi_room_name: string | null
-  profiles: { full_name: string; avatar_url: string | null } | null
+  teacher_id: string | null
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -83,7 +83,7 @@ export default function StudentSchedulePage() {
     const { data } = await supabase
       .from("lessons")
       .select(
-        "id, scheduled_at, duration_minutes, status, jitsi_room_name, profiles!lessons_teacher_id_fkey(full_name, avatar_url)"
+        "id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id"
       )
       .eq("student_id", user.id)
       .gte("scheduled_at", monthStart)
@@ -236,9 +236,7 @@ export default function StudentSchedulePage() {
                   <div className="flex flex-col gap-3">
                     {filteredLessons.map((lesson) => {
                       const scheduledDate = new Date(lesson.scheduled_at)
-                      const teacher = lesson.profiles
-                      const teacherName =
-                        teacher?.full_name ?? "Преподаватель"
+                      const teacherName = "Преподаватель"
                       const config = statusConfig[lesson.status]
                       const joinable = canJoin(
                         lesson.scheduled_at,
@@ -251,12 +249,6 @@ export default function StudentSchedulePage() {
                           className="flex items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50"
                         >
                           <Avatar>
-                            {teacher?.avatar_url ? (
-                              <AvatarImage
-                                src={teacher.avatar_url}
-                                alt={teacherName}
-                              />
-                            ) : null}
                             <AvatarFallback>
                               {getInitials(teacherName)}
                             </AvatarFallback>
@@ -289,9 +281,9 @@ export default function StudentSchedulePage() {
                               </Badge>
                             )}
 
-                            {joinable && lesson.jitsi_room_name ? (
+                            {joinable ? (
                               <Link
-                                href={`/lesson/${lesson.jitsi_room_name}`}
+                                href={`/student/lesson/${lesson.id}`}
                               >
                                 <Button
                                   size="sm"
