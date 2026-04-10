@@ -13,8 +13,10 @@ import {
 import { Menu } from "lucide-react"
 
 const navLinks = [
+  { href: "/#formats", label: "Форматы" },
+  { href: "/#pricing", label: "Тарифы" },
   { href: "/teachers", label: "Преподаватели" },
-  { href: "/level-test", label: "Тест уровня" },
+  { href: "/#faq", label: "FAQ" },
 ]
 
 const dashboardByRole: Record<string, string> = {
@@ -40,7 +42,7 @@ export function MarketingHeader({
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src="/logo-raw.svg" alt="RAW English" className="h-8" />
+          <img src="/logo-raw-full.svg" alt="RAW English" className="h-7" />
         </Link>
 
         {/* Desktop nav */}
@@ -74,9 +76,9 @@ export function MarketingHeader({
               <Button
                 size="sm"
                 className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
-                render={<Link href="/register" />}
+                render={<Link href="/get-started" />}
               >
-                Регистрация
+                Попробовать бесплатно
               </Button>
             </>
           )}
@@ -93,7 +95,7 @@ export function MarketingHeader({
           <SheetContent side="right" className="w-72">
             <SheetHeader>
               <SheetTitle>
-                <img src="/logo-raw.svg" alt="RAW English" className="h-7" />
+                <img src="/logo-raw-full.svg" alt="RAW English" className="h-6" />
               </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-4 px-4" aria-label="Мобильная навигация">
@@ -128,10 +130,10 @@ export function MarketingHeader({
                     </Button>
                     <Button
                       className="w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
-                      render={<Link href="/register" />}
+                      render={<Link href="/get-started" />}
                       onClick={() => setOpen(false)}
                     >
-                      Регистрация
+                      Попробовать бесплатно
                     </Button>
                   </>
                 )}

@@ -77,7 +77,7 @@ export function DashboardSidebar({
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2">
-            <img src="/logo-raw.svg" alt="RAW English" className="h-8 invert" />
+            <img src="/logo-raw-full.svg" alt="RAW English" className="h-7 brightness-0 invert" />
           </Link>
         )}
         <Button
