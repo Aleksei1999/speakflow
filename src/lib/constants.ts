@@ -25,4 +25,4 @@ export const XP_REWARDS = {
 
 export const LEVEL_THRESHOLDS = [0, 300, 800, 1500, 3000, 5000, 8000, 12000, 18000, 25000]
 export const DEFAULT_LESSON_DURATION = 50
-export const LESSON_JOIN_WINDOW = 5
+export const LESSON_JOIN_WINDOW = 30

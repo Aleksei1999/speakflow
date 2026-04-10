@@ -143,8 +143,8 @@ export function UpcomingLessons({
                   </Badge>
 
                   {showJoinButton && (
-                    joinable && lesson.jitsi_room_name ? (
-                      <Link href={`/lesson/${lesson.jitsi_room_name}`}>
+                    joinable ? (
+                      <Link href={`/${userRole}/lesson/${lesson.id}`}>
                         <Button
                           size="sm"
                           style={{ backgroundColor: "#CC3A3A" }}
