@@ -59,7 +59,7 @@ export default function StudentLessonPage() {
 
         const { data: lessonData, error: lessonError } = await supabase
           .from('lessons')
-          .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id, profiles!lessons_teacher_id_fkey(full_name, avatar_url)')
+          .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id')
           .eq('id', lessonId)
           .single()
 
@@ -69,14 +69,11 @@ export default function StudentLessonPage() {
           return
         }
 
-        // Проверяем, что пользователь -- студент этого урока
         if (lessonData.student_id !== user!.id) {
           setError('Нет доступа к этому уроку')
           setPageState('error')
           return
         }
-
-        const teacherProfile = lessonData.profiles as { full_name: string; avatar_url: string | null } | null
 
         setLesson({
           id: lessonData.id,
@@ -84,8 +81,8 @@ export default function StudentLessonPage() {
           duration_minutes: lessonData.duration_minutes,
           status: lessonData.status,
           teacher_id: lessonData.teacher_id,
-          teacher_name: teacherProfile?.full_name ?? 'Преподаватель',
-          teacher_avatar: teacherProfile?.avatar_url ?? null,
+          teacher_name: 'Преподаватель',
+          teacher_avatar: null,
         })
 
         // Получаем JWT для Jitsi
