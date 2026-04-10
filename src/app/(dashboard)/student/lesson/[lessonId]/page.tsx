@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { JitsiRoom } from '@/components/video/jitsi-room'
 import { LessonControls } from '@/components/video/lesson-controls'
+import { LessonSidebar } from '@/components/lesson/lesson-sidebar'
 
 interface LessonData {
   id: string
@@ -209,31 +210,15 @@ export default function StudentLessonPage() {
           )}
         </div>
 
-        {/* Боковая панель материалов */}
-        {showMaterials && lesson && (
-          <div className="w-1/3 min-w-[280px] max-w-[400px] border-l bg-background overflow-y-auto">
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="size-4 text-[#CC3A3A]" />
-                <h3 className="font-medium text-sm">Материалы урока</h3>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Преподаватель</p>
-                  <p className="text-sm font-medium">{lesson.teacher_name}</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Дата и время</p>
-                  <p className="text-sm font-medium">
-                    {format(new Date(lesson.scheduled_at), "d MMMM, HH:mm", { locale: ru })}
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">Длительность</p>
-                  <Badge variant="secondary">{lesson.duration_minutes} мин</Badge>
-                </div>
-              </div>
-            </div>
+        {/* Sidebar: Chat, Materials, Notes */}
+        {showMaterials && lesson && user && (
+          <div className="w-1/3 min-w-[300px] max-w-[380px]">
+            <LessonSidebar
+              lessonId={lesson.id}
+              userId={user.id}
+              userName={profile?.full_name ?? 'Ученик'}
+              teacherName={lesson.teacher_name}
+            />
           </div>
         )}
       </div>
