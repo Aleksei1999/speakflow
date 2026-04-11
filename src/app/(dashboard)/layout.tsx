@@ -92,6 +92,24 @@ const DASH_CSS = `
   .dash .btn-outline { background: transparent; border: 2px solid var(--black); color: var(--black); }
   .dash .btn:hover { transform: translateY(-2px); opacity: 0.9; }
 
+  /* Override shadcn components to match new design */
+  .dash [data-slot="card"] { background: var(--white); border-radius: var(--radius); padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); border: none; }
+  .dash [data-slot="card-header"] { padding: 0; margin-bottom: 25px; border: none; }
+  .dash [data-slot="card-title"] { font-size: 22px; font-weight: 700; }
+  .dash [data-slot="card-content"] { padding: 0; }
+  .dash [data-slot="badge"] { border-radius: 10px; font-weight: 600; }
+  .dash [data-slot="button"] { border-radius: 15px; font-weight: 600; }
+  .dash [data-slot="tabs-list"] { border-radius: 20px; background: var(--gray-light); padding: 4px; }
+  .dash [data-slot="tabs-trigger"] { border-radius: 16px; font-weight: 600; }
+  .dash [data-slot="tabs-trigger"][data-state="active"] { background: var(--black); color: var(--white); }
+  .dash [data-slot="avatar-fallback"] { background: var(--accent); color: var(--black); font-weight: 700; }
+  .dash table { width: 100%; border-collapse: collapse; }
+  .dash table th { text-align: left; font-size: 12px; text-transform: uppercase; color: var(--gray-text); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--gray-light); }
+  .dash table td { padding: 16px; border-bottom: 1px solid var(--gray-light); }
+  .dash table tbody tr:hover { background: var(--bg); }
+  .dash h1 { font-size: 32px; font-weight: 800; }
+  .dash h2 { font-size: 24px; font-weight: 700; }
+
   @media (max-width: 1024px) {
     .dash .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .dash .dashboard-grid { grid-template-columns: 1fr; }
