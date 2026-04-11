@@ -4,7 +4,7 @@ import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
-import "./dashboard.css"
+
 
 export default async function StudentDashboardPage() {
   const supabase = await createClient()
