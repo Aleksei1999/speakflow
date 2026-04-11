@@ -75,7 +75,10 @@ export default function StudentSchedulePage() {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (!user) return
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
 
     const monthStart = startOfMonth(month).toISOString()
     const monthEnd = endOfMonth(month).toISOString()
