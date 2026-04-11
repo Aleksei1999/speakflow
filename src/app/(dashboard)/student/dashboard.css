@@ -1,14 +1,8 @@
-/* ===== SpeakFlow - Main Styles ===== */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ===== Dashboard Styles ===== */
 
 :root {
-    --primary: #6366F1;
-    --primary-dark: #4F46E5;
+    --primary: #CC3A3A;
+    --primary-dark: #a32e2e;
     --accent: #10B981;
     --accent-dark: #059669;
     --bg-light: #F8FAFC;
@@ -24,7 +18,6 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-light);
     color: var(--text-dark);
     line-height: 1.6;
