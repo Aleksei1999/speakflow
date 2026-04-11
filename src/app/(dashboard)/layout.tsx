@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
@@ -122,9 +123,22 @@ const DASH_CSS = `
 `
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, profile, role } = useUser()
+  const { user, profile, role, isLoading } = useUser()
   const pathname = usePathname()
   const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading && role) {
+      const roleHome = role === 'admin' ? '/admin' : role === 'teacher' ? '/teacher' : '/student'
+      if (
+        (pathname.startsWith('/student') && role !== 'student') ||
+        (pathname.startsWith('/teacher') && role !== 'teacher') ||
+        (pathname.startsWith('/admin') && role !== 'admin')
+      ) {
+        router.replace(roleHome)
+      }
+    }
+  }, [isLoading, role, pathname, router])
 
   const currentRole = role ?? "student"
   const navItems = currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
