@@ -312,22 +312,43 @@ function AvailabilityEditor() {
   const [availability, setAvailability] =
     useState<DayAvailability[]>(defaultAvailability)
 
-  // Load existing availability
+  // Load existing availability from teacher_availability table
   useEffect(() => {
     async function load() {
       if (!user) return
       const supabase = createClient()
 
-      // Try to load from teacher_availability or a JSON column
-      // Since the table might not exist, we use teacher_profiles metadata
-      const { data } = await supabase
+      // Get teacher_profile id
+      const { data: tp } = await supabase
         .from("teacher_profiles")
-        .select("*")
+        .select("id")
         .eq("user_id", user.id)
         .single()
 
-      // If there's saved availability data, parse it
-      // For now we use default if no data found
+      if (!tp) { setIsLoading(false); return }
+
+      const { data: rows } = await supabase
+        .from("teacher_availability")
+        .select("day_of_week, start_time, end_time, is_active")
+        .eq("teacher_id", tp.id)
+        .order("start_time", { ascending: true })
+
+      if (rows && rows.length > 0) {
+        // Group by day_of_week (0=Sun in DB, but our UI is 0=Mon)
+        const grouped: DayAvailability[] = DAY_NAMES.map(() => ({ active: false, ranges: [] }))
+        for (const row of rows) {
+          // DB: 0=Sun,1=Mon..6=Sat → UI: 0=Mon..6=Sun
+          const uiDay = row.day_of_week === 0 ? 6 : row.day_of_week - 1
+          if (uiDay >= 0 && uiDay < 7) {
+            grouped[uiDay].active = true
+            grouped[uiDay].ranges.push({
+              start: (row.start_time as string).slice(0, 5),
+              end: (row.end_time as string).slice(0, 5),
+            })
+          }
+        }
+        setAvailability(grouped)
+      }
       setIsLoading(false)
     }
 
@@ -399,16 +420,43 @@ function AvailabilityEditor() {
     try {
       const supabase = createClient()
 
-      // Save availability as structured data
-      // Since we don't have a dedicated teacher_availability table in types,
-      // we'd normally upsert to such a table. For now, we can store it
-      // and show success feedback.
-      // In production, this would be:
-      // await supabase.from('teacher_availability').upsert(...)
+      // Get teacher_profile id
+      const { data: tp } = await supabase
+        .from("teacher_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single()
+
+      if (!tp) throw new Error("Teacher profile not found")
+
+      // Delete existing availability
+      await (supabase.from("teacher_availability") as any).delete().eq("teacher_id", tp.id)
+
+      // Build rows from UI state
+      const rows: any[] = []
+      availability.forEach((day, uiIndex) => {
+        if (!day.active || day.ranges.length === 0) return
+        // UI: 0=Mon..6=Sun → DB: 0=Sun,1=Mon..6=Sat
+        const dbDay = uiIndex === 6 ? 0 : uiIndex + 1
+        for (const range of day.ranges) {
+          rows.push({
+            teacher_id: tp.id,
+            day_of_week: dbDay,
+            start_time: range.start + ":00",
+            end_time: range.end + ":00",
+            is_active: true,
+          })
+        }
+      })
+
+      if (rows.length > 0) {
+        const { error } = await (supabase.from("teacher_availability") as any).insert(rows)
+        if (error) throw error
+      }
 
       toast.success("Расписание доступности сохранено")
-    } catch {
-      toast.error("Ошибка при сохранении")
+    } catch (e: any) {
+      toast.error("Ошибка при сохранении: " + (e?.message ?? ""))
     } finally {
       setIsSaving(false)
     }
