@@ -3,9 +3,6 @@ import { redirect } from "next/navigation"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 export default async function StudentDashboardPage() {
@@ -15,7 +12,7 @@ export default async function StudentDashboardPage() {
 
   const now = new Date()
 
-  const [profileResult, lessonsResult, progressResult, completedResult, skillsResult, homeworkResult, summariesResult] =
+  const [profileResult, lessonsResult, progressResult, completedResult, skillsResult, homeworkResult] =
     await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", user.id).single(),
       supabase
@@ -39,12 +36,6 @@ export default async function StudentDashboardPage() {
         .eq("student_id", user.id)
         .order("due_date", { ascending: true })
         .limit(5),
-      supabase
-        .from("lesson_summaries")
-        .select("id, vocabulary, created_at")
-        .eq("student_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3),
     ])
 
   const profile = profileResult.data
@@ -53,14 +44,10 @@ export default async function StudentDashboardPage() {
   const completedCount = completedResult.count ?? 0
   const skills = skillsResult?.data ?? []
   const homework = homeworkResult?.data ?? []
-  const summaries = summariesResult?.data ?? []
-  const firstName = profile?.full_name?.split(" ")[0] ?? "Ученик"
+  const fullName = profile?.full_name ?? "Ученик"
 
-  // Skill map
   const skillMap: Record<string, number> = {}
   for (const s of skills) skillMap[s.skill] = s.percentage
-
-  // Hours calculation (50 min per lesson)
   const totalHours = Math.round((completedCount * 50) / 60)
 
   // Calendar
@@ -70,69 +57,108 @@ export default async function StudentDashboardPage() {
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7
   const lessonDays = new Set(lessons.map((l) => new Date(l.scheduled_at).getDate()))
 
-  // Homework status config
-  const hwStatus: Record<string, { label: string; cls: string }> = {
-    pending: { label: "Ожидает", cls: "bg-amber-100 text-amber-800" },
-    in_progress: { label: "В работе", cls: "bg-blue-100 text-blue-800" },
-    submitted: { label: "Сдано", cls: "bg-green-100 text-green-700" },
-    reviewed: { label: "Проверено", cls: "bg-green-100 text-green-700" },
-    overdue: { label: "Просрочено", cls: "bg-red-100 text-red-700" },
-  }
-
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Добро пожаловать, {firstName}!
-        </h1>
+    <>
+      <style>{`
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .stat-card .label { font-size: 14px; color: #64748B; margin-bottom: 4px; }
+        .stat-card .value { font-size: 32px; font-weight: 700; color: #CC3A3A; }
+        .stat-card .change { font-size: 12px; margin-top: 4px; }
+        .stat-card .change.positive { color: #10B981; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #E2E8F0; }
+        .card-header h3 { font-size: 16px; font-weight: 700; }
+        .card-body { padding: 24px; }
+
+        .schedule-item { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid #E2E8F0; gap: 16px; }
+        .schedule-item:last-child { border-bottom: none; }
+        .schedule-time { text-align: center; min-width: 70px; }
+        .schedule-time .time { font-size: 18px; font-weight: 700; }
+        .schedule-time .date { font-size: 12px; color: #64748B; }
+        .schedule-info { flex: 1; }
+        .schedule-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .schedule-info p { font-size: 13px; color: #64748B; }
+
+        .progress-bar { height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #CC3A3A, #DFED8C); border-radius: 4px; transition: width 0.5s; }
+
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 8px; }
+        .calendar-header span { font-size: 12px; font-weight: 600; color: #64748B; padding: 4px; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 2px; }
+        .calendar-day { padding: 8px 4px; font-size: 13px; border-radius: 8px; cursor: default; }
+        .calendar-day.other-month { color: #CBD5E1; }
+        .calendar-day.today { background: #CC3A3A; color: white; font-weight: 700; border-radius: 8px; }
+        .calendar-day.has-event { background: #DFED8C40; font-weight: 600; }
+        .calendar-day.today.has-event { background: #CC3A3A; color: white; }
+
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { text-align: left; font-size: 12px; text-transform: uppercase; font-weight: 600; color: #64748B; padding: 8px 12px; border-bottom: 2px solid #E2E8F0; }
+        .table td { padding: 12px; border-bottom: 1px solid #E2E8F0; font-size: 14px; }
+        .table tbody tr:hover { background: #F8FAFC; }
+
+        .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .status-success { background: #D1FAE5; color: #059669; }
+        .status-pending { background: #FEF3C7; color: #D97706; }
+        .status-danger { background: #FEE2E2; color: #DC2626; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; }
+        .btn-primary { background: #CC3A3A; color: white; }
+        .btn-primary:hover { background: #a32e2e; }
+        .btn-secondary { background: white; color: #1E293B; border: 1px solid #E2E8F0; }
+        .btn-secondary:hover { background: #F8FAFC; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+        @media (max-width: 1024px) {
+          .stats-grid { grid-template-columns: repeat(2, 1fr); }
+          .dashboard-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .stats-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
+
+      <div className="dashboard-header" style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Добро пожаловать, {fullName}!</h1>
       </div>
 
-      {/* === Stats Grid === */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="flex flex-col gap-1 py-5">
-            <span className="text-sm text-muted-foreground">Пройдено уроков</span>
-            <span className="text-3xl font-bold text-[#CC3A3A]">{completedCount}</span>
-            <span className="text-xs text-green-600">+{progress?.current_streak ?? 0} на этой неделе</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col gap-1 py-5">
-            <span className="text-sm text-muted-foreground">Часов обучения</span>
-            <span className="text-3xl font-bold text-[#CC3A3A]">{totalHours}</span>
-            <span className="text-xs text-green-600">+{Math.round((progress?.current_streak ?? 0) * 50 / 60 * 10) / 10} на этой неделе</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col gap-1 py-5">
-            <span className="text-sm text-muted-foreground">Текущий уровень</span>
-            <span className="text-3xl font-bold text-[#CC3A3A]">{progress?.english_level ?? "—"}</span>
-            <span className="text-xs text-muted-foreground">{progress?.english_level ? "Intermediate" : "Пройдите тест"}</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col gap-1 py-5">
-            <span className="text-sm text-muted-foreground">Баланс</span>
-            <span className="text-3xl font-bold text-[#CC3A3A]">{progress?.total_xp ?? 0} XP</span>
-            <span className="text-xs text-muted-foreground">Уровень {progress?.current_level ?? 1}</span>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="label">Пройдено уроков</div>
+          <div className="value">{completedCount}</div>
+          <div className="change positive">+{progress?.current_streak ?? 0} на этой неделе</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">Часов обучения</div>
+          <div className="value">{totalHours}</div>
+          <div className="change positive">На этой неделе</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">Текущий уровень</div>
+          <div className="value">{progress?.english_level ?? "—"}</div>
+          <div className="change">{progress?.english_level ? "Intermediate" : "Пройдите тест"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">Баланс</div>
+          <div className="value">{progress?.total_xp ?? 0} XP</div>
+          <div className="change">Уровень {progress?.current_level ?? 1}</div>
+        </div>
       </div>
 
-      {/* === Main Grid: Lessons + (Progress + Calendar) === */}
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      {/* Main Grid */}
+      <div className="dashboard-grid">
         {/* Upcoming Lessons */}
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Ближайшие уроки</CardTitle>
-            <Link href="/student/schedule">
-              <Button variant="outline" size="sm">Все уроки</Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+        <div className="card">
+          <div className="card-header">
+            <h3>Ближайшие уроки</h3>
+            <Link href="/student/schedule" className="btn btn-sm btn-secondary">Все уроки</Link>
+          </div>
+          <div className="card-body">
             {lessons.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
+              <p style={{ textAlign: "center", color: "#64748B", padding: "32px 0" }}>
                 Нет запланированных уроков
               </p>
             ) : (
@@ -143,42 +169,36 @@ export default async function StudentDashboardPage() {
                 const dayLabel = isToday ? "Сегодня" : isTomorrow ? "Завтра" : format(date, "EE, d MMM", { locale: ru })
 
                 return (
-                  <div key={l.id} className="flex items-center gap-4 rounded-xl border p-4">
-                    {/* Time */}
-                    <div className="flex flex-col items-center text-center min-w-[60px]">
-                      <span className="text-lg font-bold">{format(date, "HH:mm")}</span>
-                      <span className="text-xs text-muted-foreground">{dayLabel}</span>
+                  <div key={l.id} className="schedule-item">
+                    <div className="schedule-time">
+                      <div className="time">{format(date, "HH:mm")}</div>
+                      <div className="date">{dayLabel}</div>
                     </div>
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">Урок английского</p>
-                      <p className="text-sm text-muted-foreground">{l.duration_minutes} мин</p>
+                    <div className="schedule-info">
+                      <h4>Урок английского</h4>
+                      <p>{l.duration_minutes} мин</p>
                     </div>
-                    {/* Action */}
-                    {isToday ? (
-                      <Link href={`/student/lesson/${l.id}`}>
-                        <Button size="sm" className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]">
-                          Войти
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button size="sm" variant="outline">Перенести</Button>
-                    )}
+                    <div className="schedule-actions">
+                      {isToday ? (
+                        <Link href={`/student/lesson/${l.id}`} className="btn btn-primary btn-sm">Войти</Link>
+                      ) : (
+                        <button className="btn btn-secondary btn-sm">Перенести</button>
+                      )}
+                    </div>
                   </div>
                 )
               })
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Right column */}
-        <div className="flex flex-col gap-6">
-          {/* Progress to next level */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Прогресс до {progress?.english_level === "B2" ? "C1" : "B2"}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+        {/* Progress & Calendar */}
+        <div>
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="card-header">
+              <h3>Прогресс до {progress?.english_level === "B2" ? "C1" : "B2"}</h3>
+            </div>
+            <div className="card-body">
               {[
                 { key: "grammar", label: "Грамматика" },
                 { key: "vocabulary", label: "Лексика" },
@@ -187,118 +207,102 @@ export default async function StudentDashboardPage() {
               ].map((skill) => {
                 const pct = skillMap[skill.key] ?? 0
                 return (
-                  <div key={skill.key}>
-                    <div className="mb-1 flex justify-between text-sm">
+                  <div key={skill.key} style={{ marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
                       <span>{skill.label}</span>
-                      <span className="font-medium">{pct}%</span>
+                      <span>{pct}%</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#CC3A3A] to-[#DFED8C]"
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Mini Calendar */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {format(now, "LLLL yyyy", { locale: ru })}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => (
-                  <span key={d} className="py-1 font-medium text-muted-foreground">{d}</span>
-                ))}
-                {Array.from({ length: firstDow }).map((_, i) => (
-                  <span key={`e-${i}`} className="py-1 text-muted-foreground/30">
-                    {new Date(year, month, 0).getDate() - firstDow + i + 1}
-                  </span>
-                ))}
+          <div className="card">
+            <div className="card-header">
+              <h3>{format(now, "LLLL yyyy", { locale: ru })}</h3>
+            </div>
+            <div className="card-body">
+              <div className="calendar-header">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+              </div>
+              <div className="calendar">
+                {Array.from({ length: firstDow }).map((_, i) => {
+                  const prevDay = new Date(year, month, 0).getDate() - firstDow + i + 1
+                  return <div key={`p-${i}`} className="calendar-day other-month">{prevDay}</div>
+                })}
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1
                   const isToday = day === now.getDate()
                   const hasLesson = lessonDays.has(day)
-                  return (
-                    <span
-                      key={day}
-                      className={`relative flex size-8 items-center justify-center rounded-lg text-xs ${
-                        isToday
-                          ? "bg-[#CC3A3A] font-bold text-white"
-                          : hasLesson
-                            ? "bg-[#DFED8C]/40 font-medium"
-                            : "hover:bg-muted"
-                      }`}
-                    >
-                      {day}
-                      {hasLesson && !isToday && (
-                        <span className="absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-[#CC3A3A]" />
-                      )}
-                    </span>
-                  )
+                  const cls = [
+                    "calendar-day",
+                    isToday ? "today" : "",
+                    hasLesson ? "has-event" : "",
+                  ].filter(Boolean).join(" ")
+                  return <div key={day} className={cls}>{day}</div>
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* === Homework Table === */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Домашние задания</CardTitle>
-          <Button variant="outline" size="sm">Все задания</Button>
-        </CardHeader>
-        <CardContent>
+      {/* Homework */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-header">
+          <h3>Домашние задания</h3>
+          <button className="btn btn-sm btn-secondary">Все задания</button>
+        </div>
+        <div className="card-body">
           {homework.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p style={{ textAlign: "center", color: "#64748B", padding: "32px 0" }}>
               Домашних заданий пока нет
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="pb-3 pr-4 text-xs font-semibold uppercase text-muted-foreground">Задание</th>
-                    <th className="pb-3 pr-4 text-xs font-semibold uppercase text-muted-foreground">Преподаватель</th>
-                    <th className="pb-3 pr-4 text-xs font-semibold uppercase text-muted-foreground">Срок сдачи</th>
-                    <th className="pb-3 pr-4 text-xs font-semibold uppercase text-muted-foreground">Статус</th>
-                    <th className="pb-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {homework.map((hw: any) => {
-                    const st = hwStatus[hw.status] ?? hwStatus.pending
-                    return (
-                      <tr key={hw.id} className="border-b last:border-0">
-                        <td className="py-3 pr-4"><strong>{hw.title}</strong></td>
-                        <td className="py-3 pr-4 text-muted-foreground">Преподаватель</td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          {format(new Date(hw.due_date), "d MMMM", { locale: ru })}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className={`inline-flex rounded-full px-3 py-0.5 text-xs font-medium ${st.cls}`}>
-                            {st.label}
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          <Button size="sm" className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]">Открыть</Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Задание</th>
+                  <th>Преподаватель</th>
+                  <th>Срок сдачи</th>
+                  <th>Статус</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {homework.map((hw: any) => {
+                  const statusCls = hw.status === "submitted" || hw.status === "reviewed"
+                    ? "status-success"
+                    : hw.status === "overdue"
+                      ? "status-danger"
+                      : "status-pending"
+                  const statusLabel = {
+                    pending: "Ожидает",
+                    in_progress: "В работе",
+                    submitted: "Сдано",
+                    reviewed: "Проверено",
+                    overdue: "Просрочено",
+                  }[hw.status] ?? hw.status
+
+                  return (
+                    <tr key={hw.id}>
+                      <td><strong>{hw.title}</strong></td>
+                      <td>Преподаватель</td>
+                      <td>{format(new Date(hw.due_date), "d MMMM", { locale: ru })}</td>
+                      <td><span className={`status ${statusCls}`}>{statusLabel}</span></td>
+                      <td><button className="btn btn-sm btn-primary">Открыть</button></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </>
   )
 }
