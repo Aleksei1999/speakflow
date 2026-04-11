@@ -1,245 +1,66 @@
 // @ts-nocheck
-'use client'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { LessonRoomClient } from '@/components/lesson/lesson-room-client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import { Star, ArrowLeft, BookOpen } from 'lucide-react'
-import { useUser } from '@/hooks/use-user'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { JitsiRoom } from '@/components/video/jitsi-room'
-import { LessonControls } from '@/components/video/lesson-controls'
-import { LessonSidebar } from '@/components/lesson/lesson-sidebar'
+export default async function StudentLessonPage({
+  params,
+}: {
+  params: Promise<{ lessonId: string }>
+}) {
+  const { lessonId } = await params
+  const supabase = await createClient()
 
-interface LessonData {
-  id: string
-  scheduled_at: string
-  duration_minutes: number
-  status: string
-  teacher_id: string
-  teacher_name: string
-  teacher_avatar: string | null
-}
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-interface JitsiTokenData {
-  token: string
-  domain: string
-  roomName: string
-}
+  const { data: lesson } = await supabase
+    .from('lessons')
+    .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id, jitsi_room_name')
+    .eq('id', lessonId)
+    .single()
 
-type PageState = 'loading' | 'error' | 'lesson' | 'ended'
+  if (!lesson || lesson.student_id !== user.id) {
+    redirect('/student/schedule')
+  }
 
-export default function StudentLessonPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { user, profile, isLoading: userLoading } = useUser()
-  const lessonId = params.lessonId as string
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
 
-  const [pageState, setPageState] = useState<PageState>('loading')
-  const [lesson, setLesson] = useState<LessonData | null>(null)
-  const [jitsiData, setJitsiData] = useState<JitsiTokenData | null>(null)
-  const [error, setError] = useState('')
-  const [showMaterials, setShowMaterials] = useState(false)
+  // Try to get Jitsi config, fallback to public
+  let jitsiDomain = 'meet.jit.si'
+  let jitsiToken = ''
+  const jitsiRoom = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
 
-  useEffect(() => {
-    if (userLoading) return
-    if (!user) {
-      router.push('/login')
-      return
+  if (process.env.JITSI_DOMAIN && process.env.JITSI_JWT_SECRET) {
+    try {
+      const { generateJitsiToken } = await import('@/lib/jitsi/jwt')
+      jitsiDomain = process.env.JITSI_DOMAIN
+      jitsiToken = await generateJitsiToken(jitsiRoom, {
+        id: user.id,
+        name: profile?.full_name ?? 'Ученик',
+        email: user.email ?? '',
+        isModerator: false,
+      })
+    } catch {
+      // fallback to public jitsi
     }
-
-    async function init() {
-      try {
-        // Получаем информацию об уроке через Supabase client
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
-
-        const { data: lessonData, error: lessonError } = await supabase
-          .from('lessons')
-          .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id')
-          .eq('id', lessonId)
-          .single()
-
-        if (lessonError || !lessonData) {
-          setError('Урок не найден')
-          setPageState('error')
-          return
-        }
-
-        if (lessonData.student_id !== user!.id) {
-          setError('Нет доступа к этому уроку')
-          setPageState('error')
-          return
-        }
-
-        setLesson({
-          id: lessonData.id,
-          scheduled_at: lessonData.scheduled_at,
-          duration_minutes: lessonData.duration_minutes,
-          status: lessonData.status,
-          teacher_id: lessonData.teacher_id,
-          teacher_name: 'Преподаватель',
-          teacher_avatar: null,
-        })
-
-        // Try to get JWT for Jitsi, fallback to public meet.jit.si
-        try {
-          const tokenResponse = await fetch('/api/jitsi/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lessonId }),
-          })
-
-          if (tokenResponse.ok) {
-            const tokenData: JitsiTokenData = await tokenResponse.json()
-            setJitsiData(tokenData)
-          } else {
-            // Fallback to public Jitsi
-            setJitsiData({
-              token: '',
-              domain: 'meet.jit.si',
-              roomName: lessonData.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`,
-            })
-          }
-        } catch {
-          setJitsiData({
-            token: '',
-            domain: 'meet.jit.si',
-            roomName: lessonData.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`,
-          })
-        }
-        setPageState('lesson')
-      } catch {
-        setError('Произошла ошибка при загрузке урока')
-        setPageState('error')
-      }
-    }
-
-    init()
-  }, [lessonId, user, userLoading, router])
-
-  const handleConferenceLeft = useCallback(() => {
-    setPageState('ended')
-  }, [])
-
-  // --- Состояние загрузки ---
-  if (pageState === 'loading' || userLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-[#CC3A3A]" />
-          <p className="text-sm text-muted-foreground">Подключение к уроку...</p>
-        </div>
-      </div>
-    )
   }
 
-  // --- Ошибка ---
-  if (pageState === 'error') {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-              <svg className="size-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
-              </svg>
-            </div>
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <Button variant="outline" onClick={() => router.push('/student/schedule')}>
-              <ArrowLeft className="size-4" />
-              Вернуться к расписанию
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // --- После завершения урока ---
-  if (pageState === 'ended') {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Урок завершён</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 text-center">
-            {lesson && (
-              <div className="text-sm text-muted-foreground">
-                <p>Преподаватель: {lesson.teacher_name}</p>
-                <p>
-                  {format(new Date(lesson.scheduled_at), "d MMMM yyyy, HH:mm", { locale: ru })}
-                </p>
-              </div>
-            )}
-            <div className="flex flex-col gap-2 w-full">
-              <Button
-                style={{ backgroundColor: '#CC3A3A' }}
-                className="w-full text-white hover:opacity-90"
-                onClick={() => router.push(`/student/summaries`)}
-              >
-                <Star className="size-4" />
-                Оставить отзыв
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push('/student/schedule')}
-              >
-                <ArrowLeft className="size-4" />
-                К расписанию
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // --- Активный урок ---
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col -m-4 sm:-m-6 lg:-m-8">
-      {/* Видеоконференция */}
-      <div className="relative flex flex-1 overflow-hidden">
-        <div className={`flex-1 ${showMaterials ? 'w-2/3' : 'w-full'}`}>
-          {jitsiData && (
-            <JitsiRoom
-              domain={jitsiData.domain}
-              roomName={jitsiData.roomName}
-              token={jitsiData.token}
-              displayName={profile?.full_name ?? 'Ученик'}
-              onConferenceLeft={handleConferenceLeft}
-            />
-          )}
-        </div>
-
-        {/* Sidebar: Chat, Materials, Notes */}
-        {showMaterials && lesson && user && (
-          <div className="w-1/3 min-w-[300px] max-w-[380px]">
-            <LessonSidebar
-              lessonId={lesson.id}
-              userId={user.id}
-              userName={profile?.full_name ?? 'Ученик'}
-              teacherName={lesson.teacher_name}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Панель управления */}
-      {lesson && (
-        <LessonControls
-          startedAt={lesson.scheduled_at}
-          durationMinutes={lesson.duration_minutes}
-          isTeacher={false}
-          onToggleMaterials={() => setShowMaterials(!showMaterials)}
-          showMaterials={showMaterials}
-        />
-      )}
-    </div>
+    <LessonRoomClient
+      lessonId={lesson.id}
+      scheduledAt={lesson.scheduled_at}
+      durationMinutes={lesson.duration_minutes}
+      userId={user.id}
+      userName={profile?.full_name ?? 'Ученик'}
+      teacherName="Преподаватель"
+      jitsiDomain={jitsiDomain}
+      jitsiToken={jitsiToken}
+      jitsiRoom={jitsiRoom}
+    />
   )
 }
