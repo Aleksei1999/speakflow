@@ -22,9 +22,14 @@ const studentSupport = [
 
 const teacherNav = [
   { href: "/teacher", label: "Главная", icon: "📊" },
-  { href: "/teacher/students", label: "Мои ученики", icon: "👥" },
   { href: "/teacher/schedule", label: "Расписание", icon: "📅" },
-  { href: "/teacher/materials", label: "Материалы", icon: "📝" },
+  { href: "/teacher/students", label: "Мои ученики", icon: "👥" },
+  { href: "/teacher/materials", label: "Материалы", icon: "📚" },
+  { href: "/teacher/settings", label: "Настройки", icon: "⚙️" },
+]
+
+const teacherSupport = [
+  { href: "#", label: "Профиль", icon: "👤" },
   { href: "/teacher/settings", label: "Настройки", icon: "⚙️" },
 ]
 
@@ -175,23 +180,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </ul>
 
-          {currentRole === "student" && (
-            <div className="sidebar-section">
-              <h4>Поддержка</h4>
-              <ul className="sidebar-nav">
-                {studentSupport.map((item) => (
-                  <li key={item.label}>
-                    <Link href={item.href}><span className="icon">{item.icon}</span> {item.label}</Link>
-                  </li>
-                ))}
-                <li>
-                  <a href="#" onClick={(e) => { e.preventDefault(); handleLogout() }}>
-                    <span className="icon">🚪</span> Выйти
-                  </a>
+          <div className="sidebar-section">
+            <h4>{currentRole === "teacher" ? "Настройки" : "Поддержка"}</h4>
+            <ul className="sidebar-nav">
+              {(currentRole === "teacher" ? teacherSupport : studentSupport).map((item) => (
+                <li key={item.label}>
+                  <Link href={item.href}><span className="icon">{item.icon}</span> {item.label}</Link>
                 </li>
-              </ul>
-            </div>
-          )}
+              ))}
+              <li>
+                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout() }}>
+                  <span className="icon">🚪</span> Выйти
+                </a>
+              </li>
+            </ul>
+          </div>
         </aside>
 
         <main className="main-content">
