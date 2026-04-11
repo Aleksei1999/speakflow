@@ -55,7 +55,7 @@ export default async function StudentDashboardPage() {
   return (
     <>
       <header className="header">
-        <h1>Привет, {firstName}! 👋</h1>
+        <h1>Привет, {firstName}!</h1>
         <div className="user-profile">
           <span>{fullName}</span>
           <div className="avatar">{initials}</div>

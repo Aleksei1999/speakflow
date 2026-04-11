@@ -7,38 +7,36 @@ import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
 
 const studentNav = [
-  { href: "/student", label: "Главная", icon: "📊" },
-  { href: "/student/schedule", label: "Мои уроки", icon: "📅" },
-  { href: "/teachers", label: "Преподаватели", icon: "👨‍🏫" },
-  { href: "/student/materials", label: "Домашние задания", icon: "📝" },
-  { href: "/student/achievements", label: "Мой прогресс", icon: "📈" },
-  { href: "/student/summaries", label: "AI Саммари", icon: "🤖" },
+  { href: "/student", label: "Главная" },
+  { href: "/student/schedule", label: "Мои уроки" },
+  { href: "/teachers", label: "Преподаватели" },
+  { href: "/student/materials", label: "Задания" },
+  { href: "/student/achievements", label: "Прогресс" },
+  { href: "/student/summaries", label: "AI Саммари" },
 ]
 
 const studentSupport = [
-  { href: "#", label: "Помощь", icon: "❓" },
-  { href: "#", label: "Чат поддержки", icon: "💬" },
+  { href: "#", label: "Помощь" },
 ]
 
 const teacherNav = [
-  { href: "/teacher", label: "Главная", icon: "📊" },
-  { href: "/teacher/schedule", label: "Расписание", icon: "📅" },
-  { href: "/teacher/students", label: "Мои ученики", icon: "👥" },
-  { href: "/teacher/materials", label: "Материалы", icon: "📚" },
-  { href: "/teacher/settings", label: "Настройки", icon: "⚙️" },
+  { href: "/teacher", label: "Главная" },
+  { href: "/teacher/schedule", label: "Расписание" },
+  { href: "/teacher/students", label: "Мои ученики" },
+  { href: "/teacher/materials", label: "Материалы" },
+  { href: "/teacher/settings", label: "Настройки" },
 ]
 
 const teacherSupport = [
-  { href: "#", label: "Профиль", icon: "👤" },
-  { href: "/teacher/settings", label: "Настройки", icon: "⚙️" },
+  { href: "#", label: "Профиль" },
 ]
 
 const adminNav = [
-  { href: "/admin", label: "Обзор", icon: "📊" },
-  { href: "/admin/users", label: "Пользователи", icon: "👥" },
-  { href: "/admin/teachers", label: "Преподаватели", icon: "👨‍🏫" },
-  { href: "/admin/payments", label: "Платежи", icon: "💳" },
-  { href: "/admin/content", label: "Контент", icon: "📝" },
+  { href: "/admin", label: "Обзор" },
+  { href: "/admin/users", label: "Пользователи" },
+  { href: "/admin/teachers", label: "Преподаватели" },
+  { href: "/admin/payments", label: "Платежи" },
+  { href: "/admin/content", label: "Контент" },
 ]
 
 const DASH_CSS = `
@@ -61,7 +59,7 @@ const DASH_CSS = `
   .dash .sidebar-section li a { color: var(--gray-text) !important; }
   .dash .sidebar-section li a.active { background: var(--gray-light) !important; color: var(--black) !important; }
 
-  .dash .main-content { flex: 1; padding: 60px; background: var(--bg); min-height: 100vh; max-width: 1300px; }
+  .dash .main-content { flex: 1; padding: 60px; background: var(--bg); min-height: 100vh; }
   .dash .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px; }
   .dash .header h1 { font-size: 32px; font-weight: 800; margin: 0; color: var(--black); }
   .dash .user-profile { display: flex; align-items: center; gap: 15px; background: var(--white); padding: 8px 25px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); font-size: 14px; font-weight: 600; }
@@ -162,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               return (
                 <li key={item.href}>
                   <Link href={item.href} className={isActive ? "active" : ""}>
-                    <span className="icon">{item.icon}</span> {item.label}
+                    {item.label}
                   </Link>
                 </li>
               )
@@ -174,12 +172,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ul className="sidebar-nav">
               {(currentRole === "teacher" ? teacherSupport : studentSupport).map((item) => (
                 <li key={item.label}>
-                  <Link href={item.href}><span className="icon">{item.icon}</span> {item.label}</Link>
+                  <Link href={item.href}>{item.label}</Link>
                 </li>
               ))}
               <li>
                 <a href="#" onClick={(e) => { e.preventDefault(); handleLogout() }}>
-                  <span className="icon">🚪</span> Выйти
+                  Выйти
                 </a>
               </li>
             </ul>
