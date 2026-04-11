@@ -42,78 +42,67 @@ const adminNav = [
 ]
 
 const DASH_CSS = `
+  :root { --bg: #F8F9FA; --white: #FFFFFF; --black: #000000; --gray-light: #E9ECEF; --gray-text: #6C757D; --accent: #D4FF5C; --radius: 35px; }
+
   .dash { display: flex; min-height: 100vh; font-family: 'Inter', sans-serif; }
   .dash * { box-sizing: border-box; }
   .dash a { text-decoration: none; color: inherit; }
 
-  .dash .sidebar { width: 260px; background: #1E293B; color: white; padding: 24px 0; position: fixed; height: 100vh; overflow-y: auto; flex-shrink: 0; }
-  .dash .sidebar .logo { font-size: 24px; font-weight: 700; color: white; display: flex; align-items: center; gap: 8px; padding: 0 24px; margin-bottom: 32px; }
-  .dash .sidebar-nav { list-style: none; padding: 0; margin: 0; }
-  .dash .sidebar-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 24px; color: #94A3B8; font-size: 14px; transition: all 0.2s; }
-  .dash .sidebar-nav li a:hover, .dash .sidebar-nav li a.active { background: rgba(255,255,255,0.1); color: white; }
-  .dash .sidebar-nav li a.active { border-left: 3px solid #CC3A3A; }
-  .dash .sidebar-nav .icon { font-size: 18px; width: 24px; text-align: center; }
-  .dash .sidebar-section { margin-top: 32px; padding: 0 24px; }
-  .dash .sidebar-section h4 { font-size: 12px; text-transform: uppercase; color: #94A3B8; margin-bottom: 16px; letter-spacing: 0.5px; }
+  .dash .sidebar { width: 280px; background: var(--white); padding: 50px 30px; display: flex; flex-direction: column; border-right: 1px solid var(--gray-light); position: sticky; top: 0; height: 100vh; flex-shrink: 0; }
+  .dash .sidebar .logo { width: 160px; margin-bottom: 60px; }
+  .dash .sidebar-nav { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+  .dash .sidebar-nav li { margin-bottom: 0; }
+  .dash .sidebar-nav li a { display: flex; align-items: center; padding: 16px 20px; color: var(--black); font-weight: 600; border-radius: 20px; margin-bottom: 10px; transition: 0.3s; font-size: 14px; }
+  .dash .sidebar-nav li a.active { background: var(--black); color: var(--white); }
+  .dash .sidebar-nav li a:hover:not(.active) { background: var(--gray-light); }
+  .dash .sidebar-nav .icon { font-size: 18px; width: 24px; text-align: center; margin-right: 12px; }
+  .dash .sidebar-section { margin-top: auto; padding-top: 30px; border-top: 1px solid var(--gray-light); }
+  .dash .sidebar-section h4 { display: none; }
+  .dash .sidebar-section li a { color: var(--gray-text) !important; }
+  .dash .sidebar-section li a.active { background: var(--gray-light) !important; color: var(--black) !important; }
 
-  .dash .main-content { flex: 1; margin-left: 260px; padding: 32px; background: #F8FAFC; min-height: 100vh; }
-  .dash .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-  .dash .dashboard-header h1 { font-size: 28px; font-weight: 700; color: #1E293B; }
+  .dash .main-content { flex: 1; padding: 60px; background: var(--bg); min-height: 100vh; max-width: 1300px; }
+  .dash .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px; }
+  .dash .header h1 { font-size: 32px; font-weight: 800; margin: 0; color: var(--black); }
+  .dash .user-profile { display: flex; align-items: center; gap: 15px; background: var(--white); padding: 8px 25px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); font-size: 14px; font-weight: 600; }
+  .dash .avatar { width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
-  .dash .user-menu { display: flex; align-items: center; gap: 16px; }
-  .dash .user-avatar { width: 40px; height: 40px; background: #CC3A3A; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
-  .dash .notifications { width: 40px; height: 40px; background: #F1F5F9; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 18px; }
-  .dash .notifications .badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; background: #EF4444; border-radius: 50%; font-size: 11px; display: flex; align-items: center; justify-content: center; color: white; }
+  .dash .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px; margin-bottom: 50px; }
+  .dash .stat-card { background: var(--white); padding: 35px 25px; border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,0.02); text-align: center; }
+  .dash .stat-card.dark { background: var(--black); color: var(--white); }
+  .dash .stat-card.accent { background: var(--accent); }
+  .dash .stat-num { font-size: 36px; font-weight: 800; display: block; }
+  .dash .stat-desc { font-size: 14px; opacity: 0.7; margin-top: 10px; display: block; }
 
-  .dash .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
-  .dash .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .dash .stat-card .label { font-size: 14px; color: #64748B; margin-bottom: 8px; }
-  .dash .stat-card .value { font-size: 32px; font-weight: 700; color: #1E293B; }
-  .dash .stat-card .change { font-size: 13px; margin-top: 8px; color: #64748B; }
-  .dash .stat-card .change.positive { color: #10B981; }
+  .dash .dashboard-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 30px; }
+  .dash .card { background: var(--white); border-radius: var(--radius); padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+  .dash .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border: none; padding: 0; }
+  .dash .card-title { font-size: 22px; font-weight: 700; margin: 0; }
 
-  .dash .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
-  .dash .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .dash .card-header { padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
-  .dash .card-header h3 { font-size: 18px; font-weight: 700; color: #1E293B; margin: 0; }
-  .dash .card-body { padding: 24px; }
+  .dash .lesson-row { display: flex; align-items: center; padding: 25px 0; border-top: 1px solid var(--gray-light); }
+  .dash .time-badge { width: 60px; height: 60px; background: var(--black); color: var(--white); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; margin-right: 25px; flex-shrink: 0; }
+  .dash .lesson-info h4 { margin: 0; font-size: 18px; }
+  .dash .lesson-info p { margin: 5px 0 0; color: var(--gray-text); font-size: 14px; }
 
-  .dash .schedule-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: #F8FAFC; border-radius: 8px; margin-bottom: 12px; }
-  .dash .schedule-item:last-child { margin-bottom: 0; }
-  .dash .schedule-time { text-align: center; min-width: 60px; }
-  .dash .schedule-time .time { font-size: 18px; font-weight: 700; color: #CC3A3A; }
-  .dash .schedule-time .date { font-size: 12px; color: #64748B; }
-  .dash .schedule-info { flex: 1; }
-  .dash .schedule-info h4 { font-size: 16px; font-weight: 600; margin: 0 0 4px 0; color: #1E293B; }
-  .dash .schedule-info p { font-size: 13px; color: #64748B; margin: 0; }
+  .dash .progress-item { margin-bottom: 25px; }
+  .dash .progress-labels { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: 600; }
+  .dash .progress-track { height: 12px; background: var(--gray-light); border-radius: 10px; overflow: hidden; }
+  .dash .progress-bar { height: 100%; background: var(--black); border-radius: 10px; }
 
-  .dash .progress-bar { height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; }
-  .dash .progress-fill { height: 100%; background: linear-gradient(90deg, #CC3A3A 0%, #10B981 100%); border-radius: 4px; }
+  .dash .btn { padding: 12px 25px; border-radius: 15px; border: none; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+  .dash .btn-black { background: var(--black); color: var(--white); }
+  .dash .btn-outline { background: transparent; border: 2px solid var(--black); color: var(--black); }
+  .dash .btn:hover { transform: translateY(-2px); opacity: 0.9; }
 
-  .dash .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
-  .dash .calendar-header span { text-align: center; font-size: 12px; font-weight: 600; color: #64748B; padding: 8px 0; }
-  .dash .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .dash .calendar-day { display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.2s; padding: 8px 4px; position: relative; color: #1E293B; }
-  .dash .calendar-day:hover { background: #F1F5F9; }
-  .dash .calendar-day.today { background: #CC3A3A; color: white; font-weight: 700; }
-  .dash .calendar-day.has-event::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; background: #10B981; border-radius: 50%; }
-  .dash .calendar-day.other-month { color: #CBD5E1; }
-
-  .dash .table { width: 100%; border-collapse: collapse; }
-  .dash .table th { text-align: left; font-size: 12px; text-transform: uppercase; color: #64748B; font-weight: 600; padding: 8px 16px; border-bottom: 2px solid #E2E8F0; }
-  .dash .table td { padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 14px; color: #1E293B; }
-  .dash .table tbody tr:hover { background: #F8FAFC; }
-
-  .dash .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-  .dash .status-success { background: #D1FAE5; color: #059669; }
-  .dash .status-pending { background: #FEF3C7; color: #D97706; }
-  .dash .status-danger { background: #FEE2E2; color: #DC2626; }
-
-  .dash .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; text-decoration: none; }
-  .dash .btn-primary { background: #CC3A3A; color: white; }
-  .dash .btn-primary:hover { background: #a32e2e; }
-  .dash .btn-secondary { background: white; color: #1E293B; border: 1px solid #E2E8F0; }
-  .dash .btn-secondary:hover { background: #F8FAFC; }
+  @media (max-width: 1024px) {
+    .dash .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .dash .dashboard-grid { grid-template-columns: 1fr; }
+    .dash .main-content { padding: 30px; }
+  }
+  @media (max-width: 768px) {
+    .dash .sidebar { display: none; }
+    .dash .stats-grid { grid-template-columns: 1fr; }
+  }
   .dash .btn-sm { padding: 6px 12px; font-size: 13px; }
 
   @media (max-width: 1024px) {
