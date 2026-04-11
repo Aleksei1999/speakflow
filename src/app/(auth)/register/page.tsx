@@ -61,8 +61,12 @@ export default function RegisterPage() {
     if (error) {
       if (error.message.includes('already registered')) {
         setServerError('Пользователь с таким email уже зарегистрирован')
+      } else if (error.message.includes('rate limit')) {
+        setServerError('Слишком много попыток. Подождите несколько минут и попробуйте снова.')
+      } else if (error.message.includes('invalid')) {
+        setServerError('Проверьте правильность email адреса.')
       } else {
-        setServerError('Не удалось создать аккаунт. Попробуйте позже.')
+        setServerError(`Не удалось создать аккаунт: ${error.message}`)
       }
       return
     }
