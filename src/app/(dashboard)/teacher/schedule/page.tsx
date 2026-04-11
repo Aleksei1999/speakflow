@@ -131,24 +131,32 @@ function WeekSchedule() {
     if (!user) return
     setIsLoading(true)
     const supabase = createClient()
+
+    // Get teacher_profile id first
+    const { data: tp } = await supabase
+      .from("teacher_profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single()
+
+    if (!tp) { setIsLoading(false); return }
+
     const { data, error } = await supabase
       .from("lessons")
-      .select(
-        "id, scheduled_at, duration_minutes, status, student:profiles!lessons_student_id_fkey(full_name, avatar_url)"
-      )
-      .eq("teacher_id", user.id)
+      .select("id, scheduled_at, duration_minutes, status, student_id")
+      .eq("teacher_id", tp.id)
       .gte("scheduled_at", weekStart.toISOString())
       .lte("scheduled_at", weekEnd.toISOString())
       .order("scheduled_at", { ascending: true })
 
     if (!error && data) {
       setLessons(
-        data.map((l) => ({
+        data.map((l: any) => ({
           id: l.id,
           scheduled_at: l.scheduled_at,
           duration_minutes: l.duration_minutes,
           status: l.status,
-          student: l.student as { full_name: string; avatar_url: string | null } | null,
+          student: null,
         }))
       )
     }
