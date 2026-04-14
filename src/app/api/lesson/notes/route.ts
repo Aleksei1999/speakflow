@@ -11,14 +11,13 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('lesson_notes')
+  const { data } = await (admin.from('lesson_notes') as any)
     .select('content')
     .eq('lesson_id', lessonId)
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return NextResponse.json({ content: data?.content ?? '' })
+  return NextResponse.json({ content: (data as any)?.content ?? '' })
 }
 
 export async function POST(request: NextRequest) {
@@ -31,22 +30,18 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Check if note exists
-  const { data: existing } = await admin
-    .from('lesson_notes')
+  const { data: existing } = await (admin.from('lesson_notes') as any)
     .select('id')
     .eq('lesson_id', lessonId)
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (existing) {
-    await admin
-      .from('lesson_notes')
+    await (admin.from('lesson_notes') as any)
       .update({ content, updated_at: new Date().toISOString() })
-      .eq('id', existing.id)
+      .eq('id', (existing as any).id)
   } else {
-    await admin
-      .from('lesson_notes')
+    await (admin.from('lesson_notes') as any)
       .insert({ lesson_id: lessonId, user_id: user.id, content })
   }
 
