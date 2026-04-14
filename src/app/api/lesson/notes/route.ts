@@ -1,53 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const lessonId = request.nextUrl.searchParams.get('lessonId')
-  if (!lessonId) return NextResponse.json({ error: 'Missing lessonId' }, { status: 400 })
+  const userId = request.nextUrl.searchParams.get('userId')
+  if (!lessonId || !userId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const admin = createAdminClient()
     const { data } = await (admin.from('lesson_notes') as any)
       .select('content')
       .eq('lesson_id', lessonId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
 
     return NextResponse.json({ content: (data as any)?.content ?? '' })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: e?.message }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const body = await request.json()
-    const { lessonId, content } = body
-    if (!lessonId) return NextResponse.json({ error: 'Missing lessonId' }, { status: 400 })
+    const { lessonId, userId, content } = body
+    if (!lessonId || !userId) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     const admin = createAdminClient()
 
-    // Delete all existing notes for this user+lesson, then insert fresh
     await (admin.from('lesson_notes') as any)
       .delete()
       .eq('lesson_id', lessonId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     const { error } = await (admin.from('lesson_notes') as any)
-      .insert({ lesson_id: lessonId, user_id: user.id, content })
+      .insert({ lesson_id: lessonId, user_id: userId, content: content ?? '' })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: e?.message }, { status: 500 })
   }
 }

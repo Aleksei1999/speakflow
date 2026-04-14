@@ -27,6 +27,7 @@ interface Material {
   id: string
   title: string
   content: string
+  file_url: string | null
   created_at: string
 }
 
@@ -113,6 +114,7 @@ export function LessonRoomClient({
   const [materials, setMaterials] = useState<Material[]>([])
   const [matTitle, setMatTitle] = useState("")
   const [matContent, setMatContent] = useState("")
+  const [matLink, setMatLink] = useState("")
   const [elapsed, setElapsed] = useState(0)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
@@ -215,11 +217,11 @@ export function LessonRoomClient({
 
   // Load notes
   useEffect(() => {
-    fetch(`/api/lesson/notes?lessonId=${lessonId}`)
+    fetch(`/api/lesson/notes?lessonId=${lessonId}&userId=${userId}`)
       .then(r => r.json())
       .then(d => setNotes(d.content ?? ""))
       .catch(() => {})
-  }, [lessonId])
+  }, [lessonId, userId])
 
   // Load materials
   const loadMaterials = useCallback(async () => {
@@ -236,23 +238,23 @@ export function LessonRoomClient({
     await fetch("/api/lesson/materials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, title: matTitle.trim(), content: matContent.trim() }),
+      body: JSON.stringify({ lessonId, userId, title: matTitle.trim(), content: matContent.trim(), fileUrl: matLink.trim() || null }),
     })
     setMatTitle("")
     setMatContent("")
+    setMatLink("")
     loadMaterials()
-  }, [matTitle, matContent, lessonId, loadMaterials])
+  }, [matTitle, matContent, matLink, lessonId, userId, loadMaterials])
 
   const sendMsg = useCallback(async () => {
     if (!newMsg.trim()) return
     const text = newMsg.trim()
     setNewMsg("")
-    // Optimistic
     setMessages(prev => [...prev, { id: Date.now().toString(), sender_id: userId, message: text, created_at: new Date().toISOString() }])
     await fetch("/api/lesson/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, message: text }),
+      body: JSON.stringify({ lessonId, userId, message: text }),
     })
   }, [newMsg, lessonId, userId])
 
@@ -260,9 +262,9 @@ export function LessonRoomClient({
     await fetch("/api/lesson/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId, content: notes }),
+      body: JSON.stringify({ lessonId, userId, content: notes }),
     })
-  }, [notes, lessonId])
+  }, [notes, lessonId, userId])
 
   // Jitsi controls
   const toggleMic = () => {
@@ -312,9 +314,6 @@ export function LessonRoomClient({
               </button>
               <button className={`cb ${screenOn ? "active" : ""}`} title="Демонстрация" onClick={toggleScreen}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-              </button>
-              <button className="cb" title="Настройки">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09c-.658.003-1.25.396-1.51 1z"/></svg>
               </button>
               <button className="cb danger" title="Завершить" onClick={handleEnd}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
@@ -369,7 +368,12 @@ export function LessonRoomClient({
                   {materials.map((m) => (
                     <div key={m.id} style={{ background: "var(--bg)", borderRadius: 12, padding: 14, marginBottom: 8 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{m.title}</div>
-                      {m.content && <div style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap" }}>{m.content}</div>}
+                      {m.content && <div style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap", marginBottom: 6 }}>{m.content}</div>}
+                      {m.file_url && (
+                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--red)", fontWeight: 600, textDecoration: "underline" }}>
+                          Открыть ссылку
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -384,8 +388,14 @@ export function LessonRoomClient({
                     <textarea
                       value={matContent}
                       onChange={(e) => setMatContent(e.target.value)}
-                      placeholder="Текст, ссылка или описание..."
-                      style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: "inherit", resize: "none", height: 60, outline: "none" }}
+                      placeholder="Описание или текст..."
+                      style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: "inherit", resize: "none", height: 50, outline: "none" }}
+                    />
+                    <input
+                      type="url" value={matLink}
+                      onChange={(e) => setMatLink(e.target.value)}
+                      placeholder="Ссылка (необязательно)..."
+                      style={{ borderRadius: 12 }}
                     />
                     <button onClick={addMaterial} className="sb" style={{ width: "100%", borderRadius: 999, height: "auto", padding: "10px 0", fontSize: 13, fontWeight: 600 }}>
                       Добавить материал
