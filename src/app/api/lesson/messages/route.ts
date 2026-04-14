@@ -30,8 +30,7 @@ export async function POST(request: NextRequest) {
   if (!lessonId || !message) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('lesson_messages')
+  const { data, error } = await (admin.from('lesson_messages') as any)
     .insert({ lesson_id: lessonId, sender_id: user.id, message })
     .select()
     .single()
