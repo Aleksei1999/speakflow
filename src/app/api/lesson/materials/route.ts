@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -7,10 +6,6 @@ export async function GET(request: NextRequest) {
   if (!lessonId) return NextResponse.json({ error: 'Missing lessonId' }, { status: 400 })
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const admin = createAdminClient()
     const { data } = await (admin.from('lesson_materials') as any)
       .select('*')
@@ -25,17 +20,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const body = await request.json()
-    const { lessonId, title, content } = body
-    if (!lessonId || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    const { lessonId, userId, title, content, fileUrl } = body
+    if (!lessonId || !userId || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     const admin = createAdminClient()
     const { data, error } = await (admin.from('lesson_materials') as any)
-      .insert({ lesson_id: lessonId, teacher_id: user.id, title, content: content ?? '' })
+      .insert({
+        lesson_id: lessonId,
+        teacher_id: userId,
+        title,
+        content: content ?? '',
+        file_url: fileUrl ?? null,
+      })
       .select()
       .single()
 
