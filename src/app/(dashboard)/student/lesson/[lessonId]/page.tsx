@@ -24,15 +24,45 @@ export default async function StudentLessonPage({
     redirect('/student/schedule')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user.id)
+  // Student profile + progress
+  const [profileRes, progressRes, completedRes] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+    supabase.from('user_progress').select('english_level').eq('user_id', user.id).maybeSingle(),
+    supabase.from('lessons').select('id', { count: 'exact', head: true })
+      .eq('student_id', user.id).eq('status', 'completed'),
+  ])
+
+  // Teacher name + rating
+  const { data: teacherProfile } = await supabase
+    .from('teacher_profiles')
+    .select('user_id, rating, total_reviews')
+    .eq('id', lesson.teacher_id)
     .single()
 
-  const jitsiDomain = 'meet.jit.si'
-  const jitsiToken = ''
-  const jitsiRoom = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
+  let teacherName = 'Преподаватель'
+  let teacherRating = 0
+  if (teacherProfile) {
+    const { data: tp } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', teacherProfile.user_id)
+      .single()
+    teacherName = tp?.full_name ?? 'Преподаватель'
+    teacherRating = teacherProfile.rating ?? 0
+  }
+
+  // Next lesson after this one
+  const { data: nextLessons } = await supabase
+    .from('lessons')
+    .select('scheduled_at')
+    .eq('student_id', user.id)
+    .eq('status', 'booked')
+    .gt('scheduled_at', lesson.scheduled_at)
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
+
+  const lessonNumber = (completedRes.count ?? 0) + 1
+  const studentLevel = progressRes.data?.english_level ?? '—'
 
   return (
     <LessonRoomClient
@@ -40,11 +70,15 @@ export default async function StudentLessonPage({
       scheduledAt={lesson.scheduled_at}
       durationMinutes={lesson.duration_minutes}
       userId={user.id}
-      userName={profile?.full_name ?? 'Ученик'}
-      teacherName="Преподаватель"
-      jitsiDomain={jitsiDomain}
-      jitsiToken={jitsiToken}
-      jitsiRoom={jitsiRoom}
+      userName={profileRes.data?.full_name ?? 'Ученик'}
+      teacherName={teacherName}
+      teacherRating={teacherRating}
+      jitsiDomain="meet.jit.si"
+      jitsiToken=""
+      jitsiRoom={lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`}
+      lessonNumber={lessonNumber}
+      studentLevel={studentLevel}
+      nextLessonAt={nextLessons?.[0]?.scheduled_at ?? null}
     />
   )
 }
