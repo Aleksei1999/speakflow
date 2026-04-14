@@ -30,25 +30,9 @@ export default async function StudentLessonPage({
     .eq('id', user.id)
     .single()
 
-  // Try to get Jitsi config, fallback to public
-  let jitsiDomain = 'meet.jit.si'
-  let jitsiToken = ''
+  const jitsiDomain = 'meet.jit.si'
+  const jitsiToken = ''
   const jitsiRoom = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
-
-  if (process.env.JITSI_DOMAIN && process.env.JITSI_JWT_SECRET) {
-    try {
-      const { generateJitsiToken } = await import('@/lib/jitsi/jwt')
-      jitsiDomain = process.env.JITSI_DOMAIN
-      jitsiToken = await generateJitsiToken(jitsiRoom, {
-        id: user.id,
-        name: profile?.full_name ?? 'Ученик',
-        email: user.email ?? '',
-        isModerator: false,
-      })
-    } catch {
-      // fallback to public jitsi
-    }
-  }
 
   return (
     <LessonRoomClient
