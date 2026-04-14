@@ -61,6 +61,7 @@ export default async function TeacherLessonPage({
       jitsiDomain={jitsiDomain}
       jitsiToken={jitsiToken}
       jitsiRoom={jitsiRoom}
+      isTeacher
     />
   )
 }
