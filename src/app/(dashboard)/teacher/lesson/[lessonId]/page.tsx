@@ -14,13 +14,11 @@ export default async function TeacherLessonPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get teacher_profile id
   const { data: tp } = await supabase
     .from('teacher_profiles')
-    .select('id')
+    .select('id, rating')
     .eq('user_id', user.id)
     .single()
-
   if (!tp) redirect('/teacher')
 
   const { data: lesson } = await supabase
@@ -29,26 +27,32 @@ export default async function TeacherLessonPage({
     .eq('id', lessonId)
     .single()
 
-  if (!lesson || lesson.teacher_id !== tp.id) {
-    redirect('/teacher/schedule')
-  }
+  if (!lesson || lesson.teacher_id !== tp.id) redirect('/teacher/schedule')
 
+  // Teacher profile
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .single()
+    .from('profiles').select('full_name').eq('id', user.id).single()
 
-  // Get student name
+  // Student name + level + lesson count
   const { data: studentProfile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', lesson.student_id)
-    .single()
+    .from('profiles').select('full_name').eq('id', lesson.student_id).single()
 
-  const jitsiDomain = 'meet.jit.si'
-  const jitsiToken = ''
-  const jitsiRoom = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
+  const { data: studentProgress } = await supabase
+    .from('user_progress').select('english_level').eq('user_id', lesson.student_id).maybeSingle()
+
+  const { count: studentLessonCount } = await supabase
+    .from('lessons').select('id', { count: 'exact', head: true })
+    .eq('student_id', lesson.student_id).eq('status', 'completed')
+
+  // Next lesson
+  const { data: nextLessons } = await supabase
+    .from('lessons')
+    .select('scheduled_at')
+    .eq('teacher_id', tp.id)
+    .eq('status', 'booked')
+    .gt('scheduled_at', lesson.scheduled_at)
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
 
   return (
     <LessonRoomClient
@@ -58,10 +62,14 @@ export default async function TeacherLessonPage({
       userId={user.id}
       userName={profile?.full_name ?? 'Преподаватель'}
       teacherName={studentProfile?.full_name ?? 'Ученик'}
-      jitsiDomain={jitsiDomain}
-      jitsiToken={jitsiToken}
-      jitsiRoom={jitsiRoom}
+      teacherRating={tp.rating ?? 0}
+      jitsiDomain="meet.jit.si"
+      jitsiToken=""
+      jitsiRoom={lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`}
       isTeacher
+      lessonNumber={(studentLessonCount ?? 0) + 1}
+      studentLevel={studentProgress?.english_level ?? '—'}
+      nextLessonAt={nextLessons?.[0]?.scheduled_at ?? null}
     />
   )
 }

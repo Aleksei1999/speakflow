@@ -16,6 +16,8 @@ interface Props {
   isTeacher?: boolean
   lessonNumber?: number
   studentLevel?: string
+  teacherRating?: number
+  nextLessonAt?: string | null
 }
 
 interface ChatMsg { id: string; sender_id: string; message: string; created_at: string }
@@ -100,7 +102,8 @@ const CSS = `
 
 export function LessonRoomClient({
   lessonId, scheduledAt, durationMinutes, userId, userName, teacherName,
-  jitsiDomain, jitsiToken, jitsiRoom, isTeacher = false, lessonNumber = 1, studentLevel = "B1",
+  jitsiDomain, jitsiToken, jitsiRoom, isTeacher = false, lessonNumber = 1, studentLevel = "—",
+  teacherRating = 0, nextLessonAt = null,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<"chat"|"materials"|"notes">("chat")
@@ -226,7 +229,7 @@ export function LessonRoomClient({
                 <div className="name">{teacherName}</div>
                 <div className="sub">{isTeacher?"ученик":"teacher"}</div>
               </div>
-              <div className="rating">★ 4.9</div>
+              {teacherRating > 0 && <div className="rating">★ {teacherRating.toFixed(1)}</div>}
             </div>
           </div>
 
@@ -344,7 +347,7 @@ export function LessonRoomClient({
               </div>
               <div>
                 <div className="title">Следующий урок</div>
-                <div className="sub">Смотрите расписание</div>
+                <div className="sub">{nextLessonAt ? new Date(nextLessonAt).toLocaleDateString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "Нет запланированных"}</div>
               </div>
             </div>
           </div>
