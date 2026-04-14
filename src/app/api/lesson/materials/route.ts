@@ -12,15 +12,14 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const admin = createAdminClient()
-    const { data } = await (admin.from('lesson_notes') as any)
-      .select('content')
+    const { data } = await (admin.from('lesson_materials') as any)
+      .select('*')
       .eq('lesson_id', lessonId)
-      .eq('user_id', user.id)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
 
-    return NextResponse.json({ content: (data as any)?.content ?? '' })
+    return NextResponse.json(data ?? [])
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: e?.message }, { status: 500 })
   }
 }
 
@@ -31,23 +30,18 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { lessonId, content } = body
-    if (!lessonId) return NextResponse.json({ error: 'Missing lessonId' }, { status: 400 })
+    const { lessonId, title, content } = body
+    if (!lessonId || !title) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     const admin = createAdminClient()
-
-    // Delete all existing notes for this user+lesson, then insert fresh
-    await (admin.from('lesson_notes') as any)
-      .delete()
-      .eq('lesson_id', lessonId)
-      .eq('user_id', user.id)
-
-    const { error } = await (admin.from('lesson_notes') as any)
-      .insert({ lesson_id: lessonId, user_id: user.id, content })
+    const { data, error } = await (admin.from('lesson_materials') as any)
+      .insert({ lesson_id: lessonId, teacher_id: user.id, title, content: content ?? '' })
+      .select()
+      .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json(data)
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: e?.message }, { status: 500 })
   }
 }

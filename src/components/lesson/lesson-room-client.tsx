@@ -13,12 +13,20 @@ interface Props {
   jitsiDomain: string
   jitsiToken: string
   jitsiRoom: string
+  isTeacher?: boolean
 }
 
 interface ChatMsg {
   id: string
   sender_id: string
   message: string
+  created_at: string
+}
+
+interface Material {
+  id: string
+  title: string
+  content: string
   created_at: string
 }
 
@@ -95,13 +103,16 @@ const CSS = `
 
 export function LessonRoomClient({
   lessonId, scheduledAt, durationMinutes, userId, userName, teacherName,
-  jitsiDomain, jitsiToken, jitsiRoom,
+  jitsiDomain, jitsiToken, jitsiRoom, isTeacher = false,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<"chat" | "materials" | "notes">("chat")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [newMsg, setNewMsg] = useState("")
   const [notes, setNotes] = useState("")
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [matTitle, setMatTitle] = useState("")
+  const [matContent, setMatContent] = useState("")
   const [elapsed, setElapsed] = useState(0)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
@@ -210,6 +221,28 @@ export function LessonRoomClient({
       .catch(() => {})
   }, [lessonId])
 
+  // Load materials
+  const loadMaterials = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/lesson/materials?lessonId=${lessonId}`)
+      if (res.ok) setMaterials(await res.json())
+    } catch {}
+  }, [lessonId])
+
+  useEffect(() => { loadMaterials() }, [loadMaterials])
+
+  const addMaterial = useCallback(async () => {
+    if (!matTitle.trim()) return
+    await fetch("/api/lesson/materials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, title: matTitle.trim(), content: matContent.trim() }),
+    })
+    setMatTitle("")
+    setMatContent("")
+    loadMaterials()
+  }, [matTitle, matContent, lessonId, loadMaterials])
+
   const sendMsg = useCallback(async () => {
     if (!newMsg.trim()) return
     const text = newMsg.trim()
@@ -247,7 +280,7 @@ export function LessonRoomClient({
   const handleEnd = () => {
     if (confirm("Завершить урок?")) {
       jitsiApiRef.current?.executeCommand("hangup")
-      router.push("/student")
+      router.push(isTeacher ? "/teacher" : "/student")
     }
   }
 
@@ -328,7 +361,38 @@ export function LessonRoomClient({
             )}
 
             {tab === "materials" && (
-              <div className="mats">Материалы урока появятся здесь</div>
+              <div className="lc">
+                <div className="cms">
+                  {materials.length === 0 && !isTeacher && (
+                    <div className="mats">Материалы урока появятся здесь</div>
+                  )}
+                  {materials.map((m) => (
+                    <div key={m.id} style={{ background: "var(--bg)", borderRadius: 12, padding: 14, marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{m.title}</div>
+                      {m.content && <div style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap" }}>{m.content}</div>}
+                    </div>
+                  ))}
+                </div>
+                {isTeacher && (
+                  <div className="ci" style={{ flexDirection: "column", gap: 8, alignItems: "stretch" }}>
+                    <input
+                      type="text" value={matTitle}
+                      onChange={(e) => setMatTitle(e.target.value)}
+                      placeholder="Название материала..."
+                      style={{ borderRadius: 12 }}
+                    />
+                    <textarea
+                      value={matContent}
+                      onChange={(e) => setMatContent(e.target.value)}
+                      placeholder="Текст, ссылка или описание..."
+                      style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontFamily: "inherit", resize: "none", height: 60, outline: "none" }}
+                    />
+                    <button onClick={addMaterial} className="sb" style={{ width: "100%", borderRadius: 999, height: "auto", padding: "10px 0", fontSize: 13, fontWeight: 600 }}>
+                      Добавить материал
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {tab === "notes" && (
