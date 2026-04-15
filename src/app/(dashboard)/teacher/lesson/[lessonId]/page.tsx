@@ -70,6 +70,7 @@ export default async function TeacherLessonPage({
       lessonNumber={(studentLessonCount ?? 0) + 1}
       studentLevel={studentProgress?.english_level ?? '—'}
       nextLessonAt={nextLessons?.[0]?.scheduled_at ?? null}
+      studentId={lesson.student_id}
     />
   )
 }
