@@ -177,8 +177,12 @@ export function LessonRoomClient({
   useEffect(()=>{loadMessages();pollRef.current=setInterval(loadMessages,3000);return()=>clearInterval(pollRef.current)},[loadMessages])
   useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages])
 
-  // Notes
-  useEffect(()=>{fetch(`/api/lesson/notes?lessonId=${lessonId}&userId=${userId}`).then(r=>r.json()).then(d=>setNotes(d.content??"")).catch(()=>{})},[lessonId,userId])
+  // Notes — load on mount and when tab switches
+  const loadNotes = useCallback(async()=>{
+    try{const r=await fetch(`/api/lesson/notes?lessonId=${lessonId}&userId=${userId}`);if(r.ok){const d=await r.json();setNotes(d.content??"")}}catch{}
+  },[lessonId,userId])
+  useEffect(()=>{loadNotes()},[loadNotes])
+  useEffect(()=>{if(tab==="notes")loadNotes()},[tab])
 
   // Materials
   const loadMats = useCallback(async()=>{try{const r=await fetch(`/api/lesson/materials?lessonId=${lessonId}`);if(r.ok)setMaterials(await r.json())}catch{}},[lessonId])
