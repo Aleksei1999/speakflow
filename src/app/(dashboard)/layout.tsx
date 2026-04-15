@@ -39,6 +39,12 @@ const SIDEBAR_CSS = `
 .dash .sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .dash .theme-toggle{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-size:12px;font-weight:600;color:var(--text);transition:all .15s ease}
 .dash .theme-toggle:hover{border-color:var(--text)}
+.dash .theme-toggle .sun{display:none}.dash .theme-toggle .moon{display:block}
+[data-theme="dark"] .dash .theme-toggle .sun{display:block}
+[data-theme="dark"] .dash .theme-toggle .moon{display:none}
+[data-theme="dark"] .dash .theme-toggle .label-light{display:none}
+[data-theme="light"] .dash .theme-toggle .label-dark{display:none}
+.dash .theme-toggle svg{width:16px;height:16px}
 .dash .status-online{display:flex;align-items:center;gap:8px;padding:0 4px;font-size:11px;color:var(--muted)}
 .dash .status-online .dot{width:6px;height:6px;background:#22c55e;border-radius:50%}
 
@@ -179,8 +185,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Profile card */}
           <div className="profile-card">
-            <div className="photo">{initials}</div>
-            <div className="pname">{fullName.split(" ")[0]}</div>
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={fullName} style={{width:72,height:72,borderRadius:"50%",border:"3px solid var(--lime)",objectFit:"cover",margin:"0 auto 10px"}} />
+            ) : (
+              <div className="photo">{initials}</div>
+            )}
+            <div className="pname">{fullName}</div>
             <div className="prole">{roleLabel}</div>
             <div className="meta">● Online</div>
           </div>
@@ -223,15 +233,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Footer: theme toggle */}
           <div className="sidebar-footer">
             <button className="theme-toggle" onClick={toggleTheme}>
-              <span dangerouslySetInnerHTML={{ __html: icons.moon }} className="moon" />
-              <span dangerouslySetInnerHTML={{ __html: icons.sun }} className="sun" />
+              <span className="moon" dangerouslySetInnerHTML={{ __html: icons.moon }} />
+              <span className="sun" dangerouslySetInnerHTML={{ __html: icons.sun }} />
               <span className="label-light">Тёмная тема</span>
               <span className="label-dark">Светлая тема</span>
             </button>
-            <div className="status-online">
-              <span className="dot" />
-              Online
-            </div>
           </div>
         </aside>
 
