@@ -18,6 +18,7 @@ interface Props {
   studentLevel?: string
   teacherRating?: number
   nextLessonAt?: string | null
+  studentId?: string
 }
 
 interface ChatMsg { id: string; sender_id: string; message: string; created_at: string }
@@ -103,7 +104,7 @@ const CSS = `
 export function LessonRoomClient({
   lessonId, scheduledAt, durationMinutes, userId, userName, teacherName,
   jitsiDomain, jitsiToken, jitsiRoom, isTeacher = false, lessonNumber = 1, studentLevel = "—",
-  teacherRating = 0, nextLessonAt = null,
+  teacherRating = 0, nextLessonAt = null, studentId = "",
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<"chat"|"materials"|"notes">("chat")
@@ -114,7 +115,13 @@ export function LessonRoomClient({
   const [matTitle, setMatTitle] = useState("")
   const [matContent, setMatContent] = useState("")
   const [matLink, setMatLink] = useState("")
-  const [elapsed, setElapsed] = useState(0)
+  const [uploading, setUploading] = useState(false)
+  const [homework, setHomework] = useState<any[]>([])
+  const [hwTitle, setHwTitle] = useState("")
+  const [hwDesc, setHwDesc] = useState("")
+  const [hwOpen, setHwOpen] = useState(false)
+  const [remaining, setRemaining] = useState(0)
+  const [notesSaved, setNotesSaved] = useState(false)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [screenOn, setScreenOn] = useState(false)
@@ -127,14 +134,18 @@ export function LessonRoomClient({
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
 
-  // Timer
+  // Timer — countdown
   useEffect(() => {
-    const start = new Date(scheduledAt).getTime()
-    const iv = setInterval(() => setElapsed(Math.max(0, Math.floor((Date.now()-start)/1000))), 1000)
+    const end = new Date(scheduledAt).getTime() + durationMinutes * 60 * 1000
+    const iv = setInterval(() => {
+      const left = Math.max(0, Math.floor((end - Date.now()) / 1000))
+      setRemaining(left)
+    }, 1000)
+    setRemaining(Math.max(0, Math.floor((end - Date.now()) / 1000)))
     return () => clearInterval(iv)
-  }, [scheduledAt])
-  const mm = String(Math.floor(elapsed/60)).padStart(2,"0")
-  const ss = String(elapsed%60).padStart(2,"0")
+  }, [scheduledAt, durationMinutes])
+  const mm = String(Math.floor(remaining/60)).padStart(2,"0")
+  const ss = String(remaining%60).padStart(2,"0")
 
   // Jitsi
   useEffect(() => {
@@ -180,7 +191,8 @@ export function LessonRoomClient({
   },[newMsg,lessonId,userId])
 
   const saveNotes = useCallback(async()=>{
-    await fetch("/api/lesson/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,content:notes})})
+    const r = await fetch("/api/lesson/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,content:notes})})
+    if(r.ok){setNotesSaved(true);setTimeout(()=>setNotesSaved(false),2000)}
   },[notes,lessonId,userId])
 
   const addMat = useCallback(async()=>{
@@ -188,6 +200,28 @@ export function LessonRoomClient({
     await fetch("/api/lesson/materials",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,title:matTitle.trim(),content:matContent.trim(),fileUrl:matLink.trim()||null})})
     setMatTitle("");setMatContent("");setMatLink("");loadMats()
   },[matTitle,matContent,matLink,lessonId,userId,loadMats])
+
+  // Homework
+  const loadHw = useCallback(async()=>{
+    try{const r=await fetch(`/api/lesson/homework?lessonId=${lessonId}&studentId=${studentId||userId}`);if(r.ok)setHomework(await r.json())}catch{}
+  },[lessonId,studentId,userId])
+  useEffect(()=>{loadHw()},[loadHw])
+
+  const addHw = useCallback(async()=>{
+    if(!hwTitle.trim())return
+    await fetch("/api/lesson/homework",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({lessonId,teacherId:userId,studentId,title:hwTitle.trim(),description:hwDesc.trim()})})
+    setHwTitle("");setHwDesc("");setHwOpen(false);loadHw()
+  },[hwTitle,hwDesc,lessonId,userId,studentId,loadHw])
+
+  // File upload
+  const uploadFile = useCallback(async(file:File)=>{
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("file",file);fd.append("lessonId",lessonId);fd.append("userId",userId);fd.append("title",file.name)
+    await fetch("/api/lesson/upload",{method:"POST",body:fd})
+    setUploading(false);loadMats()
+  },[lessonId,userId,loadMats])
 
   const toggleMic=()=>{jitsiApi.current?.executeCommand("toggleAudio");setMicOn(v=>!v)}
   const toggleCam=()=>{jitsiApi.current?.executeCommand("toggleVideo");setCamOn(v=>!v)}
@@ -305,7 +339,13 @@ export function LessonRoomClient({
                         <input type="text" value={matTitle} onChange={e=>setMatTitle(e.target.value)} placeholder="Название..." style={{borderRadius:12}}/>
                         <input type="text" value={matContent} onChange={e=>setMatContent(e.target.value)} placeholder="Описание..." style={{borderRadius:12}}/>
                         <input type="url" value={matLink} onChange={e=>setMatLink(e.target.value)} placeholder="Ссылка (необязательно)..." style={{borderRadius:12}}/>
-                        <button onClick={addMat} className="sb" style={{width:"100%",borderRadius:999,height:"auto",padding:"10px 0",fontSize:13,fontWeight:600}}>Добавить</button>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={addMat} className="sb" style={{flex:1,borderRadius:999,height:"auto",padding:"10px 0",fontSize:13,fontWeight:600}}>Добавить</button>
+                          <label style={{flex:1,borderRadius:999,height:"auto",padding:"10px 0",fontSize:13,fontWeight:600,background:"var(--bg)",color:"var(--text)",textAlign:"center",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                            {uploading?"Загрузка...":"📎 Файл"}
+                            <input type="file" accept=".pdf,.doc,.docx,.txt,.mp3,.wav,.ogg,.jpg,.png,.pptx,.xlsx" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadFile(f);e.target.value=""}} disabled={uploading}/>
+                          </label>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -314,7 +354,7 @@ export function LessonRoomClient({
                 {tab==="notes"&&(
                   <div className="notes-area">
                     <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={saveNotes} placeholder="Ваши заметки..."/>
-                    <div className="ns"><button onClick={saveNotes}>Сохранить</button></div>
+                    <div className="ns"><button onClick={saveNotes} style={notesSaved?{background:"var(--lime)",color:"var(--black)"}:{}}>{notesSaved?"✓ Сохранено":"Сохранить"}</button></div>
                   </div>
                 )}
               </aside>
@@ -323,13 +363,13 @@ export function LessonRoomClient({
 
           {/* Bottom bar */}
           <div className="lesson-bottom">
-            <div className="bb-card">
+            <div className="bb-card" onClick={()=>setHwOpen(!hwOpen)}>
               <div className="bb-icon lime">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               </div>
               <div>
                 <div className="title">Домашнее задание</div>
-                <div className="sub">Будет назначено после урока</div>
+                <div className="sub">{homework.length > 0 ? `${homework.length} задание(й)` : isTeacher ? "Нажмите чтобы назначить" : "Пока не назначено"}</div>
               </div>
             </div>
             <div className="bb-card" onClick={()=>{setTab("materials");setSidebarOn(true)}}>
@@ -353,6 +393,49 @@ export function LessonRoomClient({
           </div>
         </div>
       </div>
+
+      {/* Homework panel */}
+      {hwOpen && (
+        <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.4)"}} onClick={()=>setHwOpen(false)}>
+          <div style={{background:"var(--surface)",borderRadius:20,padding:32,width:"100%",maxWidth:480,maxHeight:"80vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontSize:20,fontWeight:800,marginBottom:20}}>Домашнее задание</h3>
+            {homework.length > 0 && (
+              <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+                {homework.map((hw:any)=>(
+                  <div key={hw.id} style={{background:"var(--bg)",borderRadius:12,padding:14}}>
+                    <div style={{fontWeight:700,fontSize:14}}>{hw.title}</div>
+                    {hw.description && <div style={{fontSize:13,color:"var(--muted)",marginTop:4,whiteSpace:"pre-wrap"}}>{hw.description}</div>}
+                    <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>
+                      Срок: {new Date(hw.due_date).toLocaleDateString("ru-RU",{day:"numeric",month:"long"})} ·
+                      <span style={{color:hw.status==="pending"?"var(--red)":"#059669",fontWeight:600,marginLeft:4}}>
+                        {({pending:"Ожидает",in_progress:"В работе",submitted:"Сдано",reviewed:"Проверено",overdue:"Просрочено"} as any)[hw.status]??hw.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isTeacher && (
+              <div style={{display:"flex",flexDirection:"column",gap:10,borderTop:"1px solid var(--border)",paddingTop:16}}>
+                <div style={{fontSize:13,fontWeight:700}}>Назначить задание</div>
+                <input type="text" value={hwTitle} onChange={e=>setHwTitle(e.target.value)} placeholder="Название задания..."
+                  style={{border:"1px solid var(--border)",borderRadius:12,padding:"10px 14px",fontSize:13,outline:"none",fontFamily:"inherit"}} />
+                <textarea value={hwDesc} onChange={e=>setHwDesc(e.target.value)} placeholder="Описание задания..."
+                  style={{border:"1px solid var(--border)",borderRadius:12,padding:"10px 14px",fontSize:13,outline:"none",fontFamily:"inherit",resize:"none",height:80}} />
+                <button onClick={addHw} style={{background:"var(--black)",color:"#fff",borderRadius:999,padding:"10px 0",fontSize:13,fontWeight:600,border:"none",cursor:"pointer"}}>
+                  Назначить
+                </button>
+              </div>
+            )}
+            {!isTeacher && homework.length===0 && (
+              <div style={{textAlign:"center",color:"var(--muted)",padding:"20px 0"}}>Преподаватель пока не назначил задание</div>
+            )}
+            <button onClick={()=>setHwOpen(false)} style={{marginTop:16,width:"100%",background:"var(--bg)",borderRadius:999,padding:"10px 0",fontSize:13,fontWeight:600,border:"none",cursor:"pointer"}}>
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -79,6 +79,7 @@ export default async function StudentLessonPage({
       lessonNumber={lessonNumber}
       studentLevel={studentLevel}
       nextLessonAt={nextLessons?.[0]?.scheduled_at ?? null}
+      studentId={user.id}
     />
   )
 }
