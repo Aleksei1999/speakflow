@@ -110,7 +110,8 @@ export function LessonRoomClient({
   const [tab, setTab] = useState<"chat"|"materials"|"notes">("chat")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [newMsg, setNewMsg] = useState("")
-  const [notes, setNotes] = useState("")
+  const [notesList, setNotesList] = useState<{id:string;content:string;created_at:string}[]>([])
+  const [noteInput, setNoteInput] = useState("")
   const [materials, setMaterials] = useState<Material[]>([])
   const [matTitle, setMatTitle] = useState("")
   const [matContent, setMatContent] = useState("")
@@ -121,7 +122,6 @@ export function LessonRoomClient({
   const [hwDesc, setHwDesc] = useState("")
   const [hwOpen, setHwOpen] = useState(false)
   const [remaining, setRemaining] = useState(0)
-  const [notesSaved, setNotesSaved] = useState(false)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [screenOn, setScreenOn] = useState(false)
@@ -177,12 +177,13 @@ export function LessonRoomClient({
   useEffect(()=>{loadMessages();pollRef.current=setInterval(loadMessages,3000);return()=>clearInterval(pollRef.current)},[loadMessages])
   useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages])
 
-  // Notes — load on mount and when tab switches
+  // Notes — load as list
+  const notesEndRef = useRef<HTMLDivElement>(null)
   const loadNotes = useCallback(async()=>{
-    try{const r=await fetch(`/api/lesson/notes?lessonId=${lessonId}&userId=${userId}`);if(r.ok){const d=await r.json();setNotes(d.content??"")}}catch{}
+    try{const r=await fetch(`/api/lesson/notes?lessonId=${lessonId}&userId=${userId}`);if(r.ok)setNotesList(await r.json())}catch{}
   },[lessonId,userId])
   useEffect(()=>{loadNotes()},[loadNotes])
-  useEffect(()=>{if(tab==="notes")loadNotes()},[tab])
+  useEffect(()=>{notesEndRef.current?.scrollIntoView({behavior:"smooth"})},[notesList])
 
   // Materials
   const loadMats = useCallback(async()=>{try{const r=await fetch(`/api/lesson/materials?lessonId=${lessonId}`);if(r.ok)setMaterials(await r.json())}catch{}},[lessonId])
@@ -194,10 +195,11 @@ export function LessonRoomClient({
     await fetch("/api/lesson/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,message:t})})
   },[newMsg,lessonId,userId])
 
-  const saveNotes = useCallback(async()=>{
-    const r = await fetch("/api/lesson/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,content:notes})})
-    if(r.ok){setNotesSaved(true);setTimeout(()=>setNotesSaved(false),2000)}
-  },[notes,lessonId,userId])
+  const sendNote = useCallback(async()=>{
+    if(!noteInput.trim())return;const t=noteInput.trim();setNoteInput("")
+    setNotesList(p=>[...p,{id:Date.now().toString(),content:t,created_at:new Date().toISOString()}])
+    await fetch("/api/lesson/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,content:t})})
+  },[noteInput,lessonId,userId])
 
   const addMat = useCallback(async()=>{
     if(!matTitle.trim())return
@@ -356,9 +358,26 @@ export function LessonRoomClient({
                 )}
 
                 {tab==="notes"&&(
-                  <div className="notes-area">
-                    <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={saveNotes} placeholder="Ваши заметки..."/>
-                    <div className="ns"><button onClick={saveNotes} style={notesSaved?{background:"var(--lime)",color:"var(--black)"}:{}}>{notesSaved?"✓ Сохранено":"Сохранить"}</button></div>
+                  <div className="lc">
+                    <div className="cms">
+                      {notesList.length===0&&<div style={{color:"var(--muted)",textAlign:"center",padding:"40px 0",fontSize:13}}>Напишите заметку...</div>}
+                      {notesList.map(n=>(
+                        <div key={n.id} className="cm me">
+                          <div className="ma">{myInitials}</div>
+                          <div className="mb">
+                            <div className="au">Вы</div>
+                            <div className="tx">{n.content}</div>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={notesEndRef}/>
+                    </div>
+                    <div className="ci">
+                      <input type="text" value={noteInput} onChange={e=>setNoteInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendNote()} placeholder="Написать заметку..." autoComplete="off"/>
+                      <button className="sb" onClick={sendNote}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                      </button>
+                    </div>
                   </div>
                 )}
               </aside>
