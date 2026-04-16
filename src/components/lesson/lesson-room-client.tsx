@@ -30,11 +30,10 @@ const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
 .lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;height:100vh;background:var(--bg);overflow:hidden;margin:-60px;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .lr *{box-sizing:border-box}.lr a{color:inherit;text-decoration:none}.lr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.lr .lh{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
-.lr .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
-.lr .logo .mark{width:34px;height:34px;background:var(--red);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;font-style:italic;font-family:Georgia,serif;transform:rotate(-8deg)}
-.lr .li{display:flex;align-items:center;gap:20px}
-.lr .li .title{color:#A0A09A;font-size:14px}.lr .li .title strong{color:#fff;font-weight:600;margin-left:4px}
+.lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
+.lr .lh-side{display:flex;align-items:center}.lr .lh-right{justify-content:flex-end}
+.lr .lh-center{display:flex;align-items:center;justify-content:center}
+.lr .lh-center .title{color:#A0A09A;font-size:14px}.lr .lh-center .title strong{color:#fff;font-weight:600;margin-left:4px}
 .lr .tmr{background:var(--lime);color:var(--black);padding:8px 16px;border-radius:999px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .lr .tmr .dot{width:7px;height:7px;background:var(--black);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -43,6 +42,7 @@ const CSS = `
 .lr .lm{flex:1;display:flex;flex-direction:column;gap:14px;padding:16px;overflow:hidden}
 .lr .lesson-stats{display:grid;grid-template-columns:repeat(3,1fr) 1.3fr;gap:12px;flex-shrink:0}
 .lr .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.lr .stat .stat-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .lr .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
 .lr .stat .value{font-size:28px;font-weight:800;margin-top:6px;letter-spacing:-0.5px}
 .lr .stat .value small{font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
@@ -99,7 +99,7 @@ const CSS = `
 .lr .bb-card .title{font-weight:700;font-size:13px}.lr .bb-card .sub{font-size:11px;color:var(--muted);margin-top:2px}
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.lr .lh{padding:12px 14px;flex-wrap:wrap;gap:10px}.lr .li{order:3;width:100%;justify-content:space-between}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
+@media(max-width:640px){.lr .lh{padding:12px 14px;grid-template-columns:1fr auto;gap:10px}.lr .lh-left{display:none}.lr .lh-center{justify-content:flex-start}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
 `
 
 export function LessonRoomClient({
@@ -241,18 +241,21 @@ export function LessonRoomClient({
       <div className="lr">
         {/* Header */}
         <header className="lh">
-          <div className="li">
+          <div className="lh-side lh-left" />
+          <div className="lh-center">
             <span className="title">Урок с <strong>{teacherName}</strong></span>
-            <div className="tmr"><span className="dot"/><span>{mm}:{ss}</span></div>
           </div>
-          <div><button className="btn-exit" onClick={handleEnd}>Выйти из урока</button></div>
+          <div className="lh-side lh-right"><button className="btn-exit" onClick={handleEnd}>Выйти из урока</button></div>
         </header>
 
         <div className="lm">
           {/* Stats bar */}
           <div className="lesson-stats">
-            <div className="stat">
-              <div className="label">Длительность</div>
+            <div className="stat stat-duration">
+              <div className="stat-top">
+                <div className="label">Длительность</div>
+                <div className="tmr"><span className="dot"/><span>{mm}:{ss}</span></div>
+              </div>
               <div className="value">{durationMinutes}<small>/мин</small></div>
             </div>
             <div className="stat stat-dark">
