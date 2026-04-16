@@ -54,7 +54,8 @@ const CSS = `
 .lr .rating{background:var(--lime);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700}
 .lr .lb{flex:1;display:grid;grid-template-columns:1fr 400px;gap:16px;min-height:0;transition:grid-template-columns .2s ease}
 .lr .lb.no-sidebar{grid-template-columns:1fr}
-.lr .va{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.lr .stage{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
+.lr .va{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0}
 .lr .vm{position:relative;flex:1;background:#1a1a1a;border-radius:12px;overflow:hidden;min-height:0}
 .lr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .lr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
@@ -96,7 +97,7 @@ const CSS = `
 .lr .bb-icon.lime{background:var(--lime);color:var(--black)}.lr .bb-icon.red{background:var(--red);color:#fff}
 .lr .bb-icon svg{width:18px;height:18px}
 .lr .bb-card .title{font-weight:700;font-size:13px}.lr .bb-card .sub{font-size:11px;color:var(--muted);margin-top:2px}
-@media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px}.lr .lesson-bottom{grid-template-columns:1fr}}
+@media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.lr .lh{padding:12px 14px;flex-wrap:wrap;gap:10px}.lr .li{order:3;width:100%;justify-content:space-between}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
 `
@@ -274,6 +275,7 @@ export function LessonRoomClient({
 
           {/* Body */}
           <div className={`lb ${sidebarOn?"":"no-sidebar"}`}>
+            <div className="stage">
             <div className="va">
               <div className="vm">
                 <div ref={jitsiRef} style={{width:"100%",height:"100%"}} />
@@ -297,6 +299,38 @@ export function LessonRoomClient({
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 </button>
               </div>
+            </div>
+
+            {/* Bottom bar — only under video column */}
+            <div className="lesson-bottom">
+              <div className="bb-card" onClick={()=>setHwOpen(!hwOpen)}>
+                <div className="bb-icon lime">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div>
+                  <div className="title">Домашнее задание</div>
+                  <div className="sub">{homework.length > 0 ? `${homework.length} задание(й)` : isTeacher ? "Нажмите чтобы назначить" : "Пока не назначено"}</div>
+                </div>
+              </div>
+              <div className="bb-card" onClick={()=>{setTab("materials");setSidebarOn(true)}}>
+                <div className="bb-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div>
+                  <div className="title">Материалы урока</div>
+                  <div className="sub">{materials.length} файл(ов)</div>
+                </div>
+              </div>
+              <div className="bb-card dark">
+                <div className="bb-icon red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <div className="title">Следующий урок</div>
+                  <div className="sub">{nextLessonAt ? new Date(nextLessonAt).toLocaleDateString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "Нет запланированных"}</div>
+                </div>
+              </div>
+            </div>
             </div>
 
             {sidebarOn && (
@@ -381,37 +415,6 @@ export function LessonRoomClient({
                 )}
               </aside>
             )}
-          </div>
-
-          {/* Bottom bar */}
-          <div className="lesson-bottom">
-            <div className="bb-card" onClick={()=>setHwOpen(!hwOpen)}>
-              <div className="bb-icon lime">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-              </div>
-              <div>
-                <div className="title">Домашнее задание</div>
-                <div className="sub">{homework.length > 0 ? `${homework.length} задание(й)` : isTeacher ? "Нажмите чтобы назначить" : "Пока не назначено"}</div>
-              </div>
-            </div>
-            <div className="bb-card" onClick={()=>{setTab("materials");setSidebarOn(true)}}>
-              <div className="bb-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </div>
-              <div>
-                <div className="title">Материалы урока</div>
-                <div className="sub">{materials.length} файл(ов)</div>
-              </div>
-            </div>
-            <div className="bb-card dark">
-              <div className="bb-icon red">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div>
-                <div className="title">Следующий урок</div>
-                <div className="sub">{nextLessonAt ? new Date(nextLessonAt).toLocaleDateString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "Нет запланированных"}</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
