@@ -36,17 +36,6 @@ const SIDEBAR_CSS = `
 
 .dash .nav-section-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 14px 6px}
 
-.dash .sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
-.dash .theme-toggle{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-size:12px;font-weight:600;color:var(--text);transition:all .15s ease}
-.dash .theme-toggle:hover{border-color:var(--text)}
-.dash .theme-toggle .sun{display:none}.dash .theme-toggle .moon{display:block}
-[data-theme="dark"] .dash .theme-toggle .sun{display:block}
-[data-theme="dark"] .dash .theme-toggle .moon{display:none}
-[data-theme="dark"] .dash .theme-toggle .label-light{display:none}
-[data-theme="light"] .dash .theme-toggle .label-dark{display:none}
-.dash .theme-toggle svg{width:16px;height:16px}
-.dash .status-online{display:flex;align-items:center;gap:8px;padding:0 4px;font-size:11px;color:var(--muted)}
-.dash .status-online .dot{width:6px;height:6px;background:#22c55e;border-radius:50%}
 
 .dash .main-content{padding:60px;background:var(--bg);min-height:100vh;overflow-y:auto}
 
@@ -106,8 +95,6 @@ const icons = {
   profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09c-.658.003-1.25.396-1.51 1z"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
-  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
-  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
 }
 
 const studentNav = [
@@ -159,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const currentRole = role ?? "student"
   const navItems = currentRole === "teacher" ? teacherNav : studentNav
   const bottomItems = currentRole === "teacher" ? teacherBottom : studentBottom
-  const fullName = profile?.full_name ?? "Пользователь"
+  const fullName = profile?.full_name ?? ""
   const initials = fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
   const roleLabel = currentRole === "teacher" ? "Преподаватель" : "Ученик"
 
@@ -167,11 +154,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/")
-  }
-
-  const toggleTheme = () => {
-    const current = document.documentElement.getAttribute("data-theme")
-    document.documentElement.setAttribute("data-theme", current === "dark" ? "light" : "dark")
   }
 
   return (
@@ -185,14 +167,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Profile card */}
           <div className="profile-card">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={fullName} style={{width:72,height:72,borderRadius:"50%",border:"3px solid var(--lime)",objectFit:"cover",margin:"0 auto 10px"}} />
+            {isLoading ? (
+              <>
+                <div className="photo" style={{background:"var(--border)",color:"transparent"}}>·</div>
+                <div className="pname" style={{background:"var(--border)",color:"transparent",borderRadius:6,height:18,width:"60%",margin:"0 auto"}}>.</div>
+                <div className="prole" style={{background:"var(--border)",color:"transparent",borderRadius:4,height:12,width:"40%",margin:"6px auto 0"}}>.</div>
+              </>
             ) : (
-              <div className="photo">{initials}</div>
+              <>
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={fullName} style={{width:72,height:72,borderRadius:"50%",border:"3px solid var(--lime)",objectFit:"cover",margin:"0 auto 10px"}} />
+                ) : (
+                  <div className="photo">{initials || "?"}</div>
+                )}
+                <div className="pname">{fullName || "Пользователь"}</div>
+                <div className="prole">{roleLabel}</div>
+                <div className="meta">● Online</div>
+              </>
             )}
-            <div className="pname">{fullName}</div>
-            <div className="prole">{roleLabel}</div>
-            <div className="meta">● Online</div>
           </div>
 
           {/* Main nav */}
@@ -230,15 +222,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </li>
           </ul>
 
-          {/* Footer: theme toggle */}
-          <div className="sidebar-footer">
-            <button className="theme-toggle" onClick={toggleTheme}>
-              <span className="moon" dangerouslySetInnerHTML={{ __html: icons.moon }} />
-              <span className="sun" dangerouslySetInnerHTML={{ __html: icons.sun }} />
-              <span className="label-light">Тёмная тема</span>
-              <span className="label-dark">Светлая тема</span>
-            </button>
-          </div>
         </aside>
 
         <main className="main-content">

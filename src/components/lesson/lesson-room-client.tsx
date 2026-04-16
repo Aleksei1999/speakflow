@@ -240,7 +240,6 @@ export function LessonRoomClient({
       <div className="lr">
         {/* Header */}
         <header className="lh">
-          <a href="/" className="logo"><span className="mark">R</span><span>Raw English</span></a>
           <div className="li">
             <span className="title">Урок с <strong>{teacherName}</strong></span>
             <div className="tmr"><span className="dot"/><span>{mm}:{ss}</span></div>
