@@ -162,8 +162,8 @@ export function LessonRoomClient({
       jitsiApi.current = new window.JitsiMeetExternalAPI(jitsiDomain, {
         roomName: jitsiRoom, parentNode: jitsiRef.current, width:"100%", height:"100%",
         ...(jitsiToken?{jwt:jitsiToken}:{}),
-        configOverwrite:{prejoinPageEnabled:false,disableDeepLinking:true,hideConferenceSubject:true,disableInviteFunctions:true,toolbarButtons:[],notifications:[],disableThirdPartyRequests:true},
-        interfaceConfigOverwrite:{SHOW_JITSI_WATERMARK:false,SHOW_WATERMARK_FOR_GUESTS:false,TOOLBAR_ALWAYS_VISIBLE:false,MOBILE_APP_PROMO:false,HIDE_INVITE_MORE_HEADER:true,DISABLE_FOCUS_INDICATOR:true},
+        configOverwrite:{prejoinPageEnabled:false,disableDeepLinking:true,hideConferenceSubject:true,disableInviteFunctions:true,toolbarButtons:[],notifications:[],disableThirdPartyRequests:true,hideConferenceTimer:true,hideParticipantsStats:true,filmstrip:{disabled:true},toolbarConfig:{timeout:0,initialTimeout:0}},
+        interfaceConfigOverwrite:{SHOW_JITSI_WATERMARK:false,SHOW_WATERMARK_FOR_GUESTS:false,TOOLBAR_ALWAYS_VISIBLE:false,MOBILE_APP_PROMO:false,HIDE_INVITE_MORE_HEADER:true,DISABLE_FOCUS_INDICATOR:true,FILM_STRIP_MAX_HEIGHT:0,VERTICAL_FILMSTRIP:false,TOOLBAR_TIMEOUT:0},
         userInfo:{displayName:userName},
       })
     }
