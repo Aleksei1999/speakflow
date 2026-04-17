@@ -18,7 +18,7 @@ export function JitsiRoom({
   token,
   displayName,
 }: JitsiRoomProps) {
-  const jitsiDomain = domain || 'meet.jit.si'
+  const jitsiDomain = domain || 'meet.raw-english.com'
 
   const iframeSrc = useMemo(() => {
     const params = new URLSearchParams({

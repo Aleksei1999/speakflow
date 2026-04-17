@@ -2,6 +2,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LessonRoomClient } from '@/components/lesson/lesson-room-client'
+import { JITSI_CONFIG } from '@/lib/jitsi/config'
+import { generateJitsiToken } from '@/lib/jitsi/jwt'
 
 export default async function StudentLessonPage({
   params,
@@ -64,6 +66,18 @@ export default async function StudentLessonPage({
   const lessonNumber = (completedRes.count ?? 0) + 1
   const studentLevel = progressRes.data?.english_level ?? '—'
 
+  const roomName = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
+  let jitsiToken = ''
+  try {
+    jitsiToken = await generateJitsiToken(roomName, {
+      id: user.id,
+      name: profileRes.data?.full_name ?? 'Ученик',
+      email: user.email ?? '',
+      avatarUrl: null,
+      isModerator: false,
+    })
+  } catch {}
+
   return (
     <LessonRoomClient
       lessonId={lesson.id}
@@ -73,9 +87,9 @@ export default async function StudentLessonPage({
       userName={profileRes.data?.full_name ?? 'Ученик'}
       teacherName={teacherName}
       teacherRating={teacherRating}
-      jitsiDomain="meet.jit.si"
-      jitsiToken=""
-      jitsiRoom={lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`}
+      jitsiDomain={JITSI_CONFIG.domain}
+      jitsiToken={jitsiToken}
+      jitsiRoom={roomName}
       lessonNumber={lessonNumber}
       studentLevel={studentLevel}
       nextLessonAt={nextLessons?.[0]?.scheduled_at ?? null}
