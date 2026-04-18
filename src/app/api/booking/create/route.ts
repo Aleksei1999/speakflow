@@ -82,10 +82,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify teacher exists and is active
+    // Verify teacher exists and is active.
+    // Client passes auth user_id; resolve to teacher_profiles.id for FK columns.
     const { data: teacherProfile, error: teacherError } = await supabase
       .from('teacher_profiles')
-      .select('hourly_rate, trial_rate, is_listed, is_verified')
+      .select('id, hourly_rate, trial_rate, is_listed, is_verified')
       .eq('user_id', teacherId)
       .single()
 
@@ -103,11 +104,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call is_slot_available() to prevent double-booking (atomic check)
+    const teacherProfileId = teacherProfile.id
+
+    // Call is_slot_available() to prevent double-booking (atomic check).
+    // p_teacher_id expects teacher_profiles.id (matches lessons.teacher_id FK).
     const { data: isAvailable, error: slotError } = await supabase.rpc(
       'is_slot_available',
       {
-        p_teacher_id: teacherId,
+        p_teacher_id: teacherProfileId,
         p_scheduled_at: scheduledAt,
         p_duration: durationMinutes,
       }
@@ -140,7 +144,7 @@ export async function POST(request: NextRequest) {
         .from('lessons')
         .select('id', { count: 'exact', head: true })
         .eq('student_id', user.id)
-        .eq('teacher_id', teacherId)
+        .eq('teacher_id', teacherProfileId)
         .in('status', ['booked', 'completed', 'in_progress'])
 
       if (previousLessons === 0) {
@@ -161,7 +165,7 @@ export async function POST(request: NextRequest) {
       .from('lessons')
       .insert({
         student_id: user.id,
-        teacher_id: teacherId,
+        teacher_id: teacherProfileId,
         scheduled_at: scheduledAt,
         duration_minutes: durationMinutes,
         status: 'pending_payment',

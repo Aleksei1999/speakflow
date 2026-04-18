@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import {
   format,
   startOfWeek,
@@ -22,6 +22,7 @@ import {
   Save,
   Ban,
   Loader2,
+  UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -30,15 +31,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
+import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
 
 interface LessonSlot {
   id: string
@@ -117,29 +128,74 @@ export default function TeacherSchedulePage() {
   )
 }
 
+interface StudentOption {
+  id: string
+  full_name: string
+  email: string
+  avatar_url: string | null
+}
+
 function WeekSchedule() {
-  const { user } = useUser()
+  const { user, isLoading: userLoading, error: userError } = useUser()
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [lessons, setLessons] = useState<LessonSlot[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [teacherProfileId, setTeacherProfileId] = useState<string | null>(null)
+  const [hourlyRate, setHourlyRate] = useState<number>(0)
+  const [myStudents, setMyStudents] = useState<StudentOption[]>([])
+
+  // Assign-dialog state
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignDate, setAssignDate] = useState<Date | null>(null)
+  const [assignTime, setAssignTime] = useState<string>("09:00")
+  const [assignDuration, setAssignDuration] = useState<25 | 50>(50)
+  const [assignStudentId, setAssignStudentId] = useState<string>("")
+  const [assignSearchQuery, setAssignSearchQuery] = useState<string>("")
+  const [assignSearchResults, setAssignSearchResults] = useState<StudentOption[]>([])
+  const [assignIsSubmitting, setAssignIsSubmitting] = useState(false)
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
 
   const fetchLessons = useCallback(async () => {
-    if (!user) return
+    if (userLoading) return
+    if (!user) {
+      const msg = userError
+        ? `Ошибка авторизации: ${userError}`
+        : "Не удалось определить пользователя. Перезайдите в систему."
+      console.error("useUser error:", userError)
+      setLoadError(msg)
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
+    setLoadError(null)
     const supabase = createClient()
 
     // Get teacher_profile id first
-    const { data: tp } = await supabase
+    const { data: tp, error: tpError } = await supabase
       .from("teacher_profiles")
-      .select("id")
+      .select("id, hourly_rate")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
-    if (!tp) { setIsLoading(false); return }
+    if (tpError) {
+      console.error("teacher_profiles fetch error:", tpError)
+      setLoadError(`Не удалось загрузить профиль преподавателя: ${tpError.message}`)
+      setIsLoading(false)
+      return
+    }
+
+    if (!tp) {
+      setLoadError("Профиль преподавателя не найден. Обратитесь к администратору.")
+      setIsLoading(false)
+      return
+    }
+
+    setTeacherProfileId(tp.id)
+    setHourlyRate(tp.hourly_rate ?? 0)
 
     const { data, error } = await supabase
       .from("lessons")
@@ -149,23 +205,146 @@ function WeekSchedule() {
       .lte("scheduled_at", weekEnd.toISOString())
       .order("scheduled_at", { ascending: true })
 
+    if (error) {
+      console.error("lessons fetch error:", error)
+      setLoadError(`Ошибка загрузки расписания: ${error.message}`)
+      setIsLoading(false)
+      return
+    }
+
     if (!error && data) {
+      // Collect unique student_ids
+      const studentIds = Array.from(
+        new Set(data.map((l: any) => l.student_id).filter(Boolean))
+      ) as string[]
+
+      const studentMap = new Map<
+        string,
+        { full_name: string; avatar_url: string | null }
+      >()
+
+      if (studentIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .in("id", studentIds)
+
+        if (profiles) {
+          for (const p of profiles as any[]) {
+            studentMap.set(p.id, {
+              full_name: p.full_name,
+              avatar_url: p.avatar_url,
+            })
+          }
+        }
+      }
+
       setLessons(
         data.map((l: any) => ({
           id: l.id,
           scheduled_at: l.scheduled_at,
           duration_minutes: l.duration_minutes,
           status: l.status,
-          student: null,
+          student: l.student_id ? studentMap.get(l.student_id) ?? null : null,
         }))
       )
     }
     setIsLoading(false)
-  }, [user, weekStart.toISOString(), weekEnd.toISOString()])
+  }, [user, userLoading, userError, weekStart.toISOString(), weekEnd.toISOString()])
 
   useEffect(() => {
     fetchLessons()
   }, [fetchLessons])
+
+  // Realtime: refetch when any of this teacher's lessons change
+  // (student bookings, cancellations, payment status, etc.).
+  useLessonsRealtime({
+    teacherId: teacherProfileId,
+    onChange: () => fetchLessons(),
+  })
+
+  // Load "my students" — distinct student_ids from past lessons of this teacher
+  const fetchMyStudents = useCallback(async () => {
+    if (!teacherProfileId) return
+    const supabase = createClient()
+    const { data: pastLessons } = await supabase
+      .from("lessons")
+      .select("student_id")
+      .eq("teacher_id", teacherProfileId)
+
+    const ids = Array.from(
+      new Set((pastLessons ?? []).map((l: any) => l.student_id).filter(Boolean))
+    ) as string[]
+
+    if (ids.length === 0) {
+      setMyStudents([])
+      return
+    }
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, avatar_url")
+      .in("id", ids)
+
+    setMyStudents(
+      ((profiles ?? []) as any[]).map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        email: p.email,
+        avatar_url: p.avatar_url,
+      }))
+    )
+  }, [teacherProfileId])
+
+  useEffect(() => {
+    fetchMyStudents()
+  }, [fetchMyStudents])
+
+  // Search students by email/name across all profiles (role='student')
+  useEffect(() => {
+    const q = assignSearchQuery.trim()
+    if (q.length < 2) {
+      setAssignSearchResults([])
+      return
+    }
+    const supabase = createClient()
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .eq("role", "student")
+        .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+        .limit(10)
+      if (!cancelled) {
+        setAssignSearchResults(
+          ((data ?? []) as any[]).map((p) => ({
+            id: p.id,
+            full_name: p.full_name,
+            email: p.email,
+            avatar_url: p.avatar_url,
+          }))
+        )
+      }
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [assignSearchQuery])
+
+  const studentOptions = useMemo<StudentOption[]>(() => {
+    const map = new Map<string, StudentOption>()
+    for (const s of myStudents) map.set(s.id, s)
+    for (const s of assignSearchResults) if (!map.has(s.id)) map.set(s.id, s)
+    return Array.from(map.values())
+  }, [myStudents, assignSearchResults])
+
+  const estimatedPriceKopeks = useMemo(() => {
+    return Math.round((hourlyRate * assignDuration) / 60)
+  }, [hourlyRate, assignDuration])
+
+  const estimatedPriceRub = Math.round(estimatedPriceKopeks / 100)
 
   function getLessonsForDayAndHour(day: Date, hour: number): LessonSlot[] {
     return lessons.filter((l) => {
@@ -174,7 +353,78 @@ function WeekSchedule() {
     })
   }
 
+  function openAssignDialog(day: Date, hour: number) {
+    setAssignDate(day)
+    setAssignTime(`${hour.toString().padStart(2, "0")}:00`)
+    setAssignDuration(50)
+    setAssignStudentId("")
+    setAssignSearchQuery("")
+    setAssignSearchResults([])
+    setAssignOpen(true)
+  }
+
+  function buildScheduledAt(): Date | null {
+    if (!assignDate) return null
+    const [hh, mm] = assignTime.split(":").map((s) => parseInt(s, 10))
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null
+    const d = new Date(assignDate)
+    d.setHours(hh, mm, 0, 0)
+    return d
+  }
+
+  async function handleAssignSubmit() {
+    if (!assignStudentId) {
+      toast.error("Выберите ученика")
+      return
+    }
+    const scheduledAt = buildScheduledAt()
+    if (!scheduledAt) {
+      toast.error("Некорректное время урока")
+      return
+    }
+    if (scheduledAt.getTime() < Date.now()) {
+      toast.error("Нельзя назначать урок в прошлом")
+      return
+    }
+
+    setAssignIsSubmitting(true)
+    try {
+      const res = await fetch("/api/booking/teacher-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: assignStudentId,
+          scheduledAt: scheduledAt.toISOString(),
+          durationMinutes: assignDuration,
+        }),
+      })
+
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}))
+        toast.error(body?.error ?? "Слот занят. Выберите другое время.")
+        return
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        toast.error(body?.error ?? `Ошибка ${res.status}`)
+        return
+      }
+
+      toast.success(
+        "Урок назначен. Ученику отправлено уведомление об оплате."
+      )
+      setAssignOpen(false)
+      await fetchLessons()
+    } catch (e: any) {
+      toast.error("Ошибка сети: " + (e?.message ?? ""))
+    } finally {
+      setAssignIsSubmitting(false)
+    }
+  }
+
   return (
+    <>
     <Card className="mt-4">
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
@@ -209,7 +459,14 @@ function WeekSchedule() {
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
-        {isLoading ? (
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 px-6">
+            <p className="text-center text-sm text-destructive">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={() => fetchLessons()}>
+              Повторить
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
@@ -255,11 +512,42 @@ function WeekSchedule() {
                 {weekDays.map((day, dayIdx) => {
                   const dayLessons = getLessonsForDayAndHour(day, hour)
                   const isToday = isSameDay(day, new Date())
+                  const cellDate = new Date(day)
+                  cellDate.setHours(hour, 0, 0, 0)
+                  const isPast = cellDate.getTime() < Date.now()
+                  const isEmpty = dayLessons.length === 0
+                  const isClickable = isEmpty && !isPast
                   return (
                     <div
                       key={dayIdx}
-                      className={`min-h-[50px] border-l p-0.5 ${
+                      onClick={
+                        isClickable
+                          ? () => openAssignDialog(day, hour)
+                          : undefined
+                      }
+                      onKeyDown={
+                        isClickable
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault()
+                                openAssignDialog(day, hour)
+                              }
+                            }
+                          : undefined
+                      }
+                      role={isClickable ? "button" : undefined}
+                      tabIndex={isClickable ? 0 : undefined}
+                      aria-label={
+                        isClickable
+                          ? `Назначить урок ${format(day, "d MMMM", { locale: ru })} в ${hour.toString().padStart(2, "0")}:00`
+                          : undefined
+                      }
+                      className={`group relative min-h-[50px] border-l p-0.5 transition-colors ${
                         isToday ? "bg-[#CC3A3A]/[0.02]" : ""
+                      } ${isPast && isEmpty ? "bg-muted/30" : ""} ${
+                        isClickable
+                          ? "cursor-pointer hover:bg-[#CC3A3A]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CC3A3A]/40"
+                          : ""
                       }`}
                     >
                       {dayLessons.map((lesson) => (
@@ -293,6 +581,11 @@ function WeekSchedule() {
                           </div>
                         </div>
                       ))}
+                      {isClickable && (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                          <Plus className="size-4 text-[#CC3A3A]/70" />
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -302,11 +595,142 @@ function WeekSchedule() {
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="size-4 text-[#CC3A3A]" />
+            Назначить урок
+          </DialogTitle>
+          <DialogDescription>
+            {assignDate
+              ? format(assignDate, "EEEE, d MMMM yyyy", { locale: ru })
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Student select + search */}
+          <div className="space-y-1.5">
+            <Label htmlFor="assign-student">Ученик</Label>
+            <Input
+              id="assign-student-search"
+              placeholder="Поиск по имени или email"
+              value={assignSearchQuery}
+              onChange={(e) => setAssignSearchQuery(e.target.value)}
+              className="mb-2"
+            />
+            <Select
+              value={assignStudentId}
+              onValueChange={(v) => setAssignStudentId(v)}
+            >
+              <SelectTrigger id="assign-student" className="w-full">
+                <SelectValue placeholder="Выберите ученика" />
+              </SelectTrigger>
+              <SelectContent>
+                {studentOptions.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {assignSearchQuery.trim().length >= 2
+                      ? "Никого не найдено"
+                      : "Введите имя или email для поиска"}
+                  </div>
+                ) : (
+                  studentOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.full_name} — {s.email}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Duration toggle */}
+          <div className="space-y-1.5">
+            <Label>Длительность</Label>
+            <div className="flex gap-2">
+              {([25, 50] as const).map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  variant={assignDuration === d ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAssignDuration(d)}
+                  style={
+                    assignDuration === d
+                      ? { backgroundColor: "#CC3A3A" }
+                      : undefined
+                  }
+                  className={
+                    assignDuration === d ? "text-white hover:opacity-90" : ""
+                  }
+                >
+                  {d} мин
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time */}
+          <div className="space-y-1.5">
+            <Label htmlFor="assign-time">Время</Label>
+            <Input
+              id="assign-time"
+              type="time"
+              value={assignTime}
+              onChange={(e) => setAssignTime(e.target.value)}
+              className="w-32"
+            />
+          </div>
+
+          {/* Price */}
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Ваша ставка за урок
+              </span>
+              <span className="text-lg font-semibold text-[#CC3A3A]">
+                {estimatedPriceRub.toLocaleString("ru-RU")} ₽
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {assignDuration} мин ·{" "}
+              {(hourlyRate / 100).toLocaleString("ru-RU")} ₽/час
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setAssignOpen(false)}
+            disabled={assignIsSubmitting}
+          >
+            Отмена
+          </Button>
+          <Button
+            onClick={handleAssignSubmit}
+            disabled={assignIsSubmitting || !assignStudentId}
+            style={{ backgroundColor: "#CC3A3A" }}
+            className="text-white hover:opacity-90"
+          >
+            {assignIsSubmitting ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <UserPlus className="size-3.5" />
+            )}
+            Назначить урок
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
 function AvailabilityEditor() {
-  const { user } = useUser()
+  const { user, isLoading: userLoading, error: userError } = useUser()
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showBlockDialog, setShowBlockDialog] = useState(false)
@@ -323,23 +747,44 @@ function AvailabilityEditor() {
   // Load existing availability from teacher_availability table
   useEffect(() => {
     async function load() {
-      if (!user) return
+      if (userLoading) return
+      if (!user) {
+        if (userError) console.error("useUser error:", userError)
+        setIsLoading(false)
+        return
+      }
       const supabase = createClient()
 
       // Get teacher_profile id
-      const { data: tp } = await supabase
+      const { data: tp, error: tpError } = await supabase
         .from("teacher_profiles")
         .select("id")
         .eq("user_id", user.id)
-        .single()
+        .maybeSingle()
 
-      if (!tp) { setIsLoading(false); return }
+      if (tpError) {
+        console.error("teacher_profiles fetch error:", tpError)
+        toast.error(`Не удалось загрузить профиль: ${tpError.message}`)
+        setIsLoading(false)
+        return
+      }
 
-      const { data: rows } = await supabase
+      if (!tp) {
+        toast.error("Профиль преподавателя не найден.")
+        setIsLoading(false)
+        return
+      }
+
+      const { data: rows, error: rowsError } = await supabase
         .from("teacher_availability")
         .select("day_of_week, start_time, end_time, is_active")
         .eq("teacher_id", tp.id)
         .order("start_time", { ascending: true })
+
+      if (rowsError) {
+        console.error("teacher_availability fetch error:", rowsError)
+        toast.error(`Ошибка загрузки доступности: ${rowsError.message}`)
+      }
 
       if (rows && rows.length > 0) {
         // Group by day_of_week (0=Sun in DB, but our UI is 0=Mon)
@@ -361,7 +806,7 @@ function AvailabilityEditor() {
     }
 
     load()
-  }, [user])
+  }, [user, userLoading, userError])
 
   function toggleDay(index: number) {
     setAvailability((prev) => {

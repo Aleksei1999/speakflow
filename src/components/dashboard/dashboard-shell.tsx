@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { Toaster } from "@/components/ui/sonner"
 
 const SIDEBAR_CSS = `
 :root,[data-theme="light"]{--red:#E63946;--lime:#D8F26A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A;--logo-text:#1E1E1E;--accent-dark:#0A0A0A}
@@ -219,6 +220,7 @@ export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
           {children}
         </main>
       </div>
+      <Toaster position="top-right" richColors />
     </>
   )
 }
