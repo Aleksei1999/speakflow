@@ -1,7 +1,7 @@
 export interface Question {
   id: string
   category: 'grammar' | 'vocabulary' | 'reading'
-  difficulty: 'A1' | 'A2' | 'B1' | 'B2' | 'C1'
+  difficulty: 'Raw' | 'Rare' | 'Medium Rare' | 'Medium' | 'Medium Well'
   question: string
   passage?: string
   options: string[]
@@ -14,7 +14,7 @@ export const questions: Question[] = [
   {
     id: 'g1',
     category: 'grammar',
-    difficulty: 'A1',
+    difficulty: 'Raw',
     question: 'She ___ to school every day.',
     options: ['go', 'goes', 'going', 'gone'],
     correctAnswer: 1,
@@ -23,7 +23,7 @@ export const questions: Question[] = [
   {
     id: 'g2',
     category: 'grammar',
-    difficulty: 'A2',
+    difficulty: 'Rare',
     question: 'I ___ my homework when my friend called.',
     options: ['did', 'was doing', 'have done', 'do'],
     correctAnswer: 1,
@@ -32,7 +32,7 @@ export const questions: Question[] = [
   {
     id: 'g3',
     category: 'grammar',
-    difficulty: 'B1',
+    difficulty: 'Medium Rare',
     question: 'If I ___ enough money, I would travel around the world.',
     options: ['have', 'had', 'will have', 'would have'],
     correctAnswer: 1,
@@ -41,7 +41,7 @@ export const questions: Question[] = [
   {
     id: 'g4',
     category: 'grammar',
-    difficulty: 'B2',
+    difficulty: 'Medium',
     question: 'Not until the meeting ended ___ the true extent of the problem.',
     options: [
       'I realized',
@@ -56,7 +56,7 @@ export const questions: Question[] = [
   {
     id: 'g5',
     category: 'grammar',
-    difficulty: 'C1',
+    difficulty: 'Medium Well',
     question:
       'Had the government acted sooner, the crisis ___ averted.',
     options: [
@@ -74,7 +74,7 @@ export const questions: Question[] = [
   {
     id: 'v1',
     category: 'vocabulary',
-    difficulty: 'A1',
+    difficulty: 'Raw',
     question: 'What is the opposite of "hot"?',
     options: ['warm', 'cold', 'cool', 'wet'],
     correctAnswer: 1,
@@ -83,7 +83,7 @@ export const questions: Question[] = [
   {
     id: 'v2',
     category: 'vocabulary',
-    difficulty: 'A2',
+    difficulty: 'Rare',
     question: 'Choose the correct word: "I need to ___ an appointment with the doctor."',
     options: ['do', 'make', 'take', 'have'],
     correctAnswer: 1,
@@ -92,7 +92,7 @@ export const questions: Question[] = [
   {
     id: 'v3',
     category: 'vocabulary',
-    difficulty: 'B1',
+    difficulty: 'Medium Rare',
     question: 'The project was a huge success ___ all the difficulties we faced.',
     options: ['although', 'despite', 'however', 'whereas'],
     correctAnswer: 1,
@@ -101,7 +101,7 @@ export const questions: Question[] = [
   {
     id: 'v4',
     category: 'vocabulary',
-    difficulty: 'B2',
+    difficulty: 'Medium',
     question: 'The new policy had far-reaching ___ for the entire industry.',
     options: ['results', 'implications', 'conclusions', 'outputs'],
     correctAnswer: 1,
@@ -111,7 +111,7 @@ export const questions: Question[] = [
   {
     id: 'v5',
     category: 'vocabulary',
-    difficulty: 'C1',
+    difficulty: 'Medium Well',
     question:
       'The politician tried to ___ responsibility for the scandal.',
     options: ['evade', 'avoid', 'prevent', 'escape'],
@@ -124,7 +124,7 @@ export const questions: Question[] = [
   {
     id: 'r1',
     category: 'reading',
-    difficulty: 'A1',
+    difficulty: 'Raw',
     passage:
       'Tom is a student. He is 20 years old. He lives in London. He likes playing football and reading books.',
     question: 'What does Tom like doing?',
@@ -139,7 +139,7 @@ export const questions: Question[] = [
   {
     id: 'r2',
     category: 'reading',
-    difficulty: 'A2',
+    difficulty: 'Rare',
     passage:
       'Last weekend, Sarah visited her grandmother in the countryside. They baked a cake together and went for a long walk by the river. Sarah felt very relaxed after her visit.',
     question: 'How did Sarah feel after visiting her grandmother?',
@@ -149,7 +149,7 @@ export const questions: Question[] = [
   {
     id: 'r3',
     category: 'reading',
-    difficulty: 'B1',
+    difficulty: 'Medium Rare',
     passage:
       'Scientists have discovered that spending time in nature can significantly reduce stress levels. A study conducted across several European countries found that people who spent at least two hours per week in green spaces reported better health and well-being than those who did not.',
     question: 'According to the study, how much time in nature is beneficial?',
@@ -164,7 +164,7 @@ export const questions: Question[] = [
   {
     id: 'r4',
     category: 'reading',
-    difficulty: 'B2',
+    difficulty: 'Medium',
     passage:
       'The rise of remote work has fundamentally altered urban landscapes. City centres that once thrived on commuter traffic have seen declining foot traffic, while suburban areas have experienced a boom in local businesses. Some economists argue this shift may permanently reshape how cities function, though others believe a hybrid model will eventually restore some balance.',
     question: 'What is the main point of this passage?',
@@ -179,7 +179,7 @@ export const questions: Question[] = [
   {
     id: 'r5',
     category: 'reading',
-    difficulty: 'C1',
+    difficulty: 'Medium Well',
     passage:
       'The concept of neuroplasticity has overturned the long-held belief that the adult brain is essentially fixed. Research now demonstrates that neural pathways can be reorganized throughout life in response to learning, experience, and even injury. This has profound implications for rehabilitation medicine, suggesting that targeted therapies can help patients recover functions previously thought to be permanently lost. However, the extent to which neuroplasticity can compensate for severe damage remains a subject of ongoing debate.',
     question:

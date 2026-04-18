@@ -128,7 +128,7 @@ export default async function StudentDashboardPage() {
 
         {/* Progress */}
         <section className="card">
-          <h3 className="card-title" style={{ marginBottom: 35 }}>Прогресс до B2</h3>
+          <h3 className="card-title" style={{ marginBottom: 35 }}>Прогресс до Medium</h3>
 
           {[
             { key: "grammar", label: "Грамматика" },
