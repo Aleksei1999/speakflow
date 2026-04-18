@@ -116,29 +116,11 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Get day_of_week: JS getUTCDay() returns 0=Sunday, DB expects 0=Sunday
-    const dayOfWeek = requestedDate.getUTCDay()
-
-    // Fetch teacher availability for this day of week
-    const { data: availability, error: availError } = await supabase
-      .from('teacher_availability')
-      .select('start_time, end_time')
-      .eq('teacher_id', teacherId)
-      .eq('day_of_week', dayOfWeek)
-      .eq('is_available', true)
-
-    if (availError) {
-      console.error('Ошибка загрузки расписания:', availError)
-      return NextResponse.json(
-        { error: 'Ошибка загрузки расписания преподавателя' },
-        { status: 500 }
-      )
-    }
-
-    // Fetch teacher rates
+    // teacherId (from client) is auth user_id — resolve to teacher_profiles.id
+    // which is the FK target used in teacher_availability.teacher_id and lessons.teacher_id.
     const { data: teacherProfile, error: profileError } = await supabase
       .from('teacher_profiles')
-      .select('hourly_rate, trial_rate')
+      .select('id, hourly_rate, trial_rate')
       .eq('user_id', teacherId)
       .single()
 
@@ -146,6 +128,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Преподаватель не найден' },
         { status: 404 }
+      )
+    }
+
+    const teacherProfileId = teacherProfile.id
+
+    // Get day_of_week: JS getUTCDay() returns 0=Sunday, DB expects 0=Sunday
+    const dayOfWeek = requestedDate.getUTCDay()
+
+    // Fetch teacher availability for this day of week
+    const { data: availability, error: availError } = await supabase
+      .from('teacher_availability')
+      .select('start_time, end_time')
+      .eq('teacher_id', teacherProfileId)
+      .eq('day_of_week', dayOfWeek)
+      .eq('is_active', true)
+
+    if (availError) {
+      console.error('Ошибка загрузки расписания:', availError)
+      return NextResponse.json(
+        { error: 'Ошибка загрузки расписания преподавателя' },
+        { status: 500 }
       )
     }
 
@@ -164,7 +167,7 @@ export async function GET(request: NextRequest) {
     const { data: existingLessons, error: lessonsError } = await supabase
       .from('lessons')
       .select('scheduled_at, duration_minutes')
-      .eq('teacher_id', teacherId)
+      .eq('teacher_id', teacherProfileId)
       .gte('scheduled_at', dayStart)
       .lte('scheduled_at', dayEnd)
       .in('status', ['pending_payment', 'booked', 'in_progress'])

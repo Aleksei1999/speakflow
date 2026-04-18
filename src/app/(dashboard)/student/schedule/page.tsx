@@ -3,18 +3,20 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns"
 import { ru } from "date-fns/locale"
-import { Calendar as CalendarIcon, Video } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Video } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { LESSON_JOIN_WINDOW } from "@/lib/constants"
 import { differenceInMinutes, isPast } from "date-fns"
+import { BookingDrawer } from "@/components/booking/booking-drawer"
+import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
 
 interface LessonRow {
   id: string
@@ -67,6 +69,8 @@ export default function StudentSchedulePage() {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState("upcoming")
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const fetchLessons = useCallback(async (month: Date) => {
     setIsLoading(true)
@@ -79,6 +83,8 @@ export default function StudentSchedulePage() {
       setIsLoading(false)
       return
     }
+
+    setCurrentUserId(user.id)
 
     const monthStart = startOfMonth(month).toISOString()
     const monthEnd = endOfMonth(month).toISOString()
@@ -100,6 +106,13 @@ export default function StudentSchedulePage() {
   useEffect(() => {
     fetchLessons(currentMonth)
   }, [currentMonth, fetchLessons])
+
+  // Realtime: refetch when any of this student's lessons change
+  // (new booking, teacher-created lesson, cancellation, status update).
+  useLessonsRealtime({
+    studentId: currentUserId,
+    onChange: () => fetchLessons(currentMonth),
+  })
 
   const lessonDates = useMemo(() => {
     const dates = new Map<string, string[]>()
@@ -147,11 +160,22 @@ export default function StudentSchedulePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Расписание</h1>
-        <p className="text-sm text-muted-foreground">
-          Ваши уроки на {format(currentMonth, "LLLL yyyy", { locale: ru })}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Расписание</h1>
+          <p className="text-sm text-muted-foreground">
+            Ваши уроки на {format(currentMonth, "LLLL yyyy", { locale: ru })}
+          </p>
+        </div>
+        <Button
+          size="lg"
+          onClick={() => setIsBookingOpen(true)}
+          style={{ backgroundColor: "#CC3A3A" }}
+          className="text-white hover:opacity-90"
+        >
+          <Plus className="size-4" />
+          Забронировать урок
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
@@ -213,10 +237,22 @@ export default function StudentSchedulePage() {
         {/* Lessons list */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="size-4 text-[#CC3A3A]" />
-              {format(selectedDate, "d MMMM, EEEE", { locale: ru })}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="size-4 text-[#CC3A3A]" />
+                {format(selectedDate, "d MMMM, EEEE", { locale: ru })}
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsBookingOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                {selectedDayLessons.length === 0
+                  ? "Забронировать"
+                  : "Добавить урок"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="upcoming" onValueChange={setFilter}>
@@ -318,6 +354,13 @@ export default function StudentSchedulePage() {
           </CardContent>
         </Card>
       </div>
+
+      <BookingDrawer
+        open={isBookingOpen}
+        onOpenChange={setIsBookingOpen}
+        initialDate={selectedDate}
+        onBooked={() => fetchLessons(currentMonth)}
+      />
     </div>
   )
 }
