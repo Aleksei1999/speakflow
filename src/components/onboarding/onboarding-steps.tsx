@@ -70,19 +70,19 @@ export const quizSteps: QuizStep[] = [
       {
         id: "beginner",
         label: "Начинающий",
-        sublabel: "A1-A2",
+        sublabel: "Raw – Rare",
         icon: <Sprout className="h-5 w-5" />,
       },
       {
         id: "intermediate",
         label: "Средний",
-        sublabel: "B1-B2",
+        sublabel: "Medium Rare – Medium",
         icon: <TreeDeciduous className="h-5 w-5" />,
       },
       {
         id: "advanced",
         label: "Продвинутый",
-        sublabel: "C1-C2",
+        sublabel: "Medium Well – Well Done",
         icon: <TreePine className="h-5 w-5" />,
       },
       {

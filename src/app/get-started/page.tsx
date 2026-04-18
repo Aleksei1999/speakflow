@@ -210,7 +210,7 @@ export default function GetStartedPage() {
           >
             <QuizIllustration
               category={question?.category ?? "grammar"}
-              difficulty={question?.difficulty ?? "A1"}
+              difficulty={question?.difficulty ?? "Raw"}
               questionIndex={questionIndex}
             />
           </div>
@@ -411,14 +411,14 @@ function QuizIllustration({
   questionIndex: number
 }) {
   const levelColors: Record<string, string> = {
-    A1: "#22c55e",
-    A2: "#84cc16",
-    B1: "#eab308",
-    B2: "#f97316",
-    C1: "#ef4444",
+    Raw: "#CC3A3A",
+    Rare: "#d95050",
+    "Medium Rare": "#e06a4a",
+    Medium: "#d4a040",
+    "Medium Well": "#b8c060",
   }
   const barColor = levelColors[difficulty] ?? "#CC3A3A"
-  const barHeight = { A1: 40, A2: 60, B1: 80, B2: 110, C1: 140 }[difficulty] ?? 80
+  const barHeight = { Raw: 40, Rare: 60, "Medium Rare": 80, Medium: 110, "Medium Well": 140 }[difficulty] ?? 80
 
   return (
     <AnimatePresence mode="wait">

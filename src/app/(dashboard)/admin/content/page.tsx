@@ -433,12 +433,12 @@ function LevelTestTab() {
   }
 
   const difficultyColors: Record<string, string> = {
-    A1: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
-    A2: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30',
-    B1: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
-    B2: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
-    C1: 'bg-red-100 text-red-700 dark:bg-red-900/30',
-    C2: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30',
+    Raw: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+    Rare: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+    'Medium Rare': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+    Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30',
+    'Medium Well': 'bg-lime-100 text-lime-700 dark:bg-lime-900/30',
+    'Well Done': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
   }
 
   const categoryLabels: Record<string, string> = {
