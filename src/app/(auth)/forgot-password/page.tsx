@@ -4,18 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Mail, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-
-const forgotPasswordSchema = z.object({
-  email: z.string().email('Введите корректный email'),
-})
+import { forgotPasswordSchema } from '@/lib/validations'
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
 
@@ -39,7 +32,7 @@ export default function ForgotPasswordPage() {
     const supabase = createClient()
 
     const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${window.location.origin}/api/auth/callback`,
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
     })
 
     if (error) {
@@ -53,86 +46,73 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Письмо отправлено</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4 py-6">
-          <CheckCircle2 className="size-12" style={{ color: '#CC3A3A' }} />
-          <p className="text-center text-sm text-muted-foreground">
-            Ссылка для сброса пароля отправлена на email. Проверьте почту и
-            следуйте инструкциям в письме.
+      <div className="fade-in">
+        <div className="auth-success">
+          <div className="success-icon">✉️</div>
+          <h3>Письмо отправлено</h3>
+          <p>
+            Ссылка для сброса пароля отправлена на email. Проверь почту и следуй
+            инструкциям в письме.
           </p>
-        </CardContent>
-        <CardFooter>
-          <Link href="/login" className="w-full">
-            <Button variant="outline" className="w-full" size="lg">
-              <ArrowLeft />
-              Вернуться ко входу
-            </Button>
+          <Link href="/login" className="auth-submit auth-submit--ghost">
+            Вернуться ко входу
           </Link>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Сброс пароля</CardTitle>
-        <CardDescription>
-          Введите email, привязанный к вашему аккаунту. Мы отправим ссылку для
-          сброса пароля.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form id="forgot-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          {serverError && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {serverError}
-            </div>
-          )}
+    <div className="fade-in">
+      <div style={{ marginBottom: 20 }}>
+        <h2
+          style={{
+            fontSize: '1.1rem',
+            fontWeight: 800,
+            color: 'var(--auth-text)',
+            marginBottom: 6,
+          }}
+        >
+          Сброс пароля
+        </h2>
+        <p style={{ fontSize: '.78rem', color: 'var(--auth-text2)', lineHeight: 1.5 }}>
+          Отправляем письмо со ссылкой для сброса пароля
+        </p>
+      </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                className="pl-9"
-                aria-invalid={!!errors.email}
-                {...register('email')}
-              />
-            </div>
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4">
-        <Button
+      <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
+        {serverError && <div className="auth-error">{serverError}</div>}
+
+        <div className="field">
+          <div className="field-label">Email</div>
+          <input
+            className="field-input"
+            type="email"
+            placeholder="hello@example.com"
+            autoComplete="email"
+            aria-invalid={!!errors.email}
+            {...register('email')}
+          />
+          {errors.email && (
+            <div className="auth-field-error">{errors.email.message}</div>
+          )}
+        </div>
+
+        <button
           type="submit"
-          form="forgot-form"
+          className="auth-submit auth-submit--red"
           disabled={isSubmitting}
-          className="w-full"
-          size="lg"
-          style={{ backgroundColor: '#CC3A3A' }}
         >
-          {isSubmitting && <Loader2 className="animate-spin" />}
-          Отправить ссылку
-        </Button>
-        <Link
-          href="/login"
-          className="flex items-center justify-center gap-1 text-sm text-muted-foreground hover:underline"
-        >
-          <ArrowLeft className="size-3" />
-          Вернуться ко входу
-        </Link>
-      </CardFooter>
-    </Card>
+          {isSubmitting && (
+            <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
+          )}
+          Восстановить пароль
+        </button>
+      </form>
+
+      <div className="auth-bottom">
+        Вспомнил? <Link href="/login">Войти</Link>
+      </div>
+    </div>
   )
 }
