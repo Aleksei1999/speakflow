@@ -233,12 +233,12 @@ function Formats() {
 /* ===== Block 6: Level System ===== */
 function LevelSystem() {
   const levels = [
-    { name: "Raw", sub: "A0–A1", color: "#CC3A3A" },
-    { name: "Rare", sub: "A2", color: "#d44" },
-    { name: "Medium Rare", sub: "B1", color: "#e67" },
-    { name: "Medium", sub: "B2", color: "#c2a832" },
-    { name: "Medium Well", sub: "C1", color: "#8bb83a" },
-    { name: "Well Done", sub: "C2", color: "#DFED8C" },
+    { name: "Raw", sub: "Понимаю слова, боюсь говорить", color: "#CC3A3A" },
+    { name: "Rare", sub: "Начинаю говорить, много ошибок", color: "#d44" },
+    { name: "Medium Rare", sub: "Общаюсь, но не всегда уверенно", color: "#e67" },
+    { name: "Medium", sub: "Свободно поддерживаю беседу", color: "#c2a832" },
+    { name: "Medium Well", sub: "Уверенно говорю, чувствую язык", color: "#8bb83a" },
+    { name: "Well Done", sub: "Думаю на английском", color: "#DFED8C" },
   ]
   return (
     <section className="py-20 sm:py-28">

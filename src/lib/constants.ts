@@ -15,7 +15,7 @@ export const PAYMENT_STATUSES = {
   SUCCEEDED: 'succeeded', CANCELLED: 'cancelled', REFUNDED: 'refunded',
 } as const
 
-export const ENGLISH_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
+export const ENGLISH_LEVELS = ['Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done'] as const
 export type EnglishLevel = (typeof ENGLISH_LEVELS)[number]
 
 export const XP_REWARDS = {

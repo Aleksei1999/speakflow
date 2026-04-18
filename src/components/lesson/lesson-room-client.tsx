@@ -46,6 +46,7 @@ const CSS = `
 .lr .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
 .lr .stat .value{font-size:28px;font-weight:800;margin-top:6px;letter-spacing:-0.5px}
 .lr .stat .value small{font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
+.lr .stat-dark .value{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lr .stat-dark{background:var(--black);color:#fff;border-color:var(--black)}.lr .stat-dark .label{color:#A0A09A}.lr .stat-dark .value small{color:#A0A09A}
 .lr .stat-lime{background:var(--lime);border-color:var(--lime)}.lr .stat-lime .label{opacity:.7}.lr .stat-lime .value small{opacity:.7}
 .lr .stat-teacher{display:flex;align-items:center;gap:12px;padding:12px 14px}
@@ -260,7 +261,7 @@ export function LessonRoomClient({
             </div>
             <div className="stat stat-dark">
               <div className="label">Уровень</div>
-              <div className="value">{studentLevel}<small> · Intermediate</small></div>
+              <div className="value">{studentLevel}</div>
             </div>
             <div className="stat stat-lime">
               <div className="label">Урок №</div>

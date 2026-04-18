@@ -190,8 +190,8 @@ export default function LevelTestPage() {
             </div>
             <ul className="space-y-2 text-left text-sm text-muted-foreground">
               <li>15 вопросов разного уровня сложности</li>
-              <li>От начального (A1) до продвинутого (C1)</li>
-              <li>Результат по шкале CEFR сразу после прохождения</li>
+              <li>От Raw (начальный) до Medium Well (продвинутый)</li>
+              <li>Узнаешь свою «степень прожарки» сразу после теста</li>
             </ul>
             <Button size="lg" onClick={() => setScreen('quiz')}>
               Начать тест
