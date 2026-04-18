@@ -9,10 +9,8 @@ export async function GET(request: Request) {
 
   // Validate redirect target to prevent open redirect attacks.
   // Only allow relative paths starting with "/" and reject protocol-relative URLs.
-  let redirectPath = '/student'
-  if (next && next.startsWith('/') && !next.startsWith('//')) {
-    redirectPath = next
-  }
+  const safeNext =
+    next && next.startsWith('/') && !next.startsWith('//') ? next : null
 
   if (!code) {
     // No authorization code present — redirect to login with an error indicator
@@ -28,22 +26,25 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
   }
 
-  // Determine the correct dashboard based on the user's profile role
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // If a valid `next` was supplied (e.g. /reset-password), honor it regardless of role.
+  let redirectPath = safeNext
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+  if (!redirectPath) {
+    // Determine the correct dashboard based on the user's profile role
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (profile?.role === 'teacher') {
-      redirectPath = next ?? '/teacher'
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      redirectPath = profile?.role === 'teacher' ? '/teacher' : '/student'
     } else {
-      redirectPath = next ?? '/student'
+      redirectPath = '/student'
     }
   }
 
