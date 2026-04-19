@@ -1,0 +1,108 @@
+// @ts-nocheck
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { clubsListQuerySchema } from '@/lib/validations'
+
+const ROAST_LEVELS = [
+  'Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done',
+] as const
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const parsed = clubsListQuerySchema.safeParse({
+      category: searchParams.get('category') ?? undefined,
+      format: searchParams.get('format') ?? undefined,
+      level: searchParams.get('level') ?? undefined,
+      scope: searchParams.get('scope') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+    })
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Некорректные параметры' },
+        { status: 400 }
+      )
+    }
+    const { category, format, level, scope, limit } = parsed.data
+
+    const supabase = await createClient()
+
+    let query = supabase
+      .from('clubs')
+      .select(
+        `
+          id, topic, description, category, level_min, level_max,
+          format, location, timezone, starts_at, duration_min,
+          max_seats, seats_taken, price_kopecks, xp_reward, badge,
+          cover_emoji, is_published, cancelled_at,
+          club_hosts (
+            role, sort_order,
+            profiles:host_id ( id, full_name, avatar_url )
+          )
+        `
+      )
+      .eq('is_published', true)
+      .is('cancelled_at', null)
+      .order('starts_at', { ascending: scope !== 'past' })
+      .limit(limit)
+
+    const nowIso = new Date().toISOString()
+    if (scope === 'upcoming') query = query.gt('starts_at', nowIso)
+    if (scope === 'past') query = query.lt('starts_at', nowIso)
+
+    if (category) query = query.eq('category', category)
+    if (format) query = query.eq('format', format)
+
+    const { data: clubs, error } = await query
+    if (error) {
+      console.error('Ошибка загрузки клубов:', error)
+      return NextResponse.json(
+        { error: 'Не удалось загрузить клубы' },
+        { status: 500 }
+      )
+    }
+
+    // Level filter applied in-memory: include clubs whose [level_min..level_max] range contains the requested level
+    let filtered = clubs ?? []
+    if (level) {
+      const target = ROAST_LEVELS.indexOf(level)
+      filtered = filtered.filter((c) => {
+        const min = c.level_min ? ROAST_LEVELS.indexOf(c.level_min) : 0
+        const max = c.level_max ? ROAST_LEVELS.indexOf(c.level_max) : ROAST_LEVELS.length - 1
+        return target >= min && target <= max
+      })
+    }
+
+    // Attach viewer's registration status (if logged in)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    let myRegs: Record<string, string> = {}
+    if (user && filtered.length > 0) {
+      const ids = filtered.map((c) => c.id)
+      const { data: regs } = await supabase
+        .from('club_registrations')
+        .select('club_id, status')
+        .eq('user_id', user.id)
+        .in('club_id', ids)
+      if (regs) {
+        myRegs = Object.fromEntries(regs.map((r) => [r.club_id, r.status]))
+      }
+    }
+
+    const result = filtered.map((c) => ({
+      ...c,
+      seats_remaining: Math.max(c.max_seats - c.seats_taken, 0),
+      my_registration_status: myRegs[c.id] ?? null,
+    }))
+
+    return NextResponse.json({ clubs: result })
+  } catch (error) {
+    console.error('Непредвиденная ошибка в /api/clubs:', error)
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}
