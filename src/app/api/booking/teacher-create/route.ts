@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = teacherBookingSchema.safeParse(body)
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0]
+      const firstError = parsed.error.issues[0]
       return NextResponse.json(
         { error: firstError?.message || 'Некорректные данные' },
         { status: 400 }
