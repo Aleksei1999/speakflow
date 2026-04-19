@@ -82,3 +82,38 @@ export const createPaymentSchema = z.object({
 export const jitsiTokenSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
 })
+
+export const leaderboardQuerySchema = z.object({
+  period: z.enum(['weekly', 'monthly', 'all_time']).default('weekly'),
+  level: z
+    .enum(['Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done'])
+    .optional(),
+  friends_only: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+export const coursesListQuerySchema = z.object({
+  goal: z.enum(['work', 'relocation', 'conversation', 'exam', 'other']).optional(),
+  level: z
+    .enum(['Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done'])
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
+
+export const clubsListQuerySchema = z.object({
+  category: z
+    .enum([
+      'speaking', 'business', 'movies', 'debate', 'wine',
+      'career', 'community', 'storytelling', 'smalltalk', 'other',
+    ])
+    .optional(),
+  format: z.enum(['online', 'offline']).optional(),
+  level: z
+    .enum(['Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done'])
+    .optional(),
+  scope: z.enum(['upcoming', 'past', 'all']).default('upcoming'),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})
