@@ -7,6 +7,17 @@ const ROAST_LEVELS = [
   'Raw', 'Rare', 'Medium Rare', 'Medium', 'Medium Well', 'Well Done',
 ] as const
 
+// Registration statuses that mean the user currently holds a seat / is booked.
+// 'cancelled', 'refunded', 'no_show' and historical 'attended' do NOT count as
+// "currently registered" from the UI point of view.
+const ACTIVE_REG_STATUSES = new Set(['registered', 'pending_payment', 'waitlist'])
+
+function buildInitials(fullName?: string | null): string {
+  if (!fullName) return ''
+  const parts = fullName.trim().split(/\s+/).slice(0, 2)
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('')
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -91,11 +102,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const result = filtered.map((c) => ({
-      ...c,
-      seats_remaining: Math.max(c.max_seats - c.seats_taken, 0),
-      my_registration_status: myRegs[c.id] ?? null,
-    }))
+    const result = filtered.map((c) => {
+      const hosts = Array.isArray(c.club_hosts) ? [...c.club_hosts] : []
+      hosts.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      const enrichedHosts = hosts.map((h) => ({
+        role: h.role,
+        sort_order: h.sort_order,
+        profiles: h.profiles
+          ? {
+              ...h.profiles,
+              initials: buildInitials(h.profiles.full_name),
+            }
+          : null,
+      }))
+      const regStatus = myRegs[c.id] ?? null
+      return {
+        ...c,
+        club_hosts: enrichedHosts,
+        seats_remaining: Math.max(c.max_seats - c.seats_taken, 0),
+        is_full: c.seats_taken >= c.max_seats,
+        my_registration_status: regStatus,
+        is_user_registered: regStatus ? ACTIVE_REG_STATUSES.has(regStatus) : false,
+      }
+    })
 
     return NextResponse.json({ clubs: result })
   } catch (error) {
