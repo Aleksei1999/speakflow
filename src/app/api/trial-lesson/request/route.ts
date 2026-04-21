@@ -12,6 +12,10 @@ import { sendTelegramMessage } from '@/lib/telegram/bot'
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
   notes: z.string().max(500).optional(),
+  preferredSlot: z
+    .string()
+    .datetime({ message: 'preferredSlot must be ISO datetime' })
+    .optional(),
 })
 
 export async function POST(request: Request) {
@@ -54,6 +58,7 @@ export async function POST(request: Request) {
       user_id: user.id,
       level_test_id: parsed.data.levelTestId ?? null,
       notes: parsed.data.notes ?? null,
+      preferred_slot: parsed.data.preferredSlot ?? null,
     })
     .select('id')
     .single()
@@ -64,14 +69,14 @@ export async function POST(request: Request) {
   }
 
   // Fire-and-forget admin notification
-  void notifyAdmins(user.id, inserted.id).catch((err) => {
+  void notifyAdmins(user.id, inserted.id, parsed.data.preferredSlot ?? null).catch((err) => {
     console.error('[trial-lesson/request] notify failed:', err)
   })
 
   return NextResponse.json({ id: inserted.id, reused: false })
 }
 
-async function notifyAdmins(userId: string, requestId: string) {
+async function notifyAdmins(userId: string, requestId: string, preferredSlot: string | null) {
   const supabase = await createClient()
 
   const [{ data: profile }, { data: admins }] = await Promise.all([
@@ -89,11 +94,30 @@ async function notifyAdmins(userId: string, requestId: string) {
 
   if (!profile || !admins || admins.length === 0) return
 
+  let slotLine = ''
+  if (preferredSlot) {
+    try {
+      const d = new Date(preferredSlot)
+      const fmt = new Intl.DateTimeFormat('ru-RU', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Moscow',
+      }).format(d)
+      slotLine = `🗓 Удобное время: ${fmt} МСК\n`
+    } catch {
+      slotLine = `🗓 Удобное время: ${preferredSlot}\n`
+    }
+  }
+
   const text =
     `🎙 <b>Новая заявка на пробное занятие</b>\n\n` +
     `<b>${profile.full_name || '—'}</b>\n` +
     `📧 ${profile.email}\n` +
     (profile.phone ? `📱 ${profile.phone}\n` : '') +
+    slotLine +
     `\n<code>${requestId}</code>`
 
   await Promise.all(
