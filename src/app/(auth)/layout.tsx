@@ -30,7 +30,8 @@ export default function AuthLayout({
           --auth-lime-dark: #5A7A00;
           --auth-input-bg: #F5F5F3;
         }
-        .auth-scope { min-height: 100vh; background: var(--auth-dark); color: var(--auth-text); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        html:has(.auth-scope), html:has(.auth-scope) body { background: #1E1E1E; }
+        .auth-scope { min-height: 100dvh; background: var(--auth-dark); color: var(--auth-text); display: flex; align-items: center; justify-content: center; padding: 20px; }
 
         .auth-modal { width: 100%; max-width: 460px; background: var(--auth-card); border-radius: 28px; box-shadow: 0 8px 0 var(--auth-border), 0 30px 80px rgba(0,0,0,.15); position: relative; overflow: hidden; }
         .auth-modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--auth-red), var(--auth-lime)); z-index: 5; }
