@@ -183,6 +183,8 @@ export default function LandingClient() {
         <div className="marquee">
           <span>Speaking Clubs</span><span>Gamification</span><span>XP System</span><span>Native Speakers</span><span>Debate Club</span><span>Wine Club</span><span>Streaks</span><span>Achievements</span>
           <span>Speaking Clubs</span><span>Gamification</span><span>XP System</span><span>Native Speakers</span><span>Debate Club</span><span>Wine Club</span><span>Streaks</span><span>Achievements</span>
+          <span>Speaking Clubs</span><span>Gamification</span><span>XP System</span><span>Native Speakers</span><span>Debate Club</span><span>Wine Club</span><span>Streaks</span><span>Achievements</span>
+          <span>Speaking Clubs</span><span>Gamification</span><span>XP System</span><span>Native Speakers</span><span>Debate Club</span><span>Wine Club</span><span>Streaks</span><span>Achievements</span>
         </div>
       </div>
 
