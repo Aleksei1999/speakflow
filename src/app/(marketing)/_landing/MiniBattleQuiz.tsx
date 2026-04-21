@@ -494,7 +494,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
           <div className="mb-stats">
             <div className="mb-stat"><div className="mb-stat-val">12</div><div className="mb-stat-label">вопросов</div></div>
             <div className="mb-stat"><div className="mb-stat-val">3</div><div className="mb-stat-label">жизни</div></div>
-            <div className="mb-stat"><div className="mb-stat-val">~2 min</div><div className="mb-stat-label">время</div></div>
+            <div className="mb-stat"><div className="mb-stat-val">2 мин</div><div className="mb-stat-label">время</div></div>
           </div>
           <button className="mb-btn-primary" onClick={startBattle} type="button">
             Start battle
@@ -764,8 +764,10 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
           <div style={{ textAlign: "center", marginBottom: 14 }}>
             <SteakSVG mood="cool" size={72} color={grade.body} />
           </div>
-          <h3 className="mb-form-title">Создай аккаунт</h3>
-          <p className="mb-form-sub">И записывайся на бесплатный пробный</p>
+          <h3 className="mb-form-title">{isAuthenticated ? "Готово!" : "Создай аккаунт"}</h3>
+          <p className="mb-form-sub">
+            {isAuthenticated ? "Продолжай прокачку в кабинете" : "И записывайся на бесплатный пробный"}
+          </p>
 
           <div className="mb-profile-summary">
             <div className="mb-ps-row">
@@ -799,7 +801,9 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
               {isAuthenticated ? "Перейти в кабинет" : "Создать аккаунт"}
             </Link>
             <p className="mb-form-hint">
-              На странице регистрации подтвердим твой уровень ({grade.cefr}) и подберём преподавателя.
+              {isAuthenticated
+                ? `Твой уровень: ${grade.cefr}. Записывайся на урок и практикуй слабые места.`
+                : `На странице регистрации подтвердим твой уровень (${grade.cefr}) и подберём преподавателя.`}
             </p>
           </div>
 
@@ -840,9 +844,6 @@ const MINI_BATTLE_CSS = `
 .mini-battle button {
   font-family: inherit;
   cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
 }
 
 /* Intro */
