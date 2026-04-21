@@ -23,19 +23,31 @@ document.querySelectorAll('.reveal,.level-card').forEach(el=>obs.observe(el));
 cleanups.push(()=>obs.disconnect());
 
 /* ===== GAME ENGINE ===== */
-let xp=0,gameLevel=0;
+/* Persisted landing XP — survives refreshes and is claimed after login. */
+const LANDING_XP_KEY='raw_landing_xp_pending';
+function loadPersistedXP(){
+  try{const raw=localStorage.getItem(LANDING_XP_KEY);if(!raw)return{xp:0,lvl:0};const p=JSON.parse(raw);return{xp:Math.max(0,Math.min(100,+p.xp||0)),lvl:Math.max(0,Math.min(8,+p.lvl||0))};}catch{return{xp:0,lvl:0};}
+}
+function savePersistedXP(){
+  try{localStorage.setItem(LANDING_XP_KEY,JSON.stringify({xp,lvl:gameLevel,ts:Date.now()}));}catch{}
+}
+const _persisted=loadPersistedXP();
+let xp=_persisted.xp,gameLevel=_persisted.lvl;
 const gbFill=document.getElementById('gbFill');
 const gbXP=document.getElementById('gbXP');
 const gbLvl=document.getElementById('gbLvl');
 const gameBar=document.getElementById('gameBar');
 const luOverlay=document.getElementById('luOverlay');
-let barShown=false;
+let barShown=xp>0||gameLevel>0;
+if(barShown&&gameBar){gameBar.classList.add('show');if(nav)nav.classList.add('pushed');}
 
 function updateGameBar(){
   gbFill.style.width=xp+'%';
   gbXP.textContent=xp;
   gbLvl.textContent=gameLevel;
+  savePersistedXP();
 }
+updateGameBar();
 
 function floatXP(amt,x,y){
   const f=document.createElement('div');
