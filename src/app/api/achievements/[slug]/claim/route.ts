@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   computeUserMetrics,
   evaluateAchievementProgress,
@@ -64,7 +65,10 @@ export async function POST(
       )
     }
 
-    const { error: insertError } = await supabase
+    // Both user_achievements and xp_events have RLS that blocks user-scoped INSERT.
+    // We've already verified criteria above, so write with admin client.
+    const admin = createAdminClient()
+    const { error: insertError } = await admin
       .from('user_achievements')
       .insert({ user_id: user.id, achievement_id: def.id })
     if (insertError) {
@@ -76,7 +80,7 @@ export async function POST(
     }
 
     if (def.xp_reward > 0) {
-      await supabase.from('xp_events').insert({
+      await admin.from('xp_events').insert({
         user_id: user.id,
         amount: def.xp_reward,
         source_type: 'achievement',
