@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
+import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -274,6 +275,7 @@ export default async function StudentDashboardPage() {
   return (
     <div className="stu-home">
       <style dangerouslySetInnerHTML={{ __html: STU_CSS }} />
+      <LandingXpClaimer />
 
       <div className="main-header">
         <div>
