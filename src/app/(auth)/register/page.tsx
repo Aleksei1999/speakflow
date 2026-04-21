@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/client'
 import { type QuizResult } from '@/components/onboarding/level-quiz'
+import { RawLogo } from '@/components/ui/raw-logo'
 
 type Mood = 'happy' | 'neutral' | 'worried' | 'wow' | 'cool' | 'dead'
 
@@ -310,25 +311,36 @@ export default function RegisterPage() {
     <>
       <RegisterStyles />
       <div className="r-page">
+        <div className="r-topbar">
+          <Link href="/" className="r-iconbtn" aria-label="На главную">
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+              <path
+                d="M11 3 L5 9 L11 15"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+          <Link href="/" className="r-topbar-logo" aria-label="Raw English">
+            <RawLogo size={28} />
+          </Link>
+          <Link href="/" className="r-iconbtn" aria-label="Закрыть">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+              <path
+                d="M3 3 L13 13 M13 3 L3 13"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          </Link>
+        </div>
         <div className="form-wrap">
-          <div className="form-head">
-            <Link href="/" className="goals-back" aria-label="На главную">
-              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-                <path
-                  d="M11 3 L5 9 L11 15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-            <div style={{ textAlign: 'center', flex: 1 }}>
-              <div className="head-label">Последний шаг</div>
-            </div>
-            <div style={{ width: 36 }} />
-          </div>
+          <div className="head-label">Последний шаг</div>
 
           <div className="mascot">
             <SteakSVG mood="cool" size={72} color={grade?.body || '#D33F3F'} />
@@ -554,24 +566,42 @@ function RegisterStyles() {
         overflow: visible;
       }
       .auth-scope:has(.r-page) .auth-modal::before { display: none; }
-      .auth-scope:has(.r-page) .auth-header {
-        padding: 24px 20px 8px;
+      /* Register renders its own top bar inside .r-page, so hide the shared one. */
+      .auth-scope:has(.r-page) .auth-header { display: none; }
+      .auth-scope:has(.r-page) .auth-body { padding: 0; }
+
+      .r-topbar {
         max-width: 720px;
         margin: 0 auto;
-        width: 100%;
+        padding: 20px 20px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
       }
-      /* Invert the black "english" text portion of the logo on the dark /register page. */
-      .auth-scope:has(.r-page) .auth-logo img {
-        filter: brightness(0) invert(1);
+      .r-topbar-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
       }
-      .auth-scope:has(.r-page) .auth-close {
-        border-color: rgba(255,255,255,0.08);
-        color: rgba(255,255,255,0.5);
+      .r-topbar-logo img { filter: brightness(0) invert(1); }
+      .r-iconbtn {
+        width: 40px; height: 40px; border-radius: 12px;
+        background: var(--rp-surface);
+        border: 1px solid var(--rp-border);
+        display: flex; align-items: center; justify-content: center;
+        color: rgba(255,255,255,0.7);
+        transition: all 0.15s;
+        flex-shrink: 0;
+        text-decoration: none;
+        cursor: pointer;
       }
-      .auth-scope:has(.r-page) .auth-close:hover {
-        border-color: #D33F3F; color: #D33F3F;
+      .r-iconbtn:hover {
+        background: var(--rp-surface-2);
+        border-color: var(--rp-red);
+        color: var(--rp-red);
       }
-      .auth-scope:has(.r-page) .auth-body { padding: 8px 20px 40px; }
 
       .r-page {
         --rp-red: #D33F3F;
@@ -590,20 +620,12 @@ function RegisterStyles() {
       .r-page * { box-sizing: border-box; }
       .r-page button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
-      .form-wrap { animation: r-pop 0.4s ease-out; text-align: left; max-width: 480px; margin: 0 auto; }
-      .form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .form-wrap { animation: r-pop 0.4s ease-out; text-align: left; max-width: 480px; margin: 0 auto; padding: 0 20px 40px; }
       .head-label {
         font-size: 10px; letter-spacing: 0.2em; color: var(--rp-red);
         text-transform: uppercase; font-weight: 600;
+        text-align: center; margin-bottom: 14px;
       }
-      .goals-back {
-        width: 36px; height: 36px; border-radius: 10px;
-        background: var(--rp-surface); border: 1px solid var(--rp-border);
-        display: flex; align-items: center; justify-content: center;
-        color: white; transition: background 0.15s;
-        flex-shrink: 0; text-decoration: none;
-      }
-      .goals-back:hover { background: var(--rp-surface-2); }
 
       .mascot { display: flex; justify-content: center; margin-bottom: 14px; }
       .mascot svg { animation: r-float 3s ease-in-out infinite; }
