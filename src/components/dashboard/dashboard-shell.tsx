@@ -115,7 +115,7 @@ const studentNav: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: icons.dashboard },
   { href: "/student/schedule", label: "Расписание", icon: icons.calendar },
   { href: "/student/clubs", label: "Speaking Clubs", icon: icons.mic },
-  { href: "/teachers", label: "Преподаватели", icon: icons.users },
+  { href: "/student/teachers", label: "Преподаватели", icon: icons.users },
   { href: "/student/achievements", label: "Ачивки", icon: icons.trophy },
   { href: "/student/materials", label: "Материалы", icon: icons.book },
   { href: "/student/achievements", label: "Лидерборд", icon: icons.leaderboard },
@@ -233,7 +233,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, childr
           <ul className="nav">
             {navItems.map((item) => {
               const isHome = item.href === `/${currentRole}`
-              const isActive = pathname === item.href || (!isHome && item.href !== "/teachers" && pathname.startsWith(item.href))
+              const isActive = pathname === item.href || (!isHome && pathname.startsWith(item.href))
               return (
                 <li key={item.href + item.label}>
                   <Link href={item.href} className={isActive ? "active" : ""}>
