@@ -10,6 +10,8 @@ import {
   type JSX,
 } from "react"
 
+import { RawLogo } from "@/components/ui/raw-logo"
+
 /* ============================================================
  *  Types
  * ============================================================ */
@@ -747,7 +749,7 @@ export function LevelQuiz({
         <div className="rq-accent" />
         <header className="rq-header">
           <div className="rq-logo">
-            Raw <span>english</span>
+            <RawLogo size={28} />
           </div>
           <button
             type="button"
@@ -1127,8 +1129,7 @@ const CSS = `
 .rq-card{width:100%;max-width:580px;background:#fff;border-radius:28px;box-shadow:0 8px 0 rgba(0,0,0,.06),0 30px 80px rgba(0,0,0,.15);position:relative;overflow:hidden;max-height:92vh;display:flex;flex-direction:column}
 .rq-accent{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#E63946,#D8F26A);z-index:5}
 .rq-header{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
-.rq-logo{font-family:var(--font-gluten,'Gluten',cursive);font-size:1.1rem;color:#E63946;font-weight:600}
-.rq-logo span{font-family:var(--font-sans,Inter,sans-serif);font-weight:600;font-size:.75rem;color:#1A1A1A}
+.rq-logo{display:inline-flex;align-items:center;line-height:1}
 .rq-close{width:36px;height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.06);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;font-size:1.1rem;transition:all .2s}
 .rq-close:hover{border-color:#E63946;color:#E63946}
 .rq-close:focus-visible{outline:2px solid #E63946;outline-offset:2px}
