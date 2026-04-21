@@ -84,14 +84,6 @@ const secObs=new IntersectionObserver(entries=>{
 document.querySelectorAll('section[data-level]').forEach(s=>secObs.observe(s));
 cleanups.push(()=>secObs.disconnect());
 
-/* Click XP on interactive cards */
-document.querySelectorAll('.platform-card,.level-card,.fmt-card,.xp-card,.testimonial').forEach(el=>{
-  let done=false;
-  el.addEventListener('click',function(e){
-    if(!done&&barShown){done=true;addXP(2,e.clientX,e.clientY);}
-  });
-});
-
 /* ===== MINI QUIZ — DUOLINGO STYLE ===== */
 /* Character SVG — little steak mascot */
 const CHAR_SVG=`<svg viewBox="0 0 110 130" xmlns="http://www.w3.org/2000/svg">
