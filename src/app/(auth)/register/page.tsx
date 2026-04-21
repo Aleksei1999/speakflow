@@ -538,8 +538,14 @@ function RegisterStyles() {
   return (
     <style>{`
       /* Override the light auth-modal chrome: /register runs its own dark layout. */
-      html:has(.r-page), html:has(.r-page) body { background: #0a0a0a !important; }
-      .auth-scope:has(.r-page) { padding: 0 !important; align-items: stretch !important; min-height: 100dvh; }
+      html:has(.r-page), html:has(.r-page) body {
+        background-color: #0a0a0a !important;
+        background-image:
+          radial-gradient(ellipse at 20% 0%, rgba(211,63,63,0.18), transparent 45%),
+          radial-gradient(ellipse at 90% 100%, rgba(211,63,63,0.12), transparent 50%) !important;
+        background-attachment: fixed !important;
+      }
+      .auth-scope:has(.r-page) { padding: 0 !important; align-items: stretch !important; min-height: 100dvh; background: transparent !important; }
       .auth-scope:has(.r-page) .auth-modal {
         max-width: 720px;
         background: transparent;
@@ -582,9 +588,6 @@ function RegisterStyles() {
         --rp-border: rgba(255,255,255,0.08);
         --rp-border-hover: rgba(255,255,255,0.2);
         color: var(--rp-text);
-        background-image:
-          radial-gradient(ellipse at 20% 0%, rgba(211,63,63,0.18), transparent 45%),
-          radial-gradient(ellipse at 90% 100%, rgba(211,63,63,0.12), transparent 50%);
       }
 
       .r-page * { box-sizing: border-box; }
@@ -654,7 +657,7 @@ function RegisterStyles() {
       }
       .pwd-toggle:hover { color: white; }
 
-      .slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+      .slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
       .slot {
         background: var(--rp-surface);
         border: 1.5px solid var(--rp-border);
@@ -784,6 +787,7 @@ function RegisterStyles() {
       @media (max-width: 480px) {
         .auth-scope:has(.r-page) .auth-body { padding: 16px 14px 30px; }
         .form-title { font-size: 20px; }
+        .slot-grid { grid-template-columns: repeat(2, 1fr); }
       }
     `}</style>
   )
