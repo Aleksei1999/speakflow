@@ -451,6 +451,32 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     }
   }, [])
 
+  // Persist result to localStorage so /register (and other onboarding steps)
+  // can read it via the existing `raw_quiz_result` key.
+  useEffect(() => {
+    if (mode !== "result" && mode !== "gameover") return
+    if (typeof window === "undefined") return
+    const rawLevel =
+      grade.key === "mrare" ? "mediumrare" : grade.key === "mwell" ? "mediumwell" : grade.key
+    const totalAnswered = qIndex || 1
+    const percent = Math.round((totalRight / totalAnswered) * 100)
+    const payload = {
+      level: rawLevel,
+      levelName: grade.name,
+      xp: totalRight * 5,
+      correctCount: totalRight,
+      totalQuestions: totalAnswered,
+      percent,
+      answers: {} as Record<number, number>,
+      cefr: grade.cefr,
+    }
+    try {
+      window.localStorage.setItem("raw_quiz_result", JSON.stringify(payload))
+    } catch {
+      /* ignore quota/private-mode errors */
+    }
+  }, [mode, grade, totalRight, qIndex])
+
   const skipToResult = useCallback(() => {
     if (typeof window !== "undefined" && window.confirm("Остановить и увидеть предварительный результат?")) {
       setMode("result")
