@@ -1,149 +1,222 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
-import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
-import { registerSchema } from '@/lib/validations'
-import { LevelQuiz, type QuizResult } from '@/components/onboarding/level-quiz'
+import { type QuizResult } from '@/components/onboarding/level-quiz'
 
-type RegisterValues = z.infer<typeof registerSchema>
+type Mood = 'happy' | 'neutral' | 'worried' | 'wow' | 'cool' | 'dead'
 
-const QUIZ_STORAGE_KEY = 'raw_quiz_result'
-const glutenStyle = { fontFamily: 'var(--font-gluten), cursive' }
+const QUIZ_KEY = 'raw_quiz_result'
+const GOALS_KEY = 'raw_quiz_goals'
 
-function safeReadQuizResult(): QuizResult | null {
+type QuizGoals = {
+  purpose: string | null
+  purposeLabel: string | null
+  timeline: string | null
+  timelineLabel: string | null
+  intensity: string | null
+  intensityLabel: string | null
+}
+
+const GRADE_MAP: Record<
+  string,
+  { name: string; cefr: string; color: string; body: string }
+> = {
+  raw: { name: 'Raw', cefr: 'A1', color: '#D33F3F', body: '#8B0000' },
+  rare: { name: 'Rare', cefr: 'A1+', color: '#D33F3F', body: '#B22222' },
+  mediumrare: { name: 'Medium Rare', cefr: 'A2', color: '#FF8A7A', body: '#CD5C5C' },
+  medium: { name: 'Medium', cefr: 'B1', color: '#FFD93D', body: '#D2691E' },
+  mediumwell: { name: 'Medium Well', cefr: 'B2', color: '#A8E063', body: '#A0826D' },
+  welldone: { name: 'Well Done', cefr: 'C1+', color: '#4ADE80', body: '#8B4513' },
+}
+
+function readJSON<T>(key: string): T | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(QUIZ_STORAGE_KEY)
+    const raw = window.localStorage.getItem(key)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as QuizResult
-    if (!parsed || typeof parsed.level !== 'string' || typeof parsed.xp !== 'number') {
-      return null
-    }
-    return parsed
+    return JSON.parse(raw) as T
   } catch {
     return null
   }
 }
 
+function nextSlots() {
+  const now = new Date()
+  const mk = (addDays: number, h: number) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + addDays)
+    d.setHours(h, 0, 0, 0)
+    return d
+  }
+  return [
+    { id: 0, day: 'завтра', time: '10:00', iso: mk(1, 10).toISOString() },
+    { id: 1, day: 'завтра', time: '19:00', iso: mk(1, 19).toISOString() },
+    { id: 2, day: 'послезавтра', time: '11:00', iso: mk(2, 11).toISOString() },
+    { id: 3, day: 'послезавтра', time: '20:00', iso: mk(2, 20).toISOString() },
+  ]
+}
+
+function SteakSVG({ mood, size = 72, color = '#D33F3F' }: { mood: Mood; size?: number; color?: string }) {
+  const face: Record<Mood, React.ReactNode> = {
+    cool: (
+      <>
+        <rect x="26" y="42" width="16" height="10" rx="3" fill="#1a1a1a" />
+        <rect x="54" y="42" width="16" height="10" rx="3" fill="#1a1a1a" />
+        <rect x="42" y="46" width="12" height="2" fill="#1a1a1a" />
+        <path d="M 36 62 Q 48 72, 60 62" stroke="#1a1a1a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      </>
+    ),
+    happy: (
+      <>
+        <ellipse cx="36" cy="46" rx="3.5" ry="5" fill="white" />
+        <ellipse cx="60" cy="46" rx="3.5" ry="5" fill="white" />
+        <circle cx="36" cy="47" r="2.2" fill="#1a1a1a" />
+        <circle cx="60" cy="47" r="2.2" fill="#1a1a1a" />
+        <path d="M 34 60 Q 48 70, 62 60" stroke="#1a1a1a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      </>
+    ),
+    neutral: <path d="M 36 62 L 60 62" stroke="#1a1a1a" strokeWidth={2.4} fill="none" strokeLinecap="round" />,
+    worried: <path d="M 34 65 Q 48 58, 62 65" stroke="#1a1a1a" strokeWidth={2.4} fill="none" strokeLinecap="round" />,
+    wow: <ellipse cx="48" cy="64" rx="5" ry="6" fill="#1a1a1a" />,
+    dead: null,
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden>
+      <ellipse cx="48" cy="52" rx="34" ry="36" fill={color} />
+      <ellipse cx="24" cy="56" rx="5" ry="3" fill="#FF8A7A" opacity="0.65" />
+      <ellipse cx="72" cy="56" rx="5" ry="3" fill="#FF8A7A" opacity="0.65" />
+      {face[mood]}
+      <ellipse cx="48" cy="94" rx="22" ry="3" fill="black" opacity="0.25" />
+    </svg>
+  )
+}
+
 export default function RegisterPage() {
   const router = useRouter()
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [successDetails, setSuccessDetails] = useState<{
-    level: string
-    levelName: string
-    xp: number
-    role: 'student' | 'teacher'
-  } | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [quizOpen, setQuizOpen] = useState(false)
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
+  const [goals, setGoals] = useState<QuizGoals | null>(null)
+  const [showPwd, setShowPwd] = useState(false)
+  const slots = useMemo(() => nextSlots(), [])
+  const [selectedSlot, setSelectedSlot] = useState(0)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [consent, setConsent] = useState(true)
+  const [errors, setErrors] = useState<Record<string, boolean>>({})
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
   const [oauthPending, setOauthPending] = useState(false)
+  const [success, setSuccess] = useState<{
+    name: string
+    email: string
+    slot: string
+    level: string
+    cefr: string
+    color: string
+    purpose: string | null
+  } | null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      password: '',
-      role: 'student',
-      termsAccepted: false as unknown as true,
-    },
-  })
-
-  const role = watch('role')
-  const termsAccepted = watch('termsAccepted')
-
-  // Load quiz result from localStorage on mount & whenever the quiz closes
   useEffect(() => {
-    setQuizResult(safeReadQuizResult())
-  }, [quizOpen])
-
-  // Cross-tab sync
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === QUIZ_STORAGE_KEY) {
-        setQuizResult(safeReadQuizResult())
-      }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    setQuizResult(readJSON<QuizResult>(QUIZ_KEY))
+    setGoals(readJSON<QuizGoals>(GOALS_KEY))
   }, [])
 
-  async function onSubmit(values: RegisterValues) {
+  const grade = useMemo(() => {
+    if (!quizResult) return null
+    return (
+      GRADE_MAP[quizResult.level] ?? {
+        name: quizResult.levelName,
+        cefr: '—',
+        color: '#D33F3F',
+        body: '#8B0000',
+      }
+    )
+  }, [quizResult])
+
+  const hasProfile = !!(grade || goals?.purposeLabel || goals?.timelineLabel || goals?.intensityLabel)
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 2200)
+  }, [])
+
+  const validate = useCallback(() => {
+    const e: Record<string, boolean> = {}
+    if (!name.trim()) e.name = true
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = true
+    if (password.length < 6) e.password = true
+    if (!phone.trim()) e.phone = true
+    setErrors(e)
+    if (!consent) {
+      showToast('Нужно согласие с условиями')
+      return false
+    }
+    return Object.keys(e).length === 0
+  }, [name, email, password, phone, consent, showToast])
+
+  async function onSubmit(ev: React.FormEvent) {
+    ev.preventDefault()
     setServerError(null)
+    if (!validate()) return
+    setPending(true)
     const supabase = createClient()
-
-    const fullName = `${values.firstName} ${values.lastName}`.trim()
-
+    const parts = name.trim().split(/\s+/)
+    const firstName = parts[0]
+    const lastName = parts.slice(1).join(' ') || ''
+    const chosen = slots[selectedSlot]
     const { error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
+      email: email.trim(),
+      password,
       options: {
         data: {
-          full_name: fullName,
-          first_name: values.firstName,
-          last_name: values.lastName,
-          phone: values.phone || null,
-          role: values.role,
+          full_name: name.trim(),
+          first_name: firstName,
+          last_name: lastName,
+          phone: phone.trim() || null,
+          role: 'student',
         },
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
       },
     })
-
     if (error) {
+      setPending(false)
       if (error.message.includes('already registered')) {
         setServerError('Пользователь с таким email уже зарегистрирован')
       } else if (error.message.includes('rate limit')) {
-        setServerError('Слишком много попыток. Подождите несколько минут и попробуйте снова.')
-      } else if (error.message.includes('invalid')) {
-        setServerError('Проверьте правильность email адреса.')
+        setServerError('Слишком много попыток. Подождите несколько минут.')
       } else {
-        setServerError(`Не удалось создать аккаунт: ${error.message}`)
+        setServerError('Не удалось создать аккаунт: ' + error.message)
       }
       return
     }
-
-    // Fire-and-forget trial lesson request + level test storage for students
-    if (values.role === 'student') {
-      void fetch('/api/trial-lesson/request', {
+    void fetch('/api/trial-lesson/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ levelTestId: null, preferredSlot: chosen.iso }),
+    }).catch(() => {})
+    if (quizResult) {
+      void fetch('/api/level-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ levelTestId: quizResult?.id ?? null }),
+        body: JSON.stringify(quizResult),
       }).catch(() => {})
-
-      if (quizResult) {
-        void fetch('/api/level-test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(quizResult),
-        }).catch(() => {})
-      }
     }
-
-    setSuccessDetails({
-      level: quizResult?.level ?? '—',
-      levelName: quizResult?.levelName ?? 'Определим на пробном',
-      xp: quizResult?.xp ?? 0,
-      role: values.role,
+    setSuccess({
+      name: firstName,
+      email: email.trim(),
+      slot: `${chosen.day}, ${chosen.time}`,
+      level: grade?.name || quizResult?.levelName || 'Определим на пробном',
+      cefr: grade?.cefr || '—',
+      color: grade?.color || '#D33F3F',
+      purpose: goals?.purposeLabel || null,
     })
-    setIsSuccess(true)
+    setPending(false)
   }
 
   async function handleGoogle() {
@@ -156,393 +229,562 @@ export default function RegisterPage() {
     })
     if (error) {
       setOauthPending(false)
-      setServerError('Не удалось подключиться к Google. Попробуйте ещё раз.')
+      showToast('Не удалось подключиться к Google')
     }
   }
 
-  function goToPlatform() {
-    if (!successDetails) return
-    router.push(successDetails.role === 'teacher' ? '/teacher' : '/student')
-    router.refresh()
-  }
-
-  function goToBookTrial() {
-    router.push('/teachers')
-    router.refresh()
-  }
-
-  if (isSuccess && successDetails) {
+  if (success) {
     return (
-      <div className="fade-in">
-        <div className="auth-success">
-          <div className="success-icon">🎉</div>
-          <h3>
-            Добро пожаловать в <span className="gl" style={glutenStyle}>Raw!</span>
-          </h3>
-          <p>
-            Аккаунт создан! Пробное занятие уже ждёт тебя — преподаватель определит
-            точный уровень и составит план.
-          </p>
-          <div className="success-details">
-            <div className="sd-row">
-              <div className="sd-icon sd-icon--red">🎙</div>
-              <div>
-                <div className="sd-label">Пробное занятие</div>
-                <div className="sd-val">Бесплатно · 30 мин</div>
-              </div>
+      <>
+        <RegisterStyles />
+        <div className="r-page">
+          <div className="success-wrap">
+            <div className="success-icon">
+              <svg width="40" height="40" viewBox="0 0 20 20" aria-hidden>
+                <path
+                  d="M5 10 L9 14 L16 6"
+                  stroke="#4ADE80"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
-            <div className="sd-row">
-              <div className="sd-icon sd-icon--lime">📈</div>
-              <div>
-                <div className="sd-label">Текущий уровень</div>
-                <div className="sd-val">
-                  {successDetails.levelName}
-                  {successDetails.xp ? ` · ${successDetails.xp} XP` : ''}
+            <h2>Готово, {success.name}!</h2>
+            <p>
+              Аккаунт создан. Мы напишем на <b>{success.email}</b> в течение часа,
+              чтобы подтвердить время пробного урока. Стейк уже ждёт.
+            </p>
+            <div className="success-detail">
+              <div className="sd-row">
+                <span className="sd-k">Уровень</span>
+                <span className="sd-v" style={{ color: success.color }}>
+                  {success.level} · {success.cefr}
+                </span>
+              </div>
+              {success.purpose && (
+                <div className="sd-row">
+                  <span className="sd-k">Цель</span>
+                  <span className="sd-v">{success.purpose}</span>
                 </div>
+              )}
+              <div className="sd-row">
+                <span className="sd-k">Пробный</span>
+                <span className="sd-v">{success.slot}</span>
+              </div>
+              <div className="sd-row">
+                <span className="sd-k">Длительность</span>
+                <span className="sd-v">45 минут</span>
+              </div>
+              <div className="sd-row">
+                <span className="sd-k">Стоимость</span>
+                <span className="sd-v" style={{ color: '#4ADE80' }}>бесплатно</span>
               </div>
             </div>
-            <div className="sd-row">
-              <div className="sd-icon sd-icon--red">🎯</div>
-              <div>
-                <div className="sd-label">Что дальше</div>
-                <div className="sd-val">Преподаватель свяжется в Telegram</div>
-              </div>
-            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                router.push('/student')
+                router.refresh()
+              }}
+            >
+              Перейти в приложение
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => router.push('/')}
+              style={{ marginTop: 10 }}
+            >
+              На главную
+            </button>
           </div>
-          <button
-            type="button"
-            className="auth-submit auth-submit--lime"
-            onClick={goToPlatform}
-          >
-            🔥 Перейти на платформу
-          </button>
-          <button
-            type="button"
-            className="auth-submit auth-submit--ghost"
-            onClick={goToBookTrial}
-          >
-            Выбрать время пробного занятия
-          </button>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="fade-in">
-      {/* Tabs */}
-      <div className="auth-tabs" role="tablist">
-        <button type="button" className="auth-tab active" role="tab" aria-selected="true">
-          Регистрация
-        </button>
-        <Link href="/login" className="auth-tab" role="tab" aria-selected="false">
-          Вход
-        </Link>
-      </div>
-
-      {/* Level badge from quiz OR CTA to take it */}
-      {quizResult ? (
-        <div className="auth-level">
-          <div className="auth-level-icon">📈</div>
-          <div className="auth-level-info">
-            <div className="auth-level-name">
-              Твой уровень —{' '}
-              <span className="gl" style={glutenStyle}>
-                {quizResult.levelName}
-              </span>
+    <>
+      <RegisterStyles />
+      <div className="r-page">
+        <div className="form-wrap">
+          <div className="form-head">
+            <Link href="/" className="goals-back" aria-label="На главную">
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                <path
+                  d="M11 3 L5 9 L11 15"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <div className="head-label">Последний шаг</div>
             </div>
-            <div className="auth-level-sub">
-              Пробное занятие определит уровень точнее
-            </div>
+            <div style={{ width: 36 }} />
           </div>
-          <div className="auth-level-xp">⚡ {quizResult.xp} XP</div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="auth-quiz-cta"
-          onClick={() => setQuizOpen(true)}
-        >
-          <div className="auth-quiz-cta-icon">📝</div>
-          <div className="auth-quiz-cta-text">
-            <div className="auth-quiz-cta-title">Пройти тест уровня</div>
-            <div className="auth-quiz-cta-sub">
-              Займёт 2 минуты — узнаешь свой примерный уровень
-            </div>
+
+          <div className="mascot">
+            <SteakSVG mood="cool" size={72} color={grade?.body || '#D33F3F'} />
           </div>
-        </button>
-      )}
+          <h2 className="form-title">Создай аккаунт</h2>
+          <p className="form-sub">И записывайся на бесплатный пробный</p>
 
-      {/* Trial banner (students only) */}
-      {role === 'student' && (
-        <div className="trial-banner">
-          <div className="trial-icon">🎙</div>
-          <div className="trial-text">
-            <div className="trial-title">Пробное занятие в подарок</div>
-            <div className="trial-sub">
-              Преподаватель определит твой точный уровень и составит персональный план
-            </div>
-          </div>
-          <div className="trial-badge">Free</div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
-        {serverError && <div className="auth-error">{serverError}</div>}
-
-        <div className="field-row">
-          <div className="field">
-            <div className="field-label">Имя</div>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="Как тебя зовут?"
-              autoComplete="given-name"
-              aria-invalid={!!errors.firstName}
-              {...register('firstName')}
-            />
-            {errors.firstName && (
-              <div className="auth-field-error">{errors.firstName.message}</div>
-            )}
-          </div>
-          <div className="field">
-            <div className="field-label">Фамилия</div>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="Фамилия"
-              autoComplete="family-name"
-              aria-invalid={!!errors.lastName}
-              {...register('lastName')}
-            />
-            {errors.lastName && (
-              <div className="auth-field-error">{errors.lastName.message}</div>
-            )}
-          </div>
-        </div>
-
-        <div className="field">
-          <div className="field-label">Email</div>
-          <input
-            className="field-input"
-            type="email"
-            placeholder="hello@example.com"
-            autoComplete="email"
-            aria-invalid={!!errors.email}
-            {...register('email')}
-          />
-          {errors.email && (
-            <div className="auth-field-error">{errors.email.message}</div>
-          )}
-        </div>
-
-        <div className="field">
-          <div className="field-label">Телефон</div>
-          <div className="phone-wrap" data-invalid={!!errors.phone}>
-            <div className="phone-flag">🇷🇺</div>
-            <input
-              className="phone-input"
-              type="tel"
-              placeholder="+7 (999) 123-45-67"
-              autoComplete="tel"
-              aria-invalid={!!errors.phone}
-              {...register('phone')}
-            />
-          </div>
-          {errors.phone && (
-            <div className="auth-field-error">{errors.phone.message}</div>
-          )}
-        </div>
-
-        <div className="field">
-          <div className="field-label">Пароль</div>
-          <div className="pass-wrap">
-            <input
-              className="field-input"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Минимум 8 символов"
-              autoComplete="new-password"
-              aria-invalid={!!errors.password}
-              {...register('password')}
-            />
-            <button
-              type="button"
-              className="pass-toggle"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-              onClick={() => setShowPassword((v) => !v)}
-              style={showPassword ? { color: 'var(--auth-red)' } : undefined}
-            >
-              {showPassword ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+          {hasProfile && (
+            <div className="profile-summary">
+              {grade && (
+                <div className="ps-row">
+                  <span className="ps-k">Уровень</span>
+                  <span className="ps-v" style={{ color: grade.color }}>
+                    {grade.name} · {grade.cefr}
+                  </span>
+                </div>
               )}
-            </button>
-          </div>
-          {errors.password && (
-            <div className="auth-field-error">{errors.password.message}</div>
+              {goals?.purposeLabel && (
+                <div className="ps-row">
+                  <span className="ps-k">Цель</span>
+                  <span className="ps-v">{goals.purposeLabel}</span>
+                </div>
+              )}
+              {goals?.timelineLabel && (
+                <div className="ps-row">
+                  <span className="ps-k">Срок</span>
+                  <span className="ps-v">{goals.timelineLabel}</span>
+                </div>
+              )}
+              {goals?.intensityLabel && (
+                <div className="ps-row">
+                  <span className="ps-k">Интенсивность</span>
+                  <span className="ps-v">{goals.intensityLabel}</span>
+                </div>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* Role selector */}
-        <div className="field">
-          <div className="field-label">Я хочу</div>
-          <Controller
-            name="role"
-            control={control}
-            render={({ field }) => (
-              <div className="role-row" role="radiogroup" aria-label="Роль">
+          <form onSubmit={onSubmit} noValidate>
+            {serverError && <div className="server-error">{serverError}</div>}
+
+            <div className="field">
+              <label htmlFor="r-name">Имя</label>
+              <input
+                id="r-name"
+                type="text"
+                placeholder="Мария"
+                autoComplete="given-name"
+                className={errors.name ? 'err' : ''}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="r-email">Email</label>
+              <input
+                id="r-email"
+                type="email"
+                placeholder="maria@example.com"
+                autoComplete="email"
+                className={errors.email ? 'err' : ''}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="r-password">Пароль</label>
+              <div className="pwd-wrap">
+                <input
+                  id="r-password"
+                  type={showPwd ? 'text' : 'password'}
+                  placeholder="Минимум 6 символов"
+                  autoComplete="new-password"
+                  className={errors.password ? 'err' : ''}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={field.value === 'student'}
-                  data-active={field.value === 'student'}
-                  className="role-opt"
-                  onClick={() => field.onChange('student')}
+                  className="pwd-toggle"
+                  onClick={() => setShowPwd((v) => !v)}
+                  aria-label={showPwd ? 'Скрыть пароль' : 'Показать пароль'}
                 >
-                  Учиться
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={field.value === 'teacher'}
-                  data-active={field.value === 'teacher'}
-                  className="role-opt"
-                  onClick={() => field.onChange('teacher')}
-                >
-                  Преподавать
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+                    <path d="M1 9 Q9 3, 17 9 Q9 15, 1 9 Z" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
                 </button>
               </div>
-            )}
-          />
-          {errors.role && (
-            <div className="auth-field-error">{errors.role.message}</div>
-          )}
+            </div>
+
+            <div className="field">
+              <label htmlFor="r-phone">Телефон или Telegram</label>
+              <input
+                id="r-phone"
+                type="text"
+                placeholder="+7 999 123-45-67 или @username"
+                autoComplete="tel"
+                className={errors.phone ? 'err' : ''}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label>Удобное время для пробного</label>
+              <div className="slot-grid">
+                {slots.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`slot ${selectedSlot === s.id ? 'active' : ''}`}
+                    onClick={() => setSelectedSlot(s.id)}
+                  >
+                    <div className="slot-day">{s.day}</div>
+                    <div className="slot-time">{s.time}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="consent">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              <span>
+                Согласен(на) с{' '}
+                <Link href="/terms" target="_blank">
+                  условиями
+                </Link>{' '}
+                и{' '}
+                <Link href="/privacy" target="_blank">
+                  политикой
+                </Link>
+              </span>
+            </label>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={pending}
+              style={{ marginTop: 14, maxWidth: 'none' }}
+            >
+              {pending ? 'Создаём аккаунт…' : 'Создать аккаунт и записаться'}
+            </button>
+
+            <div className="sso-divider">
+              <span>или</span>
+            </div>
+
+            <div className="sso-row">
+              <button
+                type="button"
+                className="sso-btn"
+                onClick={handleGoogle}
+                disabled={oauthPending}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                  <path
+                    d="M17 9.2 C17 8.6, 17 8.1, 16.9 7.5 L9 7.5 L9 10.5 L13.5 10.5 C13.3 11.7, 12.6 12.7, 11.6 13.3 L11.6 15.2 L14.2 15.2 C15.9 13.7, 17 11.6, 17 9.2 Z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M9 17 C11.4 17, 13.4 16.2, 14.2 15.2 L11.6 13.3 C10.9 13.8, 10 14.1, 9 14.1 C6.7 14.1, 4.8 12.6, 4.1 10.5 L1.5 10.5 L1.5 12.5 C2.9 15.2, 5.7 17, 9 17 Z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M4.1 10.5 C3.9 9.9, 3.8 9.3, 3.8 8.5 C3.8 7.7, 3.9 7.1, 4.1 6.5 L4.1 4.5 L1.5 4.5 C0.8 5.7, 0.5 7.1, 0.5 8.5 C0.5 9.9, 0.8 11.3, 1.5 12.5 L4.1 10.5 Z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M9 2.9 C10.3 2.9, 11.5 3.4, 12.4 4.2 L14.3 2.3 C13.1 1.2, 11.3 0.5, 9 0.5 C5.7 0.5, 2.9 2.3, 1.5 5 L4.1 7 C4.8 4.9, 6.7 2.9, 9 2.9 Z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                Google
+              </button>
+              <button
+                type="button"
+                className="sso-btn"
+                onClick={() => showToast('Apple SSO — скоро')}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="white" aria-hidden>
+                  <path d="M12.3 9.5 C12.3 7.3, 14.1 6.4, 14.2 6.3 C13.2 4.9, 11.7 4.7, 11.2 4.7 C10 4.6, 8.8 5.4, 8.2 5.4 C7.6 5.4, 6.6 4.7, 5.6 4.8 C4.3 4.8, 3.1 5.6, 2.5 6.7 C1.1 9.1, 2.1 12.6, 3.4 14.6 C4.1 15.5, 4.9 16.5, 5.9 16.5 C6.9 16.5, 7.2 15.9, 8.4 15.9 C9.6 15.9, 9.9 16.5, 10.9 16.5 C12 16.5, 12.6 15.5, 13.3 14.6 C14.1 13.6, 14.4 12.5, 14.4 12.5 C14.4 12.5, 12.3 11.7, 12.3 9.5 Z M10.4 3.5 C10.9 2.9, 11.2 2, 11.1 1.2 C10.4 1.3, 9.5 1.7, 9 2.3 C8.5 2.9, 8.2 3.7, 8.3 4.5 C9.1 4.6, 9.9 4.1, 10.4 3.5 Z" />
+                </svg>
+                Apple
+              </button>
+            </div>
+          </form>
+
+          <div className="login-link">
+            Уже есть аккаунт? <Link href="/login">Войти</Link>
+          </div>
         </div>
 
-        {/* Terms checkbox */}
-        <label className="check-row">
-          <input
-            type="checkbox"
-            style={{ display: 'none' }}
-            checked={!!termsAccepted}
-            onChange={(e) =>
-              setValue('termsAccepted', e.target.checked as unknown as true, {
-                shouldValidate: true,
-              })
-            }
-          />
-          <span
-            className="check-box"
-            data-checked={!!termsAccepted}
-            aria-hidden="true"
-          >
-            <svg viewBox="0 0 24 24">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </span>
-          <span className="check-label">
-            Я принимаю{' '}
-            <Link href="/terms" target="_blank">
-              условия использования
-            </Link>{' '}
-            и{' '}
-            <Link href="/privacy" target="_blank">
-              политику конфиденциальности
-            </Link>
-          </span>
-        </label>
-        {errors.termsAccepted && (
-          <div className="auth-field-error">{errors.termsAccepted.message}</div>
-        )}
-
-        <button
-          type="submit"
-          className="auth-submit auth-submit--red"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
-          ) : (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
-          )}
-          {role === 'teacher' ? 'Зарегистрироваться' : 'Зарегистрироваться и записаться'}
-        </button>
-
-        <div className="auth-divider">
-          <span>или</span>
-        </div>
-
-        <div className="social-btns">
-          <button
-            type="button"
-            className="social-btn"
-            onClick={handleGoogle}
-            disabled={oauthPending}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            Google
-          </button>
-          <button type="button" className="social-btn" disabled title="Скоро">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.607.069-.607 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z" fill="#1E1E1E" />
-            </svg>
-            GitHub
-          </button>
-          <button type="button" className="social-btn" disabled title="Скоро">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 7.5a1.5 1.5 0 0 0 .108 2.79l4.716 1.572 2.25 6a1.5 1.5 0 0 0 2.529.6l2.407-2.407 4.473 3.315a1.5 1.5 0 0 0 2.341-.924l3-16.5a2.25 2.25 0 0 0-3.302-2.161z" fill="#2AABEE" />
-            </svg>
-            Telegram
-          </button>
-        </div>
-      </form>
-
-      <div className="auth-bottom">
-        Уже есть аккаунт? <Link href="/login">Войти</Link>
+        {toast && <div className="toast show">{toast}</div>}
       </div>
+    </>
+  )
+}
 
-      {quizResult && (
-        <div className="auth-bottom" style={{ marginTop: 8 }}>
-          <button
-            type="button"
-            onClick={() => setQuizOpen(true)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--auth-text3)',
-              cursor: 'pointer',
-              fontSize: '.72rem',
-              textDecoration: 'underline',
-              fontFamily: 'inherit',
-            }}
-          >
-            Перепройти тест уровня
-          </button>
-        </div>
-      )}
+function RegisterStyles() {
+  return (
+    <style>{`
+      /* Override the light auth-modal chrome: /register runs its own dark layout. */
+      html:has(.r-page), html:has(.r-page) body { background: #0a0a0a !important; }
+      .auth-scope:has(.r-page) { padding: 0 !important; align-items: stretch !important; min-height: 100dvh; }
+      .auth-scope:has(.r-page) .auth-modal {
+        max-width: 720px;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: visible;
+      }
+      .auth-scope:has(.r-page) .auth-modal::before { display: none; }
+      .auth-scope:has(.r-page) .auth-header {
+        padding: 24px 20px 8px;
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+      }
+      .auth-scope:has(.r-page) .auth-logo {
+        font-family: var(--font-gluten, 'Caveat Brush'), cursive;
+        color: #D33F3F; font-size: 28px;
+      }
+      .auth-scope:has(.r-page) .auth-logo span {
+        color: white; font-weight: 500; font-size: 13px;
+      }
+      .auth-scope:has(.r-page) .auth-close {
+        border-color: rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.5);
+      }
+      .auth-scope:has(.r-page) .auth-close:hover {
+        border-color: #D33F3F; color: #D33F3F;
+      }
+      .auth-scope:has(.r-page) .auth-body { padding: 8px 20px 40px; }
 
-      <LevelQuiz
-        open={quizOpen}
-        onOpenChange={setQuizOpen}
-        onComplete={(r) => {
-          setQuizResult(r)
-          setQuizOpen(false)
-        }}
-      />
-    </div>
+      .r-page {
+        --rp-red: #D33F3F;
+        --rp-red-dark: #991F1F;
+        --rp-red-soft: #FF8A7A;
+        --rp-green: #4ADE80;
+        --rp-surface: #141414;
+        --rp-surface-2: #1c1c1c;
+        --rp-text: #ffffff;
+        --rp-muted: rgba(255,255,255,0.5);
+        --rp-border: rgba(255,255,255,0.08);
+        --rp-border-hover: rgba(255,255,255,0.2);
+        color: var(--rp-text);
+        background-image:
+          radial-gradient(ellipse at 20% 0%, rgba(211,63,63,0.18), transparent 45%),
+          radial-gradient(ellipse at 90% 100%, rgba(211,63,63,0.12), transparent 50%);
+      }
+
+      .r-page * { box-sizing: border-box; }
+      .r-page button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+      .form-wrap { animation: r-pop 0.4s ease-out; text-align: left; max-width: 480px; margin: 0 auto; }
+      .form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .head-label {
+        font-size: 10px; letter-spacing: 0.2em; color: var(--rp-red);
+        text-transform: uppercase; font-weight: 600;
+      }
+      .goals-back {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: var(--rp-surface); border: 1px solid var(--rp-border);
+        display: flex; align-items: center; justify-content: center;
+        color: white; transition: background 0.15s;
+        flex-shrink: 0; text-decoration: none;
+      }
+      .goals-back:hover { background: var(--rp-surface-2); }
+
+      .mascot { display: flex; justify-content: center; margin-bottom: 14px; }
+      .mascot svg { animation: r-float 3s ease-in-out infinite; }
+
+      .form-title { font-size: 22px; font-weight: 700; text-align: center; margin: 0 0 6px; letter-spacing: -0.01em; }
+      .form-sub { font-size: 14px; color: var(--rp-muted); text-align: center; margin: 0 0 24px; }
+
+      .profile-summary {
+        background: linear-gradient(135deg, rgba(211,63,63,0.12), rgba(211,63,63,0.04));
+        border: 1px solid rgba(211,63,63,0.25);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 20px;
+      }
+      .ps-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
+      .ps-k { color: var(--rp-muted); font-weight: 500; }
+      .ps-v { color: white; font-weight: 600; }
+
+      .r-page .field { margin-bottom: 14px; }
+      .r-page .field label {
+        display: block; font-size: 12px; letter-spacing: 0.1em;
+        text-transform: uppercase; color: var(--rp-muted);
+        font-weight: 600; margin-bottom: 6px;
+      }
+      .r-page .field input {
+        width: 100%;
+        background: var(--rp-surface);
+        border: 1.5px solid var(--rp-border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: white;
+        font-size: 15px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+        outline: none;
+      }
+      .r-page .field input:focus { border-color: var(--rp-red); }
+      .r-page .field input::placeholder { color: rgba(255,255,255,0.3); }
+      .r-page .field input.err { border-color: var(--rp-red); animation: r-shake 0.35s; }
+
+      .pwd-wrap { position: relative; }
+      .pwd-wrap input { padding-right: 44px; }
+      .pwd-toggle {
+        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+        width: 30px; height: 30px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--rp-muted); transition: color 0.15s;
+      }
+      .pwd-toggle:hover { color: white; }
+
+      .slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+      .slot {
+        background: var(--rp-surface);
+        border: 1.5px solid var(--rp-border);
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        transition: all 0.15s;
+        color: white;
+      }
+      .slot:hover { border-color: var(--rp-red-soft); background: rgba(211,63,63,0.05); }
+      .slot.active { background: rgba(211,63,63,0.15); border-color: var(--rp-red); }
+      .slot-day { font-size: 11px; color: var(--rp-muted); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+      .slot-time { font-size: 15px; font-weight: 600; }
+
+      .consent {
+        display: flex; gap: 10px; align-items: flex-start;
+        margin-top: 12px; font-size: 12px; color: var(--rp-muted);
+        cursor: pointer;
+      }
+      .consent input { margin-top: 2px; accent-color: var(--rp-red); flex-shrink: 0; }
+      .consent a { color: var(--rp-red-soft); text-decoration: none; }
+      .consent a:hover { text-decoration: underline; }
+
+      .r-page .btn-primary {
+        background: var(--rp-red);
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        padding: 16px 28px;
+        border-radius: 14px;
+        box-shadow: 0 4px 0 var(--rp-red-dark);
+        transition: transform 0.1s, box-shadow 0.1s;
+        width: 100%;
+      }
+      .r-page .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+      .r-page .btn-primary:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--rp-red-dark); }
+      .r-page .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+
+      .r-page .btn-ghost {
+        background: transparent;
+        color: rgba(255,255,255,0.7);
+        border: 1px solid var(--rp-border-hover);
+        padding: 14px 24px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 500;
+        width: 100%;
+        transition: background 0.15s;
+      }
+      .r-page .btn-ghost:hover { background: rgba(255,255,255,0.05); }
+
+      .sso-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 14px; }
+      .sso-divider::before, .sso-divider::after { content: ''; flex: 1; height: 1px; background: var(--rp-border); }
+      .sso-divider span { font-size: 11px; color: var(--rp-muted); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+
+      .sso-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .sso-btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        background: var(--rp-surface); border: 1px solid var(--rp-border);
+        border-radius: 12px; padding: 12px;
+        color: white; font-size: 14px; font-weight: 500;
+        transition: background 0.15s;
+      }
+      .sso-btn:hover:not(:disabled) { background: var(--rp-surface-2); }
+      .sso-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+      .server-error {
+        background: rgba(211,63,63,0.12);
+        border: 1px solid rgba(211,63,63,0.3);
+        color: var(--rp-red-soft);
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 12px;
+      }
+
+      .login-link { text-align: center; margin-top: 18px; font-size: 13px; color: var(--rp-muted); }
+      .login-link a { color: var(--rp-red-soft); font-weight: 600; text-decoration: none; }
+      .login-link a:hover { text-decoration: underline; }
+
+      /* Success */
+      .success-wrap { text-align: center; padding: 20px 0; animation: r-pop 0.5s ease-out; max-width: 480px; margin: 0 auto; }
+      .success-icon {
+        width: 80px; height: 80px; margin: 0 auto 18px;
+        background: rgba(74,222,128,0.15);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        animation: r-pop 0.6s 0.1s both;
+      }
+      .success-wrap h2 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; }
+      .success-wrap p { color: var(--rp-muted); max-width: 420px; margin: 0 auto 24px; line-height: 1.5; font-size: 14px; }
+      .success-wrap p b { color: white; font-weight: 600; }
+      .success-detail {
+        background: var(--rp-surface);
+        border: 1px solid var(--rp-border);
+        border-radius: 14px;
+        padding: 16px;
+        max-width: 340px;
+        margin: 0 auto 20px;
+        text-align: left;
+      }
+      .sd-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rp-border); font-size: 14px; }
+      .sd-row:last-child { border-bottom: none; }
+      .sd-k { color: var(--rp-muted); }
+      .sd-v { font-weight: 600; color: white; }
+
+      /* Toast */
+      .toast {
+        position: fixed; bottom: 20px; left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: var(--rp-surface-2); color: white;
+        padding: 12px 20px; border-radius: 12px;
+        border: 1px solid var(--rp-border);
+        font-size: 13px; font-weight: 500;
+        opacity: 0; transition: all 0.3s;
+        z-index: 1000;
+        max-width: 90vw;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      @keyframes r-pop { 0% { transform: scale(0.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes r-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+      @keyframes r-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+      @media (max-width: 480px) {
+        .auth-scope:has(.r-page) .auth-body { padding: 16px 14px 30px; }
+        .form-title { font-size: 20px; }
+      }
+    `}</style>
   )
 }
