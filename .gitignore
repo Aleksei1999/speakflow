@@ -41,5 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # claude code
-.claude/hooks/*.log
-.claude/settings.local.json
+.claude/
+
+# local landing preview (dev-only static artifact)
+/public/landing-preview/
