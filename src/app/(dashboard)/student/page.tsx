@@ -7,6 +7,7 @@ import Link from "next/link"
 import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
+import { LEVEL_XP_THRESHOLDS, getLevelCEFR, type RoastLevel } from "@/lib/level-utils"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -16,22 +17,6 @@ const LEVEL_SHORT: Record<string, string> = {
   Medium: "Medium",
   "Medium Well": "Med Well",
   "Well Done": "Well Done",
-}
-const LEVEL_TO_CEFR: Record<string, string> = {
-  Raw: "≈ A1 Beginner",
-  Rare: "≈ A2 Elementary",
-  "Medium Rare": "≈ B1 Intermediate",
-  Medium: "≈ B2 Upper-Int",
-  "Medium Well": "≈ C1 Advanced",
-  "Well Done": "≈ C2 Proficient",
-}
-const LEVEL_THRESHOLDS: Record<string, { next: string | null; target: number }> = {
-  Raw: { next: "Rare", target: 100 },
-  Rare: { next: "Medium Rare", target: 250 },
-  "Medium Rare": { next: "Medium", target: 500 },
-  Medium: { next: "Medium Well", target: 1000 },
-  "Medium Well": { next: "Well Done", target: 2000 },
-  "Well Done": { next: null, target: 5000 },
 }
 
 const STU_CSS = `
@@ -226,14 +211,17 @@ export default async function StudentDashboardPage() {
   const fullName = profile?.full_name ?? "Ученик"
   const firstName = fullName.split(" ")[0]
   const xp = progress?.total_xp ?? 0
-  const level = progress?.english_level && LEVEL_ORDER.includes(progress.english_level as (typeof LEVEL_ORDER)[number])
-    ? progress.english_level
+  const level: RoastLevel = progress?.english_level && LEVEL_ORDER.includes(progress.english_level as (typeof LEVEL_ORDER)[number])
+    ? (progress.english_level as RoastLevel)
     : "Raw"
-  const thresholds = LEVEL_THRESHOLDS[level]
+  const thresholds = LEVEL_XP_THRESHOLDS[level]
+  const targetXp = thresholds.next ?? xp
   const currentStreak = progress?.current_streak ?? 0
   const longestStreak = progress?.longest_streak ?? 0
   const levelIndex = LEVEL_ORDER.indexOf(level as (typeof LEVEL_ORDER)[number])
-  const xpPct = Math.min(100, Math.round((xp / Math.max(thresholds.target, 1)) * 100))
+  const xpPct = thresholds.next === null
+    ? 100
+    : Math.min(100, Math.round((xp / Math.max(thresholds.next, 1)) * 100))
 
   const myRank = leaderboard.find((r) => r.out_user_id === user.id)?.out_rank
   const totalOnLb = leaderboard.length
@@ -304,7 +292,7 @@ export default async function StudentDashboardPage() {
         <div className="xp-hero-bar"><div className="xp-hero-fill" style={{ width: `${xpPct}%` }} /></div>
         <div className="xp-hero-right">
           <div className="xp-hero-count">
-            <b>{xp.toLocaleString("ru-RU")}</b> / {thresholds.target.toLocaleString("ru-RU")} XP
+            <b>{xp.toLocaleString("ru-RU")}</b> / {thresholds.next === null ? "∞" : thresholds.next.toLocaleString("ru-RU")} XP
           </div>
           {currentStreak > 0 ? (
             <div className="xp-hero-streak">🔥 {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"} подряд</div>
@@ -317,7 +305,7 @@ export default async function StudentDashboardPage() {
         <div className="stat">
           <div className="stat-label">Текущий уровень</div>
           <div className="stat-val stat-val--red"><span className="gl">{LEVEL_SHORT[level]}</span></div>
-          <div className="stat-change">{LEVEL_TO_CEFR[level]}</div>
+          <div className="stat-change">≈ {getLevelCEFR(level)}</div>
         </div>
         <div className="stat stat--lime">
           <div className="stat-label">Стрик</div>
@@ -437,7 +425,7 @@ export default async function StudentDashboardPage() {
             </div>
             <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                {thresholds.next ? `${xp} / ${thresholds.target} XP до ${thresholds.next}` : "Максимальный уровень 🏆"}
+                {thresholds.nextLevel ? `${xp.toLocaleString("ru-RU")} / ${targetXp.toLocaleString("ru-RU")} XP до ${thresholds.nextLevel}` : "Максимальный уровень 🏆"}
               </span>
               <span className="btn btn-sm btn-lime">{xpPct}%</span>
             </div>
