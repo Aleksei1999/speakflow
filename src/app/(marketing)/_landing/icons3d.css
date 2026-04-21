@@ -1,0 +1,36 @@
+/* ========================================================
+   3D ICON SYSTEM — SVG with gradients, isometric feel
+   Used to replace all emoji avatars/icons on the landing.
+   ======================================================== */
+
+.i3{display:inline-flex;align-items:center;justify-content:center;position:relative;line-height:1}
+.i3 svg{width:100%;height:100%;display:block;overflow:visible}
+
+/* Sizes */
+.i3-sm{width:24px;height:24px}
+.i3-md{width:40px;height:40px}
+.i3-lg{width:56px;height:56px}
+.i3-xl{width:88px;height:88px}
+
+/* Isometric container for "stand on pedestal" effect */
+.i3-stand{
+  display:inline-block;position:relative;
+}
+.i3-stand::after{
+  content:'';position:absolute;left:50%;bottom:-6px;
+  width:72%;height:10px;transform:translateX(-50%);
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.35),transparent 70%);
+  border-radius:50%;pointer-events:none;
+  filter:blur(2px);
+}
+[data-theme="light"] .i3-stand::after{background:radial-gradient(ellipse at center,rgba(0,0,0,.18),transparent 70%)}
+
+/* Float animation (for hero pills / proof faces) */
+.i3-float{animation:i3Float 5s ease-in-out infinite}
+@keyframes i3Float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+/* Subtle tilt on hover */
+.i3-tilt{transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.i3-tilt:hover{transform:rotate(-6deg) scale(1.08)}
+
+/* Reusable gradient defs live inline in each icon; keep classes minimal. */
