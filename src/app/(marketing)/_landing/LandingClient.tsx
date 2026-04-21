@@ -32,10 +32,19 @@ export default function LandingClient() {
     const prevTheme = html.dataset.theme
     html.dataset.theme = "dark"
     html.dataset.landing = "true"
+    const w = window as unknown as {
+      I3?: { hydrate: () => void }
+      __landingInit?: () => void
+      __landingDispose?: () => void
+    }
+    // Defensive: fire hydrate + init even if onReady didn't.
+    w.I3?.hydrate()
+    w.__landingInit?.()
     return () => {
       if (prevTheme) html.dataset.theme = prevTheme
       else delete html.dataset.theme
       delete html.dataset.landing
+      w.__landingDispose?.()
     }
   }, [])
 
@@ -44,9 +53,13 @@ export default function LandingClient() {
       <Script
         src="/landing/icons3d.js"
         strategy="afterInteractive"
-        onLoad={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
+        onReady={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
       />
-      <Script src="/landing/landing.js" strategy="afterInteractive" />
+      <Script
+        src="/landing/landing.js"
+        strategy="afterInteractive"
+        onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
+      />
 
       {/* Game XP Bar */}
       <div className="game-bar" id="gameBar">
