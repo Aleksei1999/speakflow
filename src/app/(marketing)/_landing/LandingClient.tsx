@@ -6,6 +6,7 @@ import Script from "next/script"
 import Link from "next/link"
 import "./landing.css"
 import "./icons3d.css"
+import MiniBattleQuiz from "./MiniBattleQuiz"
 
 function I3(props: {
   kind: string
@@ -259,76 +260,9 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
           <div className="reveal">
             <div className="level-label"><span className="ll-num">3</span> Level</div>
             <h2 className="section-title">Проверь себя.<br /><span className="gluten">Mini battle.</span> Без регистрации.</h2>
-            <p className="section-desc" style={{ margin: "0 auto" }}>Пройди 6 заданий и узнай свою прожарку. Помоги Стейку дойти до финиша — он переживает.</p>
+            <p className="section-desc" style={{ margin: "0 auto" }}>Пройди 12 вопросов и узнай свою прожарку. Помоги Стейку дойти до well-done — он переживает.</p>
           </div>
-
-          <div className="quiz-intro reveal" id="quizIntro">
-            <div className="quiz-hero">
-              <div style={{ width: 140, height: 160, margin: "0 auto 14px" }} id="quizIntroChar"></div>
-              <div className="quiz-hero-title">Ready to battle?</div>
-              <div className="quiz-hero-sub">6 tasks of different types: multiple choice, build a sentence, listen & pick, match pairs. 2 minutes — and you know your level.</div>
-              <div className="quiz-hero-stats">
-                <div className="qhs"><div className="qhs-num">6</div><div className="qhs-lbl">Tasks</div></div>
-                <div className="qhs"><div className="qhs-num">3</div><div className="qhs-lbl">Lives</div></div>
-                <div className="qhs"><div className="qhs-num">~2 min</div><div className="qhs-lbl">Time</div></div>
-                <div className="qhs"><div className="qhs-num">+30</div><div className="qhs-lbl">Max XP</div></div>
-              </div>
-              <button className="quiz-start-btn" id="quizStartBtn">
-                <I3 kind="fire" size="sm" style={{ verticalAlign: "-3px" }}></I3> Start battle
-              </button>
-            </div>
-          </div>
-
-          <div className="quiz-game" id="quizGame">
-            <div className="quiz-hud">
-              <button className="quiz-close" id="quizClose" title="Выйти">×</button>
-              <div className="quiz-bar-outer"><div className="quiz-bar-fill" id="quizBarFill"></div></div>
-              <div className="quiz-hearts" id="quizHearts"></div>
-            </div>
-            <div id="quizBody"></div>
-            <div className="quiz-footer">
-              <button className="quiz-skip" id="quizSkip">Пропустить</button>
-              <button className="quiz-check" id="quizCheck">Проверить</button>
-            </div>
-            <div className="quiz-feedback" id="quizFeedback">
-              <div className="qf-left">
-                <div className="qf-icon" id="qfIcon">✓</div>
-                <div className="qf-text">
-                  <div className="qf-title" id="qfTitle">Отлично!</div>
-                  <div className="qf-correct" id="qfCorrect"></div>
-                </div>
-              </div>
-              <button className="qf-btn" id="qfBtn">Продолжить</button>
-            </div>
-          </div>
-
-          <div className="quiz-result-screen" id="quizResult">
-            <div className="qres-hero">
-              <div className="qres-char" id="qresChar"></div>
-              <div className="qres-label">Твой уровень</div>
-              <div className="qres-level" id="qresLevel">Medium Rare</div>
-              <div className="qres-tagline" id="qresTagline">Ты уверенно держишь базу, но грамматика и разговорная беглость хромают. Самое время — на сковородку.</div>
-              <div className="qres-stats">
-                <div className="qres-stat"><div className="qres-stat-n" id="qresScore">5/6</div><div className="qres-stat-l">Ответов</div></div>
-                <div className="qres-stat"><div className="qres-stat-n" id="qresXp">+24 XP</div><div className="qres-stat-l">Получено</div></div>
-                <div className="qres-stat"><div className="qres-stat-n" id="qresCefr">B1</div><div className="qres-stat-l">CEFR</div></div>
-              </div>
-            </div>
-
-            <div className="qres-section-title">Your <span className="gluten">roasting path</span></div>
-            <div className="qres-roadmap" id="qresRoadmap"></div>
-
-            <div className="qres-cta-box">
-              <div className="qres-cta-title">Start with a trial lesson</div>
-              <div className="qres-cta-sub">30 minutes with a teacher — free. We&apos;ll verify your level, show you the platform and build a precise plan.</div>
-              <div className="qres-cta-btns">
-                <Link href={ctaHref} className="qres-cta-primary">
-                  <I3 kind="mic" size="sm"></I3> {isAuthenticated ? "Перейти в кабинет" : "Book a trial lesson"}
-                </Link>
-                <button className="qres-cta-ghost" id="quizRestart">Retake the test</button>
-              </div>
-            </div>
-          </div>
+          <MiniBattleQuiz isAuthenticated={isAuthenticated} ctaHref={ctaHref} />
         </div>
       </section>
 
