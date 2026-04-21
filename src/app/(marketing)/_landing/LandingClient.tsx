@@ -26,7 +26,13 @@ function I3(props: {
   return createElement("i3", attrs)
 }
 
-export default function LandingClient() {
+type LandingClientProps = {
+  isAuthenticated?: boolean
+  homeHref?: string
+}
+
+export default function LandingClient({ isAuthenticated = false, homeHref = "/student" }: LandingClientProps = {}) {
+  const ctaHref = isAuthenticated ? homeHref : "/register"
   useEffect(() => {
     const html = document.documentElement
     const prevTheme = html.dataset.theme
@@ -114,8 +120,12 @@ export default function LandingClient() {
           <div className="theme-toggle" id="themeToggle">
             <div className="theme-knob" id="themeKnob">🌙</div>
           </div>
-          <Link href="/register" className="nav-cta">
-            <span style={{ fontFamily: "'Gluten',cursive", fontWeight: 600 }}>well done</span>
+          <Link href={ctaHref} className="nav-cta">
+            {isAuthenticated ? (
+              <span>Личный кабинет</span>
+            ) : (
+              <span style={{ fontFamily: "'Gluten',cursive", fontWeight: 600 }}>well done</span>
+            )}
           </Link>
         </div>
       </nav>
@@ -312,8 +322,8 @@ export default function LandingClient() {
               <div className="qres-cta-title">Start with a trial lesson</div>
               <div className="qres-cta-sub">30 minutes with a teacher — free. We&apos;ll verify your level, show you the platform and build a precise plan.</div>
               <div className="qres-cta-btns">
-                <Link href="/register" className="qres-cta-primary">
-                  <I3 kind="mic" size="sm"></I3> Book a trial lesson
+                <Link href={ctaHref} className="qres-cta-primary">
+                  <I3 kind="mic" size="sm"></I3> {isAuthenticated ? "Перейти в кабинет" : "Book a trial lesson"}
                 </Link>
                 <button className="qres-cta-ghost" id="quizRestart">Retake the test</button>
               </div>
@@ -419,7 +429,7 @@ export default function LandingClient() {
               <li><span className="ml-check">✓</span> Чат коммьюнити 24/7</li>
             </ul>
             <p style={{ fontSize: "0.78rem", color: "var(--text3)", marginBottom: 20 }}>Без подписки — только уроки 1-on-1. Всё остальное заблокировано.</p>
-            <Link href="/register" className="btn-lime">Стать участником</Link>
+            <Link href={ctaHref} className="btn-lime">{isAuthenticated ? "Перейти в кабинет" : "Стать участником"}</Link>
           </div>
         </div>
       </section>
@@ -432,8 +442,8 @@ export default function LandingClient() {
         <h2 className="cta-title reveal">Ты прошёл все уровни.<br /><span className="gluten">now beat the language.</span></h2>
         <p className="cta-sub reveal">Мы начислили тебе XP за прохождение лендинга. Осталось зарегистрироваться — и они твои.</p>
         <div className="reveal" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", position: "relative", zIndex: 1 }}>
-          <Link href="/register" className="btn-primary" style={{ fontSize: "1.05rem", padding: "17px 44px" }}>
-            <I3 kind="fire" size="sm" style={{ verticalAlign: "-4px", marginRight: 4 }}></I3> Забрать XP и начать
+          <Link href={ctaHref} className="btn-primary" style={{ fontSize: "1.05rem", padding: "17px 44px" }}>
+            <I3 kind="fire" size="sm" style={{ verticalAlign: "-4px", marginRight: 4 }}></I3> {isAuthenticated ? "Перейти в кабинет" : "Забрать XP и начать"}
           </Link>
           <a href="https://t.me/raw_english" className="btn-ghost" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
         </div>
