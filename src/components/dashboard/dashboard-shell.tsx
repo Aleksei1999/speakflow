@@ -6,119 +6,135 @@ import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Toaster } from "@/components/ui/sonner"
 
-const SIDEBAR_CSS = `
-:root,[data-theme="light"]{--red:#E63946;--lime:#D8F26A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A;--logo-text:#1E1E1E;--accent-dark:#0A0A0A}
-[data-theme="dark"]{--bg:#0F0F0E;--surface:#1A1A18;--surface-2:#222220;--border:#2A2A28;--muted:#8A8A86;--text:#F5F5F3;--logo-text:#F5F5F3;--accent-dark:#1A1A18}
-.dash{display:grid;grid-template-columns:260px 1fr;min-height:100vh;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);transition:background .2s ease,color .2s ease}
-.dash *{box-sizing:border-box}
+const SHELL_CSS = `
+:root,[data-theme="light"]{
+  --red:#E63946;--lime:#D8F26A;--lime-dark:#5A7A00;
+  --bg:#F5F5F3;--surface:#fff;--surface-2:#FAFAF7;
+  --border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A;
+  --accent-dark:#0A0A0A;--shadow:rgba(10,10,10,.04);
+}
+[data-theme="dark"]{
+  --red:#E63946;--lime:#D8F26A;--lime-dark:#D8F26A;
+  --bg:#0F0F0E;--surface:#1A1A18;--surface-2:#222220;
+  --border:#2A2A28;--muted:#8A8A86;--text:#F5F5F3;
+  --accent-dark:#1A1A18;--shadow:rgba(0,0,0,.3);
+}
+.dash{display:grid;grid-template-columns:260px 1fr;min-height:100vh;font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .2s ease,color .2s ease}
+.dash *{box-sizing:border-box;margin:0;padding:0}
 .dash a{color:inherit;text-decoration:none}
 .dash button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
-.dash .sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;height:100vh;overflow-y:auto;position:sticky;top:0;transition:background .2s ease,border-color .2s ease}
-.dash .sidebar-logo{display:block;padding:6px 10px;margin-bottom:22px}
-.dash .sidebar-logo img{width:100%;max-width:140px;height:auto;display:block}
+/* ===== SIDEBAR ===== */
+.dash .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.dash .sidebar-logo{padding:6px 10px;margin-bottom:20px;display:flex;align-items:center;gap:4px;text-decoration:none}
+.dash .sidebar-logo .gl{font-family:'Gluten',cursive;font-size:1.3rem;color:var(--red);font-weight:600}
+.dash .sidebar-logo span:last-child{font-size:.8rem;font-weight:600;color:var(--text)}
 
-.dash .profile-card{background:var(--surface-2);border-radius:18px;padding:20px 14px;text-align:center;margin-bottom:22px;transition:background .2s ease}
-.dash .profile-card .photo{width:72px;height:72px;border-radius:50%;background:var(--bg);border:3px solid var(--lime);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;color:var(--text)}
-.dash .profile-card .pname{font-weight:800;font-size:18px;letter-spacing:-0.3px}
-.dash .profile-card .prole{font-size:12px;color:var(--muted);margin-top:3px}
-.dash .profile-card .meta{display:inline-flex;align-items:center;gap:4px;background:var(--lime);color:#0A0A0A;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;margin-top:10px}
+.dash .profile-card{background:var(--surface-2);border-radius:18px;padding:20px 14px;text-align:center;margin-bottom:18px;transition:background .2s ease}
+.dash .profile-photo{width:64px;height:64px;border-radius:50%;background:var(--red);border:3px solid var(--lime);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;object-fit:cover}
+.dash .profile-photo-img{width:64px;height:64px;border-radius:50%;border:3px solid var(--lime);margin:0 auto 10px;display:block;object-fit:cover}
+.dash .profile-name{font-weight:800;font-size:16px;letter-spacing:-.3px}
+.dash .profile-role{font-size:12px;color:var(--muted);margin-top:3px}
+.dash .profile-level{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(230,57,70,.08);color:var(--red)}
+.dash .profile-xp{margin-top:10px}
+.dash .profile-xp-row{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px}
+.dash .profile-xp-bar{height:4px;background:var(--border);border-radius:100px;overflow:hidden}
+.dash .profile-xp-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--red),var(--lime))}
+.dash .profile-streak{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;padding:6px;background:var(--lime);border-radius:10px;font-size:11px;font-weight:700;color:#0A0A0A}
 
-.dash .nav{list-style:none;display:flex;flex-direction:column;gap:2px;margin-bottom:20px;padding:0}
+.dash .nav{list-style:none;display:flex;flex-direction:column;gap:2px;margin-bottom:16px}
 .dash .nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;color:var(--muted);font-size:14px;font-weight:500;transition:background .15s ease,color .15s ease;position:relative}
 .dash .nav a:hover{background:var(--bg);color:var(--text)}
 .dash .nav a.active{background:var(--accent-dark);color:#fff;font-weight:700}
 [data-theme="dark"] .dash .nav a.active{background:var(--red)}
-.dash .nav a .icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.dash .nav a .icon svg{width:18px;height:18px}
-.dash .nav a .badge{margin-left:auto;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:700;padding:2px 7px;min-width:18px;text-align:center}
-.dash .nav a.active .badge{background:#fff;color:var(--accent-dark)}
+.dash .nav .icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center}
+.dash .nav .icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dash .nav-badge{margin-left:auto;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;background:var(--red);color:#fff}
+.dash .nav a.active .nav-badge{background:#fff;color:var(--accent-dark)}
+.dash .nav-section{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 14px 6px}
 
-.dash .nav-section-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 14px 6px}
+.dash .sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.dash .sidebar-footer .dot{width:6px;height:6px;background:#22c55e;border-radius:50%}
 
+/* ===== MAIN ===== */
+.dash .main-content{padding:24px 28px;min-width:0;overflow-y:auto}
 
-.dash .main-content{padding:60px;background:var(--bg);min-height:100vh;overflow-y:auto}
+/* Shared element styles reused by pages */
+.dash .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;font-size:12px;font-weight:600;transition:all .15s;cursor:pointer;border:none}
+.dash .btn:active{transform:scale(.97)}
+.dash .btn-sm{padding:5px 12px;font-size:11px}
+.dash .btn-outline{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.dash .btn-outline:hover{border-color:var(--text)}
+.dash .btn-red{background:var(--accent-dark);color:#fff}
+.dash .btn-red:hover{background:var(--red)}
+.dash .btn-lime{background:var(--lime);color:#0A0A0A}
 
-/* Override shadcn */
-.dash [data-slot="card"]{background:var(--surface);border-radius:35px;padding:40px;box-shadow:0 10px 30px rgba(0,0,0,0.02);border:1px solid var(--border)}
-.dash [data-slot="card-header"]{padding:0;margin-bottom:25px;border:none}
-.dash [data-slot="card-title"]{font-size:22px;font-weight:700}
+.dash .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.dash .card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.dash .card-head h3{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.dash .card-body{padding:8px 20px 16px}
+
+/* shadcn overrides still used on other pages */
+.dash [data-slot="card"]{background:var(--surface);border-radius:16px;padding:24px;border:1px solid var(--border)}
+.dash [data-slot="card-header"]{padding:0;margin-bottom:16px;border:none}
+.dash [data-slot="card-title"]{font-size:16px;font-weight:800}
 .dash [data-slot="card-content"]{padding:0}
 .dash [data-slot="badge"]{border-radius:10px;font-weight:600}
-.dash [data-slot="button"]{border-radius:15px;font-weight:600}
-.dash [data-slot="tabs-list"]{border-radius:20px;background:var(--surface-2);padding:4px;border:1px solid var(--border)}
-.dash [data-slot="tabs-trigger"]{border-radius:16px;font-weight:600}
+.dash [data-slot="button"]{border-radius:12px;font-weight:600}
+.dash [data-slot="tabs-list"]{border-radius:14px;background:var(--surface-2);padding:4px;border:1px solid var(--border)}
+.dash [data-slot="tabs-trigger"]{border-radius:10px;font-weight:600}
 .dash [data-slot="tabs-trigger"][data-state="active"]{background:var(--accent-dark);color:#fff}
 .dash [data-slot="avatar-fallback"]{background:var(--lime);color:#0A0A0A;font-weight:700}
-.dash table{width:100%;border-collapse:collapse}
-.dash table th{text-align:left;font-size:12px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 16px;border-bottom:1px solid var(--border)}
-.dash table td{padding:16px;border-bottom:1px solid var(--border)}
-.dash table tbody tr:hover{background:var(--surface-2)}
-.dash h1{font-size:32px;font-weight:800}.dash h2{font-size:24px;font-weight:700}
 
-/* Dashboard page specific */
-.dash .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:25px;margin-bottom:50px}
-.dash .stat-card{background:var(--surface);padding:35px 25px;border-radius:35px;box-shadow:0 10px 30px rgba(0,0,0,0.02);text-align:center;border:1px solid var(--border)}
-.dash .stat-card.dark{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark)}
-.dash .stat-card.accent{background:var(--lime);border-color:var(--lime)}
-.dash .stat-num{font-size:36px;font-weight:800;display:block}
-.dash .stat-desc{font-size:14px;opacity:.7;margin-top:10px;display:block}
-.dash .dashboard-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:30px}
-.dash .card{background:var(--surface);border-radius:35px;padding:40px;box-shadow:0 10px 30px rgba(0,0,0,0.02);border:1px solid var(--border)}
-.dash .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;border:none;padding:0}
-.dash .card-title{font-size:22px;font-weight:700;margin:0}
-.dash .lesson-row{display:flex;align-items:center;padding:25px 0;border-top:1px solid var(--border)}
-.dash .time-badge{width:60px;height:60px;background:var(--accent-dark);color:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;margin-right:25px;flex-shrink:0}
-.dash .lesson-info h4{margin:0;font-size:18px}.dash .lesson-info p{margin:5px 0 0;color:var(--muted);font-size:14px}
-.dash .progress-item{margin-bottom:25px}.dash .progress-labels{display:flex;justify-content:space-between;margin-bottom:10px;font-weight:600}
-.dash .progress-track{height:12px;background:var(--surface-2);border-radius:10px;overflow:hidden;border:1px solid var(--border)}.dash .progress-bar{height:100%;background:var(--accent-dark);border-radius:10px}
-.dash .btn{padding:12px 25px;border-radius:15px;border:none;font-weight:600;cursor:pointer;font-size:14px;transition:.2s;display:inline-flex;align-items:center;justify-content:center}
-.dash .btn-black{background:var(--accent-dark);color:#fff}.dash .btn-outline{background:transparent;border:2px solid var(--accent-dark);color:var(--text)}
-.dash .btn:hover{transform:translateY(-2px);opacity:.9}
-
-@media(max-width:1024px){.dash .stats-grid{grid-template-columns:repeat(2,1fr)}.dash .dashboard-grid{grid-template-columns:1fr}.dash .main-content{padding:30px}}
-@media(max-width:900px){.dash{grid-template-columns:1fr}.dash .sidebar{width:100%;height:auto;border-right:none;border-bottom:1px solid var(--border);position:static}}
+@media(max-width:900px){
+  .dash{grid-template-columns:1fr}
+  .dash .sidebar{display:none}
+  .dash .main-content{padding:16px}
+}
 `
 
 const icons = {
-  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
-  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
-  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  homework: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>',
-  progress: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
-  payment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
-  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
-  help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-  profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09c-.658.003-1.25.396-1.51 1z"/></svg>',
-  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
+  dashboard: '<svg viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
+  mic: '<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>',
+  users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  book: '<svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
+  leaderboard: '<svg viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10l-1 9H8z"/><path d="M7 8H4a1 1 0 0 0-1 1v1a3 3 0 0 0 3 3"/><path d="M17 8h3a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3"/></svg>',
+  profile: '<svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.26.46.4.97.41 1.51"/></svg>',
+  logout: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
+  homework: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>',
+  payment: '<svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
 }
 
-const studentNav = [
-  { href: "/student", label: "Главная", icon: icons.dashboard },
-  { href: "/student/schedule", label: "Мои уроки", icon: icons.calendar, badge: true },
+type NavItem = { href: string; label: string; icon: string; badge?: string | number }
+
+const studentNav: NavItem[] = [
+  { href: "/student", label: "Dashboard", icon: icons.dashboard },
+  { href: "/student/schedule", label: "Расписание", icon: icons.calendar },
+  { href: "/student/summaries", label: "Speaking Clubs", icon: icons.mic },
   { href: "/teachers", label: "Преподаватели", icon: icons.users },
-  { href: "/student/materials", label: "Домашние задания", icon: icons.homework, badge: true },
-  { href: "/student/achievements", label: "Мой прогресс", icon: icons.progress },
-  { href: "/student/summaries", label: "AI Саммари", icon: icons.payment },
+  { href: "/student/achievements", label: "Ачивки", icon: icons.trophy },
+  { href: "/student/materials", label: "Материалы", icon: icons.book },
+  { href: "/student/achievements", label: "Лидерборд", icon: icons.leaderboard },
 ]
-const studentBottom = [
-  { href: "#", label: "Помощь", icon: icons.help },
-  { href: "#", label: "Чат поддержки", icon: icons.chat },
+const studentBottom: NavItem[] = [
+  { href: "#", label: "Профиль", icon: icons.profile },
+  { href: "#", label: "Настройки", icon: icons.settings },
 ]
 
-const teacherNav = [
+const teacherNav: NavItem[] = [
   { href: "/teacher", label: "Dashboard", icon: icons.dashboard },
-  { href: "/teacher/schedule", label: "Расписание", icon: icons.calendar, badge: true },
-  { href: "/teacher/students", label: "Мои ученики", icon: icons.users, badge: true },
-  { href: "/teacher/materials", label: "Домашние задания", icon: icons.edit, badge: true },
+  { href: "/teacher/schedule", label: "Расписание", icon: icons.calendar },
+  { href: "/teacher/students", label: "Мои ученики", icon: icons.users },
+  { href: "/teacher/materials", label: "Домашние задания", icon: icons.edit },
   { href: "/teacher/materials", label: "Материалы", icon: icons.book },
-  { href: "#", label: "Выплаты", icon: icons.payment },
+  { href: "/teacher/payments", label: "Выплаты", icon: icons.payment },
 ]
-const teacherBottom = [
-  { href: "#", label: "Профиль", icon: icons.profile },
+const teacherBottom: NavItem[] = [
+  { href: "/teacher/profile", label: "Профиль", icon: icons.profile },
   { href: "/teacher/settings", label: "Настройки", icon: icons.settings },
 ]
 
@@ -126,14 +142,23 @@ function Icon({ svg }: { svg: string }) {
   return <span className="icon" dangerouslySetInnerHTML={{ __html: svg }} />
 }
 
+type Gamification = {
+  xp: number
+  level: string
+  nextLevel: string | null
+  nextLevelXp: number
+  currentStreak: number
+}
+
 type Props = {
   fullName: string
   avatarUrl: string | null
   role: "student" | "teacher" | "admin" | null
+  gamification?: Gamification | null
   children: React.ReactNode
 }
 
-export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
+export function DashboardShell({ fullName, avatarUrl, role, gamification, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -153,8 +178,12 @@ export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
   const currentRole = role ?? "student"
   const navItems = currentRole === "teacher" ? teacherNav : studentNav
   const bottomItems = currentRole === "teacher" ? teacherBottom : studentBottom
-  const initials = fullName.split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
   const roleLabel = currentRole === "teacher" ? "Преподаватель" : "Ученик"
+
+  const xpProgressPct = gamification
+    ? Math.min(100, Math.round((gamification.xp / Math.max(gamification.nextLevelXp, 1)) * 100))
+    : 0
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -164,22 +193,41 @@ export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: SIDEBAR_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: SHELL_CSS }} />
       <div className="dash">
         <aside className="sidebar">
           <Link href="/" className="sidebar-logo">
-            <img src="/logo-raw-full.svg" alt="Raw English" />
+            <span className="gl">Raw</span>&nbsp;<span>english</span>
           </Link>
 
           <div className="profile-card">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={fullName} style={{width:72,height:72,borderRadius:"50%",border:"3px solid var(--lime)",objectFit:"cover",margin:"0 auto 10px",display:"block"}} />
+              <img src={avatarUrl} alt={fullName} className="profile-photo-img" />
             ) : (
-              <div className="photo">{initials || "?"}</div>
+              <div className="profile-photo">{initials || "?"}</div>
             )}
-            <div className="pname">{fullName || "Пользователь"}</div>
-            <div className="prole">{roleLabel}</div>
-            <div className="meta">● Online</div>
+            <div className="profile-name">{fullName || "Пользователь"}</div>
+            {gamification ? (
+              <>
+                <div className="profile-level">🔥 {gamification.level} · {gamification.xp} XP</div>
+                {gamification.nextLevel ? (
+                  <div className="profile-xp">
+                    <div className="profile-xp-row">
+                      <span>До {gamification.nextLevel}</span>
+                      <span>{xpProgressPct}%</span>
+                    </div>
+                    <div className="profile-xp-bar">
+                      <div className="profile-xp-fill" style={{ width: `${xpProgressPct}%` }} />
+                    </div>
+                  </div>
+                ) : null}
+                {gamification.currentStreak > 0 ? (
+                  <div className="profile-streak">⚡ {gamification.currentStreak}-дневный стрик</div>
+                ) : null}
+              </>
+            ) : (
+              <div className="profile-role">{roleLabel}</div>
+            )}
           </div>
 
           <ul className="nav">
@@ -191,13 +239,14 @@ export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
                   <Link href={item.href} className={isActive ? "active" : ""}>
                     <Icon svg={item.icon} />
                     {item.label}
+                    {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
                   </Link>
                 </li>
               )
             })}
           </ul>
 
-          <div className="nav-section-title">{currentRole === "teacher" ? "Настройки" : "Поддержка"}</div>
+          <div className="nav-section">Аккаунт</div>
           <ul className="nav">
             {bottomItems.map((item) => (
               <li key={item.label}>
@@ -214,11 +263,14 @@ export function DashboardShell({ fullName, avatarUrl, role, children }: Props) {
               </a>
             </li>
           </ul>
+
+          <div className="sidebar-footer">
+            <span className="dot"></span>
+            Онлайн{gamification ? ` · ${gamification.level}` : ` · ${roleLabel}`}
+          </div>
         </aside>
 
-        <main className="main-content">
-          {children}
-        </main>
+        <main className="main-content">{children}</main>
       </div>
       <Toaster position="top-right" richColors />
     </>
