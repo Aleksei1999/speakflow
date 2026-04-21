@@ -52,7 +52,7 @@ export async function POST(
     }
 
     const metrics = await computeUserMetrics(supabase, user.id)
-    const current_value = evaluateAchievementProgress(def.slug, def.category, metrics)
+    const current_value = evaluateAchievementProgress(def.slug, def.category, metrics, def.threshold)
     if (current_value < def.threshold) {
       return NextResponse.json(
         {
