@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { RawLogo } from '@/components/ui/raw-logo'
 import { Toaster } from '@/components/ui/sonner'
 
 export const metadata: Metadata = {
@@ -37,8 +38,7 @@ export default function AuthLayout({
         .auth-modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--auth-red), var(--auth-lime)); z-index: 5; }
 
         .auth-header { padding: 24px 28px 0; display: flex; align-items: center; justify-content: space-between; }
-        .auth-logo { font-family: var(--font-gluten), cursive; font-size: 1.1rem; color: var(--auth-red); font-weight: 600; line-height: 1; }
-        .auth-logo span { font-family: var(--font-sans), sans-serif; font-weight: 600; font-size: .75rem; color: var(--auth-text); margin-left: 4px; }
+        .auth-logo { display: inline-flex; align-items: center; line-height: 1; }
 
         .auth-close { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--auth-border); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--auth-text3); font-size: 1.1rem; transition: all .2s; text-decoration: none; }
         .auth-close:hover { border-color: var(--auth-red); color: var(--auth-red); }
@@ -169,9 +169,9 @@ export default function AuthLayout({
       <div className="auth-scope">
         <div className="auth-modal">
           <div className="auth-header">
-            <div className="auth-logo">
-              Raw <span>english</span>
-            </div>
+            <Link href="/" className="auth-logo" aria-label="Raw English">
+              <RawLogo size={28} />
+            </Link>
             <Link href="/" className="auth-close" aria-label="Закрыть">
               ✕
             </Link>

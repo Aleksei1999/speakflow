@@ -47,10 +47,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overf
 nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 48px;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(20px);background:var(--nav-bg);border-bottom:1px solid var(--border);transition:all var(--transition)}
 nav.scrolled{padding:12px 48px}
 nav.pushed{top:38px}
-.logo-wrap{display:flex;align-items:flex-end;gap:2px}
-.logo-svg{height:32px;width:auto}
-.logo-svg .raw-blob{fill:var(--red)}
-.logo-svg .eng-text{fill:var(--text);transition:fill var(--transition)}
+.logo-wrap{display:flex;align-items:center;gap:2px}
+.logo-wrap a{display:inline-flex;align-items:center;text-decoration:none}
+[data-theme="dark"] .logo-wrap img,[data-theme="dark"] .footer-logo img{filter:brightness(0) invert(1)}
 .nav-right{display:flex;align-items:center;gap:24px}
 .nav-links{display:flex;gap:28px;list-style:none}
 .nav-links a{color:var(--text3);text-decoration:none;font-size:0.82rem;font-weight:500;letter-spacing:0.5px;transition:color 0.3s}
@@ -207,7 +206,7 @@ section{padding:110px 48px}
 
 /* ===== FOOTER ===== */
 footer{padding:50px 48px 36px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.footer-logo{font-family:'Gluten',cursive;font-size:1.3rem;color:var(--red)}
+.footer-logo{display:inline-flex;align-items:center}
 .footer-links{display:flex;gap:20px;list-style:none}
 .footer-links a{color:var(--text3);text-decoration:none;font-size:0.82rem;transition:color 0.3s}
 .footer-links a:hover{color:var(--red)}

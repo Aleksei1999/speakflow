@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { RawLogo } from "@/components/ui/raw-logo"
 import { Toaster } from "@/components/ui/sonner"
 
 const SHELL_CSS = `
@@ -26,9 +27,8 @@ const SHELL_CSS = `
 
 /* ===== SIDEBAR ===== */
 .dash .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.dash .sidebar-logo{padding:6px 10px;margin-bottom:20px;display:flex;align-items:center;gap:4px;text-decoration:none}
-.dash .sidebar-logo .gl{font-family:'Gluten',cursive;font-size:1.3rem;color:var(--red);font-weight:600}
-.dash .sidebar-logo span:last-child{font-size:.8rem;font-weight:600;color:var(--text)}
+.dash .sidebar-logo{padding:6px 10px;margin-bottom:20px;display:flex;align-items:center;text-decoration:none}
+[data-theme="dark"] .dash .sidebar-logo img{filter:brightness(0) invert(1)}
 
 .dash .profile-card{background:var(--surface-2);border-radius:18px;padding:20px 14px;text-align:center;margin-bottom:18px;transition:background .2s ease}
 .dash .profile-photo{width:64px;height:64px;border-radius:50%;background:var(--red);border:3px solid var(--lime);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;object-fit:cover}
@@ -196,8 +196,8 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, childr
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS }} />
       <div className="dash">
         <aside className="sidebar">
-          <Link href="/" className="sidebar-logo">
-            <span className="gl">Raw</span>&nbsp;<span>english</span>
+          <Link href="/" className="sidebar-logo" aria-label="Raw English">
+            <RawLogo size={34} />
           </Link>
 
           <div className="profile-card">
