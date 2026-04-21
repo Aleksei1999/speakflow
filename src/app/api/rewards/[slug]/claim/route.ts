@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   computeUserMetrics,
   evaluateClaimCriteria,
@@ -94,7 +95,9 @@ export async function POST(
       delivery_json = parsed.data
     }
 
-    const { data: inserted, error: insertError } = await supabase
+    // user_rewards RLS allows only admin writes; criteria was verified above.
+    const admin = createAdminClient()
+    const { data: inserted, error: insertError } = await admin
       .from('user_rewards')
       .insert({
         user_id: user.id,
