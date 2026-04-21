@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookingDrawer } from "@/components/booking/booking-drawer"
+import { LessonBookingModal } from "@/components/booking/lesson-booking-modal"
 
 type Props = {
   className?: string
@@ -15,7 +15,7 @@ export function BookingLauncher({ className, children }: Props) {
       <button type="button" className={className} onClick={() => setOpen(true)}>
         {children}
       </button>
-      <BookingDrawer open={open} onOpenChange={setOpen} />
+      <LessonBookingModal open={open} onOpenChange={setOpen} />
     </>
   )
 }
