@@ -477,6 +477,31 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     }
   }, [mode, grade, totalRight, qIndex])
 
+  // Persist goals (purpose/timeline/intensity) as human-readable labels so
+  // the /register profile-summary can show them without recomputing.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const purposeLabel = GOALS_STEPS[0].options.find((o) => o.id === goals.purpose)?.label
+    const timelineLabel = GOALS_STEPS[1].options.find((o) => o.id === goals.timeline)?.label
+    const intensityLabel = GOALS_STEPS[2].options.find((o) => o.id === goals.intensity)?.label
+    if (!purposeLabel && !timelineLabel && !intensityLabel) return
+    try {
+      window.localStorage.setItem(
+        "raw_quiz_goals",
+        JSON.stringify({
+          purpose: goals.purpose,
+          purposeLabel: purposeLabel || null,
+          timeline: goals.timeline,
+          timelineLabel: timelineLabel || null,
+          intensity: goals.intensity,
+          intensityLabel: intensityLabel || null,
+        })
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [goals])
+
   const skipToResult = useCallback(() => {
     if (typeof window !== "undefined" && window.confirm("Остановить и увидеть предварительный результат?")) {
       setMode("result")
