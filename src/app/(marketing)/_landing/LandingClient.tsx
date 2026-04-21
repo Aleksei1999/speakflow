@@ -4,6 +4,7 @@
 import { useEffect, createElement } from "react"
 import Script from "next/script"
 import Link from "next/link"
+import { RawLogo } from "@/components/ui/raw-logo"
 import "./landing.css"
 import "./icons3d.css"
 import MiniBattleQuiz from "./MiniBattleQuiz"
@@ -98,18 +99,9 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
       {/* Nav */}
       <nav id="navbar">
         <div className="logo-wrap">
-          <svg className="logo-svg" viewBox="0 0 180 50" xmlns="http://www.w3.org/2000/svg">
-            <g className="raw-blob">
-              <path d="M8,28c-1.5-3,0-8,3-12s8-6,13-5c2,0.4,3.5,1.5,4,3c1-2,3-4,6-4.5c4-0.8,8,1,10,4c0.5,0.8,0.8,1.8,1,2.8c1.5-1,3.5-1.5,5.5-1c3,0.8,5,3,5,6c-1,1-2,2-4,3c2,0,3.5,0.8,4.5,2c1.5,2,1,4.5-0.5,6c-2,2-5,2.5-8,2c-1,2-3,3-6,3c-2,0-3.5-0.8-4.5-2c-1,1.5-3,2.5-5,2.5c-3,0.2-6-1-8-3c-1.5,1-3.5,1.5-5.5,1c-4-1-6.5-4-6-7c0.2-1,0.5-1.8,1-2.5c-1.5-0.2-3-0.8-4-2C8.5,32,7.5,30,8,28z" />
-              <text x="14" y="30" fontFamily="Gluten,cursive" fontSize="20" fontWeight="600" fill="#fff">R</text>
-              <text x="28" y="30" fontFamily="Gluten,cursive" fontSize="20" fontWeight="600" fill="#fff">a</text>
-              <text x="42" y="30" fontFamily="Gluten,cursive" fontSize="20" fontWeight="600" fill="#fff">w</text>
-              <circle cx="10" cy="14" r="1.8" />
-              <circle cx="57" cy="12" r="1.2" />
-              <circle cx="5" cy="22" r="1" />
-            </g>
-            <text className="eng-text" x="12" y="46" fontFamily="Inter,sans-serif" fontSize="13" fontWeight="600" letterSpacing="0.5">english</text>
-          </svg>
+          <Link href="/" aria-label="Raw English" style={{ display: "inline-flex", alignItems: "center" }}>
+            <RawLogo size={32} priority />
+          </Link>
         </div>
         <div className="nav-right">
           <ul className="nav-links">
@@ -388,7 +380,7 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
 
       <footer>
         <div className="footer-logo">
-          <span style={{ fontFamily: "'Gluten',cursive", color: "var(--red)" }}>Raw</span> english
+          <RawLogo size={36} />
         </div>
         <ul className="footer-links">
           <li><a href="https://t.me/raw_english" target="_blank" rel="noopener noreferrer">Telegram</a></li>

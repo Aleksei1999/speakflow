@@ -560,12 +560,9 @@ function RegisterStyles() {
         margin: 0 auto;
         width: 100%;
       }
-      .auth-scope:has(.r-page) .auth-logo {
-        font-family: var(--font-gluten, 'Caveat Brush'), cursive;
-        color: #D33F3F; font-size: 28px;
-      }
-      .auth-scope:has(.r-page) .auth-logo span {
-        color: white; font-weight: 500; font-size: 13px;
+      /* Invert the black "english" text portion of the logo on the dark /register page. */
+      .auth-scope:has(.r-page) .auth-logo img {
+        filter: brightness(0) invert(1);
       }
       .auth-scope:has(.r-page) .auth-close {
         border-color: rgba(255,255,255,0.08);
