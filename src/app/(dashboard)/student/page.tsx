@@ -1,9 +1,163 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { format } from "date-fns"
+import { format, startOfDay, endOfDay, subDays } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
+import { BookingLauncher } from "./_components/booking-launcher"
+import { QuickActions } from "./_components/quick-actions"
+
+const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
+const LEVEL_SHORT: Record<string, string> = {
+  Raw: "Raw",
+  Rare: "Rare",
+  "Medium Rare": "Med Rare",
+  Medium: "Medium",
+  "Medium Well": "Med Well",
+  "Well Done": "Well Done",
+}
+const LEVEL_TO_CEFR: Record<string, string> = {
+  Raw: "≈ A1 Beginner",
+  Rare: "≈ A2 Elementary",
+  "Medium Rare": "≈ B1 Intermediate",
+  Medium: "≈ B2 Upper-Int",
+  "Medium Well": "≈ C1 Advanced",
+  "Well Done": "≈ C2 Proficient",
+}
+const LEVEL_THRESHOLDS: Record<string, { next: string | null; target: number }> = {
+  Raw: { next: "Rare", target: 100 },
+  Rare: { next: "Medium Rare", target: 250 },
+  "Medium Rare": { next: "Medium", target: 500 },
+  Medium: { next: "Medium Well", target: 1000 },
+  "Medium Well": { next: "Well Done", target: 2000 },
+  "Well Done": { next: null, target: 5000 },
+}
+
+const STU_CSS = `
+.stu-home .xp-hero{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px 22px;margin-bottom:16px;display:flex;align-items:center;gap:20px}
+.stu-home .xp-hero-left{display:flex;align-items:center;gap:10px;min-width:160px}
+.stu-home .xp-hero-emoji{width:42px;height:42px;border-radius:12px;background:rgba(230,57,70,.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.stu-home .xp-hero-level{font-family:'Gluten',cursive;font-size:1.2rem;color:var(--red);font-weight:600;line-height:1}
+.stu-home .xp-hero-sub{font-size:.62rem;color:var(--muted);margin-top:2px}
+.stu-home .xp-hero-bar{flex:1;height:10px;background:var(--bg);border-radius:100px;overflow:hidden}
+.stu-home .xp-hero-fill{height:100%;border-radius:100px;background:var(--red);transition:width 1s cubic-bezier(.16,1,.3,1)}
+.stu-home .xp-hero-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.stu-home .xp-hero-count{font-size:.82rem;font-weight:700;color:var(--muted);white-space:nowrap}
+.stu-home .xp-hero-count b{color:var(--text)}
+.stu-home .xp-hero-streak{display:flex;align-items:center;gap:5px;padding:7px 14px;background:var(--lime);border-radius:100px;font-size:.72rem;font-weight:700;color:#0A0A0A;white-space:nowrap;box-shadow:0 2px 0 rgba(140,180,40,.3)}
+
+.stu-home .main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.stu-home .main-header h1{font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.1}
+.stu-home .main-header h1 .gl{font-family:'Gluten',cursive;color:var(--red);font-weight:600}
+.stu-home .main-header .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.stu-home .header-actions{display:flex;align-items:center;gap:8px}
+.stu-home .icon-btn{width:38px;height:38px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative;color:var(--text)}
+.stu-home .icon-btn:hover{border-color:var(--text)}
+.stu-home .icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stu-home .icon-btn .notif{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);color:#fff;border-radius:100px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--surface)}
+
+.stu-home .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stu-home .stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;transition:all .15s}
+.stu-home .stat:hover{border-color:var(--text)}
+.stu-home .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.stu-home .stat-val{font-size:28px;font-weight:800;margin-top:8px;letter-spacing:-1px;line-height:1}
+.stu-home .stat-val .gl{font-family:'Gluten',cursive}
+.stu-home .stat-val--red{color:var(--red)}
+.stu-home .stat-change{font-size:11px;margin-top:8px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.stu-home .stat-change.up{color:#22c55e;font-weight:600}
+.stu-home .stat--lime{background:var(--lime);border-color:var(--lime);color:#0A0A0A}
+.stu-home .stat--lime .stat-label{color:#0A0A0A;opacity:.65}
+.stu-home .stat--dark{background:#0A0A0A;color:#fff;border-color:#0A0A0A}
+.stu-home .stat--dark .stat-label{color:#A0A09A}
+
+.stu-home .main-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:20px}
+.stu-home .right-col{display:flex;flex-direction:column;gap:16px}
+
+.stu-home .sch-item{display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid var(--border);border-radius:10px;transition:background .15s}
+.stu-home .sch-item:last-child{border-bottom:none}
+.stu-home .sch-item:hover{background:var(--surface-2)}
+.stu-home .sch-item.active{background:var(--lime);border-bottom-color:transparent;margin:3px 0;color:#0A0A0A;border-radius:12px}
+.stu-home .sch-time{width:52px;height:52px;background:var(--bg);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.stu-home .sch-item.active .sch-time{background:var(--accent-dark);color:#fff}
+.stu-home .sch-time .t{font-size:13px;font-weight:800;letter-spacing:-.3px}
+.stu-home .sch-time .d{font-size:9px;opacity:.7}
+.stu-home .sch-info{flex:1;min-width:0}
+.stu-home .sch-info h4{font-size:13px;font-weight:700}
+.stu-home .sch-info p{font-size:11px;color:var(--muted);margin-top:1px}
+.stu-home .sch-item.active .sch-info p{color:rgba(0,0,0,.5)}
+.stu-home .sch-status{font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px}
+.stu-home .sch-status--done{background:rgba(34,197,94,.1);color:#22c55e}
+.stu-home .sch-status--pending{color:var(--muted)}
+.stu-home .sch-empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+.stu-home .streak-cal{display:flex;gap:4px;margin-top:10px}
+.stu-home .streak-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.stu-home .streak-dot{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.stu-home .streak-dot--done{background:var(--lime);color:#0A0A0A}
+.stu-home .streak-dot--today{background:var(--red);color:#fff;box-shadow:0 0 12px rgba(230,57,70,.2)}
+.stu-home .streak-dot--future{background:var(--bg);color:var(--muted);border:1px dashed var(--border)}
+.stu-home .streak-dot--miss{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.stu-home .streak-label{font-size:9px;color:var(--muted);font-weight:600}
+
+.stu-home .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.stu-home .quick-card{padding:14px;border-radius:14px;text-align:center;transition:all .2s;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);display:block;text-decoration:none;font-family:inherit}
+.stu-home .quick-card:hover{border-color:var(--text);transform:translateY(-2px);box-shadow:0 6px 16px var(--shadow)}
+.stu-home .quick-card .qc-icon{font-size:1.3rem;margin-bottom:6px}
+.stu-home .quick-card .qc-text{font-size:11px;font-weight:700}
+.stu-home .quick-card .qc-sub{font-size:9px;color:var(--muted);margin-top:2px}
+.stu-home .quick-card--cta{background:var(--red);border-color:var(--red);color:#fff}
+.stu-home .quick-card--cta:hover{background:#d42f3c;border-color:#d42f3c}
+.stu-home .quick-card--cta .qc-sub{color:rgba(255,255,255,.6)}
+
+.stu-home .bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+
+.stu-home .ach-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stu-home .ach{text-align:center;padding:10px 6px;border-radius:12px;transition:all .2s}
+.stu-home .ach:hover{background:var(--surface-2)}
+.stu-home .ach-icon{font-size:1.4rem;margin-bottom:4px}
+.stu-home .ach-name{font-size:9px;font-weight:600;color:var(--text);line-height:1.2}
+.stu-home .ach--locked{opacity:.3;filter:grayscale(1)}
+.stu-home .ach--locked .ach-name{color:var(--muted)}
+
+.stu-home .lb-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:10px;transition:background .15s}
+.stu-home .lb-row:hover{background:var(--surface-2)}
+.stu-home .lb-row--me{background:rgba(230,57,70,.04);border:1px solid rgba(230,57,70,.08)}
+.stu-home .lb-rank{font-size:12px;font-weight:800;color:var(--muted);width:20px;text-align:center}
+.stu-home .lb-row--me .lb-rank{color:var(--red)}
+.stu-home .lb-avatar{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;overflow:hidden}
+.stu-home .lb-av-1{background:var(--lime);color:#0A0A0A}
+.stu-home .lb-av-2{background:var(--red);color:#fff}
+.stu-home .lb-av-3{background:var(--bg);color:var(--text)}
+.stu-home .lb-name{flex:1;font-size:13px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu-home .lb-xp{font-family:'Gluten',cursive;font-size:14px;color:var(--red)}
+
+.stu-home .level-progress{margin-top:12px}
+.stu-home .lp-track{display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.stu-home .lp-node{flex:1;height:6px;border-radius:100px}
+.stu-home .lp-node--done{background:var(--lime)}
+.stu-home .lp-node--active{background:linear-gradient(90deg,var(--red),var(--lime));position:relative}
+.stu-home .lp-node--active::after{content:'';position:absolute;right:-2px;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid var(--surface);box-shadow:0 0 8px rgba(230,57,70,.25)}
+.stu-home .lp-node--locked{background:var(--border)}
+.stu-home .lp-labels{display:flex;justify-content:space-between}
+.stu-home .lp-label{font-size:9px;font-weight:600;color:var(--muted)}
+.stu-home .lp-label--active{color:var(--red);font-weight:700}
+
+@media(max-width:1024px){
+  .stu-home .stats{grid-template-columns:repeat(2,1fr)}
+  .stu-home .bottom-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:900px){
+  .stu-home .main-grid{grid-template-columns:1fr}
+  .stu-home .bottom-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .stu-home .xp-hero{flex-direction:column;gap:12px;align-items:stretch}
+  .stu-home .xp-hero-right{justify-content:space-between}
+  .stu-home .stats{grid-template-columns:1fr 1fr}
+  .stu-home .stat-val{font-size:22px}
+  .stu-home .ach-grid{grid-template-columns:repeat(3,1fr)}
+}
+`
 
 export default async function StudentDashboardPage() {
   const supabase = await createClient()
@@ -11,202 +165,330 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/login")
 
   const now = new Date()
+  const todayStart = startOfDay(now)
+  const todayEnd = endOfDay(now)
+  const weekStart = startOfDay(subDays(now, 6))
 
-  const [profileResult, lessonsResult, progressResult, completedResult, skillsResult, homeworkResult] =
+  // Day of week index (0=Mon .. 6=Sun) — российская неделя
+  const weekdayIdx = (d: Date) => (d.getDay() + 6) % 7
+  const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+  const todayIdx = weekdayIdx(now)
+
+  const [profileResult, progressResult, monthLessonsResult, completedMonthResult, todayLessonsResult, achResult, achDefResult, lbResult, xpDailyResult] =
     await Promise.all([
-      supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-      supabase
+      (supabase as any).from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      (supabase as any).from("user_progress").select("total_xp, english_level, current_streak, longest_streak").eq("user_id", user.id).maybeSingle(),
+      (supabase as any)
         .from("lessons")
-        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
+        .select("id", { count: "exact", head: true })
         .eq("student_id", user.id)
-        .eq("status", "booked")
-        .gte("scheduled_at", now.toISOString())
-        .order("scheduled_at", { ascending: true })
-        .limit(5),
-      supabase.from("user_progress").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase
+        .gte("scheduled_at", startOfDay(subDays(now, 30)).toISOString()),
+      (supabase as any)
         .from("lessons")
         .select("id", { count: "exact", head: true })
         .eq("student_id", user.id)
         .eq("status", "completed"),
-      supabase.from("skill_progress").select("*").eq("user_id", user.id),
-      supabase
-        .from("homework")
-        .select("id, title, due_date, status, teacher_id")
+      (supabase as any)
+        .from("lessons")
+        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
         .eq("student_id", user.id)
-        .order("due_date", { ascending: true })
-        .limit(5),
+        .gte("scheduled_at", todayStart.toISOString())
+        .lte("scheduled_at", todayEnd.toISOString())
+        .order("scheduled_at", { ascending: true }),
+      (supabase as any)
+        .from("user_achievements")
+        .select("achievement_id, earned_at")
+        .eq("user_id", user.id),
+      (supabase as any)
+        .from("achievement_definitions")
+        .select("id, slug, title, icon_emoji, sort_order, rarity")
+        .order("sort_order", { ascending: true })
+        .limit(8),
+      (supabase as any).rpc("get_leaderboard", { p_period: "weekly", p_limit: 5 }),
+      (supabase as any)
+        .from("xp_events")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .gte("created_at", weekStart.toISOString()),
     ])
 
-  const profile = profileResult.data
-  const lessons = lessonsResult.data ?? []
-  const progress = progressResult.data
-  const completedCount = completedResult.count ?? 0
-  const skills = skillsResult?.data ?? []
-  const homework = homeworkResult?.data ?? []
-  const firstName = profile?.full_name?.split(" ")[0] ?? "Ученик"
-  const fullName = profile?.full_name ?? "Ученик"
-  const initials = fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+  const profile = profileResult.data as { full_name: string | null } | null
+  const progress = progressResult.data as { total_xp: number | null; english_level: string | null; current_streak: number | null; longest_streak: number | null } | null
+  const todayLessons = (todayLessonsResult.data ?? []) as Array<{ id: string; scheduled_at: string; duration_minutes: number; status: string; jitsi_room_name: string | null; teacher_id: string | null }>
+  const monthLessonsCount = monthLessonsResult.count ?? 0
+  const completedMonthCount = completedMonthResult.count ?? 0
+  const earnedAchIds = new Set(((achResult.data ?? []) as Array<{ achievement_id: string }>).map((a) => a.achievement_id))
+  const achDefs = (achDefResult.data ?? []) as Array<{ id: string; slug: string; title: string; icon_emoji: string | null }>
+  const leaderboard = (lbResult.data ?? []) as Array<{ out_rank: number; out_user_id: string; out_xp: number; out_full_name: string | null; out_avatar_url: string | null }>
+  const xpDaily = (xpDailyResult.data ?? []) as Array<{ created_at: string }>
 
-  const skillMap: Record<string, number> = {}
-  for (const s of skills) skillMap[s.skill] = s.percentage
-  const totalHours = Math.round((completedCount * 50) / 60)
+  const fullName = profile?.full_name ?? "Ученик"
+  const firstName = fullName.split(" ")[0]
+  const xp = progress?.total_xp ?? 0
+  const level = progress?.english_level && LEVEL_ORDER.includes(progress.english_level as (typeof LEVEL_ORDER)[number])
+    ? progress.english_level
+    : "Raw"
+  const thresholds = LEVEL_THRESHOLDS[level]
+  const currentStreak = progress?.current_streak ?? 0
+  const longestStreak = progress?.longest_streak ?? 0
+  const levelIndex = LEVEL_ORDER.indexOf(level as (typeof LEVEL_ORDER)[number])
+  const xpPct = Math.min(100, Math.round((xp / Math.max(thresholds.target, 1)) * 100))
+
+  const myRank = leaderboard.find((r) => r.out_user_id === user.id)?.out_rank
+  const totalOnLb = leaderboard.length
+
+  // streak dots: indexed 0..6 (Mon..Sun) for last 7 days ending today
+  const activeDays = new Set<number>()
+  for (const e of xpDaily) {
+    const d = new Date(e.created_at)
+    const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+    if (diff >= 0 && diff <= 6) {
+      activeDays.add(weekdayIdx(d))
+    }
+  }
+
+  // Teachers for today's lessons
+  const teacherIds = Array.from(new Set(todayLessons.map((l) => l.teacher_id).filter(Boolean))) as string[]
+  let teacherMap: Record<string, { full_name: string | null }> = {}
+  if (teacherIds.length) {
+    const { data: teachersRaw } = await (supabase as any)
+      .from("teacher_profiles")
+      .select("id, profile_id")
+      .in("id", teacherIds)
+    const teachers = (teachersRaw ?? []) as Array<{ id: string; profile_id: string }>
+    const profileIds = teachers.map((t) => t.profile_id)
+    if (profileIds.length) {
+      const { data: profilesRaw } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", profileIds)
+      const pMap = Object.fromEntries(((profilesRaw ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p]))
+      for (const t of teachers) teacherMap[t.id] = pMap[t.profile_id] ?? { full_name: null }
+    }
+  }
+
+  const upcomingLessonId = todayLessons.find((l) => new Date(l.scheduled_at) > now && l.status === "booked")?.id
+  const completedTodayCount = todayLessons.filter((l) => l.status === "completed").length
+  const remainingTodayCount = todayLessons.filter((l) => ["booked", "in_progress"].includes(l.status)).length
 
   return (
-    <>
-      <header className="header">
-        <h1>Привет, {firstName}!</h1>
-        <div className="user-profile">
-          <span>{fullName}</span>
-          <div className="avatar">{initials}</div>
-        </div>
-      </header>
+    <div className="stu-home">
+      <style dangerouslySetInnerHTML={{ __html: STU_CSS }} />
 
-      {/* Stats */}
-      <section className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-num">{completedCount}/48</span>
-          <span className="stat-desc">Пройдено уроков</span>
-        </div>
-        <div className="stat-card dark">
-          <span className="stat-num">{homework.filter((h) => h.status === "submitted" || h.status === "reviewed").length}/{homework.length || 0}</span>
-          <span className="stat-desc">Сдано домашних заданий</span>
-        </div>
-        <div className="stat-card accent">
-          <span className="stat-num">{progress?.total_xp ?? 0}</span>
-          <span className="stat-desc">XP баллов</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-num">{progress?.english_level ?? "—"}</span>
-          <span className="stat-desc">Текущий уровень</span>
-        </div>
-      </section>
-
-      {/* Main Grid */}
-      <div className="dashboard-grid">
-        {/* Upcoming Lessons */}
-        <section className="card">
-          <div className="card-header">
-            <h3 className="card-title">Ближайшие уроки</h3>
-            <Link href="/student/schedule" style={{ color: "var(--gray-text)", fontSize: 14 }}>Смотреть все</Link>
+      <div className="main-header">
+        <div>
+          <h1>Привет, {firstName}! <span className="gl">🔥</span></h1>
+          <div className="sub">
+            {format(now, "EEEE, d MMMM", { locale: ru })} · Стрик: {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"}
+            {todayLessons.length > 0 ? ` · ${todayLessons.length} занят${todayLessons.length === 1 ? "ие" : todayLessons.length < 5 ? "ия" : "ий"} сегодня` : ""}
           </div>
-
-          {lessons.length === 0 ? (
-            <p style={{ textAlign: "center", color: "var(--gray-text)", padding: "40px 0" }}>
-              Нет запланированных уроков
-            </p>
-          ) : (
-            lessons.map((l, i) => {
-              const date = new Date(l.scheduled_at)
-              const isToday = date.toDateString() === now.toDateString()
-              const dayNum = format(date, "d")
-              const timeStr = format(date, "HH:mm")
-
-              return (
-                <div key={l.id} className="lesson-row">
-                  <div
-                    className="time-badge"
-                    style={i > 0 ? { background: "var(--gray-light)", color: "var(--black)" } : {}}
-                  >
-                    <span>{dayNum}</span>
-                    <small>{timeStr}</small>
-                  </div>
-                  <div className="lesson-info" style={{ flex: 1 }}>
-                    <h4>Урок английского</h4>
-                    <p>{l.duration_minutes} мин • {isToday ? "Сегодня" : format(date, "d MMM", { locale: ru })}</p>
-                  </div>
-                  {isToday ? (
-                    <Link href={`/student/lesson/${l.id}`} className="btn btn-black">Войти</Link>
-                  ) : (
-                    <button className="btn btn-outline">Перенести</button>
-                  )}
-                </div>
-              )
-            })
-          )}
-        </section>
-
-        {/* Progress */}
-        <section className="card">
-          <h3 className="card-title" style={{ marginBottom: 35 }}>Прогресс до Medium</h3>
-
-          {[
-            { key: "grammar", label: "Грамматика" },
-            { key: "vocabulary", label: "Лексика" },
-            { key: "speaking", label: "Говорение" },
-          ].map((skill, i) => {
-            const pct = skillMap[skill.key] ?? 0
-            return (
-              <div key={skill.key} className="progress-item">
-                <div className="progress-labels">
-                  <span>{skill.label}</span>
-                  <span>{pct}%</span>
-                </div>
-                <div className="progress-track">
-                  <div
-                    className="progress-bar"
-                    style={{
-                      width: `${pct}%`,
-                      ...(i === 2 ? { background: "var(--accent)" } : {}),
-                    }}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </section>
+        </div>
+        <div className="header-actions">
+          <button type="button" className="icon-btn" aria-label="Уведомления">
+            <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </button>
+        </div>
       </div>
 
-      {/* Homework */}
-      <section className="card" style={{ marginTop: 30 }}>
-        <div className="card-header">
-          <h3 className="card-title">Актуальные задания</h3>
+      {/* XP Hero */}
+      <div className="xp-hero">
+        <div className="xp-hero-left">
+          <div className="xp-hero-emoji">🔥</div>
+          <div>
+            <div className="xp-hero-level">{level}</div>
+            <div className="xp-hero-sub">Уровень прожарки</div>
+          </div>
         </div>
-        {homework.length === 0 ? (
-          <p style={{ textAlign: "center", color: "var(--gray-text)", padding: "30px 0" }}>
-            Заданий пока нет
-          </p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "var(--gray-text)", fontSize: 12, textTransform: "uppercase" }}>
-                <th style={{ paddingBottom: 20 }}>Задание</th>
-                <th style={{ paddingBottom: 20 }}>Преподаватель</th>
-                <th style={{ paddingBottom: 20 }}>Срок</th>
-                <th style={{ paddingBottom: 20 }}>Статус</th>
-                <th style={{ paddingBottom: 20 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {homework.map((hw: any) => {
-                const statusStyles: Record<string, { bg: string; label: string }> = {
-                  pending: { bg: "var(--gray-light)", label: "Ожидает" },
-                  in_progress: { bg: "var(--accent)", label: "В работе" },
-                  submitted: { bg: "#D1FAE5", label: "Сдано" },
-                  reviewed: { bg: "#D1FAE5", label: "Проверено" },
-                  overdue: { bg: "#FEE2E2", label: "Просрочено" },
-                }
-                const st = statusStyles[hw.status] ?? statusStyles.pending
+        <div className="xp-hero-bar"><div className="xp-hero-fill" style={{ width: `${xpPct}%` }} /></div>
+        <div className="xp-hero-right">
+          <div className="xp-hero-count">
+            <b>{xp.toLocaleString("ru-RU")}</b> / {thresholds.target.toLocaleString("ru-RU")} XP
+          </div>
+          {currentStreak > 0 ? (
+            <div className="xp-hero-streak">🔥 {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"} подряд</div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="stats">
+        <div className="stat">
+          <div className="stat-label">Текущий уровень</div>
+          <div className="stat-val stat-val--red"><span className="gl">{LEVEL_SHORT[level]}</span></div>
+          <div className="stat-change">{LEVEL_TO_CEFR[level]}</div>
+        </div>
+        <div className="stat stat--lime">
+          <div className="stat-label">Стрик</div>
+          <div className="stat-val">{currentStreak} <small style={{ fontSize: 14, fontWeight: 600 }}>{currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"}</small></div>
+          <div className="stat-change">🔥 Рекорд: {longestStreak}</div>
+        </div>
+        <div className="stat">
+          <div className="stat-label">Уроков за 30 дн.</div>
+          <div className="stat-val">{monthLessonsCount}</div>
+          <div className="stat-change">{completedMonthCount} завершено</div>
+        </div>
+        <div className="stat stat--dark">
+          <div className="stat-label">Рейтинг</div>
+          <div className="stat-val">{myRank ? `#${myRank}` : "—"}</div>
+          <div className="stat-change" style={{ color: "#A0A09A" }}>{totalOnLb > 0 ? `из ${totalOnLb}+ учеников` : "нет данных"}</div>
+        </div>
+      </div>
+
+      {/* Main grid: schedule + right column */}
+      <div className="main-grid">
+        <div className="card">
+          <div className="card-head">
+            <h3>Сегодня, {format(now, "d MMMM", { locale: ru })}</h3>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Link href="/student/schedule" className="btn btn-sm btn-outline">Всё расписание</Link>
+              <BookingLauncher className="btn btn-sm btn-red">+ Записаться</BookingLauncher>
+            </div>
+          </div>
+          <div className="card-body">
+            {todayLessons.length === 0 ? (
+              <div className="sch-empty">На сегодня уроков нет. Запишись на следующий слот 👆</div>
+            ) : (
+              todayLessons.map((l) => {
+                const dt = new Date(l.scheduled_at)
+                const isActive = l.id === upcomingLessonId
+                const teacher = l.teacher_id ? teacherMap[l.teacher_id]?.full_name : null
                 return (
-                  <tr key={hw.id} style={{ borderTop: "1px solid var(--gray-light)" }}>
-                    <td style={{ padding: "20px 0" }}><strong>{hw.title}</strong></td>
-                    <td>Преподаватель</td>
-                    <td>{format(new Date(hw.due_date), "d MMMM", { locale: ru })}</td>
-                    <td>
-                      <span style={{ background: st.bg, padding: "5px 12px", borderRadius: 10, fontSize: 12 }}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button className="btn btn-outline" style={{ padding: "8px 15px" }}>Открыть</button>
-                    </td>
-                  </tr>
+                  <div key={l.id} className={`sch-item${isActive ? " active" : ""}`}>
+                    <div className="sch-time">
+                      <div className="t">{format(dt, "HH:mm")}</div>
+                      <div className="d">{l.duration_minutes} мин</div>
+                    </div>
+                    <div className="sch-info">
+                      <h4>Урок 1-on-1</h4>
+                      <p>{teacher ? `с ${teacher}` : "Преподаватель назначен"}</p>
+                    </div>
+                    {l.status === "completed" ? (
+                      <span className="sch-status sch-status--done">✓ завершён</span>
+                    ) : isActive ? (
+                      <Link href={`/student/lesson/${l.id}`} className="btn btn-sm btn-red">Начать</Link>
+                    ) : l.status === "cancelled" ? (
+                      <span className="sch-status sch-status--pending">отменён</span>
+                    ) : (
+                      <span className="sch-status sch-status--pending">ожидается</span>
+                    )}
+                  </div>
                 )
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </>
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="right-col">
+          <div className="card">
+            <div className="card-head"><h3>Быстрые действия</h3></div>
+            <div className="card-body">
+              <QuickActions clubsThisWeek={0} newMaterials={0} />
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-head"><h3>Стрик этой недели</h3></div>
+            <div className="card-body">
+              <div className="streak-cal">
+                {weekdayLabels.map((lbl, idx) => {
+                  const isToday = idx === todayIdx
+                  const isFuture = idx > todayIdx
+                  const isDone = activeDays.has(idx) && !isToday
+                  const cls = isToday
+                    ? "streak-dot streak-dot--today"
+                    : isFuture
+                    ? "streak-dot streak-dot--future"
+                    : isDone
+                    ? "streak-dot streak-dot--done"
+                    : "streak-dot streak-dot--miss"
+                  const inner = isToday ? "🔥" : isDone ? "✓" : ""
+                  return (
+                    <div key={lbl} className="streak-day">
+                      <div className={cls}>{inner}</div>
+                      <div className="streak-label">{lbl}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom grid */}
+      <div className="bottom-grid">
+        <div className="card">
+          <div className="card-head"><h3>Прогресс прожарки</h3></div>
+          <div className="card-body">
+            <div className="level-progress">
+              <div className="lp-track">
+                {LEVEL_ORDER.map((_, i) => {
+                  const cls = i < levelIndex ? "lp-node lp-node--done" : i === levelIndex ? "lp-node lp-node--active" : "lp-node lp-node--locked"
+                  return <div key={i} className={cls} />
+                })}
+              </div>
+              <div className="lp-labels">
+                {LEVEL_ORDER.map((lvl, i) => (
+                  <span key={lvl} className={`lp-label${i === levelIndex ? " lp-label--active" : ""}`}>{LEVEL_SHORT[lvl]}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                {thresholds.next ? `${xp} / ${thresholds.target} XP до ${thresholds.next}` : "Максимальный уровень 🏆"}
+              </span>
+              <span className="btn btn-sm btn-lime">{xpPct}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head"><h3>Ачивки</h3><Link href="/student/achievements" className="btn btn-sm btn-outline">Все</Link></div>
+          <div className="card-body">
+            {achDefs.length === 0 ? (
+              <div className="sch-empty">Пока нет достижений</div>
+            ) : (
+              <div className="ach-grid">
+                {achDefs.map((a) => {
+                  const earned = earnedAchIds.has(a.id)
+                  return (
+                    <div key={a.id} className={`ach${earned ? "" : " ach--locked"}`}>
+                      <div className="ach-icon">{a.icon_emoji ?? "🏆"}</div>
+                      <div className="ach-name">{a.title}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head"><h3>Лидерборд</h3><Link href="/student/leaderboard" className="btn btn-sm btn-outline">Все</Link></div>
+          <div className="card-body">
+            {leaderboard.length === 0 ? (
+              <div className="sch-empty">Лидерборд пуст</div>
+            ) : (
+              leaderboard.map((r, i) => {
+                const isMe = r.out_user_id === user.id
+                const avCls = i === 0 ? "lb-av-1" : i === 1 ? "lb-av-2" : "lb-av-3"
+                const name = r.out_full_name ?? "—"
+                const initials = name.split(" ").filter(Boolean).map((s) => s[0]).join("").toUpperCase().slice(0, 2)
+                return (
+                  <div key={r.out_user_id} className={`lb-row${isMe ? " lb-row--me" : ""}`}>
+                    <div className="lb-rank">{r.out_rank}</div>
+                    <div className={`lb-avatar ${avCls}`}>
+                      {r.out_avatar_url ? <img src={r.out_avatar_url} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials || "?"}
+                    </div>
+                    <div className="lb-name">{isMe ? `${name.split(" ")[0]} (ты)` : name}</div>
+                    <div className="lb-xp">{r.out_xp.toLocaleString("ru-RU")}</div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
