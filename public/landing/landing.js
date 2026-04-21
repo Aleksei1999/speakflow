@@ -1,13 +1,26 @@
+(() => {
+let disposer = null;
+
+function landingInit() {
+  if (disposer) { try { disposer(); } catch(e) {} }
+  const cleanups = [];
+
 const toggle=document.getElementById('themeToggle'),knob=document.getElementById('themeKnob'),html=document.documentElement;
-toggle.addEventListener('click',()=>{const d=html.dataset.theme==='dark';html.dataset.theme=d?'light':'dark';knob.textContent=d?'☀️':'🌙'});
+if(!toggle||!knob)return; // DOM not ready
+const onToggle=()=>{const d=html.dataset.theme==='dark';html.dataset.theme=d?'light':'dark';knob.textContent=d?'☀️':'🌙'};
+toggle.addEventListener('click',onToggle);
+cleanups.push(()=>toggle.removeEventListener('click',onToggle));
 
 /* Nav scroll */
 const nav=document.getElementById('navbar');
-window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',scrollY>50)});
+const onScroll=()=>{nav.classList.toggle('scrolled',scrollY>50)};
+window.addEventListener('scroll',onScroll);
+cleanups.push(()=>window.removeEventListener('scroll',onScroll));
 
 /* Reveal */
 const obs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('visible')}),{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal,.level-card').forEach(el=>obs.observe(el));
+cleanups.push(()=>obs.disconnect());
 
 /* ===== GAME ENGINE ===== */
 let xp=0,gameLevel=0;
@@ -18,7 +31,7 @@ const gameBar=document.getElementById('gameBar');
 const luOverlay=document.getElementById('luOverlay');
 let barShown=false;
 
-function updateBar(){
+function updateGameBar(){
   gbFill.style.width=xp+'%';
   gbXP.textContent=xp;
   gbLvl.textContent=gameLevel;
@@ -34,13 +47,13 @@ function floatXP(amt,x,y){
 
 function addXP(amt,x,y){
   xp=Math.min(100,xp+amt);
-  updateBar();
+  updateGameBar();
   if(x&&y)floatXP(amt,x,y);
 }
 
 function levelUp(lvl,text){
   gameLevel=lvl;
-  updateBar();
+  updateGameBar();
   document.getElementById('luEmoji').textContent=['target','xp-star','shield','controller','fire','mic','trophy','level-badge'][lvl-1]||'⭐';
   document.getElementById('luName').textContent='Level '+lvl;
   document.getElementById('luSub').textContent=text||'';
@@ -64,11 +77,12 @@ const secObs=new IntersectionObserver(entries=>{
       addXP(xpAmt,r.left+r.width/2,r.top+80);
       if(lvl>gameLevel&&luText)setTimeout(()=>levelUp(lvl,luText),200);
       else if(lvl>gameLevel)gameLevel=lvl;
-      updateBar();
+      updateGameBar();
     }
   });
 },{threshold:0.25});
 document.querySelectorAll('section[data-level]').forEach(s=>secObs.observe(s));
+cleanups.push(()=>secObs.disconnect());
 
 /* Click XP on interactive cards */
 document.querySelectorAll('.platform-card,.level-card,.fmt-card,.xp-card,.testimonial').forEach(el=>{
@@ -131,6 +145,7 @@ function quizInit(){
   qEl.bar=document.getElementById('quizBarFill');
   qEl.hearts=document.getElementById('quizHearts');
   qEl.fb=document.getElementById('quizFeedback');
+  if(!qEl.intro)return;
   renderChar(document.getElementById('quizIntroChar'),'happy');
   document.getElementById('quizStartBtn').onclick=startQuiz;
   document.getElementById('quizClose').onclick=()=>{if(confirm('Выйти из боя? Прогресс не сохранится.'))resetQuiz();};
@@ -159,12 +174,12 @@ function renderHearts(){
   qEl.hearts.innerHTML=Array(3).fill(0).map((_,i)=>`<div class="qheart ${i>=qHearts?'lost':''}"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.8 8.5 2.5 4 7 4c2 0 3.5 1 5 3 1.5-2 3-3 5-3 4.5 0 6.2 4.5 4.5 8-2.5 4.5-9.5 9-9.5 9z"/></svg></div>`).join('');
 }
 
-function updateBar(){
+function updateQuizBar(){
   qEl.bar.style.width=((qIdx)/qBank.length*100)+'%';
 }
 
 function renderQuestion(){
-  updateBar();
+  updateQuizBar();
   qAnswered=false;
   qState={};
   qEl.fb.classList.remove('show','good','bad');
@@ -317,7 +332,7 @@ function nextQuestion(){
 
 function finishQuiz(){
   qEl.game.classList.remove('show');
-  updateBar();qEl.bar.style.width='100%';
+  updateQuizBar();qEl.bar.style.width='100%';
   const pct=Math.round(qScore/qBank.length*100);
   let lvl,cefr,tag,steps;
   if(pct>=85){lvl='Medium Well';cefr='B2';tag='Ты готов к беглой речи. Осталось отточить произношение и идиомы — и ты Well Done.';
@@ -346,18 +361,30 @@ function finishQuiz(){
 quizInit();
 
 /* ===== CONFETTI ===== */
-const cc=document.getElementById('confetti');const cx=cc.getContext('2d');
+const cc=document.getElementById('confetti');
+if(!cc)return;
+const cx=cc.getContext('2d');
 let parts=[];
-function resizeC(){cc.width=innerWidth;cc.height=innerHeight}resizeC();addEventListener('resize',resizeC);
+function resizeC(){cc.width=innerWidth;cc.height=innerHeight}
+resizeC();
+window.addEventListener('resize',resizeC);
+cleanups.push(()=>window.removeEventListener('resize',resizeC));
+let cAnim=false;
 function fireConfetti(){
   const cols=['#E63946','#D8F26A','#FFD700','#A855F7','#22C55E','#fff'];
   for(let i=0;i<80;i++)parts.push({x:innerWidth/2+(Math.random()-.5)*200,y:innerHeight/2,vx:(Math.random()-.5)*14,vy:Math.random()*-16-4,s:Math.random()*6+3,c:cols[Math.floor(Math.random()*cols.length)],l:1,d:Math.random()*.015+.008,r:Math.random()*360,rs:Math.random()*10-5});
   if(!cAnim){cAnim=true;animC();}
 }
-let cAnim=false;
 function animC(){
   cx.clearRect(0,0,cc.width,cc.height);
   parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.3;p.l-=p.d;p.r+=p.rs;if(p.l>0){cx.save();cx.translate(p.x,p.y);cx.rotate(p.r*Math.PI/180);cx.fillStyle=p.c;cx.globalAlpha=p.l;cx.fillRect(-p.s/2,-p.s/2,p.s,p.s);cx.restore();}});
   parts=parts.filter(p=>p.l>0);
   if(parts.length)requestAnimationFrame(animC);else cAnim=false;
 }
+
+  disposer = () => { cleanups.forEach(fn => { try { fn(); } catch(e) {} }); disposer = null; };
+}
+
+window.__landingInit = landingInit;
+window.__landingDispose = () => { if (disposer) disposer(); };
+})();
