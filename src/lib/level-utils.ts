@@ -49,3 +49,37 @@ export function getLevelShortDesc(level: RoastLevel): string {
   }
   return s[level]
 }
+
+// XP-пороги из спеки raw-english-xp-map.xlsx (source of truth).
+// min — сколько нужно накопить XP чтобы войти в уровень,
+// next — порог начала следующего уровня (для progress bar),
+// nextLevel — имя следующего уровня, null для Well Done.
+export const LEVEL_XP_THRESHOLDS: Record<RoastLevel, { min: number; next: number | null; nextLevel: RoastLevel | null }> = {
+  'Raw':         { min: 0,     next: 500,   nextLevel: 'Rare' },
+  'Rare':        { min: 500,   next: 2000,  nextLevel: 'Medium Rare' },
+  'Medium Rare': { min: 2000,  next: 5000,  nextLevel: 'Medium' },
+  'Medium':      { min: 5000,  next: 12000, nextLevel: 'Medium Well' },
+  'Medium Well': { min: 12000, next: 25000, nextLevel: 'Well Done' },
+  'Well Done':   { min: 25000, next: null,  nextLevel: null },
+}
+
+export function xpToRoastLevel(xp: number): RoastLevel {
+  if (xp >= 25000) return 'Well Done'
+  if (xp >= 12000) return 'Medium Well'
+  if (xp >= 5000)  return 'Medium'
+  if (xp >= 2000)  return 'Medium Rare'
+  if (xp >= 500)   return 'Rare'
+  return 'Raw'
+}
+
+export function getLevelCEFR(level: RoastLevel): string {
+  const map: Record<RoastLevel, string> = {
+    'Raw': 'A0-A1',
+    'Rare': 'A1-A2',
+    'Medium Rare': 'A2-B1',
+    'Medium': 'B1-B2',
+    'Medium Well': 'B2-C1',
+    'Well Done': 'C1+',
+  }
+  return map[level]
+}
