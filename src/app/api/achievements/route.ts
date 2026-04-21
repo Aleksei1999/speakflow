@@ -53,7 +53,7 @@ export async function GET(_request: NextRequest) {
     const result = (defs ?? [])
       .filter((d) => !d.is_hidden || earnedMap.has(d.id))
       .map((d) => {
-        const current_value = evaluateAchievementProgress(d.slug, d.category, metrics)
+        const current_value = evaluateAchievementProgress(d.slug, d.category, metrics, d.threshold)
         const is_earned = earnedMap.has(d.id)
         const meets = current_value >= d.threshold
         return {
