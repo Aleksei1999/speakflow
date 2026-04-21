@@ -2,15 +2,14 @@ import { z } from 'zod'
 
 export const registerSchema = z.object({
   firstName: z.string().min(1, 'Введите имя').max(50, 'Максимум 50 символов'),
-  lastName: z.string().min(1, 'Введите фамилию').max(50, 'Максимум 50 символов'),
+  lastName: z.string().max(50, 'Максимум 50 символов').optional().or(z.literal('')),
   email: z.string().email('Неверный email'),
   phone: z
     .string()
-    .regex(/^\+?[0-9\s\-()]{10,20}$/, 'Неверный телефон')
-    .optional()
-    .or(z.literal('')),
-  password: z.string().min(8, 'Минимум 8 символов').max(72, 'Максимум 72 символа'),
-  role: z.enum(['student', 'teacher']),
+    .min(1, 'Укажите телефон или Telegram')
+    .max(80, 'Слишком длинное значение'),
+  password: z.string().min(6, 'Минимум 6 символов').max(72, 'Максимум 72 символа'),
+  role: z.enum(['student', 'teacher']).default('student'),
   termsAccepted: z.literal(true, { message: 'Необходимо принять условия' }),
 })
 
