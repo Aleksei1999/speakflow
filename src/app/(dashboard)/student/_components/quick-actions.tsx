@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { BookingDrawer } from "@/components/booking/booking-drawer"
+import { LessonBookingModal } from "@/components/booking/lesson-booking-modal"
 
 type Props = {
   clubsThisWeek: number
@@ -36,7 +36,7 @@ export function QuickActions({ clubsThisWeek, newMaterials }: Props) {
           <div className="qc-sub">Выбор ментора</div>
         </Link>
       </div>
-      <BookingDrawer open={bookingOpen} onOpenChange={setBookingOpen} />
+      <LessonBookingModal open={bookingOpen} onOpenChange={setBookingOpen} />
     </>
   )
 }
