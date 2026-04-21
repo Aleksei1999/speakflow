@@ -250,10 +250,10 @@ section{padding:110px 48px}
 .quiz-check.ready:active{transform:translateY(2px);box-shadow:0 2px 0 #8f2129}
 
 /* Feedback banner (bottom) */
-.quiz-feedback{position:absolute;left:0;right:0;bottom:0;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:16px;transform:translateY(100%);transition:transform .4s cubic-bezier(.16,1,.3,1);z-index:5}
+.quiz-feedback{position:absolute;left:0;right:0;bottom:0;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:16px;transform:translateY(100%);transition:transform .4s cubic-bezier(.16,1,.3,1);z-index:5;border-radius:0 0 28px 28px}
 .quiz-feedback.show{transform:translateY(0)}
-.quiz-feedback.good{background:var(--lime-bg);border-top:3px solid var(--lime)}
-.quiz-feedback.bad{background:var(--red-bg);border-top:3px solid var(--red)}
+.quiz-feedback.good{background:linear-gradient(var(--lime-bg),var(--lime-bg)),var(--card);border-top:3px solid var(--lime)}
+.quiz-feedback.bad{background:linear-gradient(var(--red-bg),var(--red-bg)),var(--card);border-top:3px solid var(--red)}
 .qf-left{display:flex;align-items:center;gap:14px}
 .qf-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
 .quiz-feedback.good .qf-icon{background:var(--lime);color:var(--dark)}
