@@ -8,52 +8,85 @@ export type UserMetrics = {
   total_xp: number
   clubs_attended: number
   clubs_attended_by_category: Record<string, number>
+  clubs_attended_categories_distinct: number
   platform_days: number
   best_leaderboard_rank: number | null // lowest (best) rank across all periods
   xp_today: number
   xp_this_week: number
+  // extended metrics for levels/community/special achievements
+  lessons_completed: number
+  invites_accepted: number
+  best_level_test_score_pct: number
 }
 
 export async function computeUserMetrics(
   supabase: any,
   userId: string
 ): Promise<UserMetrics> {
-  const [progressRes, profileRes, attendedRes, xpTodayRes, xpWeekRes, lbRes] =
-    await Promise.all([
-      supabase
-        .from('user_progress')
-        .select('current_streak, longest_streak, total_xp')
-        .eq('user_id', userId)
-        .maybeSingle(),
-      supabase
-        .from('profiles')
-        .select('created_at')
-        .eq('id', userId)
-        .maybeSingle(),
-      supabase
-        .from('club_registrations')
-        .select('club:clubs!inner ( category )')
-        .eq('user_id', userId)
-        .eq('status', 'attended'),
-      supabase
-        .from('xp_events')
-        .select('amount')
-        .eq('user_id', userId)
-        .gt('amount', 0)
-        .gte('created_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString()),
-      supabase
-        .from('xp_events')
-        .select('amount')
-        .eq('user_id', userId)
-        .gt('amount', 0)
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()),
-      // Best rank across matviews. No FK → fetch per table and pick min.
-      Promise.all([
-        supabase.from('leaderboard_weekly').select('rank').eq('user_id', userId).maybeSingle(),
-        supabase.from('leaderboard_monthly').select('rank').eq('user_id', userId).maybeSingle(),
-        supabase.from('leaderboard_all_time').select('rank').eq('user_id', userId).maybeSingle(),
-      ]),
-    ])
+  const [
+    progressRes,
+    profileRes,
+    attendedRes,
+    xpTodayRes,
+    xpWeekRes,
+    lbRes,
+    lessonsRes,
+    invitesRes,
+    levelTestsRes,
+  ] = await Promise.all([
+    supabase
+      .from('user_progress')
+      .select('current_streak, longest_streak, total_xp')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('created_at')
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase
+      .from('club_registrations')
+      .select('club:clubs!inner ( category )')
+      .eq('user_id', userId)
+      .eq('status', 'attended'),
+    supabase
+      .from('xp_events')
+      .select('amount')
+      .eq('user_id', userId)
+      .gt('amount', 0)
+      .gte('created_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString()),
+    supabase
+      .from('xp_events')
+      .select('amount')
+      .eq('user_id', userId)
+      .gt('amount', 0)
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()),
+    // Best rank across matviews. No FK → fetch per table and pick min.
+    Promise.all([
+      supabase.from('leaderboard_weekly').select('rank').eq('user_id', userId).maybeSingle(),
+      supabase.from('leaderboard_monthly').select('rank').eq('user_id', userId).maybeSingle(),
+      supabase.from('leaderboard_all_time').select('rank').eq('user_id', userId).maybeSingle(),
+    ]),
+    // Completed lessons as a student
+    supabase
+      .from('lessons')
+      .select('id', { count: 'exact', head: true })
+      .eq('student_id', userId)
+      .eq('status', 'completed'),
+    // Accepted friend invites where this user is the requester (outgoing requests accepted).
+    // user_friends.status='accepted' acts as our invite-accepted signal until a dedicated
+    // referrals/invites table exists. TODO: replace with a real referral writer.
+    supabase
+      .from('user_friends')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'accepted'),
+    // Level test scores — take best percentage. total_questions column may or may not exist.
+    supabase
+      .from('level_tests')
+      .select('score, total_questions')
+      .eq('user_id', userId),
+  ])
 
   const progress = progressRes.data ?? null
   const profile = profileRes.data ?? null
@@ -65,6 +98,7 @@ export async function computeUserMetrics(
     clubsByCat[cat] = (clubsByCat[cat] ?? 0) + 1
     clubsAttended += 1
   }
+  const clubsCategoriesDistinct = Object.keys(clubsByCat).length
 
   const xpToday = (xpTodayRes.data ?? []).reduce(
     (acc: number, e: any) => acc + (e.amount ?? 0),
@@ -86,16 +120,31 @@ export async function computeUserMetrics(
       )
     : 0
 
+  const lessonsCompleted = lessonsRes?.count ?? 0
+  const invitesAccepted = invitesRes?.count ?? 0
+
+  let bestLevelTestPct = 0
+  for (const row of levelTestsRes?.data ?? []) {
+    const score = Number(row?.score ?? 0)
+    const total = Number(row?.total_questions ?? 0)
+    const pct = total > 0 ? Math.round((score * 100) / total) : 0
+    if (pct > bestLevelTestPct) bestLevelTestPct = pct
+  }
+
   return {
     current_streak: progress?.current_streak ?? 0,
     longest_streak: progress?.longest_streak ?? 0,
     total_xp: progress?.total_xp ?? 0,
     clubs_attended: clubsAttended,
     clubs_attended_by_category: clubsByCat,
+    clubs_attended_categories_distinct: clubsCategoriesDistinct,
     platform_days: platformDays,
     best_leaderboard_rank: bestRank,
     xp_today: xpToday,
     xp_this_week: xpWeek,
+    lessons_completed: lessonsCompleted,
+    invites_accepted: invitesAccepted,
+    best_level_test_score_pct: bestLevelTestPct,
   }
 }
 
@@ -136,7 +185,8 @@ export function evaluateClaimCriteria(criteria: any, m: UserMetrics): boolean {
 export function evaluateAchievementProgress(
   slug: string,
   category: string,
-  m: UserMetrics
+  m: UserMetrics,
+  threshold: number = 0
 ): number {
   // Streak achievements: highest achieved streak ever (so earned ones stay earned)
   if (category === 'streak') return m.longest_streak
@@ -156,6 +206,42 @@ export function evaluateAchievementProgress(
     return m.clubs_attended
   }
 
-  // levels / community / special — not seeded yet; progress=0 as a placeholder
+  // LEVELS — XP thresholds on the 5 level tiers + Speed Runner
+  if (category === 'levels') {
+    if (slug === 'level_speed_runner') return 0 // TODO: needs per-level up timestamp
+    return m.total_xp
+  }
+
+  // COMMUNITY — invites, leaderboard rank, mentor
+  if (category === 'community') {
+    if (
+      slug === 'comm_recruiter' ||
+      slug === 'comm_ambassador' ||
+      slug === 'comm_community_builder'
+    ) {
+      return m.invites_accepted
+    }
+    if (slug === 'comm_top_3' || slug === 'comm_champion') {
+      // threshold is a rank (1 or 3). best_leaderboard_rank lower-is-better.
+      // Return full threshold when earned, else 0 (binary progress).
+      return m.best_leaderboard_rank !== null && m.best_leaderboard_rank <= threshold
+        ? threshold
+        : 0
+    }
+    if (slug === 'comm_mentor') return 0 // TODO: no referrer→student level link yet
+    return 0
+  }
+
+  // SPECIAL — one-offs
+  if (category === 'special') {
+    if (slug === 'spec_perfect_score') return m.best_level_test_score_pct
+    if (slug === 'spec_bookworm') return m.lessons_completed
+    if (slug === 'spec_anniversary') return m.platform_days
+    if (slug === 'spec_all_rounder') return m.clubs_attended_categories_distinct
+    if (slug === 'spec_early_bird') return 0 // TODO: no "registered within 5min of club creation" signal
+    if (slug === 'spec_polyglot') return 0 // TODO: no native-speaker flag on teachers/club hosts
+    return 0
+  }
+
   return 0
 }
