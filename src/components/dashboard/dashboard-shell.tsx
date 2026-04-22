@@ -41,6 +41,7 @@ const SHELL_CSS = `
 .dash .profile-xp-bar{height:4px;background:var(--border);border-radius:100px;overflow:hidden}
 .dash .profile-xp-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--red),var(--lime))}
 .dash .profile-streak{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;padding:6px;background:var(--lime);border-radius:10px;font-size:11px;font-weight:700;color:#0A0A0A}
+.dash .profile-rating{display:inline-flex;align-items:center;gap:4px;background:var(--lime);color:#0A0A0A;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;margin-top:10px}
 
 .dash .nav{list-style:none;display:flex;flex-direction:column;gap:2px;margin-bottom:16px}
 .dash .nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;color:var(--muted);font-size:14px;font-weight:500;transition:background .15s ease,color .15s ease;position:relative}
@@ -150,15 +151,22 @@ type Gamification = {
   currentStreak: number
 }
 
+type TeacherStats = {
+  rating: number
+  totalReviews: number
+  yearsExperience: number | null
+}
+
 type Props = {
   fullName: string
   avatarUrl: string | null
   role: "student" | "teacher" | "admin" | null
   gamification?: Gamification | null
+  teacherStats?: TeacherStats | null
   children: React.ReactNode
 }
 
-export function DashboardShell({ fullName, avatarUrl, role, gamification, children }: Props) {
+export function DashboardShell({ fullName, avatarUrl, role, gamification, teacherStats, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -249,6 +257,15 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, childr
                   <div className="profile-streak">⚡ {gamification.currentStreak}-дневный стрик</div>
                 ) : null}
               </>
+            ) : teacherStats ? (
+              <>
+                <div className="profile-role">
+                  teacher{teacherStats.yearsExperience ? ` · ${teacherStats.yearsExperience} ${teacherStats.yearsExperience === 1 ? "год" : teacherStats.yearsExperience < 5 ? "года" : "лет"}` : ""}
+                </div>
+                <div className="profile-rating">
+                  ★ {teacherStats.rating.toFixed(1)} · {teacherStats.totalReviews} {teacherStats.totalReviews === 1 ? "отзыв" : teacherStats.totalReviews < 5 ? "отзыва" : "отзывов"}
+                </div>
+              </>
             ) : (
               <div className="profile-role">{roleLabel}</div>
             )}
@@ -290,7 +307,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, childr
 
           <div className="sidebar-footer">
             <span className="dot"></span>
-            Онлайн{gamification ? ` · ${gamification.level}` : ` · ${roleLabel}`}
+            Онлайн{gamification ? ` · ${gamification.level}` : teacherStats ? " · Status: active" : ` · ${roleLabel}`}
           </div>
         </aside>
 
