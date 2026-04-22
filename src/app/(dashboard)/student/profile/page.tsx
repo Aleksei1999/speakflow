@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — aligned with GET /api/profile/me
@@ -202,10 +203,10 @@ const PROFILE_CSS = `
 .topup-save{margin-top:6px;font-size:.6rem;color:var(--red);font-weight:700}
 .topup-perprice{margin-top:6px;font-size:.58rem;color:var(--muted)}
 .topup-btn{margin-top:12px;width:100%;padding:10px;border-radius:10px;border:none;font-size:.78rem;font-weight:700;transition:all .15s;cursor:pointer;font-family:inherit}
-.topup-btn--default{background:var(--bg);color:var(--text)}.topup-btn--default:hover{background:#0A0A0A;color:#fff}
-[data-theme="dark"] .topup-btn--default:hover{background:var(--lime);color:#0A0A0A}
-.topup-btn--red{background:var(--red);color:#fff;box-shadow:0 2px 0 rgba(180,30,45,.3)}.topup-btn--red:hover{filter:brightness(.9)}
-.topup-btn--lime{background:var(--lime);color:#0A0A0A;box-shadow:0 2px 0 rgba(140,180,40,.3)}.topup-btn--lime:hover{filter:brightness(.95)}
+.topup-btn--default{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.topup-btn--default:hover{background:var(--text);color:var(--surface);border-color:var(--text)}
+.topup-btn--red{background:var(--red);color:#fff;box-shadow:0 2px 0 color-mix(in srgb,var(--red) 40%,#000)}.topup-btn--red:hover{filter:brightness(.92)}
+.topup-btn--lime{background:var(--lime);color:#0A0A0A;box-shadow:0 2px 0 color-mix(in srgb,var(--lime) 50%,#000)}.topup-btn--lime:hover{filter:brightness(.95)}
 
 /* Subscription */
 .sub-section{margin-bottom:32px}
@@ -228,8 +229,10 @@ const PROFILE_CSS = `
 .sf-text{flex:1;line-height:1.4}
 .sf-text--dim{color:var(--muted);text-decoration:line-through}
 .sub-btn{width:100%;padding:12px;border-radius:12px;border:none;font-size:.88rem;font-weight:700;transition:all .2s;cursor:pointer;font-family:inherit}
-.sub-btn--upgrade{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.35)}.sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 20px rgba(230,57,70,.1)}
-.sub-btn--current{background:var(--bg);color:var(--muted);cursor:default}
+.sub-btn--upgrade{background:var(--red);color:#fff;box-shadow:0 3px 0 color-mix(in srgb,var(--red) 40%,#000)}
+.sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 color-mix(in srgb,var(--red) 40%,#000),0 10px 20px color-mix(in srgb,var(--red) 20%,transparent)}
+.sub-btn--current{background:var(--bg);color:var(--muted);cursor:default;border:1px solid var(--border)}
+.sub-btn--current:disabled{cursor:not-allowed}
 .sub-warning{margin-top:16px;padding:14px 18px;border-radius:14px;background:color-mix(in srgb,var(--red) 4%,transparent);border:1px solid color-mix(in srgb,var(--red) 8%,transparent);display:flex;align-items:flex-start;gap:10px}
 .sub-warning-icon{font-size:1.1rem;flex-shrink:0;margin-top:2px}
 .sub-warning-text{font-size:.75rem;color:var(--text);line-height:1.5}
@@ -256,6 +259,32 @@ const PROFILE_CSS = `
 
 .prof-loading,.prof-error{padding:60px 20px;text-align:center;color:var(--muted);font-size:.95rem}
 .prof-error{color:var(--red)}
+
+/* Edit modal */
+.pe-backdrop{position:fixed;inset:0;background:rgba(10,10,10,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;backdrop-filter:blur(4px)}
+.pe-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.pe-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.pe-title{font-size:1.05rem;font-weight:800;letter-spacing:-.2px}
+.pe-close{width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:1rem;color:var(--muted);transition:all .15s;font-family:inherit}
+.pe-close:hover{border-color:var(--text);color:var(--text)}
+.pe-field{margin-bottom:14px}
+.pe-label{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.pe-input,.pe-textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:.85rem;font-weight:500;outline:none;transition:border-color .15s;font-family:inherit}
+.pe-input:focus,.pe-textarea:focus{border-color:var(--red)}
+.pe-textarea{resize:vertical;min-height:72px;line-height:1.4}
+.pe-tags{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px dashed var(--border);border-radius:10px;background:var(--bg);min-height:42px}
+.pe-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 8px 4px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:.72rem;font-weight:600}
+.pe-tag-x{background:transparent;border:none;cursor:pointer;font-size:.85rem;line-height:1;color:var(--muted);padding:0 2px;font-family:inherit}
+.pe-tag-x:hover{color:var(--red)}
+.pe-tag-input{flex:1;min-width:120px;border:none;background:transparent;outline:none;font-size:.78rem;padding:4px;color:var(--text);font-family:inherit}
+.pe-hint{font-size:.65rem;color:var(--muted);margin-top:4px}
+.pe-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.pe-btn{padding:10px 20px;border-radius:10px;font-size:.82rem;font-weight:700;transition:all .15s;cursor:pointer;border:none;font-family:inherit}
+.pe-btn--ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.pe-btn--ghost:hover{color:var(--text);border-color:var(--text)}
+.pe-btn--primary{background:var(--red);color:#fff;box-shadow:0 2px 0 color-mix(in srgb,var(--red) 40%,#000)}
+.pe-btn--primary:hover:not(:disabled){filter:brightness(.92)}
+.pe-btn--primary:disabled{opacity:.5;cursor:not-allowed}
 
 @media(max-width:900px){
   .p-stats{grid-template-columns:repeat(3,1fr)}
@@ -376,17 +405,22 @@ export default function StudentProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+
+  const loadProfile = async () => {
+    const res = await fetch("/api/profile/me", { cache: "no-store" })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body?.error ?? "Не удалось загрузить профиль")
+    }
+    return (await res.json()) as ProfileData
+  }
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/profile/me", { cache: "no-store" })
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error(body?.error ?? "Не удалось загрузить профиль")
-        }
-        const json = (await res.json()) as ProfileData
+        const json = await loadProfile()
         if (!cancelled) setData(json)
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Ошибка загрузки")
@@ -398,6 +432,15 @@ export default function StudentProfilePage() {
       cancelled = true
     }
   }, [])
+
+  const handleEditSaved = async () => {
+    try {
+      const fresh = await loadProfile()
+      setData(fresh)
+    } catch {
+      /* keep old state */
+    }
+  }
 
   const streakGoalPct = useMemo(() => {
     if (!data) return 0
@@ -477,7 +520,7 @@ export default function StudentProfilePage() {
               {isPro && <span className="prof-badge pb--sub">👑 Pro Member</span>}
             </div>
           </div>
-          <button className="prof-edit" type="button" onClick={() => window.alert("Редактирование профиля скоро появится.")}>
+          <button className="prof-edit" type="button" onClick={() => setEditOpen(true)}>
             Редактировать
           </button>
         </div>
@@ -567,7 +610,7 @@ export default function StudentProfilePage() {
             <div className="card">
               <div className="card-head">
                 <h3>О себе</h3>
-                <button className="card-edit" type="button" onClick={() => window.alert("Редактирование профиля скоро появится.")}>
+                <button className="card-edit" type="button" onClick={() => setEditOpen(true)}>
                   ✏️
                 </button>
               </div>
@@ -864,6 +907,225 @@ export default function StudentProfilePage() {
           )}
         </div>
       </div>
+      {editOpen && (
+        <EditAboutModal
+          initial={profile}
+          onClose={() => setEditOpen(false)}
+          onSaved={async () => {
+            setEditOpen(false)
+            await handleEditSaved()
+          }}
+        />
+      )}
     </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit "О себе" modal — updates first_name/last_name/phone/city/occupation/
+// english_goal/interests via PATCH /api/profile/me
+// ─────────────────────────────────────────────────────────────────────────────
+
+type EditInitial = ProfileData["profile"]
+
+function EditAboutModal({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial: EditInitial
+  onClose: () => void
+  onSaved: () => void | Promise<void>
+}) {
+  const [firstName, setFirstName] = useState(initial.first_name ?? "")
+  const [lastName, setLastName] = useState(initial.last_name ?? "")
+  const [phone, setPhone] = useState(initial.phone ?? "")
+  const [city, setCity] = useState(initial.city ?? "")
+  const [occupation, setOccupation] = useState(initial.occupation ?? "")
+  const [englishGoal, setEnglishGoal] = useState(initial.english_goal ?? "")
+  const [interests, setInterests] = useState<string[]>(initial.interests ?? [])
+  const [tagDraft, setTagDraft] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  const addTag = () => {
+    const raw = tagDraft.trim()
+    if (!raw) return
+    if (interests.length >= 12) {
+      toast.error("Можно добавить до 12 тем")
+      return
+    }
+    if (raw.length > 40) {
+      toast.error("Тема слишком длинная (макс 40 символов)")
+      return
+    }
+    if (interests.some((t) => t.toLowerCase() === raw.toLowerCase())) {
+      setTagDraft("")
+      return
+    }
+    setInterests((prev) => [...prev, raw])
+    setTagDraft("")
+  }
+
+  const removeTag = (t: string) => {
+    setInterests((prev) => prev.filter((x) => x !== t))
+  }
+
+  const handleSave = async () => {
+    if (!firstName.trim()) {
+      toast.error("Имя обязательно")
+      return
+    }
+    setSaving(true)
+    try {
+      const body = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim() || null,
+        phone: phone.trim() || null,
+        city: city.trim() || null,
+        occupation: occupation.trim() || null,
+        english_goal: englishGoal.trim() || null,
+        interests,
+      }
+      const res = await fetch("/api/profile/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody?.error ?? "Не удалось сохранить")
+      }
+      toast.success("Профиль обновлён")
+      await onSaved()
+    } catch (e: any) {
+      toast.error(e?.message ?? "Не удалось сохранить")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="pe-backdrop"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="pe-modal">
+        <div className="pe-head">
+          <div className="pe-title">Редактировать профиль</div>
+          <button className="pe-close" type="button" onClick={onClose} aria-label="Закрыть">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="pe-field">
+            <label className="pe-label">Имя *</label>
+            <input className="pe-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={60} />
+          </div>
+          <div className="pe-field">
+            <label className="pe-label">Фамилия</label>
+            <input className="pe-input" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={60} />
+          </div>
+        </div>
+
+        <div className="pe-field">
+          <label className="pe-label">Телефон</label>
+          <input
+            className="pe-input"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+7 (999) 123-45-67"
+            maxLength={60}
+          />
+        </div>
+
+        <div className="pe-field">
+          <label className="pe-label">Город</label>
+          <input
+            className="pe-input"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Москва, Россия"
+            maxLength={120}
+          />
+        </div>
+
+        <div className="pe-field">
+          <label className="pe-label">Профессия</label>
+          <input
+            className="pe-input"
+            value={occupation}
+            onChange={(e) => setOccupation(e.target.value)}
+            placeholder="UX-дизайнер"
+            maxLength={120}
+          />
+        </div>
+
+        <div className="pe-field">
+          <label className="pe-label">Зачем учу английский</label>
+          <textarea
+            className="pe-textarea"
+            value={englishGoal}
+            onChange={(e) => setEnglishGoal(e.target.value)}
+            placeholder="Работа в международной компании, путешествия, сериалы…"
+            maxLength={500}
+          />
+          <div className="pe-hint">До 500 символов</div>
+        </div>
+
+        <div className="pe-field">
+          <label className="pe-label">Любимые темы для разговора</label>
+          <div className="pe-tags">
+            {interests.map((t) => (
+              <span key={t} className="pe-tag">
+                {t}
+                <button className="pe-tag-x" type="button" onClick={() => removeTag(t)} aria-label={`Удалить ${t}`}>
+                  ✕
+                </button>
+              </span>
+            ))}
+            <input
+              className="pe-tag-input"
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault()
+                  addTag()
+                }
+                if (e.key === "Backspace" && !tagDraft && interests.length > 0) {
+                  e.preventDefault()
+                  setInterests((prev) => prev.slice(0, -1))
+                }
+              }}
+              onBlur={() => tagDraft.trim() && addTag()}
+              placeholder={interests.length === 0 ? "Добавь тему и нажми Enter" : "+ ещё"}
+            />
+          </div>
+          <div className="pe-hint">Нажми Enter или запятую, чтобы добавить. До 12 тем.</div>
+        </div>
+
+        <div className="pe-actions">
+          <button className="pe-btn pe-btn--ghost" type="button" onClick={onClose} disabled={saving}>
+            Отмена
+          </button>
+          <button className="pe-btn pe-btn--primary" type="button" onClick={handleSave} disabled={saving}>
+            {saving ? "Сохраняем…" : "Сохранить"}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
