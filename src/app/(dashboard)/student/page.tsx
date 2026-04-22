@@ -7,7 +7,7 @@ import Link from "next/link"
 import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
-import { LEVEL_XP_THRESHOLDS, getLevelCEFR, type RoastLevel } from "@/lib/level-utils"
+import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -188,8 +188,7 @@ export default async function StudentDashboardPage() {
       (supabase as any)
         .from("achievement_definitions")
         .select("id, slug, title, icon_emoji, sort_order, rarity")
-        .order("sort_order", { ascending: true })
-        .limit(8),
+        .order("sort_order", { ascending: true }),
       (supabase as any).rpc("get_leaderboard", { p_period: "weekly", p_limit: 5 }),
       (supabase as any)
         .from("xp_events")
@@ -204,24 +203,26 @@ export default async function StudentDashboardPage() {
   const monthLessonsCount = monthLessonsResult.count ?? 0
   const completedMonthCount = completedMonthResult.count ?? 0
   const earnedAchIds = new Set(((achResult.data ?? []) as Array<{ achievement_id: string }>).map((a) => a.achievement_id))
-  const achDefs = (achDefResult.data ?? []) as Array<{ id: string; slug: string; title: string; icon_emoji: string | null }>
+  const achDefsAll = (achDefResult.data ?? []) as Array<{ id: string; slug: string; title: string; icon_emoji: string | null }>
+  const achEarned = achDefsAll.filter((a) => earnedAchIds.has(a.id))
+  const achLocked = achDefsAll.filter((a) => !earnedAchIds.has(a.id))
+  const achDefs = [...achEarned, ...achLocked].slice(0, 8)
   const leaderboard = (lbResult.data ?? []) as Array<{ out_rank: number; out_user_id: string; out_xp: number; out_full_name: string | null; out_avatar_url: string | null }>
   const xpDaily = (xpDailyResult.data ?? []) as Array<{ created_at: string }>
 
   const fullName = profile?.full_name ?? "Ученик"
   const firstName = fullName.split(" ")[0]
   const xp = progress?.total_xp ?? 0
-  const level: RoastLevel = progress?.english_level && LEVEL_ORDER.includes(progress.english_level as (typeof LEVEL_ORDER)[number])
-    ? (progress.english_level as RoastLevel)
-    : "Raw"
+  const level: RoastLevel = xpToRoastLevel(xp)
   const thresholds = LEVEL_XP_THRESHOLDS[level]
-  const targetXp = thresholds.next ?? xp
   const currentStreak = progress?.current_streak ?? 0
   const longestStreak = progress?.longest_streak ?? 0
   const levelIndex = LEVEL_ORDER.indexOf(level as (typeof LEVEL_ORDER)[number])
+  const xpInLevel = Math.max(0, xp - thresholds.min)
+  const xpLevelSpan = thresholds.next === null ? 0 : thresholds.next - thresholds.min
   const xpPct = thresholds.next === null
     ? 100
-    : Math.min(100, Math.round((xp / Math.max(thresholds.next, 1)) * 100))
+    : Math.min(100, Math.round((xpInLevel / Math.max(xpLevelSpan, 1)) * 100))
 
   const myRank = leaderboard.find((r) => r.out_user_id === user.id)?.out_rank
   const totalOnLb = leaderboard.length
@@ -292,7 +293,7 @@ export default async function StudentDashboardPage() {
         <div className="xp-hero-bar"><div className="xp-hero-fill" style={{ width: `${xpPct}%` }} /></div>
         <div className="xp-hero-right">
           <div className="xp-hero-count">
-            <b>{xp.toLocaleString("ru-RU")}</b> / {thresholds.next === null ? "∞" : thresholds.next.toLocaleString("ru-RU")} XP
+            <b>{xpInLevel.toLocaleString("ru-RU")}</b> / {thresholds.next === null ? "∞" : xpLevelSpan.toLocaleString("ru-RU")} XP
           </div>
           {currentStreak > 0 ? (
             <div className="xp-hero-streak">🔥 {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"} подряд</div>
@@ -425,7 +426,7 @@ export default async function StudentDashboardPage() {
             </div>
             <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                {thresholds.nextLevel ? `${xp.toLocaleString("ru-RU")} / ${targetXp.toLocaleString("ru-RU")} XP до ${thresholds.nextLevel}` : "Максимальный уровень 🏆"}
+                {thresholds.nextLevel ? `${xpInLevel.toLocaleString("ru-RU")} / ${xpLevelSpan.toLocaleString("ru-RU")} XP до ${thresholds.nextLevel}` : "Максимальный уровень 🏆"}
               </span>
               <span className="btn btn-sm btn-lime">{xpPct}%</span>
             </div>
