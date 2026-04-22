@@ -65,7 +65,6 @@ export async function GET(_req: NextRequest) {
     const connected = {
       google: identities.some((i: any) => i.provider === 'google'),
       telegram: identities.some((i: any) => i.provider === 'telegram'),
-      github: identities.some((i: any) => i.provider === 'github'),
     }
 
     return NextResponse.json({

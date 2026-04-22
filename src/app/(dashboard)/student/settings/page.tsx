@@ -72,7 +72,6 @@ const SETTINGS_CSS = `
 .settings-page .conn-icon svg{width:20px;height:20px}
 .settings-page .conn-icon--google{background:rgba(66,133,244,.08)}
 .settings-page .conn-icon--telegram{background:rgba(42,171,238,.08)}
-.settings-page .conn-icon--github{background:color-mix(in srgb,var(--text) 5%,transparent)}
 .settings-page .conn-info{flex:1}
 .settings-page .conn-name{font-size:.82rem;font-weight:600}
 .settings-page .conn-status{font-size:.65rem;color:var(--muted)}
@@ -192,7 +191,7 @@ type Settings = {
     visible_to_teachers: boolean
   }
   subscription: { tier: "free" | "pro"; until: string | null }
-  connected: { google: boolean; telegram: boolean; github: boolean }
+  connected: { google: boolean; telegram: boolean }
 }
 
 function applyTheme(theme: "light" | "dark" | "auto") {
@@ -363,25 +362,40 @@ export default function StudentSettingsPage() {
 
   const supabase = createClient()
 
-  const handleConnect = async (provider: "google" | "github" | "telegram") => {
+  const handleConnect = async (provider: "google" | "telegram") => {
     if (provider === "telegram") {
       toast.info("Telegram подключается через бот — скоро будет доступно")
       return
     }
-    const { error } = await supabase.auth.linkIdentity({
+    // Try linkIdentity first (requires Manual Linking enabled in Supabase).
+    // Fallback to signInWithOAuth which auto-links by email if emails match.
+    const link = await supabase.auth.linkIdentity({
       provider,
       options: { redirectTo: `${window.location.origin}/api/auth/callback?next=/student/settings` },
     })
-    if (error) {
-      if (/provider.*not (enabled|configured)/i.test(error.message)) {
-        toast.error(`${provider === "github" ? "GitHub" : "Google"} провайдер не включён в Supabase`)
-      } else {
-        toast.error(error.message || "Не удалось подключить аккаунт")
-      }
+    if (!link.error) return
+
+    const msg = link.error.message || ""
+    if (/manual.?linking/i.test(msg) || /404/.test(msg)) {
+      toast.info("Перенаправляем на Google — используй тот же email, что и сейчас")
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback?next=/student/settings`,
+          queryParams: { prompt: "select_account" },
+        },
+      })
+      if (oauthErr) toast.error(oauthErr.message || "Не удалось открыть Google")
+      return
     }
+    if (/provider.*not (enabled|configured)/i.test(msg)) {
+      toast.error("Google провайдер не включён в Supabase")
+      return
+    }
+    toast.error(msg || "Не удалось подключить аккаунт")
   }
 
-  const handleDisconnect = async (provider: "google" | "github" | "telegram") => {
+  const handleDisconnect = async (provider: "google" | "telegram") => {
     if (provider === "telegram") {
       toast.info("Telegram отключается через бот — скоро будет доступно")
       return
@@ -405,7 +419,7 @@ export default function StudentSettingsPage() {
       toast.error(error.message || "Не удалось отключить аккаунт")
       return
     }
-    toast.success(`${provider === "github" ? "GitHub" : "Google"} отключён`)
+    toast.success("Google отключён")
     load()
   }
 
@@ -844,10 +858,10 @@ function ConnectedSection({
   onDisconnect,
 }: {
   connected: Settings["connected"]
-  onConnect: (provider: "google" | "github" | "telegram") => void
-  onDisconnect: (provider: "google" | "github" | "telegram") => void
+  onConnect: (provider: "google" | "telegram") => void
+  onDisconnect: (provider: "google" | "telegram") => void
 }) {
-  const toggle = (provider: "google" | "github" | "telegram", isConnected: boolean) =>
+  const toggle = (provider: "google" | "telegram", isConnected: boolean) =>
     isConnected ? onDisconnect(provider) : onConnect(provider)
   return (
     <div className="s-card" id="sec-connected">
@@ -889,22 +903,6 @@ function ConnectedSection({
           </div>
           <button className="s-btn s-btn--outline" onClick={() => toggle("telegram", connected.telegram)}>
             {connected.telegram ? "Отключить" : "Подключить"}
-          </button>
-        </div>
-        <div className="conn">
-          <div className="conn-icon conn-icon--github">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.607.069-.607 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div className="conn-info">
-            <div className="conn-name">GitHub</div>
-            <div className={`conn-status${connected.github ? " conn-status--ok" : ""}`}>
-              {connected.github ? "Подключён" : "Не подключён"}
-            </div>
-          </div>
-          <button className="s-btn s-btn--outline" onClick={() => toggle("github", connected.github)}>
-            {connected.github ? "Отключить" : "Подключить"}
           </button>
         </div>
       </div>
