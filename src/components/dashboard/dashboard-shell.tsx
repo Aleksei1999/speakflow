@@ -121,7 +121,7 @@ const studentNav: NavItem[] = [
   { href: "/student/leaderboard", label: "Лидерборд", icon: icons.leaderboard },
 ]
 const studentBottom: NavItem[] = [
-  { href: "#", label: "Профиль", icon: icons.profile },
+  { href: "/student/profile", label: "Профиль", icon: icons.profile },
   { href: "#", label: "Настройки", icon: icons.settings },
 ]
 
