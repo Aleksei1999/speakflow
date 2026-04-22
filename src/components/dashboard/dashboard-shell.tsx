@@ -132,7 +132,7 @@ const teacherNav: NavItem[] = [
   { href: "/teacher/students", label: "Мои ученики", icon: icons.users },
   { href: "/teacher/materials", label: "Домашние задания", icon: icons.edit },
   { href: "/teacher/materials", label: "Материалы", icon: icons.book },
-  { href: "/teacher/payments", label: "Выплаты", icon: icons.payment },
+  { href: "/teacher/payouts", label: "Выплаты", icon: icons.payment },
 ]
 const teacherBottom: NavItem[] = [
   { href: "/teacher/profile", label: "Профиль", icon: icons.profile },
