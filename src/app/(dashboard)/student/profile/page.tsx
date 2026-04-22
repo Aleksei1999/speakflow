@@ -202,13 +202,13 @@ const PROFILE_CSS = `
 [data-theme="dark"] .topup-bonus{color:var(--lime)}
 .topup-save{margin-top:6px;font-size:.6rem;color:var(--red);font-weight:700}
 .topup-perprice{margin-top:6px;font-size:.58rem;color:var(--muted)}
-.topup-btn{margin-top:12px;width:100%;padding:10px;border-radius:10px;border:none;font-size:.78rem;font-weight:700;transition:all .15s;cursor:pointer;font-family:inherit}
-.topup-btn--default{background:var(--bg);color:var(--text)}
-.topup-btn--default:hover{background:var(--accent-dark);color:#fff}
-.topup-btn--red{background:var(--red);color:#fff;box-shadow:0 2px 0 rgba(180,30,45,.3)}
-.topup-btn--red:hover{filter:brightness(.9)}
-.topup-btn--lime{background:var(--lime);color:#0A0A0A;box-shadow:0 2px 0 rgba(140,180,40,.3)}
-.topup-btn--lime:hover{filter:brightness(.95)}
+.profile-page .topup-btn{margin-top:12px;width:100%;padding:10px;border-radius:10px;border:none;font-size:.78rem;font-weight:700;transition:all .15s;cursor:pointer;font-family:inherit}
+.profile-page .topup-btn--default{background:var(--bg);color:var(--text)}
+.profile-page .topup-btn--default:hover{background:var(--accent-dark);color:#fff}
+.profile-page .topup-btn--red{background:var(--red);color:#fff;box-shadow:0 2px 0 rgba(180,30,45,.3)}
+.profile-page .topup-btn--red:hover{filter:brightness(.9)}
+.profile-page .topup-btn--lime{background:var(--lime);color:#0A0A0A;box-shadow:0 2px 0 rgba(140,180,40,.3)}
+.profile-page .topup-btn--lime:hover{filter:brightness(.95)}
 
 /* Subscription */
 .sub-section{margin-bottom:32px}
@@ -230,11 +230,11 @@ const PROFILE_CSS = `
 .sf-icon--no{background:var(--bg);color:var(--muted)}
 .sf-text{flex:1;line-height:1.4}
 .sf-text--dim{color:var(--muted);text-decoration:line-through}
-.sub-btn{width:100%;padding:12px;border-radius:12px;border:none;font-size:.88rem;font-weight:700;transition:all .2s;cursor:pointer;font-family:inherit}
-.sub-btn--upgrade{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.35)}
-.sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 20px rgba(230,57,70,.1)}
-.sub-btn--current{background:var(--bg);color:var(--muted);cursor:default}
-.sub-btn--current:disabled{cursor:not-allowed}
+.profile-page .sub-btn{width:100%;padding:12px;border-radius:12px;border:none;font-size:.88rem;font-weight:700;transition:all .2s;cursor:pointer;font-family:inherit}
+.profile-page .sub-btn--upgrade{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.35)}
+.profile-page .sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 20px rgba(230,57,70,.1)}
+.profile-page .sub-btn--current{background:var(--bg);color:var(--muted);cursor:default}
+.profile-page .sub-btn--current:disabled{cursor:not-allowed}
 .sub-warning{margin-top:16px;padding:14px 18px;border-radius:14px;background:color-mix(in srgb,var(--red) 4%,transparent);border:1px solid color-mix(in srgb,var(--red) 8%,transparent);display:flex;align-items:flex-start;gap:10px}
 .sub-warning-icon{font-size:1.1rem;flex-shrink:0;margin-top:2px}
 .sub-warning-text{font-size:.75rem;color:var(--text);line-height:1.5}
