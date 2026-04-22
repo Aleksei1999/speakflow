@@ -27,6 +27,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     currentStreak: number
   } | null = null
 
+  let teacherStats: {
+    rating: number
+    totalReviews: number
+    yearsExperience: number | null
+  } | null = null
+
   if (role === "student") {
     const { data: progressRaw } = await (supabase as any)
       .from("user_progress")
@@ -48,6 +54,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
       nextLevelXp: thresholds?.next ?? xp,
       currentStreak: progress?.current_streak ?? 0,
     }
+  } else if (role === "teacher") {
+    const { data: teacherRaw } = await (supabase as any)
+      .from("teacher_profiles")
+      .select("rating, total_reviews, experience_years")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    const t = teacherRaw as { rating: number | null; total_reviews: number | null; experience_years: number | null } | null
+    teacherStats = {
+      rating: Number(t?.rating ?? 0),
+      totalReviews: t?.total_reviews ?? 0,
+      yearsExperience: t?.experience_years ?? null,
+    }
   }
 
   return (
@@ -56,6 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       avatarUrl={profile?.avatar_url ?? null}
       role={role}
       gamification={gamification}
+      teacherStats={teacherStats}
     >
       {children}
     </DashboardShell>
