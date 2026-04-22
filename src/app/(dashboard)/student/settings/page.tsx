@@ -361,6 +361,54 @@ export default function StudentSettingsPage() {
 
   const stub = (title: string) => () => toast.info(`${title} — скоро будет доступно`)
 
+  const supabase = createClient()
+
+  const handleConnect = async (provider: "google" | "github" | "telegram") => {
+    if (provider === "telegram") {
+      toast.info("Telegram подключается через бот — скоро будет доступно")
+      return
+    }
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: { redirectTo: `${window.location.origin}/api/auth/callback?next=/student/settings` },
+    })
+    if (error) {
+      if (/provider.*not (enabled|configured)/i.test(error.message)) {
+        toast.error(`${provider === "github" ? "GitHub" : "Google"} провайдер не включён в Supabase`)
+      } else {
+        toast.error(error.message || "Не удалось подключить аккаунт")
+      }
+    }
+  }
+
+  const handleDisconnect = async (provider: "google" | "github" | "telegram") => {
+    if (provider === "telegram") {
+      toast.info("Telegram отключается через бот — скоро будет доступно")
+      return
+    }
+    const { data: identitiesData, error: iErr } = await supabase.auth.getUserIdentities()
+    if (iErr || !identitiesData) {
+      toast.error("Не удалось получить идентичности")
+      return
+    }
+    const target = identitiesData.identities.find((i: any) => i.provider === provider)
+    if (!target) {
+      toast.error("Этот аккаунт уже не подключён")
+      return
+    }
+    if (identitiesData.identities.length <= 1) {
+      toast.error("Нельзя отключить единственный способ входа")
+      return
+    }
+    const { error } = await supabase.auth.unlinkIdentity(target)
+    if (error) {
+      toast.error(error.message || "Не удалось отключить аккаунт")
+      return
+    }
+    toast.success(`${provider === "github" ? "GitHub" : "Google"} отключён`)
+    load()
+  }
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: SETTINGS_CSS }} />
@@ -430,7 +478,8 @@ export default function StudentSettingsPage() {
 
               <ConnectedSection
                 connected={data.connected}
-                onConnect={stub("Подключение соцсетей")}
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
               />
 
               <SubscriptionSection
@@ -792,10 +841,14 @@ function SecuritySection({
 function ConnectedSection({
   connected,
   onConnect,
+  onDisconnect,
 }: {
   connected: Settings["connected"]
-  onConnect: () => void
+  onConnect: (provider: "google" | "github" | "telegram") => void
+  onDisconnect: (provider: "google" | "github" | "telegram") => void
 }) {
+  const toggle = (provider: "google" | "github" | "telegram", isConnected: boolean) =>
+    isConnected ? onDisconnect(provider) : onConnect(provider)
   return (
     <div className="s-card" id="sec-connected">
       <div className="s-card-head">
@@ -818,7 +871,7 @@ function ConnectedSection({
               {connected.google ? "Подключён" : "Не подключён"}
             </div>
           </div>
-          <button className="s-btn s-btn--outline" onClick={onConnect}>
+          <button className="s-btn s-btn--outline" onClick={() => toggle("google", connected.google)}>
             {connected.google ? "Отключить" : "Подключить"}
           </button>
         </div>
@@ -834,7 +887,7 @@ function ConnectedSection({
               {connected.telegram ? "Подключён" : "Не подключён"}
             </div>
           </div>
-          <button className="s-btn s-btn--outline" onClick={onConnect}>
+          <button className="s-btn s-btn--outline" onClick={() => toggle("telegram", connected.telegram)}>
             {connected.telegram ? "Отключить" : "Подключить"}
           </button>
         </div>
@@ -850,7 +903,7 @@ function ConnectedSection({
               {connected.github ? "Подключён" : "Не подключён"}
             </div>
           </div>
-          <button className="s-btn s-btn--outline" onClick={onConnect}>
+          <button className="s-btn s-btn--outline" onClick={() => toggle("github", connected.github)}>
             {connected.github ? "Отключить" : "Подключить"}
           </button>
         </div>
