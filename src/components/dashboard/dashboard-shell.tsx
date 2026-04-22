@@ -122,7 +122,7 @@ const studentNav: NavItem[] = [
 ]
 const studentBottom: NavItem[] = [
   { href: "/student/profile", label: "Профиль", icon: icons.profile },
-  { href: "#", label: "Настройки", icon: icons.settings },
+  { href: "/student/settings", label: "Настройки", icon: icons.settings },
 ]
 
 const teacherNav: NavItem[] = [
@@ -174,6 +174,30 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, childr
       }
     }
   }, [role, pathname, router])
+
+  useEffect(() => {
+    const stored = (typeof window !== "undefined" ? localStorage.getItem("theme") : null) as
+      | "light"
+      | "dark"
+      | "auto"
+      | null
+    const theme = stored ?? "light"
+    const apply = () => {
+      const resolved =
+        theme === "auto"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : theme
+      document.documentElement.setAttribute("data-theme", resolved)
+    }
+    apply()
+    if (theme === "auto") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)")
+      mq.addEventListener("change", apply)
+      return () => mq.removeEventListener("change", apply)
+    }
+  }, [pathname])
 
   const currentRole = role ?? "student"
   const navItems = currentRole === "teacher" ? teacherNav : studentNav
