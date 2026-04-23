@@ -110,6 +110,9 @@ const icons = {
   edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
   groups: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M22 11 20 13 18 11"/></svg>',
   referrals: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>',
+  support: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  reports: '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
 }
 
 type NavItem = { href: string; label: string; icon: string; badge?: string | number }
@@ -124,6 +127,7 @@ const studentNav: NavItem[] = [
   { href: "/student/materials", label: "Материалы", icon: icons.book },
   { href: "/student/leaderboard", label: "Лидерборд", icon: icons.leaderboard },
   { href: "/student/referrals", label: "Рефералы", icon: icons.referrals },
+  { href: "/student/support", label: "Поддержка", icon: icons.support },
 ]
 const studentBottom: NavItem[] = [
   { href: "/student/profile", label: "Профиль", icon: icons.profile },
@@ -138,10 +142,26 @@ const teacherNav: NavItem[] = [
   { href: "/teacher/homework", label: "Домашние задания", icon: icons.edit },
   { href: "/teacher/materials", label: "Материалы", icon: icons.book },
   { href: "/teacher/payouts", label: "Выплаты", icon: icons.payment },
+  { href: "/teacher/support", label: "Поддержка", icon: icons.support },
 ]
 const teacherBottom: NavItem[] = [
   { href: "/teacher/profile", label: "Профиль", icon: icons.profile },
   { href: "/teacher/settings", label: "Настройки", icon: icons.settings },
+]
+
+const adminNav: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: icons.dashboard },
+  { href: "/admin/students", label: "Ученики", icon: icons.users },
+  { href: "/admin/teachers", label: "Преподаватели", icon: icons.profile },
+  { href: "/admin/trial-requests", label: "Заявки", icon: icons.clipboard },
+  { href: "/admin/schedule", label: "Расписание", icon: icons.calendar },
+  { href: "/admin/clubs", label: "Speaking Clubs", icon: icons.mic },
+  { href: "/admin/content", label: "Контент и курсы", icon: icons.book },
+  { href: "/admin/support", label: "Поддержка", icon: icons.support },
+]
+const adminBottom: NavItem[] = [
+  { href: "/admin/reports", label: "Отчёты", icon: icons.reports },
+  { href: "/admin/settings", label: "Настройки", icon: icons.settings },
 ]
 
 function Icon({ svg }: { svg: string }) {
@@ -213,10 +233,13 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   }, [pathname])
 
   const currentRole = role ?? "student"
-  const navItems = currentRole === "teacher" ? teacherNav : studentNav
-  const bottomItems = currentRole === "teacher" ? teacherBottom : studentBottom
+  const navItems =
+    currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
+  const bottomItems =
+    currentRole === "admin" ? adminBottom : currentRole === "teacher" ? teacherBottom : studentBottom
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-  const roleLabel = currentRole === "teacher" ? "Преподаватель" : "Ученик"
+  const roleLabel =
+    currentRole === "admin" ? "Админ" : currentRole === "teacher" ? "Преподаватель" : "Ученик"
 
   const xpProgressPct = gamification
     ? Math.min(100, Math.round((gamification.xp / Math.max(gamification.nextLevelXp, 1)) * 100))
