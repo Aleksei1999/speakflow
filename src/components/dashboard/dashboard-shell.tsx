@@ -108,6 +108,7 @@ const icons = {
   homework: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>',
   payment: '<svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  groups: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M22 11 20 13 18 11"/></svg>',
 }
 
 type NavItem = { href: string; label: string; icon: string; badge?: string | number }
@@ -130,6 +131,7 @@ const teacherNav: NavItem[] = [
   { href: "/teacher", label: "Dashboard", icon: icons.dashboard },
   { href: "/teacher/schedule", label: "Расписание", icon: icons.calendar },
   { href: "/teacher/students", label: "Мои ученики", icon: icons.users },
+  { href: "/teacher/groups", label: "Группы", icon: icons.groups },
   { href: "/teacher/materials", label: "Домашние задания", icon: icons.edit },
   { href: "/teacher/materials", label: "Материалы", icon: icons.book },
   { href: "/teacher/payouts", label: "Выплаты", icon: icons.payment },
