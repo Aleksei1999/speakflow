@@ -17,9 +17,10 @@ const TCH_CSS = `
 .tch-home .dashboard-header .wave{display:inline-block;animation:tchwave 2s ease-in-out infinite;transform-origin:70% 70%}
 @keyframes tchwave{0%,60%,100%{transform:rotate(0)}10%{transform:rotate(14deg)}20%{transform:rotate(-8deg)}30%{transform:rotate(14deg)}40%{transform:rotate(-4deg)}50%{transform:rotate(10deg)}}
 .tch-home .dashboard-header .sub{font-size:14px;color:var(--muted);margin-top:4px}
-.tch-home .user-menu{display:flex;align-items:center;gap:10px}
-.tch-home .icon-btn{width:40px;height:40px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;color:var(--text);position:relative;text-decoration:none;line-height:1;padding:0;margin:0;flex-shrink:0}
-.tch-home .icon-btn:hover{border-color:var(--text)}
+.tch-home .user-menu{display:flex;align-items:center;gap:10px;align-self:flex-start;margin-top:4px}
+.tch-home .icon-btn{width:40px;height:40px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s, background .15s, transform .15s;color:var(--text);position:relative;text-decoration:none;line-height:1;padding:0;margin:0;flex-shrink:0}
+.tch-home .icon-btn:hover{border-color:var(--text);background:var(--bg)}
+.tch-home .icon-btn:active{transform:scale(.96)}
 .tch-home .icon-btn svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .tch-home .icon-btn .badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--surface)}
 .tch-home .user-avatar{width:40px;height:40px;background:var(--accent-dark);color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}

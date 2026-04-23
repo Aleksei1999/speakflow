@@ -42,9 +42,10 @@ const STU_CSS = `
 .stu-home .main-header h1{font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.1}
 .stu-home .main-header h1 .gl{font-family:'Gluten',cursive;color:var(--red);font-weight:600}
 .stu-home .main-header .sub{font-size:13px;color:var(--muted);margin-top:4px}
-.stu-home .header-actions{display:flex;align-items:center;gap:8px}
-.stu-home .icon-btn{width:38px;height:38px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;position:relative;color:var(--text);text-decoration:none;line-height:1;padding:0;margin:0;flex-shrink:0;cursor:pointer}
-.stu-home .icon-btn:hover{border-color:var(--text)}
+.stu-home .header-actions{display:flex;align-items:center;gap:8px;align-self:flex-start;margin-top:4px}
+.stu-home .icon-btn{width:40px;height:40px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s, background .15s, transform .15s;position:relative;color:var(--text);text-decoration:none;line-height:1;padding:0;margin:0;flex-shrink:0;cursor:pointer}
+.stu-home .icon-btn:hover{border-color:var(--text);background:var(--bg)}
+.stu-home .icon-btn:active{transform:scale(.96)}
 .stu-home .icon-btn svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .stu-home .icon-btn .notif{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);color:#fff;border-radius:100px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--surface)}
 
