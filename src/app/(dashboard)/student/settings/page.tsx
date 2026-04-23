@@ -475,6 +475,7 @@ export default function StudentSettingsPage() {
                 onPatch={(u) => patch("notifications", u)}
               />
 
+              {/* TEMP: disabled by user request on 2026-04-23 — restore when needed.
               <AppearanceSection
                 value={data.ui}
                 onPatch={(u) => {
@@ -482,6 +483,7 @@ export default function StudentSettingsPage() {
                   if (u.theme) applyTheme(u.theme)
                 }}
               />
+              */}
 
               <SecuritySection
                 value={data.visibility}
@@ -502,11 +504,13 @@ export default function StudentSettingsPage() {
                 onCancel={stub("Отмена подписки")}
               />
 
+              {/* TEMP: disabled by user request on 2026-04-23 — restore when needed.
               <DangerSection
                 onExport={stub("Экспорт данных")}
                 onReset={stub("Сброс прогресса")}
                 onDelete={stub("Удаление аккаунта")}
               />
+              */}
 
               <div className="save-bar">
                 <div className="save-bar-text">
