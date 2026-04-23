@@ -13,6 +13,7 @@ import {
   BarChart3,
   CreditCard,
   BookOpen,
+  ClipboardList,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react"
@@ -32,6 +33,7 @@ const navigationByRole: Record<Role, NavItem[]> = {
   student: [
     { href: "/student", label: "Главная", icon: Home },
     { href: "/student/schedule", label: "Расписание", icon: Calendar },
+    { href: "/student/homework", label: "Домашка", icon: ClipboardList },
     { href: "/student/materials", label: "Материалы", icon: FileText },
     { href: "/student/summaries", label: "AI Саммари", icon: Brain },
     { href: "/student/achievements", label: "Достижения", icon: Trophy },
