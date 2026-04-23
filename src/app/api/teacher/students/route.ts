@@ -23,6 +23,19 @@ const querySchema = z.object({
 // Which lesson statuses count as "upcoming / booked"
 const UPCOMING_STATUSES = new Set(['scheduled', 'confirmed', 'booked'])
 
+// Which lesson statuses qualify a student as "мой ученик".
+// Исключаем cancelled/no_show; включаем pending_payment до интеграции Yookassa
+// (TEMP: a2a0600) — старые уроки были созданы с этим статусом ещё ДО перехода
+// на бесплатное бронирование и должны попадать в список учеников.
+const ACTIVE_STUDENT_STATUSES = new Set([
+  'scheduled',
+  'confirmed',
+  'booked',
+  'in_progress',
+  'completed',
+  'pending_payment',
+])
+
 function isSameCalendarDay(a: Date, b: Date) {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -97,6 +110,9 @@ export async function GET(request: NextRequest) {
     for (const row of allLessons) {
       const sid = row.student_id
       if (!sid) continue
+      // Ученик попадает в "мои ученики" только если у него есть хоть один урок
+      // в активном статусе (не cancelled / no_show).
+      if (!ACTIVE_STUDENT_STATUSES.has(row.status)) continue
       studentIds.add(sid)
 
       // Track last lesson overall (ordered desc already)

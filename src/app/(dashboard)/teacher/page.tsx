@@ -246,12 +246,23 @@ export default async function TeacherDashboardPage() {
   const weekCompleted = weekLessons.filter((l) => l.status === "completed").length
   const weekCancelled = weekLessons.filter((l) => l.status === "cancelled" || l.status === "no_show").length
 
-  // --- Active students (distinct student_ids with booked/in_progress/completed) ---
+  // --- Active students (distinct student_ids with active lessons) ---
+  // NOTE: "Мой ученик" = хоть один урок в статусах, отличных от cancelled/no_show.
+  // Раньше список ограничивался только ('booked','in_progress','completed'), из-за чего
+  // ученики со старыми уроками pending_payment (созданными ДО коммита a2a0600) выпадали.
+  const ACTIVE_LESSON_STATUSES = [
+    "scheduled",
+    "confirmed",
+    "booked",
+    "in_progress",
+    "completed",
+    "pending_payment", // TEMP: until Yookassa integration is live — a2a0600
+  ]
   const { data: activeLessonsRaw } = await (supabase as any)
     .from("lessons")
     .select("student_id, scheduled_at, status")
     .eq("teacher_id", teacherId)
-    .in("status", ["booked", "in_progress", "completed"])
+    .in("status", ACTIVE_LESSON_STATUSES)
     .order("scheduled_at", { ascending: true })
   const activeLessons = (activeLessonsRaw ?? []) as Array<{ student_id: string; scheduled_at: string; status: string }>
 
