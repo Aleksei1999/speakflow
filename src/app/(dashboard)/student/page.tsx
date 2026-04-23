@@ -9,6 +9,10 @@ import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime } from "@/lib/time"
+import { computeLessonAccess } from "@/lib/lesson-access"
+
+// Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
+export const dynamic = "force-dynamic"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -75,7 +79,20 @@ const STU_CSS = `
 .stu-home .sch-status{font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px}
 .stu-home .sch-status--done{background:rgba(34,197,94,.1);color:#22c55e}
 .stu-home .sch-status--pending{color:var(--muted)}
+.stu-home .sch-status--cancel{background:rgba(230,57,70,.08);color:var(--red)}
 .stu-home .sch-empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+.stu-home .sch-link{display:block;text-decoration:none;color:inherit}
+.stu-home .sch-link:hover{background:var(--surface-2)}
+.stu-home .sch-link.active:hover{background:var(--lime);filter:brightness(.96)}
+
+.stu-today-join{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;background:var(--lime);color:#0A0A0A;font-size:12px;font-weight:800;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(140,180,40,.3)}
+.stu-today-join:hover{background:#b7e316;transform:translateY(-1px)}
+.stu-today-join--waiting{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
+.stu-today-join--waiting:hover{background:var(--bg);transform:none}
+.stu-today-join--expired{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
+.stu-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
+.stu-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .stu-home .streak-cal{display:flex;gap:4px;margin-top:10px}
 .stu-home .streak-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -342,10 +359,48 @@ export default async function StudentDashboardPage() {
             ) : (
               todayLessons.map((l) => {
                 const dt = new Date(l.scheduled_at)
-                const isActive = l.id === upcomingLessonId
                 const teacher = l.teacher_id ? teacherMap[l.teacher_id]?.full_name : null
-                return (
-                  <div key={l.id} className={`sch-item${isActive ? " active" : ""}`}>
+
+                // Окно доступа
+                const access = computeLessonAccess({
+                  scheduledAt: l.scheduled_at,
+                  durationMinutes: l.duration_minutes ?? 50,
+                  status: l.status,
+                })
+                const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
+                const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
+
+                const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled"
+                const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled"
+                const isActive = isLive // подсветка ячейки только когда реально «идёт»
+                const lessonHref = `/student/lesson/${l.id}`
+
+                // CTA в правом углу строки
+                let cta: any
+                if (l.status === "completed") {
+                  cta = <span className="sch-status sch-status--done">✓ завершён</span>
+                } else if (l.status === "cancelled" || access.status === "cancelled") {
+                  cta = <span className="stu-today-join stu-today-join--cancelled">Отменён</span>
+                } else if (isLive) {
+                  cta = <span className="stu-today-join">Зайти в урок →</span>
+                } else if (isSoon) {
+                  cta = (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <span className="stu-today-join stu-today-join--waiting">Скоро откроется</span>
+                      <span className="stu-today-hint">через {minutesUntilOpen} мин</span>
+                    </div>
+                  )
+                } else if (access.status === "expired") {
+                  cta = <span className="stu-today-join stu-today-join--expired">Урок завершён</span>
+                } else {
+                  cta = <span className="sch-status sch-status--pending">{formatLessonTime(dt)}</span>
+                }
+
+                // Вся строка кликабельная, если можно войти/скоро открывается
+                const clickable = isLive || isSoon
+                const rowClass = `sch-item${isActive ? " active" : ""}`
+                const rowInner = (
+                  <>
                     <div className="sch-time">
                       <div className="t">{formatLessonTime(dt)}</div>
                       <div className="d">{l.duration_minutes} мин</div>
@@ -354,15 +409,22 @@ export default async function StudentDashboardPage() {
                       <h4>Урок 1-on-1</h4>
                       <p>{teacher ? `с ${teacher}` : "Преподаватель назначен"}</p>
                     </div>
-                    {l.status === "completed" ? (
-                      <span className="sch-status sch-status--done">✓ завершён</span>
-                    ) : isActive ? (
-                      <Link href={`/student/lesson/${l.id}`} className="btn btn-sm btn-red">Начать</Link>
-                    ) : l.status === "cancelled" ? (
-                      <span className="sch-status sch-status--pending">отменён</span>
-                    ) : (
-                      <span className="sch-status sch-status--pending">ожидается</span>
-                    )}
+                    {cta}
+                  </>
+                )
+
+                return clickable ? (
+                  <Link
+                    key={l.id}
+                    href={lessonHref}
+                    className={`sch-link ${rowClass}${isActive ? "" : ""}`}
+                    style={{ display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    {rowInner}
+                  </Link>
+                ) : (
+                  <div key={l.id} className={rowClass}>
+                    {rowInner}
                   </div>
                 )
               })

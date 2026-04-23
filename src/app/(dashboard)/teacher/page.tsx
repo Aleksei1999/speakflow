@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
+import { computeLessonAccess } from "@/lib/lesson-access"
+
+// Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
+export const dynamic = "force-dynamic"
 
 const TCH_CSS = `
 .tch-home .dashboard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
@@ -75,6 +79,18 @@ const TCH_CSS = `
 .tch-home .status-cancelled{background:var(--bg);color:var(--muted);text-decoration:line-through}
 
 .tch-home .schedule-empty{padding:30px 10px;text-align:center;color:var(--muted);font-size:13px}
+
+.tch-home .schedule-link{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit}
+.tch-home .schedule-link:hover{background:var(--surface-2)}
+.tch-home .schedule-link.active:hover{background:var(--lime);filter:brightness(.96)}
+
+.tch-today-join{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;background:var(--lime);color:#0A0A0A;font-size:12px;font-weight:800;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(140,180,40,.3)}
+.tch-today-join:hover{background:#b7e316;transform:translateY(-1px)}
+.tch-today-join--waiting{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
+.tch-today-join--waiting:hover{background:var(--bg);transform:none}
+.tch-today-join--expired{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
+.tch-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
+.tch-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .tch-home .quick-actions{display:flex;flex-direction:column;gap:8px}
 .tch-home .quick-actions a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);font-size:13px;font-weight:600;transition:all .15s;color:var(--text)}
@@ -359,13 +375,7 @@ export default async function TeacherDashboardPage() {
   const greeting = greetingByHour(now.getHours())
   const todayCount = todayLessons.length
 
-  // Find "active now" lesson for the today list (within the window of scheduled_at..+duration).
-  const nowMs = now.getTime()
-  const activeLessonId = todayLessons.find((l) => {
-    const start = new Date(l.scheduled_at).getTime()
-    const end = start + Number(l.duration_minutes ?? 50) * 60_000
-    return nowMs >= start - 10 * 60_000 && nowMs <= end && (l.status === "booked" || l.status === "in_progress")
-  })?.id
+  // (active lesson больше не вычисляем отдельно — его роль выполняет computeLessonAccess в рендере)
 
   return (
     <div className="tch-home">
@@ -427,10 +437,45 @@ export default async function TeacherDashboardPage() {
             ) : (
               todayLessons.map((l) => {
                 const at = new Date(l.scheduled_at)
-                const isActive = l.id === activeLessonId
                 const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
-                return (
-                  <div key={l.id} className={`schedule-item ${isActive ? "active" : ""}`}>
+
+                const access = computeLessonAccess({
+                  scheduledAt: l.scheduled_at,
+                  durationMinutes: l.duration_minutes ?? 50,
+                  status: l.status,
+                })
+                const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
+                const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
+
+                const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled" && l.status !== "no_show"
+                const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled" && l.status !== "no_show"
+                const isActive = isLive
+                const lessonHref = `/teacher/lesson/${l.id}`
+
+                let cta: any
+                if (l.status === "completed") {
+                  cta = <span className="status status-success">✓ завершён</span>
+                } else if (l.status === "cancelled" || l.status === "no_show" || access.status === "cancelled") {
+                  cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
+                } else if (isLive) {
+                  cta = <span className="tch-today-join">Зайти в урок →</span>
+                } else if (isSoon) {
+                  cta = (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <span className="tch-today-join tch-today-join--waiting">Скоро откроется</span>
+                      <span className="tch-today-hint">через {minutesUntilOpen} мин</span>
+                    </div>
+                  )
+                } else if (access.status === "expired") {
+                  cta = <span className="tch-today-join tch-today-join--expired">Урок завершён</span>
+                } else {
+                  cta = <span className="status status-pending">ожидается</span>
+                }
+
+                const clickable = isLive || isSoon
+                const rowClass = `schedule-item ${isActive ? "active" : ""}`
+                const rowInner = (
+                  <>
                     <div className="schedule-time">
                       <div className="time">{formatLessonTime(at)}</div>
                       <div className="dur">{l.duration_minutes} мин</div>
@@ -439,15 +484,17 @@ export default async function TeacherDashboardPage() {
                       <h4>{studentName}</h4>
                       <p>Урок английского</p>
                     </div>
-                    {l.status === "completed" ? (
-                      <span className="status status-success">✓ завершён</span>
-                    ) : l.status === "cancelled" || l.status === "no_show" ? (
-                      <span className="status status-cancelled">отменён</span>
-                    ) : isActive ? (
-                      <Link href={`/teacher/lesson/${l.id}`} className="btn btn-sm btn-primary">Начать</Link>
-                    ) : (
-                      <span className="status status-pending">ожидается</span>
-                    )}
+                    {cta}
+                  </>
+                )
+
+                return clickable ? (
+                  <Link key={l.id} href={lessonHref} className={`schedule-link ${rowClass}`}>
+                    {rowInner}
+                  </Link>
+                ) : (
+                  <div key={l.id} className={rowClass}>
+                    {rowInner}
                   </div>
                 )
               })
