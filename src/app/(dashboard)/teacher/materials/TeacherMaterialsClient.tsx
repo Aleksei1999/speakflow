@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { format, formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
+import ShareMaterialModal from "./ShareMaterialModal"
 
 type Material = {
   id: string
@@ -141,6 +142,10 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [apiMissing, setApiMissing] = useState(false)
+
+  // Share modal state
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareTarget, setShareTarget] = useState<{ id: string; title: string } | null>(null)
 
   // Upload modal state
   const [modalOpen, setModalOpen] = useState(false)
@@ -341,13 +346,9 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
     }))
   }
 
-  async function handleAttach(m: Material) {
-    await trackUse(m.id)
-    toast.info("Скоро можно будет прикреплять к уроку")
-    setSnap((prev) => ({
-      ...prev,
-      materials: prev.materials.map((x) => (x.id === m.id ? { ...x, use_count: x.use_count + 1 } : x)),
-    }))
+  function handleAttach(m: Material) {
+    setShareTarget({ id: m.id, title: m.title })
+    setShareOpen(true)
   }
 
   // Derived: "recent" default view splits into Recent + Popular
@@ -599,6 +600,16 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
             </div>
           </div>
         </div>
+      )}
+
+      {/* SHARE MODAL */}
+      {shareTarget && (
+        <ShareMaterialModal
+          materialId={shareTarget.id}
+          materialTitle={shareTarget.title}
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </>
   )
