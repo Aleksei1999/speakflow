@@ -22,13 +22,9 @@ function maskEmail(email: string | null | undefined): string | null {
 }
 
 function resolveShareBase(): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.APP_URL ??
-    ''
-  const trimmed = fromEnv.trim().replace(/\/+$/, '')
-  return trimmed || 'https://raw-english.com'
+  // Canonical public domain — не читаем из env, потому что NEXT_PUBLIC_SITE_URL
+  // в Vercel указывает на preview-URL, а шерить надо прод-домен.
+  return 'https://raw-english.com'
 }
 
 export async function GET(_req: NextRequest) {
