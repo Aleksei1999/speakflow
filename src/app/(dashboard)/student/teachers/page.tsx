@@ -838,8 +838,12 @@ export default function StudentTeachersPage() {
             </div>
 
             <div className="prof-footer">
-              <div className="prof-price">
+              {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+              {/* <div className="prof-price">
                 <b>{formatRub(modalTeacher.hourly_rate_rub)}</b> / 60 мин
+              </div> */}
+              <div className="prof-price">
+                <b>Бесплатно</b>
               </div>
               <button
                 type="button"
@@ -943,8 +947,12 @@ function TeacherCard({
             {teacher.rating.toFixed(1)}{" "}
             <span className="t-reviews">({teacher.total_reviews})</span>
           </div>
-          <div className="t-price">
+          {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+          {/* <div className="t-price">
             <b>{formatRub(teacher.hourly_rate_rub)}</b> / 60 мин
+          </div> */}
+          <div className="t-price">
+            <b>Бесплатно</b>
           </div>
         </div>
         <button

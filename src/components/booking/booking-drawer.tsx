@@ -375,10 +375,18 @@ export function BookingDrawer({
                   {formatTimeUTC(selectedSlot)} UTC · {duration} мин
                 </span>
               </div>
+              {/* TEMP: disabled until Yookassa integration is live — a2a0600
               <div className="flex items-center justify-between border-t pt-2 mt-1">
                 <span className="text-muted-foreground">Стоимость</span>
                 <span className="text-base font-semibold text-[#CC3A3A]">
                   {formatPrice(price)}
+                </span>
+              </div>
+              */}
+              <div className="flex items-center justify-between border-t pt-2 mt-1">
+                <span className="text-muted-foreground">Стоимость</span>
+                <span className="text-base font-semibold text-[#CC3A3A]">
+                  Бесплатно
                 </span>
               </div>
             </div>
@@ -397,7 +405,9 @@ export function BookingDrawer({
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 size-4" />
-                  Забронировать и оплатить
+                  {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+                  {/* Забронировать и оплатить */}
+                  Записаться бесплатно
                 </>
               )}
             </Button>
@@ -469,14 +479,18 @@ function TeacherStep({
                       {t.rating.toFixed(1)}
                     </span>
                   )}
-                  <span>
+                  {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+                  {/* <span>
                     {formatPrice(Math.round(t.hourlyRate / 2))} / 30 мин
-                  </span>
+                  </span> */}
+                  <span>Пробный урок бесплатно</span>
                 </div>
               </div>
-              <Badge variant="secondary">
+              {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+              {/* <Badge variant="secondary">
                 {formatPrice(t.hourlyRate)} / час
-              </Badge>
+              </Badge> */}
+              <Badge variant="secondary">Бесплатно</Badge>
             </button>
           ))}
         </div>
@@ -532,9 +546,11 @@ function DetailsStep({
         </Avatar>
         <div className="flex-1">
           <p className="text-sm font-medium">{teacher.name}</p>
-          <p className="text-xs text-muted-foreground">
+          {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+          {/* <p className="text-xs text-muted-foreground">
             {formatPrice(teacher.hourlyRate)} / час
-          </p>
+          </p> */}
+          <p className="text-xs text-muted-foreground">Бесплатно</p>
         </div>
       </div>
 
@@ -641,12 +657,20 @@ function DetailsStep({
         )}
       </div>
 
+      {/* TEMP: disabled until Yookassa integration is live — a2a0600
       {selectedSlot && (
         <div className="flex items-center justify-between rounded-lg border bg-[#CC3A3A]/5 p-3 text-sm">
           <span className="text-muted-foreground">Итого</span>
           <span className="text-base font-semibold text-[#CC3A3A]">
             {formatPrice(price)}
           </span>
+        </div>
+      )}
+      */}
+      {selectedSlot && (
+        <div className="flex items-center justify-between rounded-lg border bg-[#CC3A3A]/5 p-3 text-sm">
+          <span className="text-muted-foreground">Итого</span>
+          <span className="text-base font-semibold text-[#CC3A3A]">Бесплатно</span>
         </div>
       )}
     </div>

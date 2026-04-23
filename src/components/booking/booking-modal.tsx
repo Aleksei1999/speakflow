@@ -74,7 +74,9 @@ export function BookingModal({
         <DialogHeader>
           <DialogTitle>Подтверждение бронирования</DialogTitle>
           <DialogDescription>
-            Проверьте данные урока перед оплатой
+            {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+            {/* Проверьте данные урока перед оплатой */}
+            Проверьте данные урока перед бронированием
           </DialogDescription>
         </DialogHeader>
 
@@ -117,11 +119,20 @@ export function BookingModal({
               <Badge variant="secondary">{durationMinutes} мин</Badge>
             </div>
 
+            {/* TEMP: disabled until Yookassa integration is live — a2a0600
             <div className="flex items-center gap-2 text-sm">
               <CreditCard className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Стоимость:</span>
               <span className="text-base font-semibold text-[#CC3A3A]">
                 {formatPrice(price)}
+              </span>
+            </div>
+            */}
+            <div className="flex items-center gap-2 text-sm">
+              <CreditCard className="size-4 text-[#CC3A3A]" />
+              <span className="text-muted-foreground">Стоимость:</span>
+              <span className="text-base font-semibold text-[#CC3A3A]">
+                Бесплатно
               </span>
             </div>
           </div>
@@ -146,7 +157,9 @@ export function BookingModal({
                 Бронирование...
               </>
             ) : (
-              `Оплатить ${formatPrice(price)}`
+              // TEMP: disabled until Yookassa integration is live — a2a0600
+              // `Оплатить ${formatPrice(price)}`
+              `Записаться бесплатно`
             )}
           </Button>
         </DialogFooter>
