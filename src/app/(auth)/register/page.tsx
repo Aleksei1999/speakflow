@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -97,6 +97,14 @@ function SteakSVG({ mood, size = 72, color = '#D33F3F' }: { mood: Mood; size?: n
 }
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageInner />
+    </Suspense>
+  )
+}
+
+function RegisterPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
