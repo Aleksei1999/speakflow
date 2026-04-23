@@ -2,8 +2,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LessonRoomClient } from '@/components/lesson/lesson-room-client'
+import { LessonGate } from '@/components/lesson/lesson-gate'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
+import { computeLessonAccess } from '@/lib/lesson-access'
 
 export default async function TeacherLessonPage({
   params,
@@ -31,13 +33,33 @@ export default async function TeacherLessonPage({
 
   if (!lesson || lesson.teacher_id !== tp.id) redirect('/teacher/schedule')
 
+  // Student display name — нужен для всех экранов (ожидание/отмена/live)
+  const { data: studentProfile } = await supabase
+    .from('profiles').select('full_name').eq('id', lesson.student_id).single()
+
+  // Серверный гейт: проверяем окно доступа ДО генерации JWT
+  const access = computeLessonAccess({
+    scheduledAt: lesson.scheduled_at,
+    durationMinutes: lesson.duration_minutes,
+    status: lesson.status,
+  })
+
+  if (access.status !== 'live') {
+    return (
+      <LessonGate
+        scheduledAt={lesson.scheduled_at}
+        durationMinutes={lesson.duration_minutes}
+        status={lesson.status}
+        teacherName={studentProfile?.full_name ?? 'Ученик'}
+        isTeacher
+        initialStatus={access.status}
+      />
+    )
+  }
+
   // Teacher profile
   const { data: profile } = await supabase
     .from('profiles').select('full_name').eq('id', user.id).single()
-
-  // Student name + level + lesson count
-  const { data: studentProfile } = await supabase
-    .from('profiles').select('full_name').eq('id', lesson.student_id).single()
 
   const { data: studentProgress } = await supabase
     .from('user_progress').select('english_level').eq('user_id', lesson.student_id).maybeSingle()
