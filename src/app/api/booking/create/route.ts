@@ -159,8 +159,8 @@ export async function POST(request: NextRequest) {
       price = Math.round((hourlyRate * durationMinutes) / 60)
     }
 
-    // Create lesson with status='pending_payment'
-    // The DB generates the UUID id; we use it for the Jitsi room name after insert
+    // TEMP: пока нет интеграции Yookassa — создаём урок сразу как booked с price=0.
+    // Когда платёжка заработает, вернуть status='pending_payment' и price.
     const { data: lesson, error: insertError } = await supabase
       .from('lessons')
       .insert({
@@ -168,8 +168,8 @@ export async function POST(request: NextRequest) {
         teacher_id: teacherProfileId,
         scheduled_at: scheduledAt,
         duration_minutes: durationMinutes,
-        status: 'pending_payment',
-        price,
+        status: 'booked',
+        price: 0,
         jitsi_room_name: null,
         cancelled_by: null,
         cancellation_reason: null,
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       lessonId: lesson.id,
       price: lesson.price,
-      redirectUrl: `/student/payment/${lesson.id}`,
+      redirectUrl: `/student/schedule`,
     })
   } catch (error) {
     console.error('Непредвиденная ошибка в create API:', error)
