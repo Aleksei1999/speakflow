@@ -223,7 +223,9 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
     if (bookingLoading) return "Бронирование..."
     if (!selectedDate) return "Выбери день"
     if (!selectedSlot) return "Выбери время"
-    return `Забронировать · ${formatPrice(price)}`
+    // TEMP: disabled until Yookassa integration is live — a2a0600
+    // return `Забронировать · ${formatPrice(price)}`
+    return `Записаться бесплатно`
   })()
 
   return (
@@ -288,7 +290,9 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                               {t.rating.toFixed(1)}
                             </div>
                           )}
-                          <div className="tch-price"><b>{formatPrice(t.hourlyRate)}</b> / час</div>
+                          {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+                          {/* <div className="tch-price"><b>{formatPrice(t.hourlyRate)}</b> / час</div> */}
+                          <div className="tch-price"><b>Бесплатно</b></div>
                         </div>
                       </button>
                     ))}

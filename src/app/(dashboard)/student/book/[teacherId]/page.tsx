@@ -563,11 +563,21 @@ export default function BookTeacherPage() {
                 <span className="text-muted-foreground">Длительность</span>
                 <span className="font-medium">{selectedDuration} мин</span>
               </div>
+              {/* TEMP: disabled until Yookassa integration is live — a2a0600
               <div className="border-t pt-3">
                 <div className="flex justify-between">
                   <span className="font-medium">Стоимость</span>
                   <span className="text-lg font-semibold text-[#CC3A3A]">
                     {formatPrice(calculatePrice())}
+                  </span>
+                </div>
+              </div>
+              */}
+              <div className="border-t pt-3">
+                <div className="flex justify-between">
+                  <span className="font-medium">Стоимость</span>
+                  <span className="text-lg font-semibold text-[#CC3A3A]">
+                    Бесплатно
                   </span>
                 </div>
               </div>
@@ -585,7 +595,9 @@ export default function BookTeacherPage() {
                   Бронирование...
                 </>
               ) : (
-                `Оплатить ${formatPrice(calculatePrice())}`
+                // TEMP: disabled until Yookassa integration is live — a2a0600
+                // `Оплатить ${formatPrice(calculatePrice())}`
+                `Записаться бесплатно`
               )}
             </Button>
 
