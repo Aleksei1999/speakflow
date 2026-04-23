@@ -10,11 +10,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profileRaw } = await (supabase as any)
-    .from("profiles")
-    .select("full_name, avatar_url, role")
-    .eq("id", user.id)
-    .maybeSingle()
+  // Parallelize profile + user_progress + teacher_profiles in a single round-trip —
+  // we don't know the role yet, so we eagerly fetch both progress sources and pick
+  // the relevant one below. Cheaper than a second sequential round-trip.
+  const [{ data: profileRaw }, { data: progressRaw }, { data: teacherRaw }] = await Promise.all([
+    (supabase as any)
+      .from("profiles")
+      .select("full_name, avatar_url, role")
+      .eq("id", user.id)
+      .maybeSingle(),
+    (supabase as any)
+      .from("user_progress")
+      .select("total_xp, english_level, current_streak")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    (supabase as any)
+      .from("teacher_profiles")
+      .select("rating, total_reviews, experience_years")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ])
 
   const profile = profileRaw as { full_name: string | null; avatar_url: string | null; role: "student" | "teacher" | "admin" | null } | null
   const role = profile?.role ?? null
@@ -34,12 +49,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } | null = null
 
   if (role === "student") {
-    const { data: progressRaw } = await (supabase as any)
-      .from("user_progress")
-      .select("total_xp, english_level, current_streak")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
     const progress = progressRaw as { total_xp: number | null; english_level: string | null; current_streak: number | null } | null
     const level: RoastLevel = (progress?.english_level && LEVEL_ORDER.includes(progress.english_level as (typeof LEVEL_ORDER)[number]))
       ? (progress.english_level as RoastLevel)
@@ -55,12 +64,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       currentStreak: progress?.current_streak ?? 0,
     }
   } else if (role === "teacher") {
-    const { data: teacherRaw } = await (supabase as any)
-      .from("teacher_profiles")
-      .select("rating, total_reviews, experience_years")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
     const t = teacherRaw as { rating: number | null; total_reviews: number | null; experience_years: number | null } | null
     teacherStats = {
       rating: Number(t?.rating ?? 0),
