@@ -38,7 +38,7 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
   useEffect(() => {
     const html = document.documentElement
     const prevTheme = html.dataset.theme
-    html.dataset.theme = "dark"
+    html.dataset.theme = "light"
     html.dataset.landing = "true"
     const w = window as unknown as {
       I3?: { hydrate: () => void }
@@ -111,7 +111,7 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
             <li><a href="#lvl7">Membership</a></li>
           </ul>
           <div className="theme-toggle" id="themeToggle">
-            <div className="theme-knob" id="themeKnob">🌙</div>
+            <div className="theme-knob" id="themeKnob">☀️</div>
           </div>
           <Link href={ctaHref} className="nav-cta">
             {isAuthenticated ? (
@@ -386,7 +386,13 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
           <li><a href="https://t.me/raw_english" target="_blank" rel="noopener noreferrer">Telegram</a></li>
           <li><a href="https://instagram.com/raw_english" target="_blank" rel="noopener noreferrer">Instagram</a></li>
           <li><Link href="/register">Связаться</Link></li>
+          <li><Link href="/privacy">Политика конфиденциальности</Link></li>
+          <li><Link href="/oferta">Договор-оферта</Link></li>
         </ul>
+        <div className="footer-legal" style={{ fontSize: "0.78rem", color: "var(--text3)", lineHeight: 1.7, marginTop: 18, textAlign: "center" }}>
+          ИП Кратковская Валерия Витальевна<br />
+          ОГРНИП: 325619600134369 · ИНН: 616485783606
+        </div>
         <div className="footer-copy">By V. Kratkovskaya © 2026</div>
       </footer>
     </>
