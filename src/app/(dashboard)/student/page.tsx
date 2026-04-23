@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
+import { cookies, headers } from "next/headers"
 import { format, startOfDay, endOfDay, subDays } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
@@ -279,6 +280,33 @@ export default async function StudentDashboardPage() {
   const completedTodayCount = todayLessons.filter((l) => l.status === "completed").length
   const remainingTodayCount = todayLessons.filter((l) => ["booked", "in_progress"].includes(l.status)).length
 
+  // Referral stats — graceful fallback, если /api/referrals/me ещё не существует
+  // (backend-агент мигрирует БД параллельно).
+  let referralActivated = 0
+  let referralCapRemaining = 10
+  try {
+    const hdrs = await headers()
+    const host = hdrs.get("host") ?? ""
+    const proto = hdrs.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https")
+    const cookieStore = await cookies()
+    const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join("; ")
+    const refRes = await fetch(`${proto}://${host}/api/referrals/me`, {
+      headers: { cookie: cookieHeader },
+      cache: "no-store",
+    })
+    if (refRes.ok) {
+      const refJson = await refRes.json()
+      if (refJson?.stats && typeof refJson.stats.activated === "number") {
+        referralActivated = refJson.stats.activated
+      }
+      if (typeof refJson?.cap_remaining === "number") {
+        referralCapRemaining = refJson.cap_remaining
+      }
+    }
+  } catch {
+    // API ещё не готов — используем дефолт
+  }
+
   return (
     <div className="stu-home">
       <style dangerouslySetInnerHTML={{ __html: STU_CSS }} />
@@ -436,7 +464,12 @@ export default async function StudentDashboardPage() {
           <div className="card">
             <div className="card-head"><h3>Быстрые действия</h3></div>
             <div className="card-body">
-              <QuickActions clubsThisWeek={0} newMaterials={0} />
+              <QuickActions
+                clubsThisWeek={0}
+                newMaterials={0}
+                referralActivated={referralActivated}
+                referralCapRemaining={referralCapRemaining}
+              />
             </div>
           </div>
 
