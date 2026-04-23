@@ -31,7 +31,8 @@ interface UpcomingLessonsProps {
 }
 
 const statusLabels: Record<string, string> = {
-  pending_payment: "Ожидание оплаты",
+  // TEMP: a2a0600 — free-booking era, pending_payment displayed as Scheduled
+  pending_payment: "Запланирован",
   booked: "Забронирован",
   in_progress: "В процессе",
   completed: "Завершён",
@@ -49,7 +50,8 @@ function getInitials(name: string): string {
 }
 
 function canJoin(scheduledAt: string, status: string): boolean {
-  if (status !== "booked" && status !== "in_progress") return false
+  // TEMP: a2a0600 — free-booking era, treat pending_payment as booked
+  if (status !== "booked" && status !== "in_progress" && status !== "pending_payment") return false
   const lessonDate = new Date(scheduledAt)
   const now = new Date()
   const minutesUntil = differenceInMinutes(lessonDate, now)
