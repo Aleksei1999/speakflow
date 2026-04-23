@@ -117,6 +117,7 @@ type NavItem = { href: string; label: string; icon: string; badge?: string | num
 const studentNav: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: icons.dashboard },
   { href: "/student/schedule", label: "Расписание", icon: icons.calendar },
+  { href: "/student/homework", label: "Домашка", icon: icons.edit },
   { href: "/student/clubs", label: "Speaking Clubs", icon: icons.mic },
   { href: "/student/teachers", label: "Преподаватели", icon: icons.users },
   { href: "/student/achievements", label: "Ачивки", icon: icons.trophy },
