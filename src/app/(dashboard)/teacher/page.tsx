@@ -85,8 +85,8 @@ const TCH_CSS = `
 .tch-home .schedule-link:hover{background:var(--surface-2)}
 .tch-home .schedule-link.active:hover{background:var(--lime);filter:brightness(.96)}
 
-.tch-today-join{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;background:var(--lime);color:#0A0A0A;font-size:12px;font-weight:800;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(140,180,40,.3)}
-.tch-today-join:hover{background:#b7e316;transform:translateY(-1px)}
+.tch-today-join{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;background:var(--red,#E63946);color:#fff;font-size:12px;font-weight:800;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(180,30,45,.3)}
+.tch-today-join:hover{background:#d02e3b;transform:translateY(-1px)}
 .tch-today-join--waiting{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
 .tch-today-join--waiting:hover{background:var(--bg);transform:none}
 .tch-today-join--expired{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
@@ -459,7 +459,7 @@ export default async function TeacherDashboardPage() {
                 } else if (l.status === "cancelled" || l.status === "no_show" || access.status === "cancelled") {
                   cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
                 } else if (isLive) {
-                  cta = <span className="tch-today-join">Зайти в урок →</span>
+                  cta = <span className="tch-today-join">Начать</span>
                 } else if (isSoon) {
                   cta = (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
