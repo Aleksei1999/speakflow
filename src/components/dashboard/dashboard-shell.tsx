@@ -109,6 +109,7 @@ const icons = {
   payment: '<svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
   groups: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M22 11 20 13 18 11"/></svg>',
+  referrals: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>',
 }
 
 type NavItem = { href: string; label: string; icon: string; badge?: string | number }
@@ -121,6 +122,7 @@ const studentNav: NavItem[] = [
   { href: "/student/achievements", label: "Ачивки", icon: icons.trophy },
   { href: "/student/materials", label: "Материалы", icon: icons.book },
   { href: "/student/leaderboard", label: "Лидерборд", icon: icons.leaderboard },
+  { href: "/student/referrals", label: "Рефералы", icon: icons.referrals },
 ]
 const studentBottom: NavItem[] = [
   { href: "/student/profile", label: "Профиль", icon: icons.profile },
