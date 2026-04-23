@@ -20,8 +20,18 @@ const querySchema = z.object({
   q: z.string().trim().max(200).optional(),
 })
 
-// Which lesson statuses count as "upcoming / booked"
-const UPCOMING_STATUSES = new Set(['scheduled', 'confirmed', 'booked'])
+// Which lesson statuses count as "upcoming / booked" (used to compute next_lesson_at)
+// Должно совпадать с ACTIVE_STUDENT_STATUSES минус финальные (completed / no_show / cancelled).
+// Включаем pending_payment — старые уроки (до a2a0600) создавались с этим статусом и
+// остаются "впереди" для пользователя; включаем in_progress — если слот чуть-чуть
+// стартовал, его всё равно стоит показывать как "ближайший".
+const UPCOMING_STATUSES = new Set([
+  'scheduled',
+  'confirmed',
+  'booked',
+  'in_progress',
+  'pending_payment',
+])
 
 // Which lesson statuses qualify a student as "мой ученик".
 // Исключаем cancelled/no_show; включаем pending_payment до интеграции Yookassa
