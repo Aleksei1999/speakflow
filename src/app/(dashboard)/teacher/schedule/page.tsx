@@ -6,7 +6,6 @@ import Link from "next/link"
 import {
   addDays,
   addWeeks,
-  differenceInMinutes,
   endOfDay,
   format,
   isSameDay,
@@ -18,7 +17,7 @@ import { ru } from "date-fns/locale"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
-import { LESSON_JOIN_WINDOW } from "@/lib/constants"
+import { computeLessonAccess } from "@/lib/lesson-access"
 
 type LessonRow = {
   id: string
@@ -491,23 +490,28 @@ export default function TeacherSchedulePage() {
     return sorted
   }, [lessons])
 
-  function canJoin(scheduledAt: string, status: string): boolean {
-    // TEMP: a2a0600 — free-booking era, treat pending_payment as booked
-    if (status !== "booked" && status !== "in_progress" && status !== "pending_payment") return false
-    const lessonDate = new Date(scheduledAt)
-    const minutesUntil = differenceInMinutes(lessonDate, now)
-    const minutesSince = -minutesUntil
-    return (
-      status === "in_progress" ||
-      (minutesUntil <= LESSON_JOIN_WINDOW && minutesSince <= 60)
-    )
+  function accessState(l: LessonRow) {
+    return computeLessonAccess({
+      scheduledAt: l.scheduled_at,
+      durationMinutes: l.duration_minutes,
+      status: l.status,
+      now: now.getTime(),
+    })
+  }
+
+  function canJoin(l: LessonRow): boolean {
+    if (l.status === "completed" || l.status === "cancelled") return false
+    return accessState(l).status === "live"
   }
 
   function isHappeningNow(l: LessonRow): boolean {
-    const start = new Date(l.scheduled_at)
-    const end = new Date(start.getTime() + l.duration_minutes * 60_000)
-    // TEMP: a2a0600 — treat pending_payment like booked
-    return now >= start && now <= end && (l.status === "booked" || l.status === "in_progress" || l.status === "pending_payment")
+    if (l.status === "completed" || l.status === "cancelled") return false
+    return accessState(l).status === "live"
+  }
+
+  function isExpired(l: LessonRow): boolean {
+    if (l.status === "completed" || l.status === "cancelled") return false
+    return accessState(l).status === "expired"
   }
 
   const lessonsByDay = useMemo(() => {
@@ -733,10 +737,11 @@ export default function TeacherSchedulePage() {
                 const end = new Date(dt.getTime() + lesson.duration_minutes * 60_000)
                 const isDone = lesson.status === "completed"
                 const isCancel = lesson.status === "cancelled"
-                const joinable = canJoin(lesson.scheduled_at, lesson.status)
+                const expired = isExpired(lesson)
+                const joinable = canJoin(lesson)
                 const student = lesson.student_id ? studentMap[lesson.student_id] : null
-                const rowCls = `lc${happening ? " lc--now" : ""}${isDone ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}`
-                const stripCls = `lc-strip${isDone ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}`
+                const rowCls = `lc${happening ? " lc--now" : ""}${isDone || expired ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}`
+                const stripCls = `lc-strip${isDone || expired ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}`
                 const priceRub = lesson.price ? Math.round(lesson.price / 100) : null
                 return (
                   <div key={lesson.id} className={rowCls}>
@@ -744,13 +749,14 @@ export default function TeacherSchedulePage() {
                     <div className="lc-time">
                       <div className="lc-time-val">{format(dt, "HH:mm")}</div>
                       <div className="lc-time-dur">{lesson.duration_minutes} мин</div>
-                      {!isCancel && priceRub ? <div className="lc-time-xp">{priceRub.toLocaleString("ru-RU")} ₽</div> : null}
+                      {!isCancel && !expired && priceRub ? <div className="lc-time-xp">{priceRub.toLocaleString("ru-RU")} ₽</div> : null}
                     </div>
                     <div className="lc-body">
                       <div className="lc-name">Урок 1-on-1</div>
                       <div className="lc-desc">
                         {format(dt, "HH:mm")}–{format(end, "HH:mm")}
                         {isDone ? " · ✓ завершён" : ""}
+                        {expired && !isDone ? " · время прошло" : ""}
                         {isCancel ? " · отменён" : ""}
                       </div>
                     </div>
@@ -772,10 +778,11 @@ export default function TeacherSchedulePage() {
                         <span className="lc-btn lc-btn--done">✓ Завершён</span>
                       ) : isCancel ? (
                         <span className="lc-btn lc-btn--cancelled">Отменён</span>
+                      ) : expired ? (
+                        <span className="lc-btn lc-btn--cancelled">Урок завершён</span>
                       ) : joinable ? (
-                        <Link href={`/teacher/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Начать</Link>
+                        <Link href={`/teacher/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Зайти в урок</Link>
                       ) : (
-                        /* TEMP: a2a0600 — free-booking era, was "Ожидается" */
                         <span className="lc-btn lc-btn--wait">Запланирован</span>
                       )}
                     </div>
