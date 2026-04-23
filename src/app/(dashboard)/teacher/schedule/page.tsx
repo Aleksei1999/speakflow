@@ -18,7 +18,6 @@ import { ru } from "date-fns/locale"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
-import { useUser } from "@/hooks/use-user"
 import { LESSON_JOIN_WINDOW } from "@/lib/constants"
 
 type LessonRow = {
@@ -263,7 +262,6 @@ function nextRoundHour(d: Date): { date: Date; hour: number } {
 }
 
 export default function TeacherSchedulePage() {
-  const { user, isLoading: userLoading } = useUser()
   const [lessons, setLessons] = useState<LessonRow[]>([])
   const [studentMap, setStudentMap] = useState<Record<string, StudentMapEntry>>({})
   const [teacherProfileId, setTeacherProfileId] = useState<string | null>(null)
@@ -297,15 +295,16 @@ export default function TeacherSchedulePage() {
   )
 
   const fetchLessons = useCallback(async (from: Date, to: Date) => {
-    if (userLoading) return
-    if (!user) {
+    setIsLoading(true)
+    setLoadError(null)
+    const supabase = createClient()
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) {
       setLoadError("Не удалось определить пользователя. Перезайдите в систему.")
       setIsLoading(false)
       return
     }
-    setIsLoading(true)
-    setLoadError(null)
-    const supabase = createClient()
 
     const { data: tp, error: tpError } = await (supabase as any)
       .from("teacher_profiles")
@@ -364,7 +363,7 @@ export default function TeacherSchedulePage() {
     }
 
     setIsLoading(false)
-  }, [user, userLoading])
+  }, [])
 
   useEffect(() => {
     fetchLessons(weekStart, weekEnd)
@@ -1045,7 +1044,6 @@ function AssignDialog({
 }
 
 function AvailabilityEditor() {
-  const { user, isLoading: userLoading, error: userError } = useUser()
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showBlockDialog, setShowBlockDialog] = useState(false)
@@ -1061,13 +1059,13 @@ function AvailabilityEditor() {
 
   useEffect(() => {
     async function load() {
-      if (userLoading) return
-      if (!user) {
-        if (userError) console.error("useUser error:", userError)
+      const supabase = createClient()
+      const { data: { user }, error: authErr } = await supabase.auth.getUser()
+      if (authErr || !user) {
+        if (authErr) console.error("auth error:", authErr)
         setIsLoading(false)
         return
       }
-      const supabase = createClient()
 
       const { data: tp, error: tpError } = await (supabase as any)
         .from("teacher_profiles")
@@ -1116,7 +1114,7 @@ function AvailabilityEditor() {
     }
 
     load()
-  }, [user, userLoading, userError])
+  }, [])
 
   function toggleDay(index: number) {
     setAvailability((prev) => {
@@ -1177,11 +1175,16 @@ function AvailabilityEditor() {
   }
 
   async function handleSave() {
-    if (!user) return
     setIsSaving(true)
 
     try {
       const supabase = createClient()
+      const { data: { user }, error: authErr } = await supabase.auth.getUser()
+      if (authErr || !user) {
+        toast.error("Нужно войти заново")
+        setIsSaving(false)
+        return
+      }
 
       const { data: tp } = await (supabase as any)
         .from("teacher_profiles")
