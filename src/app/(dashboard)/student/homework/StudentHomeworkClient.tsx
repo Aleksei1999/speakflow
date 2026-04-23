@@ -1,11 +1,12 @@
 // @ts-nocheck
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { format, differenceInCalendarDays } from "date-fns"
 import { ru } from "date-fns/locale"
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const CSS = `
 .stu-hw{max-width:1200px;margin:0 auto}
@@ -157,8 +158,16 @@ const CSS = `
 .stu-hw .modal-actions .left{margin-right:auto}
 .stu-hw .attach-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:12px;margin-bottom:6px}
 .stu-hw .attach-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.stu-hw .attach-row .sz{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums;flex-shrink:0}
 .stu-hw .attach-row .rm{width:22px;height:22px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
 .stu-hw .attach-row .rm:hover{color:var(--red);border-color:var(--red)}
+.stu-hw .upload-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stu-hw .upload-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1px dashed var(--border);background:var(--surface);color:var(--text);font-weight:700;font-size:12px;cursor:pointer;transition:border-color .15s,background .15s}
+.stu-hw .upload-btn:hover{border-color:var(--text);background:var(--bg)}
+.stu-hw .upload-btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+.stu-hw .upload-status{font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.stu-hw .upload-status .spin{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:hwSpin .8s linear infinite}
+@keyframes hwSpin{to{transform:rotate(360deg)}}
 
 /* Responsive */
 @media(max-width:1024px){.stu-hw .hw-stats{grid-template-columns:repeat(2,1fr)}}
@@ -729,6 +738,48 @@ function HwCard({
   )
 }
 
+const HOMEWORK_BUCKET = "homework-submissions"
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const SIGNED_URL_TTL = 60 * 60 * 24 * 7 // 7 days — enough for review cycle
+
+const ALLOWED_DOC_MIMES = new Set<string>([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/rtf",
+  "text/plain",
+])
+
+function isAcceptableMime(mime: string): boolean {
+  if (!mime) return false
+  if (
+    mime.startsWith("image/") ||
+    mime.startsWith("audio/") ||
+    mime.startsWith("video/")
+  ) {
+    return true
+  }
+  return ALLOWED_DOC_MIMES.has(mime)
+}
+
+function safeFileName(name: string): string {
+  const base = (name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+  return base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
+}
+
+function formatBytes(bytes: number | undefined): string {
+  if (!bytes || bytes <= 0) return ""
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
+}
+
 function SubmitModal({
   item,
   busy,
@@ -745,26 +796,118 @@ function SubmitModal({
   const [text, setText] = useState(item.submission_text || "")
   const [linkName, setLinkName] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
-  const [links, setLinks] = useState<Attachment[]>([])
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState<number>(0) // count of in-flight uploads
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   function addLink() {
     const url = linkUrl.trim()
     if (!url) return
-    // basic URL check
     if (!/^https?:\/\//i.test(url)) {
       toast.error("Ссылка должна начинаться с http(s)://")
       return
     }
     const name = linkName.trim() || url.replace(/^https?:\/\//i, "").slice(0, 60)
-    setLinks((prev) => [...prev, { name, url }])
+    setAttachments((prev) => [...prev, { name, url }])
     setLinkName("")
     setLinkUrl("")
   }
 
+  async function uploadSingleFile(file: File): Promise<Attachment | null> {
+    if (file.size === 0) {
+      toast.error(`Файл «${file.name}» пуст`)
+      return null
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`«${file.name}» больше 50 МБ`)
+      return null
+    }
+    const mime = file.type || "application/octet-stream"
+    if (!isAcceptableMime(mime)) {
+      toast.error(`Формат «${mime}» не поддерживается`)
+      return null
+    }
+
+    const supabase = createSupabaseBrowserClient()
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser()
+    if (userErr || !user) {
+      toast.error("Нужно войти в аккаунт")
+      return null
+    }
+
+    const safe = safeFileName(file.name)
+    const storagePath = `${user.id}/${item.id}/${Date.now()}_${safe}`
+
+    const { error: upErr } = await supabase.storage
+      .from(HOMEWORK_BUCKET)
+      .upload(storagePath, file, {
+        contentType: mime,
+        cacheControl: "3600",
+        upsert: false,
+      })
+    if (upErr) {
+      console.error("Ошибка загрузки файла:", upErr)
+      toast.error(upErr.message || `Не удалось загрузить «${file.name}»`)
+      return null
+    }
+
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(HOMEWORK_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL)
+    if (signErr || !signed?.signedUrl) {
+      // Best-effort cleanup
+      await supabase.storage.from(HOMEWORK_BUCKET).remove([storagePath])
+      toast.error("Не удалось получить ссылку на файл")
+      return null
+    }
+
+    return {
+      name: file.name,
+      url: signed.signedUrl,
+      size: file.size,
+      mime,
+    }
+  }
+
+  async function onFilesPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || [])
+    // Reset input so the same file can be picked again after a failure.
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    if (files.length === 0) return
+
+    setUploading((n) => n + files.length)
+    try {
+      // Upload sequentially for better error granularity + respect RLS.
+      for (const f of files) {
+        const att = await uploadSingleFile(f)
+        if (att) {
+          setAttachments((prev) => [...prev, att])
+        }
+        setUploading((n) => Math.max(0, n - 1))
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Сбой при загрузке файлов")
+      setUploading(0)
+    }
+  }
+
+  function triggerFilePicker() {
+    if (uploading > 0 || busy) return
+    fileInputRef.current?.click()
+  }
+
   async function submit() {
     if (busy) return
-    if (!text.trim() && links.length === 0) {
-      toast.error("Прикрепи ссылку или напиши ответ")
+    if (uploading > 0) {
+      toast.error("Подожди, файл ещё загружается")
+      return
+    }
+    if (!text.trim() && attachments.length === 0) {
+      toast.error("Прикрепи файл, ссылку или напиши ответ")
       return
     }
     setBusy(true)
@@ -774,7 +917,7 @@ function SubmitModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submission_text: text || null,
-          attachments: links.length > 0 ? links : undefined,
+          attachments: attachments.length > 0 ? attachments : undefined,
         }),
       })
       const j = await res.json().catch(() => ({}))
@@ -805,7 +948,51 @@ function SubmitModal({
         </div>
 
         <div className="field">
-          <label>Прикрепить ссылку (Google Docs, файл)</label>
+          <label>Прикрепить файл</label>
+          <div className="upload-row">
+            <button
+              type="button"
+              className="upload-btn"
+              onClick={triggerFilePicker}
+              aria-disabled={uploading > 0 || busy}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+              {uploading > 0 ? "Загружаю…" : "Выбрать файл"}
+            </button>
+            {uploading > 0 ? (
+              <span className="upload-status">
+                <span className="spin" />
+                Загружается {uploading}…
+              </span>
+            ) : (
+              <span className="upload-status">
+                Фото, PDF, документы, аудио или видео · до 50 МБ
+              </span>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,audio/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt"
+            style={{ display: "none" }}
+            onChange={onFilesPicked}
+          />
+        </div>
+
+        <div className="field">
+          <label>Или прикрепить ссылку (Google Docs, сайт)</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
             <input
               type="text"
@@ -826,16 +1013,19 @@ function SubmitModal({
           <div className="hint">Можно добавить несколько ссылок</div>
         </div>
 
-        {links.length > 0 ? (
+        {attachments.length > 0 ? (
           <div className="field">
             <label>Что прикреплено</label>
-            {links.map((l, i) => (
+            {attachments.map((a, i) => (
               <div className="attach-row" key={i}>
-                <span className="nm">{l.name}</span>
+                <span className="nm">{a.name}</span>
+                {a.size ? <span className="sz">{formatBytes(a.size)}</span> : null}
                 <button
                   type="button"
                   className="rm"
-                  onClick={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+                  onClick={() =>
+                    setAttachments((prev) => prev.filter((_, j) => j !== i))
+                  }
                   aria-label="Убрать"
                 >
                   ×
@@ -849,7 +1039,12 @@ function SubmitModal({
           <button type="button" className="btn btn-outline" onClick={onClose}>
             Отмена
           </button>
-          <button type="button" className="btn btn-lime" onClick={submit} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-lime"
+            onClick={submit}
+            disabled={busy || uploading > 0}
+          >
             {busy ? "Отправляю…" : "Отправить"}
           </button>
         </div>
