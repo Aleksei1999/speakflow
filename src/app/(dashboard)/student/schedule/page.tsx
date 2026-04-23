@@ -284,7 +284,8 @@ export default function StudentSchedulePage() {
   }, [lessons])
 
   function canJoin(scheduledAt: string, status: string): boolean {
-    if (status !== "booked" && status !== "in_progress") return false
+    // TEMP: a2a0600 — free-booking era, treat pending_payment as booked
+    if (status !== "booked" && status !== "in_progress" && status !== "pending_payment") return false
     const lessonDate = new Date(scheduledAt)
     const minutesUntil = differenceInMinutes(lessonDate, now)
     const minutesSince = -minutesUntil
@@ -297,7 +298,8 @@ export default function StudentSchedulePage() {
   function isHappeningNow(l: LessonRow): boolean {
     const start = new Date(l.scheduled_at)
     const end = new Date(start.getTime() + l.duration_minutes * 60_000)
-    return now >= start && now <= end && (l.status === "booked" || l.status === "in_progress")
+    // TEMP: a2a0600 — treat pending_payment like booked
+    return now >= start && now <= end && (l.status === "booked" || l.status === "in_progress" || l.status === "pending_payment")
   }
 
   // Lessons grouped by day for list view.
@@ -475,7 +477,8 @@ export default function StudentSchedulePage() {
                       ) : joinable ? (
                         <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Начать</Link>
                       ) : (
-                        <span className="lc-btn lc-btn--wait">Ожидается</span>
+                        /* TEMP: a2a0600 — free-booking era, was "Ожидается" */
+                        <span className="lc-btn lc-btn--wait">Запланирован</span>
                       )}
                     </div>
                   </div>
