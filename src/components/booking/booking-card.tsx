@@ -158,9 +158,11 @@ export function BookingCard({
             </span>
           </div>
 
-          <div className="text-sm font-medium text-[#CC3A3A]">
+          {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+          {/* <div className="text-sm font-medium text-[#CC3A3A]">
             {formatPrice(lesson.price)}
-          </div>
+          </div> */}
+          <div className="text-sm font-medium text-[#CC3A3A]">Бесплатно</div>
         </div>
       </CardContent>
 
