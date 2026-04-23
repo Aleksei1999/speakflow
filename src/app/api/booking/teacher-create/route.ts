@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       price = Math.round((hourlyRate * durationMinutes) / 60)
     }
 
-    // Инсерт в lessons
+    // TEMP: пока нет Yookassa — создаём урок сразу как booked с price=0.
     const { data: lesson, error: insertError } = await supabase
       .from('lessons')
       .insert({
@@ -191,8 +191,8 @@ export async function POST(request: NextRequest) {
         teacher_id: teacherProfileId,
         scheduled_at: scheduledAt,
         duration_minutes: durationMinutes,
-        status: 'pending_payment',
-        price,
+        status: 'booked',
+        price: 0,
         jitsi_room_name: null,
         cancelled_by: null,
         cancellation_reason: null,
