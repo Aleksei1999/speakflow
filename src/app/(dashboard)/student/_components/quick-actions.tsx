@@ -5,9 +5,26 @@ import Link from "next/link"
 type Props = {
   clubsThisWeek: number
   newMaterials: number
+  referralActivated?: number
+  referralCapRemaining?: number
 }
 
-export function QuickActions({ clubsThisWeek, newMaterials }: Props) {
+export function QuickActions({
+  clubsThisWeek,
+  newMaterials,
+  referralActivated,
+  referralCapRemaining,
+}: Props) {
+  // Формируем текст карточки «Пригласить друга».
+  // Если API-данные пришли — показываем «N/10 активировано · +100 XP».
+  // Иначе — graceful fallback на "0/10 активировано".
+  const activated = typeof referralActivated === "number" ? referralActivated : 0
+  const capMax =
+    typeof referralCapRemaining === "number"
+      ? activated + referralCapRemaining
+      : 10
+  const refSub = `${activated}/${capMax} активировано · +100 XP`
+
   return (
     <div className="quick-grid">
       <Link href="/student/clubs" className="quick-card quick-card--cta">
@@ -25,10 +42,10 @@ export function QuickActions({ clubsThisWeek, newMaterials }: Props) {
         <div className="qc-text">Daily Challenge</div>
         <div className="qc-sub">+15 XP</div>
       </Link>
-      <Link href="/student/leaderboard" className="quick-card">
-        <div className="qc-icon">🎟</div>
-        <div className="qc-text">Guest Pass</div>
-        <div className="qc-sub">Пригласи друга</div>
+      <Link href="/student/referrals" className="quick-card">
+        <div className="qc-icon">👥</div>
+        <div className="qc-text">Пригласить друга</div>
+        <div className="qc-sub">{refSub}</div>
       </Link>
     </div>
   )

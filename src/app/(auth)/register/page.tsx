@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/client'
 import { type QuizResult } from '@/components/onboarding/level-quiz'
@@ -98,6 +98,7 @@ function SteakSVG({ mood, size = 72, color = '#D33F3F' }: { mood: Mood; size?: n
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
   const [goals, setGoals] = useState<QuizGoals | null>(null)
   const [showPwd, setShowPwd] = useState(false)
@@ -113,6 +114,8 @@ export default function RegisterPage() {
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [oauthPending, setOauthPending] = useState(false)
+  const [refCode, setRefCode] = useState<string | null>(null)
+  const [refBanner, setRefBanner] = useState<{ inviterName: string | null; bonusXp: number } | null>(null)
   const [success, setSuccess] = useState<{
     name: string
     email: string
@@ -127,6 +130,38 @@ export default function RegisterPage() {
     setQuizResult(readJSON<QuizResult>(QUIZ_KEY))
     setGoals(readJSON<QuizGoals>(GOALS_KEY))
   }, [])
+
+  // Читаем ?ref=XXX и валидируем через API. Если endpoint упал или код невалиден —
+  // просто не показываем баннер, но код сохраняем (сервер проигнорирует невалидный
+  // при signUp, а backend-агент мог ещё не задеплоить endpoint).
+  useEffect(() => {
+    const code = searchParams?.get('ref')?.trim() ?? null
+    if (!code) return
+    setRefCode(code)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/referrals/verify?code=${encodeURIComponent(code)}`,
+          { cache: 'no-store' },
+        )
+        if (!res.ok) return
+        const json = await res.json()
+        if (cancelled) return
+        if (json?.valid) {
+          setRefBanner({
+            inviterName: typeof json?.inviter_name === 'string' ? json.inviter_name : null,
+            bonusXp: Number(json?.bonus_xp ?? 50),
+          })
+        }
+      } catch {
+        // Graceful degradation — код всё равно отправится в signUp
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
 
   const grade = useMemo(() => {
     if (!quizResult) return null
@@ -181,6 +216,9 @@ export default function RegisterPage() {
           last_name: lastName,
           phone: phone.trim() || null,
           role: 'student',
+          // Реферальный код (если есть). Триггер handle_new_user валидирует и,
+          // если код невалиден, просто игнорирует — signUp всё равно пройдёт.
+          ...(refCode ? { ref_code: refCode } : {}),
         },
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
       },
@@ -347,6 +385,25 @@ export default function RegisterPage() {
           </div>
           <h2 className="form-title">Создай аккаунт</h2>
           <p className="form-sub">И записывайся на бесплатный пробный</p>
+
+          {refBanner && (
+            <div className="ref-banner" role="status">
+              <div className="ref-banner-emoji">🎁</div>
+              <div className="ref-banner-text">
+                {refBanner.inviterName ? (
+                  <>
+                    Тебя пригласил <b>{refBanner.inviterName}</b> — получи{' '}
+                    <b>+{refBanner.bonusXp} XP</b> и бесплатный пробный урок
+                  </>
+                ) : (
+                  <>
+                    У тебя реферальная ссылка — получи <b>+{refBanner.bonusXp} XP</b>{' '}
+                    и бесплатный пробный урок
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {hasProfile && (
             <div className="profile-summary">
@@ -632,6 +689,21 @@ function RegisterStyles() {
 
       .form-title { font-size: 22px; font-weight: 700; text-align: center; margin: 0 0 6px; letter-spacing: -0.01em; }
       .form-sub { font-size: 14px; color: var(--rp-muted); text-align: center; margin: 0 0 24px; }
+
+      .ref-banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: linear-gradient(135deg, rgba(74,222,128,0.14), rgba(211,63,63,0.08));
+        border: 1px solid rgba(74,222,128,0.28);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+        animation: r-pop 0.4s ease-out;
+      }
+      .ref-banner-emoji { font-size: 24px; flex-shrink: 0; }
+      .ref-banner-text { font-size: 13px; line-height: 1.4; color: rgba(255,255,255,0.85); }
+      .ref-banner-text b { color: white; font-weight: 700; }
 
       .profile-summary {
         background: linear-gradient(135deg, rgba(211,63,63,0.12), rgba(211,63,63,0.04));
