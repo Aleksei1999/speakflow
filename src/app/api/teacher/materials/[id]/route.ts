@@ -12,6 +12,7 @@ const patchSchema = z
     level: z.enum(['A1-A2', 'B1', 'B2', 'C1+']).nullable().optional(),
     tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
     is_public: z.boolean().optional(),
+    lesson_id: z.string().uuid().nullable().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, {
     message: 'Нет полей для обновления',
@@ -152,6 +153,28 @@ export async function PATCH(
     }
 
     const updatePayload: Record<string, unknown> = { ...parsed.data }
+
+    // Validate lesson ownership if lesson_id is being changed to a value
+    if (
+      Object.prototype.hasOwnProperty.call(parsed.data, 'lesson_id') &&
+      parsed.data.lesson_id
+    ) {
+      const { data: lessonRow, error: lessonErr } = await supabase
+        .from('lessons')
+        .select('id, teacher_id')
+        .eq('id', parsed.data.lesson_id)
+        .maybeSingle()
+      if (lessonErr) {
+        console.error('Ошибка проверки урока:', lessonErr)
+        return NextResponse.json({ error: 'Ошибка базы данных' }, { status: 500 })
+      }
+      if (!lessonRow || lessonRow.teacher_id !== teacherProfileId) {
+        return NextResponse.json(
+          { error: 'Урок не найден или не принадлежит преподавателю' },
+          { status: 403 }
+        )
+      }
+    }
 
     const { data: updated, error: upErr } = await supabase
       .from('materials')
