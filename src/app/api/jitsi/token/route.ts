@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
-import { LESSON_JOIN_WINDOW } from '@/lib/constants'
+import { LESSON_JOIN_WINDOW, LESSON_POST_WINDOW } from '@/lib/constants'
 
 const tokenRequestSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -71,6 +71,12 @@ export async function POST(request: NextRequest) {
     }
 
     // --- 4. Проверка статуса урока ---
+    if (lesson.status === 'cancelled') {
+      return NextResponse.json(
+        { error: 'Урок отменён' },
+        { status: 409 }
+      )
+    }
     if (lesson.status !== 'booked' && lesson.status !== 'in_progress') {
       return NextResponse.json(
         { error: 'Урок недоступен для подключения' },
@@ -79,22 +85,22 @@ export async function POST(request: NextRequest) {
     }
 
     // --- 5. Проверка временного окна ---
-    const now = new Date()
-    const scheduledAt = new Date(lesson.scheduled_at)
-    const lessonEnd = new Date(scheduledAt.getTime() + lesson.duration_minutes * 60 * 1000)
-    const joinWindowStart = new Date(scheduledAt.getTime() - LESSON_JOIN_WINDOW * 60 * 1000)
+    // openAt  = scheduled_at - LESSON_JOIN_WINDOW мин (5 мин до старта)
+    // closeAt = scheduled_at + duration_minutes + LESSON_POST_WINDOW мин (5 мин после окончания)
+    const nowMs = Date.now()
+    const scheduledMs = new Date(lesson.scheduled_at).getTime()
+    const openAtMs = scheduledMs - LESSON_JOIN_WINDOW * 60 * 1000
+    const closeAtMs = scheduledMs + lesson.duration_minutes * 60 * 1000 + LESSON_POST_WINDOW * 60 * 1000
 
-    if (now < joinWindowStart) {
-      const minutesUntilJoin = Math.ceil((joinWindowStart.getTime() - now.getTime()) / 60000)
+    if (nowMs < openAtMs) {
+      const minutesUntilJoin = Math.ceil((openAtMs - nowMs) / 60000)
       return NextResponse.json(
-        { error: `Подключение будет доступно через ${minutesUntilJoin} мин` },
+        { error: `Комната откроется за ${LESSON_JOIN_WINDOW} мин до старта (через ~${minutesUntilJoin} мин)` },
         { status: 425 }
       )
     }
 
-    // Разрешаем 15 минут буфера после окончания для завершения разговора
-    const bufferEnd = new Date(lessonEnd.getTime() + 15 * 60 * 1000)
-    if (now > bufferEnd) {
+    if (nowMs > closeAtMs) {
       return NextResponse.json(
         { error: 'Время урока истекло' },
         { status: 410 }

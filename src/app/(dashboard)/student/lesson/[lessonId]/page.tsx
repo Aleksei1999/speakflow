@@ -2,8 +2,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LessonRoomClient } from '@/components/lesson/lesson-room-client'
+import { LessonGate } from '@/components/lesson/lesson-gate'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
+import { computeLessonAccess } from '@/lib/lesson-access'
 
 export default async function StudentLessonPage({
   params,
@@ -26,15 +28,7 @@ export default async function StudentLessonPage({
     redirect('/student/schedule')
   }
 
-  // Student profile + progress
-  const [profileRes, progressRes, completedRes] = await Promise.all([
-    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-    supabase.from('user_progress').select('english_level').eq('user_id', user.id).maybeSingle(),
-    supabase.from('lessons').select('id', { count: 'exact', head: true })
-      .eq('student_id', user.id).eq('status', 'completed'),
-  ])
-
-  // Teacher name + rating
+  // Teacher display name — нужен для всех экранов (ожидание/отмена/live)
   const { data: teacherProfile } = await supabase
     .from('teacher_profiles')
     .select('user_id, rating, total_reviews')
@@ -52,6 +46,34 @@ export default async function StudentLessonPage({
     teacherName = tp?.full_name ?? 'Преподаватель'
     teacherRating = teacherProfile.rating ?? 0
   }
+
+  // Серверный гейт: проверяем окно доступа ДО генерации JWT
+  const access = computeLessonAccess({
+    scheduledAt: lesson.scheduled_at,
+    durationMinutes: lesson.duration_minutes,
+    status: lesson.status,
+  })
+
+  if (access.status !== 'live') {
+    return (
+      <LessonGate
+        scheduledAt={lesson.scheduled_at}
+        durationMinutes={lesson.duration_minutes}
+        status={lesson.status}
+        teacherName={teacherName}
+        isTeacher={false}
+        initialStatus={access.status}
+      />
+    )
+  }
+
+  // Student profile + progress
+  const [profileRes, progressRes, completedRes] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+    supabase.from('user_progress').select('english_level').eq('user_id', user.id).maybeSingle(),
+    supabase.from('lessons').select('id', { count: 'exact', head: true })
+      .eq('student_id', user.id).eq('status', 'completed'),
+  ])
 
   // Next lesson after this one
   const { data: nextLessons } = await supabase
