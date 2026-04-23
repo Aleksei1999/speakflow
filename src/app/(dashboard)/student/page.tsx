@@ -8,6 +8,7 @@ import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
+import { formatLessonTime } from "@/lib/time"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -346,7 +347,7 @@ export default async function StudentDashboardPage() {
                 return (
                   <div key={l.id} className={`sch-item${isActive ? " active" : ""}`}>
                     <div className="sch-time">
-                      <div className="t">{format(dt, "HH:mm")}</div>
+                      <div className="t">{formatLessonTime(dt)}</div>
                       <div className="d">{l.duration_minutes} мин</div>
                     </div>
                     <div className="sch-info">
