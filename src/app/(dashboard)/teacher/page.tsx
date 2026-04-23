@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isToday, isTomorrow } from "date-fns"
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
+import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
 
 const TCH_CSS = `
 .tch-home .dashboard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
@@ -133,9 +134,9 @@ function pluralLessons(n: number) {
 }
 
 function formatNextLesson(date: Date): string {
-  if (isToday(date)) return `сегодня, ${format(date, "HH:mm")}`
-  if (isTomorrow(date)) return `завтра, ${format(date, "HH:mm")}`
-  return format(date, "d MMM, HH:mm", { locale: ru })
+  if (isMoscowToday(date)) return `сегодня, ${formatLessonTime(date)}`
+  if (isMoscowTomorrow(date)) return `завтра, ${formatLessonTime(date)}`
+  return `${formatLessonDayShort(date)}, ${formatLessonTime(date)}`
 }
 
 function avatarVariant(idx: number): "v1" | "v2" | "v3" {
@@ -404,7 +405,7 @@ export default async function TeacherDashboardPage() {
                 return (
                   <div key={l.id} className={`schedule-item ${isActive ? "active" : ""}`}>
                     <div className="schedule-time">
-                      <div className="time">{format(at, "HH:mm")}</div>
+                      <div className="time">{formatLessonTime(at)}</div>
                       <div className="dur">{l.duration_minutes} мин</div>
                     </div>
                     <div className="schedule-info">
