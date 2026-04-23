@@ -54,7 +54,8 @@ const STATUS_CONFIG: Record<
   LessonStatus,
   { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
 > = {
-  pending_payment: { label: 'Ожидает оплаты', variant: 'outline' },
+  // TEMP: a2a0600 — free-booking era, pending_payment displayed as Scheduled
+  pending_payment: { label: 'Запланирован', variant: 'default' },
   booked: { label: 'Забронирован', variant: 'default' },
   in_progress: { label: 'Идёт урок', variant: 'default' },
   completed: { label: 'Завершён', variant: 'secondary' },
@@ -101,7 +102,8 @@ export function BookingCard({
     scheduledDate.getTime() + lesson.durationMinutes * 60 * 1000
   )
   const canJoin =
-    (lesson.status === 'booked' || lesson.status === 'in_progress') &&
+    // TEMP: a2a0600 — free-booking era, treat pending_payment as booked
+    (lesson.status === 'booked' || lesson.status === 'in_progress' || lesson.status === 'pending_payment') &&
     now >= joinWindowStart &&
     now <= lessonEnd
 
