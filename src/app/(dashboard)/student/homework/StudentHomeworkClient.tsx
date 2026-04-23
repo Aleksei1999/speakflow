@@ -582,25 +582,25 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             </div>
           </div>
         ) : null}
+
+        {submitFor ? (
+          <SubmitModal
+            item={submitFor}
+            busy={busy}
+            onClose={() => setSubmitFor(null)}
+            onSubmitted={async () => {
+              setSubmitFor(null)
+              await reload()
+              toast.success("Работа отправлена преподавателю")
+            }}
+            setBusy={setBusy}
+          />
+        ) : null}
+
+        {viewOnly ? (
+          <ViewModal item={viewOnly} onClose={() => setViewOnly(null)} />
+        ) : null}
       </div>
-
-      {submitFor ? (
-        <SubmitModal
-          item={submitFor}
-          busy={busy}
-          onClose={() => setSubmitFor(null)}
-          onSubmitted={async () => {
-            setSubmitFor(null)
-            await reload()
-            toast.success("Работа отправлена преподавателю")
-          }}
-          setBusy={setBusy}
-        />
-      ) : null}
-
-      {viewOnly ? (
-        <ViewModal item={viewOnly} onClose={() => setViewOnly(null)} />
-      ) : null}
     </>
   )
 }
