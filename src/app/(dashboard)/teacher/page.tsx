@@ -266,7 +266,17 @@ export default async function TeacherDashboardPage() {
     .order("scheduled_at", { ascending: true })
   const activeLessons = (activeLessonsRaw ?? []) as Array<{ student_id: string; scheduled_at: string; status: string }>
 
-  // per-student: count of lessons, next upcoming lesson
+  // per-student: count of lessons, next upcoming lesson.
+  // "Следующий урок" = только ещё предстоящий слот в не-финальных статусах.
+  // pending_payment и in_progress сюда тоже попадают (старые записи + только что
+  // стартовавшие), completed / cancelled / no_show — нет.
+  const UPCOMING_FOR_NEXT = new Set([
+    "scheduled",
+    "confirmed",
+    "booked",
+    "in_progress",
+    "pending_payment",
+  ])
   const byStudent = new Map<
     string,
     { lessonsCount: number; nextAt: Date | null }
@@ -275,7 +285,13 @@ export default async function TeacherDashboardPage() {
     const cur = byStudent.get(l.student_id) ?? { lessonsCount: 0, nextAt: null }
     cur.lessonsCount += 1
     const at = new Date(l.scheduled_at)
-    if (at > now && (cur.nextAt === null || at < cur.nextAt)) cur.nextAt = at
+    if (
+      UPCOMING_FOR_NEXT.has(l.status) &&
+      at > now &&
+      (cur.nextAt === null || at < cur.nextAt)
+    ) {
+      cur.nextAt = at
+    }
     byStudent.set(l.student_id, cur)
   }
   const studentIds = [...byStudent.keys()]
