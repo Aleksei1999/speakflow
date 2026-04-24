@@ -1,9 +1,19 @@
 // @ts-nocheck
 /**
- * Унифицированный сервис уведомлений SpeakFlow.
+ * Унифицированный сервис уведомлений SpeakFlow / Raw English.
  *
- * Определяет предпочтения пользователя (email всегда, Telegram при наличии chat_id),
- * отправляет уведомления через соответствующие каналы и логирует результаты.
+ * Алгоритм:
+ * 1. Подгружает профиль (email, telegram_chat_id, notification_prefs).
+ * 2. Для не-транзакционных типов проверяет preference-флаг в profiles.notification_prefs.
+ *    Если флаг выключен — отправка пропускается (лог со статусом 'skipped').
+ * 3. Канал доставки (email / telegram / both) для не-транзакционных типов
+ *    берётся из notification_prefs.channel (default 'telegram').
+ *    Для транзакционных типов (welcome, booking_confirmation,
+ *    lesson_summary_ready, payment_receipt) всегда отправляем по всем доступным
+ *    каналам — это критические подтверждения.
+ * 4. Если канал = 'telegram', но chat_id не привязан — fallback на email.
+ *
+ * Сигнатура `sendNotification(userId, type, data)` не меняется.
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -21,13 +31,85 @@ import {
   formatTelegramSummaryReady,
   formatTelegramPaymentReceipt,
 } from '@/lib/resend/templates'
+import {
+  dailyChallengeEmail,
+  streakWarningEmail,
+  newClubEmail,
+  achievementUnlockedEmail,
+  levelUpEmail,
+  leaderboardOvertakenEmail,
+  weeklyDigestEmail,
+  marketingPromoEmail,
+  formatTelegramDailyChallenge,
+  formatTelegramStreakWarning,
+  formatTelegramNewClub,
+  formatTelegramAchievementUnlocked,
+  formatTelegramLevelUp,
+  formatTelegramLeaderboardOvertaken,
+  formatTelegramWeeklyDigest,
+  formatTelegramMarketingPromo,
+} from '@/lib/resend/templates-extended'
 
 export type NotificationType =
-  | 'lesson_reminder'
+  | 'welcome'
   | 'booking_confirmation'
+  | 'lesson_reminder'
   | 'lesson_summary_ready'
   | 'payment_receipt'
-  | 'welcome'
+  | 'daily_challenge'
+  | 'streak_warning'
+  | 'new_club'
+  | 'achievement_unlocked'
+  | 'level_up'
+  | 'leaderboard_overtaken'
+  | 'weekly_digest'
+  | 'marketing_promo'
+
+/**
+ * Транзакционные типы — всегда отправляются по всем каналам (критические).
+ * Для них игнорируется и PREF_KEY, и channel-предпочтение.
+ */
+const TRANSACTIONAL_TYPES: ReadonlySet<NotificationType> = new Set([
+  'welcome',
+  'booking_confirmation',
+  'lesson_summary_ready',
+  'payment_receipt',
+])
+
+/**
+ * Маппинг типа уведомления → ключ в profiles.notification_prefs.
+ * Если ключ отсутствует (транзакционные / lesson_reminder), preference
+ * не проверяется и отправка не блокируется.
+ *
+ * NB: lesson_reminder НЕ транзакционный, но имеет preference-флаг
+ *     `lesson_reminders` — при его отключении уведомление пропускается.
+ */
+const PREF_KEY: Partial<Record<NotificationType, string>> = {
+  lesson_reminder: 'lesson_reminders',
+  daily_challenge: 'daily_challenge',
+  streak_warning: 'streak_warning',
+  new_club: 'new_clubs',
+  achievement_unlocked: 'achievements',
+  level_up: 'achievements',
+  leaderboard_overtaken: 'leaderboard',
+  weekly_digest: 'email_digest',
+  marketing_promo: 'marketing',
+}
+
+type NotificationChannel = 'email' | 'telegram' | 'both'
+
+interface NotificationPrefs {
+  lesson_reminders?: boolean
+  daily_challenge?: boolean
+  streak_warning?: boolean
+  new_clubs?: boolean
+  achievements?: boolean
+  leaderboard?: boolean
+  email_digest?: boolean
+  marketing?: boolean
+  channel?: NotificationChannel
+  [key: string]: unknown
+}
 
 interface NotificationData {
   // welcome
@@ -51,12 +133,47 @@ interface NotificationData {
   amount?: number
   description?: string
 
+  // daily_challenge
+  challengeTitle?: string
+  xpReward?: number
+  ctaUrl?: string
+
+  // streak_warning
+  streakDays?: number
+
+  // new_club
+  clubTitle?: string
+  whenStr?: string
+  host?: string
+
+  // achievement_unlocked
+  title?: string
+  icon?: string
+
+  // level_up
+  newLevel?: number
+  levelTitle?: string
+  totalXp?: number
+
+  // leaderboard_overtaken
+  overtakenBy?: string
+  newRank?: number
+
+  // weekly_digest
+  weekXp?: number
+  lessonsAttended?: number
+  topAchievement?: string
+
+  // marketing_promo
+  body?: string
+  ctaLabel?: string
+
   // Общие
   [key: string]: unknown
 }
 
 /**
- * Отправляет уведомление пользователю через все доступные каналы.
+ * Отправляет уведомление пользователю, учитывая preference-флаги и выбранный канал.
  */
 export async function sendNotification(
   userId: string,
@@ -65,10 +182,10 @@ export async function sendNotification(
 ): Promise<void> {
   const supabase = createAdminClient()
 
-  // Получаем профиль пользователя
+  // Получаем профиль + prefs
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('email, full_name, telegram_chat_id')
+    .select('email, full_name, telegram_chat_id, notification_prefs')
     .eq('id', userId)
     .single()
 
@@ -77,11 +194,65 @@ export async function sendNotification(
     return
   }
 
-  // Подготавливаем email-контент
-  const emailContent = buildEmailContent(type, data, profile.full_name)
-  const telegramText = buildTelegramText(type, data, profile.full_name)
+  const prefs: NotificationPrefs = (profile.notification_prefs as NotificationPrefs) || {}
+  const isTransactional = TRANSACTIONAL_TYPES.has(type)
 
-  // Отправляем email (всегда)
+  // ---------- Preference-gate ----------
+  const prefKey = PREF_KEY[type]
+  if (!isTransactional && prefKey) {
+    const flag = prefs[prefKey]
+    // Если пользователь явно выключил тип — пропускаем.
+    if (flag === false) {
+      await logNotification(supabase, {
+        userId,
+        type,
+        channel: 'email', // channel тут формальный — главное 'skipped'
+        data,
+        status: 'skipped',
+        errorMessage: `preference ${prefKey}=false`,
+      })
+      return
+    }
+  }
+
+  // ---------- Определяем каналы ----------
+  // Транзакционные = всегда both. Остальные — по prefs.channel (default telegram).
+  const channelPref: NotificationChannel = isTransactional
+    ? 'both'
+    : normalizeChannel(prefs.channel)
+
+  const hasChatId = !!profile.telegram_chat_id
+
+  let sendViaEmail = false
+  let sendViaTelegram = false
+
+  if (isTransactional) {
+    // Критические: оба канала (Telegram — при наличии chat_id).
+    sendViaEmail = true
+    sendViaTelegram = hasChatId
+  } else if (channelPref === 'both') {
+    sendViaEmail = true
+    sendViaTelegram = hasChatId
+  } else if (channelPref === 'email') {
+    sendViaEmail = true
+    sendViaTelegram = false
+  } else {
+    // channelPref === 'telegram'
+    if (hasChatId) {
+      sendViaTelegram = true
+      sendViaEmail = false
+    } else {
+      // fallback: нет привязанного TG — шлём на email.
+      sendViaEmail = true
+      sendViaTelegram = false
+    }
+  }
+
+  // ---------- Построение контента ----------
+  const emailContent = sendViaEmail ? buildEmailContent(type, data, profile.full_name) : null
+  const telegramText = sendViaTelegram ? buildTelegramText(type, data, profile.full_name) : null
+
+  // ---------- Отправка email ----------
   if (emailContent) {
     const emailResult = await sendEmail({
       to: profile.email,
@@ -99,8 +270,8 @@ export async function sendNotification(
     })
   }
 
-  // Отправляем в Telegram (если привязан)
-  if (profile.telegram_chat_id && telegramText) {
+  // ---------- Отправка Telegram ----------
+  if (telegramText && profile.telegram_chat_id) {
     const tgResult = await sendTelegramMessage({
       chatId: profile.telegram_chat_id,
       text: telegramText,
@@ -125,6 +296,7 @@ function buildEmailContent(
   fullName: string
 ): { subject: string; html: string } | null {
   const name = data.name || fullName
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://raw-english.com'
 
   switch (type) {
     case 'welcome':
@@ -145,7 +317,7 @@ function buildEmailContent(
         data.teacherOrStudentName || '',
         data.date || '',
         data.time || '',
-        data.joinUrl || `${process.env.NEXT_PUBLIC_APP_URL}/lesson`
+        data.joinUrl || `${appUrl}/lesson`
       )
 
     case 'lesson_summary_ready':
@@ -153,7 +325,7 @@ function buildEmailContent(
         data.studentName || name,
         data.teacherName || 'Преподаватель',
         data.date || '',
-        data.summaryUrl || `${process.env.NEXT_PUBLIC_APP_URL}/student/summaries`
+        data.summaryUrl || `${appUrl}/student/summaries`
       )
 
     case 'payment_receipt':
@@ -162,6 +334,76 @@ function buildEmailContent(
         data.amount || 0,
         data.date || new Date().toLocaleDateString('ru-RU'),
         data.description || 'Оплата урока'
+      )
+
+    case 'daily_challenge':
+      return dailyChallengeEmail(
+        name,
+        data.challengeTitle || 'Ежедневный челлендж',
+        data.xpReward || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'streak_warning':
+      return streakWarningEmail(
+        name,
+        data.streakDays || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'new_club':
+      return newClubEmail(
+        name,
+        data.clubTitle || 'Speaking Club',
+        data.whenStr || '',
+        data.host || 'Raw English',
+        data.ctaUrl || `${appUrl}/student/clubs`
+      )
+
+    case 'achievement_unlocked':
+      return achievementUnlockedEmail(
+        name,
+        data.title || 'Новая ачивка',
+        data.description || '',
+        data.icon || '🏆',
+        data.xpReward || 0,
+        data.ctaUrl || `${appUrl}/student/profile`
+      )
+
+    case 'level_up':
+      return levelUpEmail(
+        name,
+        data.newLevel || 1,
+        data.levelTitle || '',
+        data.totalXp || 0,
+        data.ctaUrl || `${appUrl}/student/profile`
+      )
+
+    case 'leaderboard_overtaken':
+      return leaderboardOvertakenEmail(
+        name,
+        data.overtakenBy || 'Кто-то',
+        data.newRank || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'weekly_digest':
+      return weeklyDigestEmail(
+        name,
+        data.weekXp || 0,
+        data.lessonsAttended || 0,
+        data.topAchievement || '—',
+        data.streakDays || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'marketing_promo':
+      return marketingPromoEmail(
+        name,
+        data.title || 'Новости Raw English',
+        data.body || '',
+        data.ctaLabel || 'Открыть',
+        data.ctaUrl || `${appUrl}/`
       )
 
     default:
@@ -176,6 +418,7 @@ function buildTelegramText(
   fullName: string
 ): string | null {
   const name = data.name || fullName
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://raw-english.com'
 
   switch (type) {
     case 'welcome':
@@ -195,7 +438,7 @@ function buildTelegramText(
         name,
         data.teacherOrStudentName || '',
         data.time || '',
-        data.joinUrl || `${process.env.NEXT_PUBLIC_APP_URL}/lesson`
+        data.joinUrl || `${appUrl}/lesson`
       )
 
     case 'lesson_summary_ready':
@@ -203,7 +446,7 @@ function buildTelegramText(
         data.studentName || name,
         data.teacherName || 'Преподаватель',
         data.date || '',
-        data.summaryUrl || `${process.env.NEXT_PUBLIC_APP_URL}/student/summaries`
+        data.summaryUrl || `${appUrl}/student/summaries`
       )
 
     case 'payment_receipt':
@@ -213,9 +456,88 @@ function buildTelegramText(
         data.description || 'Оплата урока'
       )
 
+    case 'daily_challenge':
+      return formatTelegramDailyChallenge(
+        name,
+        data.challengeTitle || 'Ежедневный челлендж',
+        data.xpReward || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'streak_warning':
+      return formatTelegramStreakWarning(
+        name,
+        data.streakDays || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'new_club':
+      return formatTelegramNewClub(
+        name,
+        data.clubTitle || 'Speaking Club',
+        data.whenStr || '',
+        data.host || 'Raw English',
+        data.ctaUrl || `${appUrl}/student/clubs`
+      )
+
+    case 'achievement_unlocked':
+      return formatTelegramAchievementUnlocked(
+        name,
+        data.title || 'Новая ачивка',
+        data.description || '',
+        data.icon || '🏆',
+        data.xpReward || 0,
+        data.ctaUrl || `${appUrl}/student/profile`
+      )
+
+    case 'level_up':
+      return formatTelegramLevelUp(
+        name,
+        data.newLevel || 1,
+        data.levelTitle || '',
+        data.totalXp || 0,
+        data.ctaUrl || `${appUrl}/student/profile`
+      )
+
+    case 'leaderboard_overtaken':
+      return formatTelegramLeaderboardOvertaken(
+        name,
+        data.overtakenBy || 'Кто-то',
+        data.newRank || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'weekly_digest':
+      return formatTelegramWeeklyDigest(
+        name,
+        data.weekXp || 0,
+        data.lessonsAttended || 0,
+        data.topAchievement || '—',
+        data.streakDays || 0,
+        data.ctaUrl || `${appUrl}/student`
+      )
+
+    case 'marketing_promo':
+      return formatTelegramMarketingPromo(
+        name,
+        data.title || 'Raw English',
+        data.body || '',
+        data.ctaLabel || 'Открыть',
+        data.ctaUrl || `${appUrl}/`
+      )
+
     default:
       return null
   }
+}
+
+// ---------- Вспомогательное ----------
+
+function normalizeChannel(value: unknown): NotificationChannel {
+  if (value === 'email' || value === 'telegram' || value === 'both') {
+    return value
+  }
+  return 'telegram'
 }
 
 // ---------- Логирование ----------
@@ -227,7 +549,7 @@ async function logNotification(
     type: string
     channel: string
     data: Record<string, unknown>
-    status: 'sent' | 'failed' | 'pending'
+    status: 'sent' | 'failed' | 'pending' | 'skipped'
     errorMessage: string | null
   }
 ): Promise<void> {
@@ -241,7 +563,7 @@ async function logNotification(
       error_message: params.errorMessage,
     })
   } catch (err) {
-    // Логирование не должно ломать основной флоу
+    // Логирование не должно ломать основной флоу.
     console.error('[notifications] Ошибка записи лога уведомления:', err)
   }
 }
