@@ -6,6 +6,17 @@ import { format, formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
 import ShareMaterialModal from "./ShareMaterialModal"
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
+
+const MATERIALS_BUCKET = "teacher-materials"
+const MAX_MATERIAL_SIZE = 50 * 1024 * 1024 // 50 MB
+
+function safeFileName(name: string): string {
+  const base = (name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+  return base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
+}
 
 type Material = {
   id: string
@@ -276,19 +287,65 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
       toast.error("Выбери файл и укажи название")
       return
     }
+    if (pendingFile.size > MAX_MATERIAL_SIZE) {
+      toast.error("Файл больше 50 МБ")
+      return
+    }
     setIsUploading(true)
+    let uploadedPath: string | null = null
+    const supabase = createSupabaseBrowserClient()
     try {
-      const fd = new FormData()
-      fd.append("file", pendingFile)
-      fd.append("title", uTitle.trim())
-      if (uDesc.trim()) fd.append("description", uDesc.trim())
-      if (uLevel && uLevel !== "all") fd.append("level", uLevel)
-      const tagsArr = uTags.split(",").map((t) => t.trim()).filter(Boolean)
-      if (tagsArr.length > 0) fd.append("tags", JSON.stringify(tagsArr))
-      fd.append("is_public", uPublic ? "true" : "false")
-      if (uLessonId.trim()) fd.append("lesson_id", uLessonId.trim())
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser()
+      if (userErr || !user) {
+        toast.error("Нужно войти в аккаунт")
+        return
+      }
 
-      const res = await fetch("/api/teacher/materials", { method: "POST", body: fd })
+      const mime = pendingFile.type || "application/octet-stream"
+      const safe = safeFileName(pendingFile.name)
+      const storagePath = `${user.id}/${Date.now()}_${safe}`
+
+      // 1) Direct client → Supabase Storage (bypass Vercel 4.5 MB body limit).
+      const { error: upErr } = await supabase.storage
+        .from(MATERIALS_BUCKET)
+        .upload(storagePath, pendingFile, {
+          contentType: mime,
+          cacheControl: "3600",
+          upsert: false,
+        })
+      if (upErr) {
+        console.error("storage.upload error:", upErr)
+        toast.error(upErr.message || "Не удалось загрузить файл в хранилище")
+        return
+      }
+      uploadedPath = storagePath
+
+      // 2) Metadata → our API (small JSON body, safe for Vercel).
+      const tagsArr = uTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+      const payload = {
+        title: uTitle.trim(),
+        description: uDesc.trim() || null,
+        level: uLevel && uLevel !== "all" ? uLevel : null,
+        tags: tagsArr,
+        is_public: uPublic,
+        lesson_id: uLessonId.trim() || null,
+        storage_path: storagePath,
+        file_name: pendingFile.name,
+        file_size: pendingFile.size,
+        mime_type: mime,
+      }
+
+      const res = await fetch("/api/teacher/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
       if (res.status === 404) {
         toast.error("API подготавливается — попробуй через минуту")
         setApiMissing(true)
@@ -296,9 +353,10 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
       }
       if (!res.ok) {
         const text = await res.text().catch(() => "")
-        toast.error(`Не удалось загрузить${text ? `: ${text.slice(0, 120)}` : ""}`)
+        toast.error(`Не удалось сохранить${text ? `: ${text.slice(0, 120)}` : ""}`)
         return
       }
+      uploadedPath = null // metadata saved — don't rollback storage
       toast.success("Материал загружен")
       setModalOpen(false)
       setPendingFile(null)
@@ -306,6 +364,14 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
     } catch (err: any) {
       toast.error(err?.message ?? "Ошибка загрузки")
     } finally {
+      // If metadata insert failed, remove the orphan blob.
+      if (uploadedPath) {
+        try {
+          await supabase.storage.from(MATERIALS_BUCKET).remove([uploadedPath])
+        } catch {
+          /* best-effort */
+        }
+      }
       setIsUploading(false)
     }
   }
