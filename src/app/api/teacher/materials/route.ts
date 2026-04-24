@@ -281,8 +281,23 @@ export async function GET(request: NextRequest) {
 
 // ---------------------------------------------------------------
 // POST /api/teacher/materials
-// multipart/form-data: file, title, description?, level?, tags?, is_public?, lesson_id?
+// application/json: client must upload directly to Supabase Storage first,
+// then POST metadata (storage_path, file_size, mime_type, file_name, ...).
+// This avoids Vercel's 4.5 MB body limit (FUNCTION_PAYLOAD_TOO_LARGE).
 // ---------------------------------------------------------------
+const postJsonSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000).optional().nullable(),
+  level: z.enum(LEVELS_FOR_WRITE).optional().nullable(),
+  tags: z.array(z.string().trim().min(1).max(50)).max(20).default([]),
+  is_public: z.boolean().default(false),
+  lesson_id: z.string().uuid().optional().nullable(),
+  storage_path: z.string().trim().min(1).max(500),
+  file_name: z.string().trim().min(1).max(300),
+  file_size: z.number().int().min(1).max(MAX_FILE_SIZE),
+  mime_type: z.string().trim().min(1).max(150),
+})
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -293,65 +308,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    let formData: FormData
+    let body: unknown
     try {
-      formData = await request.formData()
+      body = await request.json()
     } catch {
       return NextResponse.json(
-        { error: 'Ожидается multipart/form-data' },
+        { error: 'Ожидается application/json' },
         { status: 400 }
       )
     }
 
-    const file = formData.get('file')
-    if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json({ error: 'Файл не передан' }, { status: 400 })
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: 'Файл превышает допустимый размер 50 МБ' },
-        { status: 413 }
-      )
-    }
-
-    // Normalize tags field: accept repeated `tags[]`, repeated `tags`, or JSON string
-    let tagsRaw: string[] = []
-    const repeated = formData
-      .getAll('tags[]')
-      .concat(formData.getAll('tags'))
-      .filter((x) => typeof x === 'string') as string[]
-    if (repeated.length > 1 || (repeated.length === 1 && !repeated[0].startsWith('['))) {
-      tagsRaw = repeated
-    } else if (repeated.length === 1) {
-      try {
-        const parsed = JSON.parse(repeated[0])
-        tagsRaw = Array.isArray(parsed) ? parsed.map(String) : [repeated[0]]
-      } catch {
-        tagsRaw = [repeated[0]]
-      }
-    }
-
-    const isPublicRaw = formData.get('is_public')
-    const isPublic =
-      isPublicRaw === 'true' || isPublicRaw === '1' || isPublicRaw === true
-    const levelRaw = formData.get('level')
-    const lessonIdRaw = formData.get('lesson_id')
-
-    const parsed = postSchema.safeParse({
-      title: formData.get('title'),
-      description: formData.get('description') ?? null,
-      level: levelRaw && levelRaw !== '' ? levelRaw : null,
-      tags: tagsRaw,
-      is_public: Boolean(isPublic),
-      lesson_id: lessonIdRaw && lessonIdRaw !== '' ? lessonIdRaw : null,
-    })
+    const parsed = postJsonSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || 'Некорректные данные' },
         { status: 400 }
       )
     }
-    const { title, description, level, tags, is_public, lesson_id } = parsed.data
+    const {
+      title,
+      description,
+      level,
+      tags,
+      is_public,
+      lesson_id,
+      storage_path,
+      file_name,
+      file_size,
+      mime_type,
+    } = parsed.data
+
+    // Storage path must start with `<user.id>/` — same constraint RLS enforces.
+    if (!storage_path.startsWith(`${user.id}/`)) {
+      return NextResponse.json(
+        { error: 'Недопустимый путь хранения' },
+        { status: 403 }
+      )
+    }
 
     // Resolve teacher_profile
     const { data: tp, error: tpErr } = await supabase
@@ -366,7 +359,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If lesson_id passed — sanity check that it's this teacher's lesson
     if (lesson_id) {
       const { data: lessonRow } = await supabase
         .from('lessons')
@@ -381,31 +373,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const safe = safeFileName(file.name)
-    const storagePath = `${user.id}/${Date.now()}_${safe}`
-    const mime = file.type || 'application/octet-stream'
-    const ext = fileTypeFromName(file.name)
+    const ext = fileTypeFromName(file_name)
 
-    // Upload (RLS-protected; first path segment must match auth.uid())
-    const { error: upErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(storagePath, file, {
-        contentType: mime,
-        cacheControl: '3600',
-        upsert: false,
-      })
-    if (upErr) {
-      console.error('Ошибка загрузки в bucket:', upErr)
-      return NextResponse.json(
-        { error: upErr.message || 'Не удалось загрузить файл' },
-        { status: 500 }
-      )
-    }
-
-    // Signed URL for immediate client use (file_url stored for convenience)
+    // Signed URL for immediate client use
     const { data: signed } = await supabase.storage
       .from(BUCKET)
-      .createSignedUrl(storagePath, SIGNED_URL_TTL)
+      .createSignedUrl(storage_path, SIGNED_URL_TTL)
     const fileUrl = signed?.signedUrl || ''
 
     const { data: inserted, error: insErr } = await supabase
@@ -417,12 +390,12 @@ export async function POST(request: NextRequest) {
         description: description || null,
         file_url: fileUrl,
         file_type: ext || null,
-        file_size: file.size,
+        file_size,
         is_public,
         level: level || null,
         tags,
-        storage_path: storagePath,
-        mime_type: mime,
+        storage_path,
+        mime_type,
       })
       .select(
         'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at'
@@ -432,7 +405,7 @@ export async function POST(request: NextRequest) {
     if (insErr) {
       console.error('Ошибка вставки materials:', insErr)
       // Best-effort cleanup of the uploaded object
-      await supabase.storage.from(BUCKET).remove([storagePath])
+      await supabase.storage.from(BUCKET).remove([storage_path])
       return NextResponse.json(
         { error: 'Не удалось сохранить материал' },
         { status: 500 }
