@@ -163,8 +163,31 @@ export function LessonRoomClient({
       jitsiApi.current = new window.JitsiMeetExternalAPI(jitsiDomain, {
         roomName: jitsiRoom, parentNode: jitsiRef.current, width:"100%", height:"100%",
         ...(jitsiToken?{jwt:jitsiToken}:{}),
-        configOverwrite:{prejoinPageEnabled:false,disableDeepLinking:true,hideConferenceSubject:true,disableInviteFunctions:true,toolbarButtons:[],notifications:[],disableThirdPartyRequests:true,hideConferenceTimer:true,hideParticipantsStats:true,filmstrip:{disabled:true},toolbarConfig:{timeout:0,initialTimeout:0}},
-        interfaceConfigOverwrite:{SHOW_JITSI_WATERMARK:false,SHOW_WATERMARK_FOR_GUESTS:false,TOOLBAR_ALWAYS_VISIBLE:false,MOBILE_APP_PROMO:false,HIDE_INVITE_MORE_HEADER:true,DISABLE_FOCUS_INDICATOR:true,FILM_STRIP_MAX_HEIGHT:0,VERTICAL_FILMSTRIP:false,TOOLBAR_TIMEOUT:0},
+        configOverwrite:{
+          prejoinPageEnabled:false,
+          disableDeepLinking:true,
+          hideConferenceSubject:true,
+          disableInviteFunctions:true,
+          // Keep API-invokable buttons available; native toolbar stays hidden via CSS/timeout.
+          toolbarButtons:["settings","fullscreen","tileview","microphone","camera","desktop","hangup"],
+          notifications:[],
+          disableThirdPartyRequests:true,
+          hideConferenceTimer:true,
+          hideParticipantsStats:true,
+          filmstrip:{disabled:true},
+          toolbarConfig:{timeout:0,initialTimeout:0},
+        },
+        interfaceConfigOverwrite:{
+          SHOW_JITSI_WATERMARK:false,
+          SHOW_WATERMARK_FOR_GUESTS:false,
+          TOOLBAR_ALWAYS_VISIBLE:false,
+          MOBILE_APP_PROMO:false,
+          HIDE_INVITE_MORE_HEADER:true,
+          DISABLE_FOCUS_INDICATOR:true,
+          FILM_STRIP_MAX_HEIGHT:0,
+          VERTICAL_FILMSTRIP:false,
+          TOOLBAR_TIMEOUT:0,
+        },
         userInfo:{displayName:userName},
       })
     }
@@ -234,6 +257,15 @@ export function LessonRoomClient({
   const toggleMic=()=>{jitsiApi.current?.executeCommand("toggleAudio");setMicOn(v=>!v)}
   const toggleCam=()=>{jitsiApi.current?.executeCommand("toggleVideo");setCamOn(v=>!v)}
   const toggleScreen=()=>{jitsiApi.current?.executeCommand("toggleShareScreen");setScreenOn(v=>!v)}
+  const openSettings=()=>{try{jitsiApi.current?.executeCommand("toggleSettings")}catch{/* noop */}}
+  const toggleFullscreen=()=>{
+    const el = jitsiRef.current?.parentElement
+    if (!el) return
+    try {
+      if (document.fullscreenElement) document.exitFullscreen()
+      else el.requestFullscreen()
+    } catch { /* noop */ }
+  }
   const handleEnd=()=>{if(confirm("Завершить урок?")){jitsiApi.current?.executeCommand("hangup");router.push(isTeacher?"/teacher":"/student")}}
 
   return (
@@ -298,6 +330,12 @@ export function LessonRoomClient({
                 </button>
                 <button className={`cb ${sidebarOn?"active":""}`} title="Показать/скрыть чат" onClick={()=>setSidebarOn(v=>!v)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                </button>
+                <button className="cb" title="Настройки (микрофон, камера)" onClick={openSettings}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
                 </button>
                 <button className="cb danger" title="Завершить" onClick={handleEnd}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
