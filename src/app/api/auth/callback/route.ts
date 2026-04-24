@@ -42,7 +42,12 @@ export async function GET(request: Request) {
         .eq('id', user.id)
         .single()
 
-      redirectPath = profile?.role === 'teacher' ? '/teacher' : '/student'
+      redirectPath =
+        profile?.role === 'admin'
+          ? '/admin'
+          : profile?.role === 'teacher'
+            ? '/teacher'
+            : '/student'
     } else {
       redirectPath = '/student'
     }
