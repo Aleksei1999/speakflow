@@ -824,13 +824,14 @@ function SecuritySection({
           </div>
           <a className="s-btn s-btn--outline" href="/reset-password">Изменить</a>
         </div>
-        <div className="s-field">
+        {/* Активные сессии — скрыто до интеграции с Supabase Admin API */}
+        {/* <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Активные сессии</div>
             <div className="s-field-desc">Управление устройствами и выход с чужого устройства</div>
           </div>
           <button className="s-btn s-btn--outline" onClick={onManageSessions}>Управление</button>
-        </div>
+        </div> */}
         <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Видимость в лидерборде</div>
@@ -841,7 +842,8 @@ function SecuritySection({
             onChange={(n) => onPatch({ leaderboard_public: n })}
           />
         </div>
-        <div className="s-field">
+        {/* «Показывать профиль преподавателям» — скрыто, флаг ещё нигде не читается на бэке */}
+        {/* <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Показывать профиль преподавателям</div>
             <div className="s-field-desc">Преподаватели видят твой уровень, цели и интересы</div>
@@ -850,7 +852,7 @@ function SecuritySection({
             on={value.visible_to_teachers}
             onChange={(n) => onPatch({ visible_to_teachers: n })}
           />
-        </div>
+        </div> */}
       </div>
     </div>
   )
