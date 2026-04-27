@@ -26,7 +26,9 @@ cleanups.push(()=>obs.disconnect());
 /* Persisted landing XP — survives refreshes and is claimed after login. */
 const LANDING_XP_KEY='raw_landing_xp_pending';
 function loadPersistedXP(){
-  try{const raw=localStorage.getItem(LANDING_XP_KEY);if(!raw)return{xp:0,lvl:0};const p=JSON.parse(raw);return{xp:Math.max(0,Math.min(100,+p.xp||0)),lvl:Math.max(0,Math.min(8,+p.lvl||0))};}catch{return{xp:0,lvl:0};}
+  // Persist only `xp` (claimed after register). Always reset `lvl` to 0 so
+  // the level-up overlay fires on every visit when the user re-scrolls.
+  try{const raw=localStorage.getItem(LANDING_XP_KEY);if(!raw)return{xp:0,lvl:0};const p=JSON.parse(raw);return{xp:Math.max(0,Math.min(100,+p.xp||0)),lvl:0};}catch{return{xp:0,lvl:0};}
 }
 function savePersistedXP(){
   try{localStorage.setItem(LANDING_XP_KEY,JSON.stringify({xp,lvl:gameLevel,ts:Date.now()}));}catch{}
