@@ -25,7 +25,7 @@ declare global {
 
 const CSS = `
 :root,[data-theme="light"]{--red:#E63946;--lime:#D8F26A;--bg:#0A0A0A;--surface:#141413;--surface-2:#1F1F1D;--border:#2A2A28;--muted:#A0A09A;--text:#fff}
-.cr{font-family:'Inter',-apple-system,sans-serif;display:flex;flex-direction:column;height:100vh;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-60px}
+.cr{font-family:'Inter',-apple-system,sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;position:fixed;inset:0;z-index:1000;width:100vw;height:100vh}
 .cr *{box-sizing:border-box;margin:0;padding:0}
 .cr .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;background:#000;flex-shrink:0;border-bottom:1px solid var(--border)}
 .cr .tb-left{display:flex;align-items:center;gap:14px;min-width:0}
