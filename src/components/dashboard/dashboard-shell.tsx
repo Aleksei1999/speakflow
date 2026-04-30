@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -232,8 +232,57 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   }, [pathname])
 
   const currentRole = role ?? "student"
-  const navItems =
+  const [supportUnread, setSupportUnread] = useState(0)
+
+  useEffect(() => {
+    if (currentRole !== "admin") return
+    let cancelled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/admin/support/unread-count", {
+          cache: "no-store",
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled && typeof json?.count === "number") {
+          setSupportUnread(json.count)
+        }
+      } catch {}
+    }
+
+    fetchCount()
+    timer = setInterval(fetchCount, 60_000)
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchCount()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    const onChanged = () => fetchCount()
+    window.addEventListener("support-unread-changed", onChanged as EventListener)
+
+    return () => {
+      cancelled = true
+      if (timer) clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener(
+        "support-unread-changed",
+        onChanged as EventListener
+      )
+    }
+  }, [currentRole])
+
+  const baseNav =
     currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
+  const navItems = useMemo(() => {
+    if (currentRole !== "admin") return baseNav
+    return baseNav.map((item) =>
+      item.href === "/admin/support" && supportUnread > 0
+        ? { ...item, badge: supportUnread }
+        : item
+    )
+  }, [baseNav, currentRole, supportUnread])
   const bottomItems =
     currentRole === "admin" ? adminBottom : currentRole === "teacher" ? teacherBottom : studentBottom
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
