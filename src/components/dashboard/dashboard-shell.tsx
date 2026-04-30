@@ -156,7 +156,6 @@ const adminNav: NavItem[] = [
   { href: "/admin/trial-requests", label: "Заявки", icon: icons.clipboard },
   { href: "/admin/schedule", label: "Расписание", icon: icons.calendar },
   { href: "/admin/clubs", label: "Speaking Clubs", icon: icons.mic },
-  { href: "/admin/content", label: "Контент и курсы", icon: icons.book },
   { href: "/admin/support", label: "Поддержка", icon: icons.support },
 ]
 const adminBottom: NavItem[] = [
