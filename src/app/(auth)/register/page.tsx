@@ -124,6 +124,8 @@ function RegisterPageInner() {
   const [oauthPending, setOauthPending] = useState(false)
   const [refCode, setRefCode] = useState<string | null>(null)
   const [refBanner, setRefBanner] = useState<{ inviterName: string | null; bonusXp: number } | null>(null)
+  const roleParam = (searchParams?.get('role') ?? '').toLowerCase()
+  const isTeacher = roleParam === 'teacher'
   const [success, setSuccess] = useState<{
     name: string
     email: string
@@ -223,11 +225,9 @@ function RegisterPageInner() {
           first_name: firstName,
           last_name: lastName,
           phone: phone.trim() || null,
-          role: 'student',
-          // Передаём выбранный слот в user_metadata — auth/callback после
-          // подтверждения email прочитает его и создаст trial_lesson_request
-          // + автоматически назначит свободного преподавателя.
-          preferred_slot: chosen.iso,
+          role: isTeacher ? 'teacher' : 'student',
+          // preferred_slot — только для студентского пробного.
+          ...(isTeacher ? {} : { preferred_slot: chosen.iso }),
           // Реферальный код (если есть). Триггер handle_new_user валидирует и,
           // если код невалиден, просто игнорирует — signUp всё равно пройдёт.
           ...(refCode ? { ref_code: refCode } : {}),
@@ -258,11 +258,11 @@ function RegisterPageInner() {
     setSuccess({
       name: firstName,
       email: email.trim(),
-      slot: `${chosen.day}, ${chosen.time}`,
-      level: grade?.name || quizResult?.levelName || 'Определим на пробном',
-      cefr: grade?.cefr || '—',
+      slot: isTeacher ? '' : `${chosen.day}, ${chosen.time}`,
+      level: isTeacher ? '' : (grade?.name || quizResult?.levelName || 'Определим на пробном'),
+      cefr: isTeacher ? '' : (grade?.cefr || '—'),
       color: grade?.color || '#D33F3F',
-      purpose: goals?.purposeLabel || null,
+      purpose: isTeacher ? null : (goals?.purposeLabel || null),
     })
     setPending(false)
   }
@@ -300,41 +300,51 @@ function RegisterPageInner() {
               </svg>
             </div>
             <h2>Готово, {success.name}!</h2>
-            <p>
-              Аккаунт создан. Мы напишем на <b>{success.email}</b> в течение часа,
-              чтобы подтвердить время пробного урока. Стейк уже ждёт.
-            </p>
-            <div className="success-detail">
-              <div className="sd-row">
-                <span className="sd-k">Уровень</span>
-                <span className="sd-v" style={{ color: success.color }}>
-                  {success.level} · {success.cefr}
-                </span>
-              </div>
-              {success.purpose && (
+            {isTeacher ? (
+              <p>
+                Аккаунт преподавателя создан. Мы написали тебе на <b>{success.email}</b>{' '}
+                ссылку для подтверждения email. После входа заполни профиль и расписание —
+                и можно работать.
+              </p>
+            ) : (
+              <p>
+                Аккаунт создан. Мы напишем на <b>{success.email}</b> в течение часа,
+                чтобы подтвердить время пробного урока. Стейк уже ждёт.
+              </p>
+            )}
+            {!isTeacher && (
+              <div className="success-detail">
                 <div className="sd-row">
-                  <span className="sd-k">Цель</span>
-                  <span className="sd-v">{success.purpose}</span>
+                  <span className="sd-k">Уровень</span>
+                  <span className="sd-v" style={{ color: success.color }}>
+                    {success.level} · {success.cefr}
+                  </span>
                 </div>
-              )}
-              <div className="sd-row">
-                <span className="sd-k">Пробный</span>
-                <span className="sd-v">{success.slot}</span>
+                {success.purpose && (
+                  <div className="sd-row">
+                    <span className="sd-k">Цель</span>
+                    <span className="sd-v">{success.purpose}</span>
+                  </div>
+                )}
+                <div className="sd-row">
+                  <span className="sd-k">Пробный</span>
+                  <span className="sd-v">{success.slot}</span>
+                </div>
+                <div className="sd-row">
+                  <span className="sd-k">Длительность</span>
+                  <span className="sd-v">45 минут</span>
+                </div>
+                <div className="sd-row">
+                  <span className="sd-k">Стоимость</span>
+                  <span className="sd-v" style={{ color: '#4ADE80' }}>бесплатно</span>
+                </div>
               </div>
-              <div className="sd-row">
-                <span className="sd-k">Длительность</span>
-                <span className="sd-v">45 минут</span>
-              </div>
-              <div className="sd-row">
-                <span className="sd-k">Стоимость</span>
-                <span className="sd-v" style={{ color: '#4ADE80' }}>бесплатно</span>
-              </div>
-            </div>
+            )}
             <button
               type="button"
               className="btn-primary"
               onClick={() => {
-                router.push('/student')
+                router.push(isTeacher ? '/teacher' : '/student')
                 router.refresh()
               }}
             >
@@ -392,8 +402,12 @@ function RegisterPageInner() {
           <div className="mascot">
             <SteakSVG mood="cool" size={72} color={grade?.body || '#D33F3F'} />
           </div>
-          <h2 className="form-title">Создай аккаунт</h2>
-          <p className="form-sub">И записывайся на бесплатный пробный</p>
+          <h2 className="form-title">{isTeacher ? 'Стать преподавателем' : 'Создай аккаунт'}</h2>
+          <p className="form-sub">
+            {isTeacher
+              ? 'Присоединяйся к Raw English как преподаватель'
+              : 'И записывайся на бесплатный пробный'}
+          </p>
 
           {refBanner && (
             <div className="ref-banner" role="status">
@@ -513,22 +527,24 @@ function RegisterPageInner() {
               />
             </div>
 
-            <div className="field">
-              <label>Удобное время для пробного</label>
-              <div className="slot-grid">
-                {slots.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`slot ${selectedSlot === s.id ? 'active' : ''}`}
-                    onClick={() => setSelectedSlot(s.id)}
-                  >
-                    <div className="slot-day">{s.day}</div>
-                    <div className="slot-time">{s.time}</div>
-                  </button>
-                ))}
+            {!isTeacher && (
+              <div className="field">
+                <label>Удобное время для пробного</label>
+                <div className="slot-grid">
+                  {slots.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`slot ${selectedSlot === s.id ? 'active' : ''}`}
+                      onClick={() => setSelectedSlot(s.id)}
+                    >
+                      <div className="slot-day">{s.day}</div>
+                      <div className="slot-time">{s.time}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <label className="consent">
               <input
@@ -554,7 +570,11 @@ function RegisterPageInner() {
               disabled={pending}
               style={{ marginTop: 14, maxWidth: 'none' }}
             >
-              {pending ? 'Создаём аккаунт…' : 'Создать аккаунт и записаться'}
+              {pending
+                ? 'Создаём аккаунт…'
+                : isTeacher
+                  ? 'Создать аккаунт преподавателя'
+                  : 'Создать аккаунт и записаться'}
             </button>
 
             <div className="sso-divider">

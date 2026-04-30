@@ -113,13 +113,20 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
           <div className="theme-toggle" id="themeToggle">
             <div className="theme-knob" id="themeKnob">☀️</div>
           </div>
-          <Link href={isAuthenticated ? homeHref : "/login"} className="nav-cta">
-            {isAuthenticated ? (
+          {isAuthenticated ? (
+            <Link href={homeHref} className="nav-cta">
               <span>Личный кабинет</span>
-            ) : (
-              <span>Войти</span>
-            )}
-          </Link>
+            </Link>
+          ) : (
+            <div className="nav-cta-group">
+              <Link href="/register?role=student" className="nav-cta nav-cta--student">
+                <span>Я ученик</span>
+              </Link>
+              <Link href="/register?role=teacher" className="nav-cta nav-cta--teacher">
+                <span>Я преподаватель</span>
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
