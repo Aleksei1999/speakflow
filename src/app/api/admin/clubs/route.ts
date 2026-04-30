@@ -260,9 +260,27 @@ export async function POST(request: NextRequest) {
     // Attach host (teacher) if provided.
     let hostRow: any = null
     if (d.host_teacher_id) {
+      // host_id FKs profiles(id). If the caller passed a teacher_profiles.id
+      // by mistake, resolve it to the corresponding user_id.
+      let resolvedHostId = d.host_teacher_id
+      const { data: profileMatch } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("id", d.host_teacher_id)
+        .maybeSingle()
+      if (!profileMatch) {
+        const { data: tpRow } = await admin
+          .from("teacher_profiles")
+          .select("user_id")
+          .eq("id", d.host_teacher_id)
+          .maybeSingle()
+        if (tpRow?.user_id) resolvedHostId = tpRow.user_id
+      }
+      d.host_teacher_id = resolvedHostId
+
       const { error: hostErr } = await admin
         .from("club_hosts")
-        .insert({ club_id: club.id, host_id: d.host_teacher_id, role: "host" })
+        .insert({ club_id: club.id, host_id: resolvedHostId, role: "host" })
       if (hostErr) {
         console.error("admin/clubs POST host insert error:", hostErr)
       } else {
