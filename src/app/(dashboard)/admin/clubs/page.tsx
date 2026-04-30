@@ -54,10 +54,14 @@ async function loadSnapshot(): Promise<{
   return {
     clubs: Array.isArray(clubsRes?.clubs) ? clubsRes.clubs : [],
     teachers: Array.isArray(teacherRes?.teachers)
-      ? teacherRes.teachers.map((t: any) => ({
-          id: t.id,
-          full_name: t.full_name || t.name || "—",
-        }))
+      ? teacherRes.teachers
+          // Use the teacher's auth user_id — club_hosts.host_id FKs profiles(id),
+          // not teacher_profiles(id).
+          .map((t: any) => ({
+            id: (t.user_id as string | null) ?? null,
+            full_name: t.full_name || t.name || "—",
+          }))
+          .filter((t: any) => !!t.id)
       : [],
   }
 }
