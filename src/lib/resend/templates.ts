@@ -1,5 +1,5 @@
 /**
- * HTML-шаблоны email-уведомлений SpeakFlow / RAW English.
+ * HTML-шаблоны email-уведомлений Raw English.
  *
  * Все шаблоны используют inline-стили для максимальной совместимости
  * с почтовыми клиентами. Основной цвет бренда: #CC3A3A (RAW English).
@@ -28,8 +28,7 @@ function layout(title: string, content: string): string {
           <!-- Header -->
           <tr>
             <td style="background-color:${BRAND_COLOR};padding:24px 32px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.5px;">SpeakFlow</h1>
-              <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">by RAW English</p>
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.5px;">Raw English</h1>
             </td>
           </tr>
           <!-- Content -->
@@ -42,7 +41,7 @@ function layout(title: string, content: string): string {
           <tr>
             <td style="padding:24px 32px;background-color:#fafafa;border-top:1px solid #eee;text-align:center;">
               <p style="margin:0;color:${TEXT_SECONDARY};font-size:12px;line-height:1.6;">
-                &copy; ${new Date().getFullYear()} SpeakFlow by RAW English<br>
+                &copy; ${new Date().getFullYear()} Raw English<br>
                 Это автоматическое уведомление. Не отвечайте на это письмо.
               </p>
             </td>
@@ -68,11 +67,11 @@ function button(text: string, url: string): string {
 // ---------- Шаблоны ----------
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
-  const subject = 'Добро пожаловать в SpeakFlow!'
+  const subject = 'Добро пожаловать в Raw English!'
   const html = layout(subject, `
     <h2 style="margin:0 0 16px;color:${TEXT_COLOR};font-size:22px;">Привет, ${name}!</h2>
     <p style="color:${TEXT_COLOR};font-size:15px;line-height:1.7;margin:0 0 16px;">
-      Рады приветствовать вас на платформе <strong>SpeakFlow</strong> от RAW English!
+      Рады приветствовать вас на платформе <strong>Raw English</strong>!
     </p>
     <p style="color:${TEXT_COLOR};font-size:15px;line-height:1.7;margin:0 0 16px;">
       Здесь вас ждут:
@@ -334,7 +333,7 @@ ${name}, подтверждаем получение платежа.
 }
 
 export function formatTelegramWelcome(name: string): string {
-  return `<b>Добро пожаловать в SpeakFlow!</b>
+  return `<b>Добро пожаловать в Raw English!</b>
 
 ${name}, рады видеть вас на платформе RAW English!
 

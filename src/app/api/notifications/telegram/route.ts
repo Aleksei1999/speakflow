@@ -92,11 +92,11 @@ async function handleStartCommand(chatId: number, text: string, username?: strin
   } else {
     await sendTelegramMessage({
       chatId,
-      text: `<b>Добро пожаловать в SpeakFlow Bot!</b>
+      text: `<b>Добро пожаловать в Raw English Bot!</b>
 
-Чтобы привязать ваш Telegram-аккаунт к SpeakFlow:
+Чтобы привязать ваш Telegram-аккаунт к Raw English:
 
-1. Откройте настройки профиля на сайте SpeakFlow
+1. Откройте настройки профиля на сайте Raw English
 2. Нажмите «Привязать Telegram»
 3. Скопируйте 6-значный код
 4. Отправьте его в этот чат
@@ -127,7 +127,7 @@ async function handleLinkingCode(chatId: number, code: string, username?: string
 
 Код привязки неверный или истёк. Пожалуйста:
 
-1. Откройте настройки профиля на сайте SpeakFlow
+1. Откройте настройки профиля на сайте Raw English
 2. Запросите новый код привязки
 3. Отправьте его в этот чат
 
@@ -139,14 +139,14 @@ async function handleLinkingCode(chatId: number, code: string, username?: string
 async function handleHelpCommand(chatId: number): Promise<void> {
   await sendTelegramMessage({
     chatId,
-    text: `<b>SpeakFlow Bot — Справка</b>
+    text: `<b>Raw English Bot — Справка</b>
 
 <b>Доступные команды:</b>
 /start — Начать привязку аккаунта
 /help — Показать эту справку
 
 <b>Привязка аккаунта:</b>
-Отправьте 6-значный код из настроек профиля на сайте SpeakFlow.
+Отправьте 6-значный код из настроек профиля на сайте Raw English.
 
 <b>Уведомления:</b>
 После привязки аккаунта бот автоматически отправляет уведомления о:
@@ -156,6 +156,6 @@ async function handleHelpCommand(chatId: number): Promise<void> {
 - Платежах
 
 <b>Поддержка:</b>
-По вопросам обращайтесь на support@speakflow.ru`,
+По вопросам обращайтесь на support@raw-english.com`,
   })
 }
