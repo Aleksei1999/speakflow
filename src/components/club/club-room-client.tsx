@@ -163,6 +163,16 @@ export function ClubRoomClient({
   const jitsiRef = useRef<HTMLDivElement>(null)
   const apiRef = useRef<any>(null)
 
+  // Live participants in the Jitsi conference (everyone who's actually
+  // connected right now). Local user is added on videoConferenceJoined,
+  // others come in via participantJoined.
+  type LiveParticipant = {
+    participantId: string
+    displayName: string
+    avatarURL?: string | null
+  }
+  const [liveParticipants, setLiveParticipants] = useState<LiveParticipant[]>([])
+
   // Countdown timer
   useEffect(() => {
     const end = new Date(scheduledAt).getTime() + durationMinutes * 60 * 1000
@@ -234,6 +244,67 @@ export function ClubRoomClient({
           DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
+      })
+
+      const api = apiRef.current
+      const refreshFromApi = () => {
+        try {
+          const list = api.getParticipantsInfo?.() ?? []
+          if (Array.isArray(list)) {
+            setLiveParticipants(
+              list.map((p: any) => ({
+                participantId: p.participantId,
+                displayName: p.displayName || p.formattedDisplayName || "—",
+                avatarURL: p.avatarURL ?? null,
+              }))
+            )
+          }
+        } catch {}
+      }
+
+      api.addListener?.("videoConferenceJoined", (e: any) => {
+        setLiveParticipants((cur) => {
+          if (cur.some((p) => p.participantId === e.id)) return cur
+          return [
+            ...cur,
+            {
+              participantId: e.id,
+              displayName: e.displayName || userName,
+              avatarURL: e.avatarURL ?? null,
+            },
+          ]
+        })
+        refreshFromApi()
+      })
+      api.addListener?.("participantJoined", (e: any) => {
+        setLiveParticipants((cur) => {
+          if (cur.some((p) => p.participantId === e.id)) return cur
+          return [
+            ...cur,
+            {
+              participantId: e.id,
+              displayName: e.displayName || "Гость",
+              avatarURL: e.avatarURL ?? null,
+            },
+          ]
+        })
+      })
+      api.addListener?.("participantLeft", (e: any) => {
+        setLiveParticipants((cur) =>
+          cur.filter((p) => p.participantId !== e.id)
+        )
+      })
+      api.addListener?.("displayNameChange", (e: any) => {
+        setLiveParticipants((cur) =>
+          cur.map((p) =>
+            p.participantId === e.id
+              ? { ...p, displayName: e.displayname || p.displayName }
+              : p
+          )
+        )
+      })
+      api.addListener?.("videoConferenceLeft", () => {
+        setLiveParticipants([])
       })
     }
     init().catch(() => {})
@@ -503,24 +574,75 @@ export function ClubRoomClient({
                 </div>
                 <div className="lc">
                   {tab === "participants" ? (
-                    participants.length === 0 ? (
-                      <div className="parts-empty">Пока никто не записался</div>
-                    ) : (
-                      <div className="parts-list">
-                        {participants.map((p, i) => {
-                          const initials =
-                            (p.full_name || "")
-                              .split(" ")
-                              .filter(Boolean)
-                              .map((s) => s[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2) || "??"
-                          return (
+                    (() => {
+                      const liveByName = new Map<string, LiveParticipant>()
+                      for (const lp of liveParticipants) {
+                        liveByName.set(
+                          (lp.displayName || "").trim().toLowerCase(),
+                          lp
+                        )
+                      }
+                      const offline = participants.filter(
+                        (p) =>
+                          !liveByName.has(
+                            (p.full_name || "").trim().toLowerCase()
+                          )
+                      )
+
+                      if (
+                        liveParticipants.length === 0 &&
+                        participants.length === 0
+                      ) {
+                        return (
+                          <div className="parts-empty">
+                            Пока никто не записался
+                          </div>
+                        )
+                      }
+
+                      const initialsOf = (name: string) =>
+                        (name || "")
+                          .split(" ")
+                          .filter(Boolean)
+                          .map((s) => s[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "??"
+
+                      return (
+                        <div className="parts-list">
+                          {liveParticipants.map((lp) => (
                             <div
-                              key={(p.id ?? "") + i}
+                              key={"live-" + lp.participantId}
+                              className="part-row"
+                              title={lp.displayName}
+                            >
+                              <div className="pa-av">
+                                {lp.avatarURL ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={lp.avatarURL}
+                                    alt={lp.displayName}
+                                  />
+                                ) : (
+                                  initialsOf(lp.displayName)
+                                )}
+                              </div>
+                              <div className="pa-name">{lp.displayName}</div>
+                              <div
+                                className="pa-st"
+                                style={{ color: "#22c55e" }}
+                              >
+                                В комнате
+                              </div>
+                            </div>
+                          ))}
+                          {offline.map((p, i) => (
+                            <div
+                              key={"reg-" + (p.id ?? "") + i}
                               className="part-row"
                               title={p.email || ""}
+                              style={{ opacity: 0.55 }}
                             >
                               <div className="pa-av">
                                 {p.avatar_url ? (
@@ -530,18 +652,18 @@ export function ClubRoomClient({
                                     alt={p.full_name || ""}
                                   />
                                 ) : (
-                                  initials
+                                  initialsOf(p.full_name || "")
                                 )}
                               </div>
                               <div className="pa-name">
                                 {p.full_name || p.email || "—"}
                               </div>
-                              <div className="pa-st">{p.status}</div>
+                              <div className="pa-st">не в комнате</div>
                             </div>
-                          )
-                        })}
-                      </div>
-                    )
+                          ))}
+                        </div>
+                      )
+                    })()
                   ) : (
                     <div className="info-area">
                       <h4>Тема</h4>
