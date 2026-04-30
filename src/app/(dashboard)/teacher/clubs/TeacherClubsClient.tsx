@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
+import { computeLessonAccess } from "@/lib/lesson-access"
 
 const CSS = `
 .tch-clubs{max-width:1200px;margin:0 auto}
@@ -52,6 +53,12 @@ const CSS = `
 
 .tch-clubs .empty{padding:60px 16px;text-align:center;color:var(--muted);font-size:14px;background:var(--surface);border:1px dashed var(--border);border-radius:16px}
 .tch-clubs .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
+
+.tch-clubs .join-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tch-clubs .join-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;border:none;cursor:pointer}
+.tch-clubs .join-btn.live{background:var(--lime);color:#0A0A0A}
+.tch-clubs .join-btn.waiting{background:var(--bg);color:var(--muted);border:1px solid var(--border);cursor:default}
+.tch-clubs .join-btn.expired{background:var(--bg);color:var(--muted);border:1px solid var(--border);cursor:default}
 `
 
 type Participant = {
@@ -100,6 +107,11 @@ export default function TeacherClubsClient({
 }) {
   const [clubs, setClubs] = useState<Club[]>(initial.clubs)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   // Mark all as seen when teacher actually opens this page.
   useEffect(() => {
@@ -219,6 +231,58 @@ export default function TeacherClubsClient({
                     ⏱️ <b>{c.duration_minutes} мин</b>
                   </span>
                 </div>
+                {(() => {
+                  const access = c.scheduled_at
+                    ? computeLessonAccess({
+                        scheduledAt: c.scheduled_at,
+                        durationMinutes: c.duration_minutes,
+                        status: c.status === "cancelled" ? "cancelled" : null,
+                      })
+                    : null
+                  if (!access) return null
+                  if (access.status === "live") {
+                    return (
+                      <div className="join-row">
+                        <Link
+                          href={`/club/${c.id}/room`}
+                          className="join-btn live"
+                        >
+                          🎙 Зайти в клуб
+                        </Link>
+                      </div>
+                    )
+                  }
+                  if (access.status === "waiting") {
+                    const minutesLeft = Math.max(
+                      0,
+                      Math.ceil((access.openAtMs - access.nowMs) / 60_000)
+                    )
+                    return (
+                      <div className="join-row">
+                        <button type="button" className="join-btn waiting" disabled>
+                          ⏳ Откроется через {minutesLeft}{" "}
+                          {minutesLeft === 1 ? "мин" : "мин"}
+                        </button>
+                      </div>
+                    )
+                  }
+                  if (access.status === "cancelled") {
+                    return (
+                      <div className="join-row">
+                        <button type="button" className="join-btn expired" disabled>
+                          Отменён
+                        </button>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="join-row">
+                      <button type="button" className="join-btn expired" disabled>
+                        Завершён
+                      </button>
+                    </div>
+                  )
+                })()}
                 <div className="parts">
                   {c.participants && c.participants.length > 0 ? (
                     <>

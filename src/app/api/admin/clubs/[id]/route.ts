@@ -90,6 +90,33 @@ export async function PATCH(
     }
     const d = parsed.data
 
+    // Lock editing once a club has started — only `cancelled` toggle is allowed.
+    {
+      const adminCheck = createAdminClient()
+      const { data: existing } = await adminCheck
+        .from("clubs")
+        .select("starts_at")
+        .eq("id", id)
+        .maybeSingle()
+      if (!existing) {
+        return NextResponse.json({ error: "Клаб не найден" }, { status: 404 })
+      }
+      const startedMs = new Date(existing.starts_at).getTime()
+      if (startedMs <= Date.now()) {
+        const allowed = new Set(["cancelled"])
+        const blocked = Object.keys(d).filter((k) => !allowed.has(k))
+        if (blocked.length > 0) {
+          return NextResponse.json(
+            {
+              error:
+                "Клуб уже начался — можно только отменить, но не редактировать.",
+            },
+            { status: 409 }
+          )
+        }
+      }
+    }
+
     const update: Record<string, any> = {}
     if (d.title !== undefined) update.topic = d.title
     if (d.description !== undefined) update.description = d.description
