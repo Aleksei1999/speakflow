@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * Унифицированный сервис уведомлений SpeakFlow / Raw English.
+ * Унифицированный сервис уведомлений Raw English.
  *
  * Алгоритм:
  * 1. Подгружает профиль (email, telegram_chat_id, notification_prefs).

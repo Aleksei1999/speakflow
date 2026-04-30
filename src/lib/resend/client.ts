@@ -6,7 +6,8 @@ function getResend() {
   return new Resend(key)
 }
 
-const FROM_ADDRESS = 'SpeakFlow <noreply@speakflow.ru>'
+const FROM_ADDRESS =
+  process.env.RESEND_FROM_ADDRESS || 'Raw English <noreply@raw-english.com>'
 
 interface SendEmailOptions {
   to: string
