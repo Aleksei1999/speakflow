@@ -48,7 +48,6 @@ const navigationByRole: Record<Role, NavItem[]> = {
     { href: "/admin/users", label: "Пользователи", icon: Users },
     { href: "/admin/teachers", label: "Преподаватели", icon: BookOpen },
     { href: "/admin/payments", label: "Платежи", icon: CreditCard },
-    { href: "/admin/content", label: "Контент", icon: FileText },
   ],
 }
 
