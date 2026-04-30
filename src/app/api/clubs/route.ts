@@ -57,8 +57,14 @@ export async function GET(request: NextRequest) {
       .order('starts_at', { ascending: scope !== 'past' })
       .limit(limit)
 
-    const nowIso = new Date().toISOString()
-    if (scope === 'upcoming') query = query.gt('starts_at', nowIso)
+    const nowMs = Date.now()
+    const nowIso = new Date(nowMs).toISOString()
+    if (scope === 'upcoming') {
+      // Include in-progress clubs: a club ends at starts_at + duration_min.
+      // Pull anything that started up to 8h ago, then trim by exact end time below.
+      const lookbackIso = new Date(nowMs - 8 * 3600 * 1000).toISOString()
+      query = query.gt('starts_at', lookbackIso)
+    }
     if (scope === 'past') query = query.lt('starts_at', nowIso)
 
     if (category) query = query.eq('category', category)
@@ -75,6 +81,18 @@ export async function GET(request: NextRequest) {
 
     // Level filter applied in-memory: include clubs whose [level_min..level_max] range contains the requested level
     let filtered = clubs ?? []
+
+    // Trim past clubs precisely: a club is "still upcoming/in-progress" while
+    // (starts_at + duration_min) > now. Without this, a club at 12:00 with
+    // 60min duration disappears at 12:00:01 even though it's running.
+    if (scope === 'upcoming') {
+      filtered = filtered.filter((c) => {
+        const startMs = new Date(c.starts_at).getTime()
+        const durMs = (c.duration_min || 60) * 60_000
+        return startMs + durMs > nowMs
+      })
+    }
+
     if (level) {
       const target = ROAST_LEVELS.indexOf(level)
       filtered = filtered.filter((c) => {
