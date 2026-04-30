@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { notifyLessonCancelled } from '@/lib/notifications/booking'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -116,6 +117,12 @@ export async function POST(request: NextRequest) {
           .eq('id', payment.id)
       }
     }
+
+    void notifyLessonCancelled({
+      lessonId,
+      cancelledByUserId: user.id,
+      reason: reason || null,
+    }).catch(() => {})
 
     // Prepare notification data (actual sending handled by separate module)
     const notificationData = {
