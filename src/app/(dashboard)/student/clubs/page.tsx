@@ -875,20 +875,22 @@ function ClubCard({
           {club.badge ? <span className="cc-tag">{club.badge}</span> : null}
         </div>
       </div>
-      <div className="cc-host">
-        <div className="cc-ha">
-          {host?.avatar_url
-            ? (
+      {host ? (
+        <div className="cc-host">
+          <div className="cc-ha">
+            {host.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={host.avatar_url} alt={host.full_name ?? ""} />
-            )
-            : host?.initials || getInitials(host?.full_name)}
+            ) : (
+              host.initials || getInitials(host.full_name)
+            )}
+          </div>
+          <div>
+            <div className="cc-hn">{host.full_name ?? "Ведущий"}</div>
+            <div className="cc-hr">{role ?? "Ведущий"}</div>
+          </div>
         </div>
-        <div>
-          <div className="cc-hn">{host?.full_name ?? "Host"}</div>
-          <div className="cc-hr">{role ?? "Host"}</div>
-        </div>
-      </div>
+      ) : null}
       <div className="cc-right">
         <div className="cc-seats">
           <div className="cc-seats-dots">
