@@ -246,46 +246,47 @@ export function ClubRoomClient({
       })
 
       const api = apiRef.current
-      const refreshFromApi = () => {
-        try {
-          const list = api.getParticipantsInfo?.() ?? []
-          if (Array.isArray(list)) {
-            setLiveParticipants(
-              list.map((p: any) => ({
-                participantId: p.participantId,
-                displayName: p.displayName || p.formattedDisplayName || "—",
-                avatarURL: p.avatarURL ?? null,
-              }))
+
+      // Single mutation point: merge by participantId, last write wins.
+      const upsert = (
+        id: string,
+        partial: { displayName?: string; avatarURL?: string | null }
+      ) => {
+        if (!id) return
+        setLiveParticipants((cur) => {
+          const existing = cur.find((p) => p.participantId === id)
+          if (existing) {
+            return cur.map((p) =>
+              p.participantId === id
+                ? {
+                    ...p,
+                    displayName: partial.displayName ?? p.displayName,
+                    avatarURL: partial.avatarURL ?? p.avatarURL,
+                  }
+                : p
             )
           }
-        } catch {}
-      }
-
-      api.addListener?.("videoConferenceJoined", (e: any) => {
-        setLiveParticipants((cur) => {
-          if (cur.some((p) => p.participantId === e.id)) return cur
           return [
             ...cur,
             {
-              participantId: e.id,
-              displayName: e.displayName || userName,
-              avatarURL: e.avatarURL ?? null,
+              participantId: id,
+              displayName: partial.displayName || "Гость",
+              avatarURL: partial.avatarURL ?? null,
             },
           ]
         })
-        refreshFromApi()
+      }
+
+      api.addListener?.("videoConferenceJoined", (e: any) => {
+        upsert(e.id, {
+          displayName: e.displayName || userName,
+          avatarURL: e.avatarURL ?? null,
+        })
       })
       api.addListener?.("participantJoined", (e: any) => {
-        setLiveParticipants((cur) => {
-          if (cur.some((p) => p.participantId === e.id)) return cur
-          return [
-            ...cur,
-            {
-              participantId: e.id,
-              displayName: e.displayName || "Гость",
-              avatarURL: e.avatarURL ?? null,
-            },
-          ]
+        upsert(e.id, {
+          displayName: e.displayName,
+          avatarURL: e.avatarURL ?? null,
         })
       })
       api.addListener?.("participantLeft", (e: any) => {
@@ -294,13 +295,7 @@ export function ClubRoomClient({
         )
       })
       api.addListener?.("displayNameChange", (e: any) => {
-        setLiveParticipants((cur) =>
-          cur.map((p) =>
-            p.participantId === e.id
-              ? { ...p, displayName: e.displayname || p.displayName }
-              : p
-          )
-        )
+        upsert(e.id, { displayName: e.displayname })
       })
       api.addListener?.("videoConferenceLeft", () => {
         setLiveParticipants([])
@@ -588,13 +583,16 @@ export function ClubRoomClient({
                 <div className="lc">
                   {tab === "participants" ? (
                     (() => {
+                      // Dedupe live participants by displayName so the same
+                      // person never appears twice in the panel even when
+                      // Jitsi briefly emits two participantIds for them.
                       const liveByName = new Map<string, LiveParticipant>()
                       for (const lp of liveParticipants) {
-                        liveByName.set(
-                          (lp.displayName || "").trim().toLowerCase(),
-                          lp
-                        )
+                        const key = (lp.displayName || "").trim().toLowerCase()
+                        if (!key) continue
+                        if (!liveByName.has(key)) liveByName.set(key, lp)
                       }
+                      const liveDeduped = Array.from(liveByName.values())
                       const offline = participants.filter(
                         (p) =>
                           !liveByName.has(
@@ -603,7 +601,7 @@ export function ClubRoomClient({
                       )
 
                       if (
-                        liveParticipants.length === 0 &&
+                        liveDeduped.length === 0 &&
                         participants.length === 0
                       ) {
                         return (
@@ -624,7 +622,7 @@ export function ClubRoomClient({
 
                       return (
                         <div className="parts-list">
-                          {liveParticipants.map((lp) => (
+                          {liveDeduped.map((lp) => (
                             <div
                               key={"live-" + lp.participantId}
                               className="part-row"
