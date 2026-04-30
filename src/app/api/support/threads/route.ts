@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
       .select(
         `
           id, user_id, subject, status, priority,
-          last_message_at, created_at, updated_at,
+          last_message_at, last_user_message_at, admin_last_seen_at,
+          created_at, updated_at,
           profiles:user_id ( id, full_name, avatar_url, email, role )
         `
       )
@@ -90,7 +91,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
-    return NextResponse.json({ threads: data ?? [], is_admin: isAdmin })
+    const threadIds = (data ?? []).map((t: any) => t.id)
+    const previewByThread = new Map<string, { body: string; sender_role: string }>()
+    if (threadIds.length) {
+      // Latest message per thread for preview.
+      const { data: msgs } = await client
+        .from("support_messages")
+        .select("thread_id, body, sender_role, created_at")
+        .in("thread_id", threadIds)
+        .order("created_at", { ascending: false })
+      for (const m of msgs ?? []) {
+        if (!previewByThread.has(m.thread_id)) {
+          previewByThread.set(m.thread_id, {
+            body: m.body,
+            sender_role: m.sender_role,
+          })
+        }
+      }
+    }
+
+    const mapPriority = (p: string) =>
+      p === "med" ? "medium" : p
+    const normalizedThreads = (data ?? []).map((t: any) => {
+      const profile = t.profiles ?? null
+      const lastUserAt = t.last_user_message_at
+        ? new Date(t.last_user_message_at).getTime()
+        : null
+      const adminSeenAt = t.admin_last_seen_at
+        ? new Date(t.admin_last_seen_at).getTime()
+        : null
+      const unreadForAdmin =
+        lastUserAt !== null &&
+        (adminSeenAt === null || adminSeenAt < lastUserAt)
+      const preview = previewByThread.get(t.id)
+      return {
+        id: t.id,
+        subject: t.subject ?? "",
+        student_id: profile?.id ?? null,
+        student_name: profile?.full_name || profile?.email || "—",
+        student_email: profile?.email ?? null,
+        student_avatar_url: profile?.avatar_url ?? null,
+        student_level: null,
+        priority: mapPriority(t.priority),
+        status: t.status,
+        last_message_at: t.last_message_at,
+        last_user_message_at: t.last_user_message_at ?? null,
+        admin_last_seen_at: t.admin_last_seen_at ?? null,
+        created_at: t.created_at,
+        unread_count: isAdmin && unreadForAdmin ? 1 : 0,
+        unread_for_admin: unreadForAdmin,
+        last_message_preview: preview?.body
+          ? preview.body.slice(0, 140)
+          : null,
+        last_message_sender_role: preview?.sender_role ?? null,
+      }
+    })
+
+    return NextResponse.json({
+      threads: normalizedThreads,
+      is_admin: isAdmin,
+    })
   } catch (err) {
     console.error("Ошибка в GET /api/support/threads:", err)
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 })
