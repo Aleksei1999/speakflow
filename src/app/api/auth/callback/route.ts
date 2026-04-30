@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -29,12 +30,12 @@ export async function GET(request: Request) {
   // If a valid `next` was supplied (e.g. /reset-password), honor it regardless of role.
   let redirectPath = safeNext
 
-  if (!redirectPath) {
-    // Determine the correct dashboard based on the user's profile role
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  // Always pull the user once — used for both role routing and trial auto-assign.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
+  if (!redirectPath) {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
@@ -50,6 +51,28 @@ export async function GET(request: Request) {
             : '/student'
     } else {
       redirectPath = '/student'
+    }
+  }
+
+  // Trial-lesson auto-assignment runs once per signup, on the first time
+  // the student lands here with a session. user_metadata.preferred_slot is
+  // set during /register; on Google OAuth without preferred_slot the call
+  // is a no-op.
+  if (user) {
+    const meta = user.user_metadata ?? {}
+    const role = meta.role
+    const preferredSlot =
+      typeof meta.preferred_slot === 'string' ? meta.preferred_slot : null
+
+    if (role !== 'teacher' && role !== 'admin') {
+      try {
+        await autoAssignTrial({
+          userId: user.id,
+          preferredSlot,
+        })
+      } catch (err) {
+        console.error('[auth/callback] autoAssignTrial failed', err)
+      }
     }
   }
 

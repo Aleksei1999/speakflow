@@ -1,13 +1,14 @@
 // @ts-nocheck
 // POST /api/trial-lesson/request
-// Called after signup. Creates a trial_lesson_requests row and notifies admins
-// via Telegram. Idempotent: one pending request per user.
+// Called after signup (when there's already a session — e.g. on the dashboard).
+// Creates a trial_lesson_requests row, auto-assigns a teacher when a slot is
+// provided, and notifies admins via Telegram. Idempotent.
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
-import { sendTelegramMessage } from '@/lib/telegram/bot'
+import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
@@ -40,95 +41,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Некорректные данные' }, { status: 400 })
   }
 
-  // Dedupe pending requests per user
-  const { data: existing } = await supabase
-    .from('trial_lesson_requests')
-    .select('id, status')
-    .eq('user_id', user.id)
-    .in('status', ['pending', 'assigned', 'scheduled'])
-    .maybeSingle()
+  const result = await autoAssignTrial({
+    userId: user.id,
+    preferredSlot: parsed.data.preferredSlot ?? null,
+    notes: parsed.data.notes ?? null,
+    levelTestId: parsed.data.levelTestId ?? null,
+  })
 
-  if (existing) {
-    return NextResponse.json({ id: existing.id, reused: true })
-  }
-
-  const { data: inserted, error } = await supabase
-    .from('trial_lesson_requests')
-    .insert({
-      user_id: user.id,
-      level_test_id: parsed.data.levelTestId ?? null,
-      notes: parsed.data.notes ?? null,
-      preferred_slot: parsed.data.preferredSlot ?? null,
-    })
-    .select('id')
-    .single()
-
-  if (error) {
-    console.error('[trial-lesson/request] insert failed:', error)
+  if (!result) {
     return NextResponse.json({ error: 'Не удалось создать заявку' }, { status: 500 })
   }
 
-  // Fire-and-forget admin notification
-  void notifyAdmins(user.id, inserted.id, parsed.data.preferredSlot ?? null).catch((err) => {
-    console.error('[trial-lesson/request] notify failed:', err)
+  return NextResponse.json({
+    id: result.requestId,
+    reused: result.reused,
+    status: result.status,
+    lessonId: result.lessonId,
+    teacherUserId: result.teacherUserId,
   })
-
-  return NextResponse.json({ id: inserted.id, reused: false })
-}
-
-async function notifyAdmins(userId: string, requestId: string, preferredSlot: string | null) {
-  const supabase = await createClient()
-
-  const [{ data: profile }, { data: admins }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('full_name, email, phone')
-      .eq('id', userId)
-      .maybeSingle(),
-    supabase
-      .from('profiles')
-      .select('telegram_chat_id')
-      .eq('role', 'admin')
-      .not('telegram_chat_id', 'is', null),
-  ])
-
-  if (!profile || !admins || admins.length === 0) return
-
-  let slotLine = ''
-  if (preferredSlot) {
-    try {
-      const d = new Date(preferredSlot)
-      const fmt = new Intl.DateTimeFormat('ru-RU', {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Moscow',
-      }).format(d)
-      slotLine = `🗓 Удобное время: ${fmt} МСК\n`
-    } catch {
-      slotLine = `🗓 Удобное время: ${preferredSlot}\n`
-    }
-  }
-
-  const text =
-    `🎙 <b>Новая заявка на пробное занятие</b>\n\n` +
-    `<b>${profile.full_name || '—'}</b>\n` +
-    `📧 ${profile.email}\n` +
-    (profile.phone ? `📱 ${profile.phone}\n` : '') +
-    slotLine +
-    `\n<code>${requestId}</code>`
-
-  await Promise.all(
-    admins
-      .filter((a): a is { telegram_chat_id: number } => !!a.telegram_chat_id)
-      .map((a) =>
-        sendTelegramMessage({
-          chatId: a.telegram_chat_id,
-          text,
-          parseMode: 'HTML',
-        }).catch(() => {})
-      )
-  )
 }
