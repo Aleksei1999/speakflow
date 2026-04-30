@@ -45,10 +45,6 @@ declare global {
 const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
 .cr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
-.cr.cr-max{position:fixed;inset:0;z-index:9999;width:100vw;height:100vh;margin:0}
-.cr.cr-max .lesson-stats,.cr.cr-max .lesson-bottom,.cr.cr-max .ls{display:none}
-.cr.cr-max .lb{grid-template-columns:1fr}
-.cr.cr-max .va{padding:8px;border-radius:0;border:none;background:#000}
 .cr *{box-sizing:border-box}.cr a{color:inherit;text-decoration:none}.cr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .cr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
 .cr .lh-side{display:flex;align-items:center}.cr .lh-right{justify-content:flex-end}
@@ -160,7 +156,6 @@ export function ClubRoomClient({
   const router = useRouter()
   const [tab, setTab] = useState<"participants" | "info">("participants")
   const [sidebarOn, setSidebarOn] = useState(true)
-  const [maximized, setMaximized] = useState(false)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [screenOn, setScreenOn] = useState(false)
@@ -270,7 +265,12 @@ export function ClubRoomClient({
     setScreenOn((v) => !v)
   }
   const toggleFullscreen = () => {
-    setMaximized((v) => !v)
+    const el = document.querySelector(".cr") as HTMLElement | null
+    if (!el) return
+    try {
+      if (document.fullscreenElement) document.exitFullscreen()
+      else el.requestFullscreen()
+    } catch {}
   }
   const handleEnd = () => {
     if (!confirm("Выйти из клуба?")) return
@@ -283,7 +283,7 @@ export function ClubRoomClient({
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div className={`cr${maximized ? " cr-max" : ""}`}>
+      <div className="cr">
         <header className="lh">
           <div className="lh-side lh-left" />
           <div className="lh-center">
