@@ -28,7 +28,7 @@ declare global { interface Window { JitsiMeetExternalAPI: any } }
 
 const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
-.lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;position:fixed;inset:0;z-index:1000;width:100vw;height:100vh}
+.lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
 .lr *{box-sizing:border-box}.lr a{color:inherit;text-decoration:none}.lr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
 .lr .lh-side{display:flex;align-items:center}.lr .lh-right{justify-content:flex-end}
