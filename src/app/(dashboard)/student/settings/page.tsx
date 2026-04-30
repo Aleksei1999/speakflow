@@ -228,6 +228,15 @@ export default function StudentSettingsPage() {
   const [original, setOriginal] = useState<Settings | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Telegram linking modal state
+  const [tgModal, setTgModal] = useState<{
+    open: boolean
+    code?: string
+    deepLink?: string | null
+    expiresAt?: string
+    polling?: boolean
+  } | null>(null)
+
   const load = async () => {
     const res = await fetch("/api/settings/me")
     if (!res.ok) {
@@ -244,6 +253,30 @@ export default function StudentSettingsPage() {
   useEffect(() => {
     load()
   }, [])
+
+  // While the Telegram link modal is open, poll status every 3s. As soon as
+  // the bot writes telegram_chat_id we close the modal and refresh settings.
+  useEffect(() => {
+    if (!tgModal?.open || !tgModal.polling) return
+    let cancelled = false
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch("/api/telegram/link/status", { cache: "no-store" })
+        if (!r.ok) return
+        const j = await r.json()
+        if (cancelled) return
+        if (j?.connected) {
+          setTgModal(null)
+          toast.success("Telegram подключён")
+          load()
+        }
+      } catch {}
+    }, 3_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [tgModal?.open, tgModal?.polling])
 
   const dirty = useMemo(() => {
     if (!data || !original) return false
@@ -364,7 +397,23 @@ export default function StudentSettingsPage() {
 
   const handleConnect = async (provider: "google" | "telegram") => {
     if (provider === "telegram") {
-      toast.info("Telegram подключается через бот — скоро будет доступно")
+      try {
+        const res = await fetch("/api/telegram/link/start", { method: "POST" })
+        const json = await res.json()
+        if (!res.ok) {
+          toast.error(json?.error || "Не удалось сгенерировать код")
+          return
+        }
+        setTgModal({
+          open: true,
+          code: json.code,
+          deepLink: json.deepLink ?? null,
+          expiresAt: json.expiresAt,
+          polling: true,
+        })
+      } catch {
+        toast.error("Ошибка сети")
+      }
       return
     }
     // Try linkIdentity first (requires Manual Linking enabled in Supabase).
@@ -397,7 +446,23 @@ export default function StudentSettingsPage() {
 
   const handleDisconnect = async (provider: "google" | "telegram") => {
     if (provider === "telegram") {
-      toast.info("Telegram отключается через бот — скоро будет доступно")
+      try {
+        const res = await fetch("/api/telegram/link/disconnect", { method: "POST" })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          toast.error(j?.error || "Не удалось отключить Telegram")
+          return
+        }
+        toast.success("Telegram отключён")
+        setData((prev) =>
+          prev
+            ? { ...prev, connected: { ...prev.connected, telegram: false } }
+            : prev
+        )
+        load()
+      } catch {
+        toast.error("Ошибка сети")
+      }
       return
     }
     const { data: identitiesData, error: iErr } = await supabase.auth.getUserIdentities()
@@ -537,7 +602,95 @@ export default function StudentSettingsPage() {
           </div>
         )}
       </div>
+
+      {tgModal?.open ? (
+        <TelegramLinkModal
+          code={tgModal.code ?? ""}
+          deepLink={tgModal.deepLink ?? null}
+          onClose={() => setTgModal(null)}
+        />
+      ) : null}
     </>
+  )
+}
+
+function TelegramLinkModal({
+  code,
+  deepLink,
+  onClose,
+}: {
+  code: string
+  deepLink: string | null
+  onClose: () => void
+}) {
+  const css = `
+.tg-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;font-family:'Inter',-apple-system,sans-serif}
+.tg-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 26px;width:100%;max-width:440px;color:var(--text);box-shadow:0 24px 48px rgba(0,0,0,.25);position:relative}
+.tg-card h2{font-size:20px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.tg-card .x{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--bg);border:none;cursor:pointer;color:var(--muted);font-size:18px}
+.tg-card .sub{font-size:13px;color:var(--muted);margin:0 0 18px;line-height:1.55}
+.tg-code{font-size:34px;font-weight:800;letter-spacing:6px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:18px 12px;margin-bottom:14px;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+.tg-row{display:flex;gap:8px;flex-wrap:wrap}
+.tg-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;border:none;transition:all .15s}
+.tg-btn-primary{background:#229ED9;color:#fff}
+.tg-btn-primary:hover{background:#1a87b8}
+.tg-btn-ghost{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.tg-steps{font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:14px;line-height:1.6}
+.tg-steps b{color:var(--text)}
+.tg-status{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.tg-status .pulse{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:tgp 1.5s infinite}
+@keyframes tgp{0%,100%{opacity:.4}50%{opacity:1}}
+`
+  return (
+    <div className="tg-ov" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <div className="tg-card">
+        <button type="button" className="x" onClick={onClose}>
+          ×
+        </button>
+        <h2>📱 Подключить Telegram</h2>
+        <p className="sub">
+          Получай уведомления об уроках, клубах, заявках и поддержке прямо в
+          Telegram. Код действителен 10 минут.
+        </p>
+        <div className="tg-code">{code}</div>
+        <div className="tg-row">
+          {deepLink ? (
+            <a
+              href={deepLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tg-btn tg-btn-primary"
+            >
+              Открыть бот
+            </a>
+          ) : null}
+          <button
+            type="button"
+            className="tg-btn tg-btn-ghost"
+            onClick={() => {
+              navigator.clipboard.writeText(code).catch(() => {})
+              toast.success("Код скопирован")
+            }}
+          >
+            Скопировать код
+          </button>
+        </div>
+        <div className="tg-steps">
+          <b>Как привязать:</b>
+          <br />
+          1. Открой бот по кнопке выше
+          <br />
+          2. Нажми «Start» (если первый раз) или отправь <code>{code}</code>
+          <br />
+          3. Окно закроется автоматически — придёт приветствие
+        </div>
+        <div className="tg-status">
+          <span className="pulse" />
+          Ждём подтверждения от бота…
+        </div>
+      </div>
+    </div>
   )
 }
 
