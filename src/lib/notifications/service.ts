@@ -53,6 +53,7 @@ import {
 export type NotificationType =
   | 'welcome'
   | 'booking_confirmation'
+  | 'lesson_cancelled'
   | 'lesson_reminder'
   | 'lesson_summary_ready'
   | 'payment_receipt'
@@ -72,6 +73,7 @@ export type NotificationType =
 const TRANSACTIONAL_TYPES: ReadonlySet<NotificationType> = new Set([
   'welcome',
   'booking_confirmation',
+  'lesson_cancelled',
   'lesson_summary_ready',
   'payment_receipt',
 ])
@@ -330,6 +332,25 @@ function buildEmailContent(
         data.duration || 50
       )
 
+    case 'lesson_cancelled': {
+      const reason = (data as any).reason
+      const cancelledBy = (data as any).cancelledByName || 'Собеседник'
+      const subject = `Урок отменён · ${data.date || ''}`
+      const html = `
+        <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px">
+          <h1 style="font-size:22px;font-weight:800;margin:0 0 12px">Урок отменён</h1>
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.55">${cancelledBy} отменил(а) урок.</p>
+          <div style="background:#FAFAF7;border:1px solid #EEEEEA;border-radius:12px;padding:14px 18px;font-size:14px;margin:14px 0">
+            <div><b>Когда:</b> ${data.date || '—'} · ${data.time || ''}</div>
+            <div><b>Длительность:</b> ${data.duration || 50} мин</div>
+            ${reason ? `<div style="margin-top:8px"><b>Причина:</b> ${reason}</div>` : ''}
+          </div>
+          <p style="margin:0 0 12px;font-size:13px;color:#8A8A86">Можно перезаписаться на другое время в личном кабинете.</p>
+        </div>
+      `
+      return { subject, html }
+    }
+
     case 'lesson_reminder':
       return lessonReminderEmail(
         name,
@@ -453,6 +474,20 @@ function buildTelegramText(
         data.time || '',
         data.duration || 50
       )
+
+    case 'lesson_cancelled': {
+      const reason = (data as any).reason
+      const cancelledBy = (data as any).cancelledByName || 'Собеседник'
+      const lines = [
+        `❌ <b>Урок отменён</b>`,
+        ``,
+        `${cancelledBy} отменил(а) урок.`,
+        `🗓 ${data.date || '—'} · ${data.time || ''}`,
+        `⏱ ${data.duration || 50} мин`,
+      ]
+      if (reason) lines.push(``, `<i>Причина:</i> ${reason}`)
+      return lines.join('\n')
+    }
 
     case 'lesson_reminder':
       return formatTelegramLessonReminder(

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { bookingSchema } from '@/lib/validations'
+import { notifyLessonBooked } from '@/lib/notifications/booking'
 
 export async function POST(request: NextRequest) {
   try {
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
       .from('lessons')
       .update({ jitsi_room_name: jitsiRoomName })
       .eq('id', lesson.id)
+
+    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
 
     return NextResponse.json({
       lessonId: lesson.id,
