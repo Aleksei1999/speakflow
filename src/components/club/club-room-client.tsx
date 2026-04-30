@@ -217,10 +217,10 @@ export function ClubRoomClient({
           notifications: [],
           toolbarButtons: [],
           connectionIndicators: { autoHide: true, disabled: true },
-          filmstrip: { disabled: true },
+          // filmstrip must stay enabled — screen-share tracks live in it,
+          // disabling it hides remote screen-share entirely.
           disableSelfViewSettings: true,
           hideDisplayName: true,
-          // Make the large video stretch/cover the container instead of letterboxing.
           videoLayoutFit: "both",
           disableLargeVideoCrop: false,
         },
@@ -237,7 +237,6 @@ export function ClubRoomClient({
           DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
           DISABLE_VIDEO_BACKGROUND: true,
           RECENT_LIST_ENABLED: false,
-          FILM_STRIP_MAX_HEIGHT: 0,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
           VIDEO_LAYOUT_FIT: "both",
@@ -305,6 +304,20 @@ export function ClubRoomClient({
       })
       api.addListener?.("videoConferenceLeft", () => {
         setLiveParticipants([])
+      })
+      // When anyone starts sharing their screen, force their share to be
+      // the large video so viewers actually see it.
+      api.addListener?.("contentSharingParticipantsChanged", (e: any) => {
+        const ids: string[] =
+          (Array.isArray(e?.data) && e.data) ||
+          (Array.isArray(e?.participants) && e.participants) ||
+          []
+        const sharerId = ids[0]
+        if (sharerId) {
+          try {
+            api.executeCommand("setLargeVideoParticipant", sharerId)
+          } catch {}
+        }
       })
     }
     init().catch(() => {})
