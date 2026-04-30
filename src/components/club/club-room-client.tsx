@@ -74,6 +74,8 @@ const CSS = `
 .cr .stage{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
 .cr .va{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0}
 .cr .vm{position:relative;flex:1;background:#1a1a1a;border-radius:12px;overflow:hidden;min-height:0}
+.cr .vm > div{position:absolute;inset:0;width:100%;height:100%}
+.cr .vm iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .cr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .cr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
