@@ -207,6 +207,9 @@ export function ClubRoomClient({
           notifications: [],
           toolbarButtons: [],
           connectionIndicators: { autoHide: true, disabled: true },
+          filmstrip: { disabled: true },
+          disableSelfViewSettings: true,
+          hideDisplayName: true,
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
@@ -221,6 +224,9 @@ export function ClubRoomClient({
           DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
           DISABLE_VIDEO_BACKGROUND: true,
           RECENT_LIST_ENABLED: false,
+          FILM_STRIP_MAX_HEIGHT: 0,
+          VERTICAL_FILMSTRIP: false,
+          DISABLE_TRANSCRIPTION_SUBTITLES: true,
         },
         userInfo: { displayName: userName },
       })
