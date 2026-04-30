@@ -119,11 +119,11 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
             </Link>
           ) : (
             <div className="nav-cta-group">
-              <Link href="/register?role=student" className="nav-cta nav-cta--student">
-                <span>Я ученик</span>
+              <Link href="/teach" className="nav-cta nav-cta--teacher">
+                <span>Стать преподавателем</span>
               </Link>
-              <Link href="/register?role=teacher" className="nav-cta nav-cta--teacher">
-                <span>Я преподаватель</span>
+              <Link href="/login" className="nav-cta nav-cta--student">
+                <span>Войти</span>
               </Link>
             </div>
           )}
