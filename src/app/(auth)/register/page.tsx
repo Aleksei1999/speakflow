@@ -224,6 +224,10 @@ function RegisterPageInner() {
           last_name: lastName,
           phone: phone.trim() || null,
           role: 'student',
+          // Передаём выбранный слот в user_metadata — auth/callback после
+          // подтверждения email прочитает его и создаст trial_lesson_request
+          // + автоматически назначит свободного преподавателя.
+          preferred_slot: chosen.iso,
           // Реферальный код (если есть). Триггер handle_new_user валидирует и,
           // если код невалиден, просто игнорирует — signUp всё равно пройдёт.
           ...(refCode ? { ref_code: refCode } : {}),
@@ -242,11 +246,8 @@ function RegisterPageInner() {
       }
       return
     }
-    void fetch('/api/trial-lesson/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ levelTestId: null, preferredSlot: chosen.iso }),
-    }).catch(() => {})
+    // trial_lesson_requests + auto-assignment теперь создаются на сервере
+    // в /api/auth/callback после подтверждения email — там есть кука сессии.
     if (quizResult) {
       void fetch('/api/level-test', {
         method: 'POST',
