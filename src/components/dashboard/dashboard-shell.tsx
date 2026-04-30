@@ -139,6 +139,7 @@ const teacherNav: NavItem[] = [
   { href: "/teacher/schedule", label: "Расписание", icon: icons.calendar },
   { href: "/teacher/students", label: "Мои ученики", icon: icons.users },
   { href: "/teacher/groups", label: "Группы", icon: icons.groups },
+  { href: "/teacher/clubs", label: "Speaking Clubs", icon: icons.mic },
   { href: "/teacher/homework", label: "Домашние задания", icon: icons.edit },
   { href: "/teacher/materials", label: "Материалы", icon: icons.book },
   { href: "/teacher/payouts", label: "Выплаты", icon: icons.payment },
@@ -233,6 +234,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
 
   const currentRole = role ?? "student"
   const [supportUnread, setSupportUnread] = useState(0)
+  const [teacherClubsUnread, setTeacherClubsUnread] = useState(0)
 
   useEffect(() => {
     if (currentRole !== "admin") return
@@ -273,16 +275,67 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
     }
   }, [currentRole])
 
+  useEffect(() => {
+    if (currentRole !== "teacher") return
+    let cancelled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/teacher/clubs/unread-count", {
+          cache: "no-store",
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled && typeof json?.count === "number") {
+          setTeacherClubsUnread(json.count)
+        }
+      } catch {}
+    }
+
+    fetchCount()
+    timer = setInterval(fetchCount, 60_000)
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchCount()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    const onChanged = () => fetchCount()
+    window.addEventListener(
+      "teacher-clubs-seen-changed",
+      onChanged as EventListener
+    )
+
+    return () => {
+      cancelled = true
+      if (timer) clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener(
+        "teacher-clubs-seen-changed",
+        onChanged as EventListener
+      )
+    }
+  }, [currentRole])
+
   const baseNav =
     currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
   const navItems = useMemo(() => {
-    if (currentRole !== "admin") return baseNav
-    return baseNav.map((item) =>
-      item.href === "/admin/support" && supportUnread > 0
-        ? { ...item, badge: supportUnread }
-        : item
-    )
-  }, [baseNav, currentRole, supportUnread])
+    if (currentRole === "admin") {
+      return baseNav.map((item) =>
+        item.href === "/admin/support" && supportUnread > 0
+          ? { ...item, badge: supportUnread }
+          : item
+      )
+    }
+    if (currentRole === "teacher") {
+      return baseNav.map((item) =>
+        item.href === "/teacher/clubs" && teacherClubsUnread > 0
+          ? { ...item, badge: teacherClubsUnread }
+          : item
+      )
+    }
+    return baseNav
+  }, [baseNav, currentRole, supportUnread, teacherClubsUnread])
   const bottomItems =
     currentRole === "admin" ? adminBottom : currentRole === "teacher" ? teacherBottom : studentBottom
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
