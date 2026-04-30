@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const publicRoutes = ['/', '/teachers', '/level-test', '/get-started']
+const publicRoutes = ['/', '/teachers', '/teach', '/level-test', '/get-started', '/privacy', '/oferta']
 const authRoutes = ['/login', '/register', '/forgot-password']
 
 function homeForRole(role: string | null): string {
