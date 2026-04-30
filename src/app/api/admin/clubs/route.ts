@@ -4,6 +4,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
+import { notifyClubHostAssigned } from "@/lib/clubs/notify-host"
 
 // ---------------------------------------------------------------
 // GET  /api/admin/clubs?limit=50&status=upcoming|past|draft
@@ -273,6 +274,12 @@ export async function POST(request: NextRequest) {
         hostRow = host
           ? { role: "host", sort_order: 0, host }
           : null
+        // Fire-and-forget notification to teacher + admins.
+        void notifyClubHostAssigned({
+          clubId: club.id,
+          hostUserId: d.host_teacher_id,
+          assignedByUserId: gate.user.id,
+        }).catch(() => {})
       }
     }
 

@@ -4,6 +4,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
+import { notifyClubHostAssigned } from "@/lib/clubs/notify-host"
 
 // ---------------------------------------------------------------
 // PATCH /api/admin/clubs/[id]
@@ -51,6 +52,7 @@ const patchSchema = z
     cover_emoji: z.string().trim().max(10).optional().nullable(),
     is_published: z.boolean().optional(),
     cancelled: z.boolean().optional(),
+    host_teacher_id: z.string().uuid().optional().nullable(),
   })
   .refine((d) => Object.keys(d).length > 0, {
     message: "Нужно передать хотя бы одно поле",
@@ -113,6 +115,35 @@ export async function PATCH(
     }
 
     const admin = createAdminClient()
+
+    // Handle host change separately: club_hosts is a side-table.
+    let hostChangedTo: string | null | undefined = undefined
+    if (d.host_teacher_id !== undefined) {
+      const { data: existingHosts } = await admin
+        .from("club_hosts")
+        .select("host_id")
+        .eq("club_id", id)
+        .order("sort_order", { ascending: true })
+      const currentHostId = existingHosts?.[0]?.host_id ?? null
+
+      if (d.host_teacher_id === null) {
+        if (currentHostId) {
+          await admin.from("club_hosts").delete().eq("club_id", id)
+          hostChangedTo = null
+        }
+      } else if (d.host_teacher_id !== currentHostId) {
+        await admin.from("club_hosts").delete().eq("club_id", id)
+        const { error: hErr } = await admin.from("club_hosts").insert({
+          club_id: id,
+          host_id: d.host_teacher_id,
+          role: "host",
+        })
+        if (!hErr) {
+          hostChangedTo = d.host_teacher_id
+        }
+      }
+    }
+
     const { data, error } = await admin
       .from("clubs")
       .update(update)
@@ -162,6 +193,15 @@ export async function PATCH(
       is_full: seatsTaken >= capacity,
       host_teacher_id: host?.id ?? null,
       host_teacher_name: host?.full_name ?? null,
+    }
+
+    // Notify newly-assigned teacher (and admins) AFTER the club row is up to date.
+    if (hostChangedTo) {
+      void notifyClubHostAssigned({
+        clubId: id,
+        hostUserId: hostChangedTo,
+        assignedByUserId: gate.user.id,
+      }).catch(() => {})
     }
 
     return NextResponse.json({ club: enriched })
