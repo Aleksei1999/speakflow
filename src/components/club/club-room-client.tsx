@@ -44,7 +44,7 @@ declare global {
 
 const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
-.cr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;position:fixed;inset:0;z-index:1000;width:100vw;height:100vh}
+.cr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
 .cr *{box-sizing:border-box}.cr a{color:inherit;text-decoration:none}.cr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .cr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
 .cr .lh-side{display:flex;align-items:center}.cr .lh-right{justify-content:flex-end}
@@ -74,8 +74,9 @@ const CSS = `
 .cr .stage{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
 .cr .va{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0}
 .cr .vm{position:relative;flex:1;background:#1a1a1a;border-radius:12px;overflow:hidden;min-height:0}
-.cr .vm > div{position:absolute;inset:0;width:100%;height:100%}
-.cr .vm iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.cr .vm .jitsi-mount{position:absolute;inset:0}
+.cr .vm .jitsi-mount > div{width:100%;height:100%}
+.cr .vm .jitsi-mount iframe{width:100%;height:100%;border:0;display:block}
 .cr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .cr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
@@ -335,7 +336,7 @@ export function ClubRoomClient({
             <div className="stage">
               <div className="va">
                 <div className="vm">
-                  <div ref={jitsiRef} style={{ width: "100%", height: "100%" }} />
+                  <div className="jitsi-mount" ref={jitsiRef} />
                   <div className="live-badge">
                     <span className="blink" />
                     LIVE
