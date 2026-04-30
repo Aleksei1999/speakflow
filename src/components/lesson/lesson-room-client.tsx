@@ -168,14 +168,16 @@ export function LessonRoomClient({
           disableDeepLinking:true,
           hideConferenceSubject:true,
           disableInviteFunctions:true,
-          // Keep API-invokable buttons available; native toolbar stays hidden via CSS/timeout.
-          toolbarButtons:["settings","fullscreen","tileview","microphone","camera","desktop","hangup"],
+          // Empty toolbar removes the native bar entirely; we drive everything
+          // via executeCommand from our own bottom bar.
+          toolbarButtons:[],
           notifications:[],
           disableThirdPartyRequests:true,
           hideConferenceTimer:true,
           hideParticipantsStats:true,
           filmstrip:{disabled:true},
-          toolbarConfig:{timeout:0,initialTimeout:0},
+          // Connection-quality "Wi-Fi" badges per tile.
+          connectionIndicators:{autoHide:true,disabled:true},
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -186,7 +188,12 @@ export function LessonRoomClient({
           DISABLE_FOCUS_INDICATOR:true,
           FILM_STRIP_MAX_HEIGHT:0,
           VERTICAL_FILMSTRIP:false,
-          TOOLBAR_TIMEOUT:0,
+          TOOLBAR_BUTTONS:[],
+          CONNECTION_INDICATOR_DISABLED:true,
+          VIDEO_QUALITY_LABEL_DISABLED:true,
+          DISABLE_DOMINANT_SPEAKER_INDICATOR:true,
+          DISABLE_VIDEO_BACKGROUND:true,
+          RECENT_LIST_ENABLED:false,
         },
         userInfo:{displayName:userName},
       })
