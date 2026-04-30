@@ -423,8 +423,15 @@ export default function StudentClubsPage() {
   }, [filteredClubs, weekStart, weekEnd])
 
   const upcomingFromNow = useMemo(() => {
+    const nowMs = now.getTime()
     return filteredClubs
-      .filter((c) => new Date(c.starts_at) >= now && !c.cancelled_at)
+      .filter((c) => {
+        if (c.cancelled_at) return false
+        const startMs = new Date(c.starts_at).getTime()
+        const durMs = (c.duration_min || 60) * 60_000
+        // Keep clubs that are in the future OR currently running.
+        return startMs + durMs > nowMs
+      })
       .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
   }, [filteredClubs, now])
 
