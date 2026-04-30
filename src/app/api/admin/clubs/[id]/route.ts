@@ -117,7 +117,15 @@ export async function PATCH(
       .from("clubs")
       .update(update)
       .eq("id", id)
-      .select("*")
+      .select(
+        `
+          *,
+          club_hosts (
+            role, sort_order,
+            host:profiles!club_hosts_host_id_fkey ( id, full_name, avatar_url )
+          )
+        `
+      )
       .maybeSingle()
 
     if (error) {
@@ -128,7 +136,35 @@ export async function PATCH(
       return NextResponse.json({ error: "Клаб не найден" }, { status: 404 })
     }
 
-    return NextResponse.json({ club: data })
+    const c: any = data
+    const cancelled = !!c.cancelled_at
+    const status = cancelled
+      ? "cancelled"
+      : c.is_published
+      ? "published"
+      : "draft"
+    const host = Array.isArray(c.club_hosts) && c.club_hosts.length
+      ? c.club_hosts[0]?.host
+      : null
+    const capacity = c.capacity ?? c.max_seats ?? 0
+    const seatsTaken = c.seats_taken ?? 0
+
+    const enriched = {
+      ...c,
+      title: c.topic ?? "",
+      scheduled_at: c.starts_at ?? null,
+      duration_minutes: c.duration_min ?? 60,
+      level: c.level_min ?? null,
+      status,
+      capacity,
+      registered_count: seatsTaken,
+      seats_remaining: Math.max(capacity - seatsTaken, 0),
+      is_full: seatsTaken >= capacity,
+      host_teacher_id: host?.id ?? null,
+      host_teacher_name: host?.full_name ?? null,
+    }
+
+    return NextResponse.json({ club: enriched })
   } catch (err) {
     console.error("Ошибка в PATCH /api/admin/clubs/[id]:", err)
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 })
