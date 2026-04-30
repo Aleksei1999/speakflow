@@ -100,15 +100,24 @@ type FormState = {
   status: Club["status"]
 }
 
+const ROAST_LEVELS = [
+  "Raw",
+  "Rare",
+  "Medium Rare",
+  "Medium",
+  "Medium Well",
+  "Well Done",
+] as const
+
 const EMPTY_FORM: FormState = {
   title: "",
   description: "",
-  level: "B1",
+  level: "Medium",
   scheduled_at: "",
   duration_minutes: 60,
   capacity: 10,
   host_teacher_id: "",
-  status: "draft",
+  status: "published",
 }
 
 function statusLabel(s: string): string {
@@ -161,7 +170,7 @@ export default function AdminClubsClient({
       id: c.id,
       title: c.title,
       description: c.description || "",
-      level: c.level || "B1",
+      level: (c.level as any) || "Medium",
       scheduled_at: toLocalInput(c.scheduled_at),
       duration_minutes: c.duration_minutes,
       capacity: c.capacity,
@@ -192,7 +201,7 @@ export default function AdminClubsClient({
     setSaving(true)
     try {
       const scheduled_at = new Date(form.scheduled_at).toISOString()
-      const body = {
+      const body: Record<string, any> = {
         title: form.title,
         description: form.description || null,
         level: form.level,
@@ -200,7 +209,10 @@ export default function AdminClubsClient({
         duration_minutes: form.duration_minutes,
         capacity: form.capacity,
         host_teacher_id: form.host_teacher_id || null,
-        status: form.status,
+        is_published: form.status === "published",
+      }
+      if (form.id) {
+        body.cancelled = form.status === "cancelled"
       }
       const url = form.id
         ? `/api/admin/clubs/${form.id}`
@@ -471,12 +483,11 @@ export default function AdminClubsClient({
                   value={form.level}
                   onChange={(e) => setForm({ ...form, level: e.target.value })}
                 >
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
+                  {ROAST_LEVELS.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="field">
@@ -520,10 +531,9 @@ export default function AdminClubsClient({
                     setForm({ ...form, status: e.target.value as any })
                   }
                 >
-                  <option value="draft">черновик</option>
                   <option value="published">опубликован</option>
-                  <option value="cancelled">отменён</option>
-                  <option value="completed">завершён</option>
+                  <option value="draft">черновик</option>
+                  {form.id ? <option value="cancelled">отменён</option> : null}
                 </select>
               </div>
             </div>

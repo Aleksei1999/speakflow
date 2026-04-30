@@ -21,6 +21,35 @@ const ROAST_LEVELS = [
   "Well Done",
 ] as const
 
+function normalizeClub(c: any) {
+  if (!c) return c
+  const cancelled = !!c.cancelled_at
+  const status = cancelled
+    ? "cancelled"
+    : c.is_published
+    ? "published"
+    : "draft"
+  const host = Array.isArray(c.club_hosts) && c.club_hosts.length
+    ? c.club_hosts[0]?.host
+    : null
+  const capacity = c.capacity ?? c.max_seats ?? 0
+  const seatsTaken = c.seats_taken ?? 0
+  return {
+    ...c,
+    title: c.topic ?? c.title ?? "",
+    scheduled_at: c.starts_at ?? c.scheduled_at ?? null,
+    duration_minutes: c.duration_min ?? c.duration_minutes ?? 60,
+    level: c.level_min ?? c.level ?? null,
+    status,
+    capacity,
+    registered_count: seatsTaken,
+    seats_remaining: Math.max(capacity - seatsTaken, 0),
+    is_full: seatsTaken >= capacity,
+    host_teacher_id: host?.id ?? null,
+    host_teacher_name: host?.full_name ?? null,
+  }
+}
+
 const CATEGORIES = [
   "speaking",
   "business",
@@ -115,11 +144,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
-    const enriched = (data ?? []).map((c: any) => ({
-      ...c,
-      seats_remaining: Math.max((c.capacity ?? c.max_seats ?? 0) - (c.seats_taken ?? 0), 0),
-      is_full: (c.seats_taken ?? 0) >= (c.capacity ?? c.max_seats ?? 0),
-    }))
+    const enriched = (data ?? []).map((c: any) => normalizeClub(c))
 
     return NextResponse.json({ clubs: enriched, count: enriched.length })
   } catch (err) {
@@ -181,7 +206,15 @@ export async function POST(request: NextRequest) {
     const { data: club, error } = await admin
       .from("clubs")
       .insert(insertPayload)
-      .select("*")
+      .select(
+        `
+          *,
+          club_hosts (
+            role, sort_order,
+            host:profiles!club_hosts_host_id_fkey ( id, full_name, avatar_url )
+          )
+        `
+      )
       .single()
 
     if (error) {
@@ -193,16 +226,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Attach host (teacher) if provided.
+    let hostRow: any = null
     if (d.host_teacher_id) {
       const { error: hostErr } = await admin
         .from("club_hosts")
         .insert({ club_id: club.id, host_id: d.host_teacher_id, role: "host" })
       if (hostErr) {
         console.error("admin/clubs POST host insert error:", hostErr)
+      } else {
+        const { data: host } = await admin
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .eq("id", d.host_teacher_id)
+          .maybeSingle()
+        hostRow = host
+          ? { role: "host", sort_order: 0, host }
+          : null
       }
     }
 
-    return NextResponse.json({ club }, { status: 201 })
+    const enriched = normalizeClub({
+      ...club,
+      club_hosts: hostRow ? [hostRow] : club.club_hosts ?? [],
+    })
+
+    return NextResponse.json({ club: enriched }, { status: 201 })
   } catch (err) {
     console.error("Ошибка в POST /api/admin/clubs:", err)
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 })
