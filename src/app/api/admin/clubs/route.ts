@@ -144,7 +144,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
-    const enriched = (data ?? []).map((c: any) => normalizeClub(c))
+    const clubIds = (data ?? []).map((c: any) => c.id)
+    const participantsByClub = new Map<string, any[]>()
+    if (clubIds.length) {
+      const { data: regs, error: regErr } = await admin
+        .from("club_registrations")
+        .select(
+          "club_id, status, registered_at, user:profiles!club_registrations_user_id_fkey(id, full_name, avatar_url, email)"
+        )
+        .in("club_id", clubIds)
+        .in("status", ["registered", "pending_payment", "attended", "waitlist"])
+        .order("registered_at", { ascending: true })
+      if (regErr) {
+        console.error("admin/clubs GET participants error:", regErr)
+      }
+      for (const r of regs ?? []) {
+        const arr = participantsByClub.get(r.club_id) ?? []
+        arr.push({
+          id: r.user?.id ?? null,
+          full_name: r.user?.full_name ?? null,
+          avatar_url: r.user?.avatar_url ?? null,
+          email: r.user?.email ?? null,
+          status: r.status,
+          registered_at: r.registered_at,
+        })
+        participantsByClub.set(r.club_id, arr)
+      }
+    }
+
+    const enriched = (data ?? []).map((c: any) => ({
+      ...normalizeClub(c),
+      participants: participantsByClub.get(c.id) ?? [],
+    }))
 
     return NextResponse.json({ clubs: enriched, count: enriched.length })
   } catch (err) {

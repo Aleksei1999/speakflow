@@ -67,7 +67,27 @@ const CSS = `
 .adm-clubs .modal-actions .left{margin-right:auto}
 
 .adm-clubs .hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
+
+.adm-clubs .parts{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.adm-clubs .parts-toggle{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;text-align:left;padding:0;letter-spacing:.3px;text-transform:uppercase}
+.adm-clubs .parts-toggle:hover{color:var(--text)}
+.adm-clubs .parts-list{display:flex;flex-direction:column;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.adm-clubs .parts-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);min-width:0}
+.adm-clubs .parts-row .pa-av{width:22px;height:22px;border-radius:50%;background:var(--accent-dark);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.adm-clubs .parts-row .pa-av img{width:100%;height:100%;object-fit:cover}
+.adm-clubs .parts-row .pa-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.adm-clubs .parts-row .pa-st{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.adm-clubs .parts-empty{font-size:11px;color:var(--muted);font-style:italic;padding:6px 0}
 `
+
+type Participant = {
+  id: string | null
+  full_name: string | null
+  avatar_url: string | null
+  email: string | null
+  status: string
+  registered_at: string | null
+}
 
 type Club = {
   id: string
@@ -81,6 +101,7 @@ type Club = {
   host_teacher_id: string | null
   host_teacher_name: string | null
   status: "draft" | "published" | "cancelled" | "completed"
+  participants?: Participant[]
 }
 
 type TeacherOption = {
@@ -159,6 +180,16 @@ export default function AdminClubsClient({
   const [assignFor, setAssignFor] = useState<Club | null>(null)
   const [assignIds, setAssignIds] = useState<string>("")
   const [assigning, setAssigning] = useState(false)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  const refreshClubs = async () => {
+    try {
+      const res = await fetch(`/api/admin/clubs`, { cache: "no-store" })
+      if (!res.ok) return
+      const json = await res.json()
+      if (Array.isArray(json?.clubs)) setClubs(json.clubs)
+    } catch {}
+  }
 
   const openNew = () => {
     setForm(EMPTY_FORM)
@@ -292,6 +323,8 @@ export default function AdminClubsClient({
         )
       )
       closeAssign()
+      // Refresh from server so registered_count + participants reflect reality.
+      void refreshClubs()
     } catch (e: any) {
       toast.error(e?.message || "Ошибка")
     } finally {
@@ -312,6 +345,14 @@ export default function AdminClubsClient({
           <Link href="/admin" className="btn btn-sm btn-secondary">
             ← На главную
           </Link>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            onClick={() => void refreshClubs()}
+            title="Перезагрузить список"
+          >
+            ⟳ Обновить
+          </button>
           <button type="button" className="btn btn-primary" onClick={openNew}>
             + Новый клуб
           </button>
@@ -384,6 +425,61 @@ export default function AdminClubsClient({
                     <span>
                       👤 <b>{c.host_teacher_name}</b>
                     </span>
+                  )}
+                </div>
+                <div className="parts">
+                  {c.participants && c.participants.length > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        className="parts-toggle"
+                        onClick={() =>
+                          setExpanded((e) => ({ ...e, [c.id]: !e[c.id] }))
+                        }
+                      >
+                        {expanded[c.id] ? "▾" : "▸"} Участники (
+                        {c.participants.length})
+                      </button>
+                      {expanded[c.id] ? (
+                        <div className="parts-list">
+                          {c.participants.map((p, i) => {
+                            const initials =
+                              (p.full_name || "")
+                                .split(" ")
+                                .filter(Boolean)
+                                .map((s) => s[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2) || "??"
+                            return (
+                              <div
+                                key={(p.id ?? "") + i}
+                                className="parts-row"
+                                title={p.email || ""}
+                              >
+                                <div className="pa-av">
+                                  {p.avatar_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={p.avatar_url}
+                                      alt={p.full_name || ""}
+                                    />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                                <div className="pa-name">
+                                  {p.full_name || p.email || "—"}
+                                </div>
+                                <div className="pa-st">{p.status}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="parts-empty">Пока никто не записался</div>
                   )}
                 </div>
                 <div className="club-actions">
