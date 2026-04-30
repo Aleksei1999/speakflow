@@ -73,7 +73,8 @@ const CSS = `
 .cr .lb.no-sidebar{grid-template-columns:1fr}
 .cr .stage{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
 .cr .va{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0}
-.cr .vm{position:relative;flex:1;background:#1a1a1a;border-radius:12px;overflow:hidden;min-height:0}
+.cr .vm-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.cr .vm{position:relative;background:#1a1a1a;border-radius:12px;overflow:hidden;width:100%;height:100%;aspect-ratio:16/9;max-width:100%;max-height:100%}
 .cr .vm .jitsi-mount{position:absolute;inset:0}
 .cr .vm .jitsi-mount > div{width:100%;height:100%}
 .cr .vm .jitsi-mount iframe{width:100%;height:100%;border:0;display:block}
@@ -346,11 +347,13 @@ export function ClubRoomClient({
           <div className={`lb ${sidebarOn ? "" : "no-sidebar"}`}>
             <div className="stage">
               <div className="va">
-                <div className="vm">
-                  <div className="jitsi-mount" ref={jitsiRef} />
-                  <div className="live-badge">
-                    <span className="blink" />
-                    LIVE
+                <div className="vm-wrap">
+                  <div className="vm">
+                    <div className="jitsi-mount" ref={jitsiRef} />
+                    <div className="live-badge">
+                      <span className="blink" />
+                      LIVE
+                    </div>
                   </div>
                 </div>
                 <div className="vc">
