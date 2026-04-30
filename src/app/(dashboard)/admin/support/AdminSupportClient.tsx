@@ -6,6 +6,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
+import { createClient } from "@/lib/supabase/client"
 
 const CSS = `
 .adm-support{max-width:1400px;margin:0 auto}
@@ -319,6 +320,87 @@ export default function AdminSupportClient({
     }
   }
 
+  const refreshThreads = async () => {
+    try {
+      const res = await fetch(`/api/support/threads?limit=100`, {
+        cache: "no-store",
+      })
+      if (!res.ok) return
+      const json = await res.json()
+      if (Array.isArray(json?.threads)) {
+        setThreads((prev) => {
+          // Preserve unread_count locally for the currently-active thread
+          // since we mark it read on the server too.
+          const next = json.threads as Thread[]
+          if (!activeId) return next
+          return next.map((t) =>
+            t.id === activeId
+              ? { ...t, unread_count: 0, unread_for_admin: false }
+              : t
+          )
+        })
+      }
+    } catch {}
+  }
+
+  // Auto-poll threads + react to focus/visibility so new tickets appear
+  // without a manual reload.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null
+    timer = setInterval(refreshThreads, 30_000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshThreads()
+    }
+    const onFocus = () => refreshThreads()
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      if (timer) clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId])
+
+  // Realtime: any insert/update on support_threads or new support_messages
+  // → refresh the list immediately.
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel("admin-support-threads")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_threads" },
+        () => refreshThreads()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "support_messages" },
+        (payload: any) => {
+          refreshThreads()
+          // If the active thread received the message, append it to the chat.
+          if (
+            payload?.new?.thread_id === activeId &&
+            payload?.new?.sender_role !== "admin"
+          ) {
+            void fetch(`/api/support/threads/${activeId}`, {
+              cache: "no-store",
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then((j) => {
+                if (j?.messages) setMessages(j.messages)
+              })
+              .catch(() => {})
+          }
+        }
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId])
+
   return (
     <div className="adm-support">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -331,10 +413,18 @@ export default function AdminSupportClient({
             {counts.pending}
           </div>
         </div>
-        <div>
+        <div style={{ display: "flex", gap: 8 }}>
           <Link href="/admin" className="btn btn-sm btn-secondary">
             ← На главную
           </Link>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            onClick={() => void refreshThreads()}
+            title="Перезагрузить список"
+          >
+            ⟳ Обновить
+          </button>
         </div>
       </div>
 
