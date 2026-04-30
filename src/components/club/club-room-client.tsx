@@ -92,12 +92,14 @@ export function ClubRoomClient({
         startWithAudioMuted: true,
         startWithVideoMuted: false,
         disableDeepLinking: true,
-      },
-      interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_BRAND_WATERMARK: false,
-        DEFAULT_LOGO_URL: "",
-        TOOLBAR_BUTTONS: [
+        hideConferenceSubject: true,
+        hideConferenceTimer: true,
+        hideParticipantsStats: true,
+        disableInviteFunctions: true,
+        disableThirdPartyRequests: true,
+        notifications: [],
+        connectionIndicators: { autoHide: true, disabled: true },
+        toolbarButtons: [
           "microphone",
           "camera",
           "desktop",
@@ -108,6 +110,18 @@ export function ClubRoomClient({
           "settings",
           "hangup",
         ],
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_BRAND_WATERMARK: false,
+        SHOW_WATERMARK_FOR_GUESTS: false,
+        DEFAULT_LOGO_URL: "",
+        MOBILE_APP_PROMO: false,
+        HIDE_INVITE_MORE_HEADER: true,
+        CONNECTION_INDICATOR_DISABLED: true,
+        VIDEO_QUALITY_LABEL_DISABLED: true,
+        DISABLE_DOMINANT_SPEAKER_INDICATOR: true,
+        DISABLE_VIDEO_BACKGROUND: true,
       },
     })
 
