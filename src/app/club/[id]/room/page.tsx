@@ -38,7 +38,15 @@ export default async function ClubRoomPage({
       admin
         .from("clubs")
         .select(
-          "id, topic, starts_at, duration_min, cancelled_at, is_published"
+          `
+          id, topic, description, starts_at, duration_min, cancelled_at,
+          is_published, capacity, max_seats, seats_taken, level_min,
+          level_max, category, cover_emoji,
+          club_hosts (
+            role, sort_order,
+            host:profiles!club_hosts_host_id_fkey ( id, full_name, avatar_url )
+          )
+          `
         )
         .eq("id", id)
         .maybeSingle(),
@@ -108,10 +116,49 @@ export default async function ClubRoomPage({
     isModerator: isHost || isAdmin,
   })
 
+  // Pull active participants for the right-side roster.
+  const { data: participantsRaw } = await admin
+    .from("club_registrations")
+    .select(
+      "status, user:profiles!club_registrations_user_id_fkey(id, full_name, avatar_url, email)"
+    )
+    .eq("club_id", id)
+    .in("status", ["registered", "pending_payment", "attended"])
+    .order("registered_at", { ascending: true })
+
+  const participants = (participantsRaw ?? [])
+    .map((r: any) => ({
+      id: r.user?.id ?? null,
+      full_name: r.user?.full_name ?? null,
+      avatar_url: r.user?.avatar_url ?? null,
+      email: r.user?.email ?? null,
+      status: r.status,
+    }))
+    .filter((p: any) => !!p.id)
+
+  const primaryHost = Array.isArray(club.club_hosts)
+    ? club.club_hosts[0]?.host
+    : null
+  const hostName: string =
+    primaryHost?.full_name || (isHost ? profile.full_name : null) || "Ведущий"
+  const hostInitials = hostName
+    .split(" ")
+    .filter(Boolean)
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
   return (
     <ClubRoomClient
       clubId={club.id}
       title={club.topic}
+      description={club.description ?? null}
+      coverEmoji={club.cover_emoji ?? null}
+      level={club.level_min ?? null}
+      category={club.category ?? null}
+      capacity={club.capacity ?? club.max_seats ?? 0}
+      seatsTaken={club.seats_taken ?? 0}
       scheduledAt={club.starts_at}
       durationMinutes={club.duration_min ?? 60}
       jitsiDomain={JITSI_CONFIG.domain}
@@ -120,6 +167,10 @@ export default async function ClubRoomPage({
       userId={profile.id}
       userName={profile.full_name || profile.email || "Гость"}
       isModerator={isHost || isAdmin}
+      hostName={hostName}
+      hostInitials={hostInitials}
+      hostAvatarUrl={primaryHost?.avatar_url ?? null}
+      participants={participants}
       backHref={backHref}
     />
   )
