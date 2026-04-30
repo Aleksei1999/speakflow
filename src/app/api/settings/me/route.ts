@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest) {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, first_name, last_name, full_name, avatar_url, phone, timezone, city, language, notification_prefs, ui_prefs, profile_visibility, subscription_tier, subscription_until'
+        'id, email, first_name, last_name, full_name, avatar_url, phone, timezone, city, language, notification_prefs, ui_prefs, profile_visibility, subscription_tier, subscription_until, telegram_chat_id, telegram_username'
       )
       .eq('id', user.id)
       .maybeSingle()
@@ -60,11 +60,12 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Профиль не найден' }, { status: 404 })
     }
 
-    // Detect connected identity providers from auth.user_metadata / identities.
+    // Detect connected providers. Google = OAuth identity. Telegram = custom
+    // chat_id stored on the profile (linked via the bot webhook flow).
     const identities = (user as any).identities ?? []
     const connected = {
       google: identities.some((i: any) => i.provider === 'google'),
-      telegram: identities.some((i: any) => i.provider === 'telegram'),
+      telegram: !!(data as any).telegram_chat_id,
     }
 
     return NextResponse.json({
