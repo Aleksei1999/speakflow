@@ -290,6 +290,25 @@ export async function sendNotification(
 
 // ---------- Построение контента ----------
 
+function formatClubWhen(iso: unknown): string {
+  if (typeof iso !== 'string' || !iso) return ''
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const fmt = new Intl.DateTimeFormat('ru-RU', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Moscow',
+    }).format(d)
+    return `${fmt} МСК`
+  } catch {
+    return ''
+  }
+}
+
 function buildEmailContent(
   type: NotificationType,
   data: NotificationData,
@@ -354,9 +373,11 @@ function buildEmailContent(
     case 'new_club':
       return newClubEmail(
         name,
-        data.clubTitle || 'Speaking Club',
-        data.whenStr || '',
-        data.host || 'Raw English',
+        data.clubTitle || (data as any).title || 'Speaking Club',
+        data.whenStr ||
+          formatClubWhen((data as any).start_at) ||
+          '',
+        data.host || (data as any).host_name || 'Raw English',
         data.ctaUrl || `${appUrl}/student/clubs`
       )
 
@@ -474,9 +495,11 @@ function buildTelegramText(
     case 'new_club':
       return formatTelegramNewClub(
         name,
-        data.clubTitle || 'Speaking Club',
-        data.whenStr || '',
-        data.host || 'Raw English',
+        data.clubTitle || (data as any).title || 'Speaking Club',
+        data.whenStr ||
+          formatClubWhen((data as any).start_at) ||
+          '',
+        data.host || (data as any).host_name || 'Raw English',
         data.ctaUrl || `${appUrl}/student/clubs`
       )
 
