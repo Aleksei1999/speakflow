@@ -131,15 +131,35 @@ export async function PATCH(
           await admin.from("club_hosts").delete().eq("club_id", id)
           hostChangedTo = null
         }
-      } else if (d.host_teacher_id !== currentHostId) {
-        await admin.from("club_hosts").delete().eq("club_id", id)
-        const { error: hErr } = await admin.from("club_hosts").insert({
-          club_id: id,
-          host_id: d.host_teacher_id,
-          role: "host",
-        })
-        if (!hErr) {
-          hostChangedTo = d.host_teacher_id
+      } else {
+        // Resolve teacher_profiles.id → profiles.id if needed.
+        let resolvedHostId: string = d.host_teacher_id
+        const { data: profileMatch } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("id", d.host_teacher_id)
+          .maybeSingle()
+        if (!profileMatch) {
+          const { data: tpRow } = await admin
+            .from("teacher_profiles")
+            .select("user_id")
+            .eq("id", d.host_teacher_id)
+            .maybeSingle()
+          if (tpRow?.user_id) resolvedHostId = tpRow.user_id
+        }
+
+        if (resolvedHostId !== currentHostId) {
+          await admin.from("club_hosts").delete().eq("club_id", id)
+          const { error: hErr } = await admin.from("club_hosts").insert({
+            club_id: id,
+            host_id: resolvedHostId,
+            role: "host",
+          })
+          if (!hErr) {
+            hostChangedTo = resolvedHostId
+          } else {
+            console.error("PATCH admin/clubs host insert error:", hErr)
+          }
         }
       }
     }
