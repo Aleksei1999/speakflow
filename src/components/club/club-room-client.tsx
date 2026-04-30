@@ -210,6 +210,9 @@ export function ClubRoomClient({
           filmstrip: { disabled: true },
           disableSelfViewSettings: true,
           hideDisplayName: true,
+          // Make the large video stretch/cover the container instead of letterboxing.
+          videoLayoutFit: "both",
+          disableLargeVideoCrop: false,
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
@@ -227,6 +230,8 @@ export function ClubRoomClient({
           FILM_STRIP_MAX_HEIGHT: 0,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
+          VIDEO_LAYOUT_FIT: "both",
+          DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
       })
