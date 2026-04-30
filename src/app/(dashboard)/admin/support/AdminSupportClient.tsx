@@ -39,7 +39,12 @@ const CSS = `
 .adm-support .thread-item.priority-high{border-left:3px solid var(--red)}
 .adm-support .thread-item.priority-med{border-left:3px solid #F59E0B}
 .adm-support .thread-item.priority-low{border-left:3px solid #22c55e}
-.adm-support .th-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:var(--text)}
+.adm-support .thread-item.unread{background:rgba(230,57,70,.05)}
+.adm-support .thread-item.unread .th-subject{font-weight:800}
+.adm-support .thread-item.unread .th-last{color:var(--text)}
+.adm-support .thread-item.unread::after{content:"";position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.adm-support .th-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:var(--text);overflow:hidden}
+.adm-support .th-avatar img{width:100%;height:100%;object-fit:cover}
 .adm-support .th-avatar.red{background:var(--red);color:#fff}
 .adm-support .th-avatar.lime{background:var(--lime);color:#0A0A0A}
 .adm-support .th-avatar.dark{background:var(--accent-dark);color:#fff}
@@ -60,7 +65,8 @@ const CSS = `
 .adm-support .chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
 .adm-support .msg{display:flex;gap:10px;max-width:72%}
 .adm-support .msg.me{align-self:flex-end;flex-direction:row-reverse}
-.adm-support .msg-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;color:var(--text)}
+.adm-support .msg-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;color:var(--text);overflow:hidden}
+.adm-support .msg-avatar img{width:100%;height:100%;object-fit:cover}
 .adm-support .msg.me .msg-avatar{background:var(--red);color:#fff;border-color:var(--red)}
 .adm-support .msg-bubble{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
 .adm-support .msg.me .msg-bubble{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark)}
@@ -89,13 +95,16 @@ type Thread = {
   student_id: string | null
   student_name: string
   student_email: string | null
+  student_avatar_url: string | null
   student_level: string | null
   priority: "low" | "medium" | "high"
   status: "open" | "pending" | "resolved" | "closed"
   last_message_at: string
   created_at: string
   unread_count: number
+  unread_for_admin?: boolean
   last_message_preview: string | null
+  last_message_sender_role?: string | null
 }
 
 type Message = {
@@ -103,6 +112,7 @@ type Message = {
   author_id: string
   author_role: "student" | "teacher" | "admin"
   author_name: string
+  author_avatar_url: string | null
   body: string
   attachments: any[]
   created_at: string
@@ -209,6 +219,25 @@ export default function AdminSupportClient({
       }
     }
     load()
+
+    // Mark as read on the server, then locally clear unread state.
+    void fetch(`/api/admin/support/threads/${activeId}/read`, {
+      method: "POST",
+    })
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return
+        setThreads((cur) =>
+          cur.map((t) =>
+            t.id === activeId
+              ? { ...t, unread_count: 0, unread_for_admin: false }
+              : t
+          )
+        )
+        // Notify shell to refresh sidebar badge.
+        window.dispatchEvent(new CustomEvent("support-unread-changed"))
+      })
+
     return () => {
       cancelled = true
     }
@@ -350,41 +379,57 @@ export default function AdminSupportClient({
                   : "В этой категории тикетов нет"}
               </div>
             ) : (
-              filtered.map((t, i) => (
-                <div
-                  key={t.id}
-                  className={`thread-item ${priorityClass(t.priority)}${
-                    activeId === t.id ? " active" : ""
-                  }`}
-                  onClick={() => setActiveId(t.id)}
-                  role="button"
-                  tabIndex={0}
-                >
+              filtered.map((t, i) => {
+                const isUnread =
+                  (t.unread_for_admin ?? t.unread_count > 0) &&
+                  activeId !== t.id
+                return (
                   <div
-                    className={`th-avatar ${
-                      AVATAR_STYLES[i % AVATAR_STYLES.length]
-                    }`}
+                    key={t.id}
+                    className={`thread-item ${priorityClass(t.priority)}${
+                      activeId === t.id ? " active" : ""
+                    }${isUnread ? " unread" : ""}`}
+                    onClick={() => setActiveId(t.id)}
+                    role="button"
+                    tabIndex={0}
                   >
-                    {initialsOf(t.student_name)}
-                  </div>
-                  <div className="th-body">
-                    <div className="th-subject">
-                      {t.subject || "(без темы)"}
+                    <div
+                      className={`th-avatar ${
+                        t.student_avatar_url
+                          ? ""
+                          : AVATAR_STYLES[i % AVATAR_STYLES.length]
+                      }`}
+                    >
+                      {t.student_avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={t.student_avatar_url}
+                          alt={t.student_name}
+                        />
+                      ) : (
+                        initialsOf(t.student_name)
+                      )}
                     </div>
-                    <div className="th-last">
-                      <b style={{ color: "var(--text)" }}>{t.student_name}</b>
-                      {" · "}
-                      {t.last_message_preview || "Нет сообщений"}
+                    <div className="th-body">
+                      <div className="th-subject">
+                        {t.subject || "(без темы)"}
+                      </div>
+                      <div className="th-last">
+                        <b style={{ color: "var(--text)" }}>
+                          {t.student_name}
+                        </b>
+                        {" · "}
+                        {t.last_message_preview || "Нет сообщений"}
+                      </div>
+                    </div>
+                    <div className="th-meta">
+                      <span>
+                        {timeAgoRu(t.last_message_at || t.created_at)}
+                      </span>
                     </div>
                   </div>
-                  <div className="th-meta">
-                    <span>{timeAgoRu(t.last_message_at || t.created_at)}</span>
-                    {t.unread_count > 0 && (
-                      <span className="unread-dot">{t.unread_count}</span>
-                    )}
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -462,7 +507,15 @@ export default function AdminSupportClient({
                       className={`msg${m.author_role === "admin" ? " me" : ""}`}
                     >
                       <div className="msg-avatar">
-                        {initialsOf(m.author_name)}
+                        {m.author_avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.author_avatar_url}
+                            alt={m.author_name}
+                          />
+                        ) : (
+                          initialsOf(m.author_name)
+                        )}
                       </div>
                       <div>
                         <div className="msg-bubble">{m.body}</div>

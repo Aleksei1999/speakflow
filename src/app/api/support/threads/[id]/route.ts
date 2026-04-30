@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic"
 const patchSchema = z
   .object({
     status: z.enum(["open", "pending", "resolved", "closed"]).optional(),
-    priority: z.enum(["low", "med", "high"]).optional(),
+    // UI may send "medium"; DB stores "med".
+    priority: z.enum(["low", "med", "medium", "high"]).optional(),
   })
   .refine((d) => d.status !== undefined || d.priority !== undefined, {
     message: "Нужно передать хотя бы одно поле",
@@ -87,9 +88,21 @@ export async function GET(
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
+    const normalizedMessages = (messages ?? []).map((m: any) => ({
+      id: m.id,
+      thread_id: m.thread_id,
+      author_id: m.sender_id,
+      author_role: m.sender_role,
+      author_name: m.sender?.full_name || "—",
+      author_avatar_url: m.sender?.avatar_url || null,
+      body: m.body,
+      attachments: m.attachments ?? [],
+      created_at: m.created_at,
+    }))
+
     return NextResponse.json({
       thread,
-      messages: messages ?? [],
+      messages: normalizedMessages,
     })
   } catch (err) {
     console.error("Ошибка в GET /api/support/threads/[id]:", err)
@@ -143,7 +156,10 @@ export async function PATCH(
 
     const update: Record<string, any> = {}
     if (parsed.data.status !== undefined) update.status = parsed.data.status
-    if (parsed.data.priority !== undefined) update.priority = parsed.data.priority
+    if (parsed.data.priority !== undefined) {
+      update.priority =
+        parsed.data.priority === "medium" ? "med" : parsed.data.priority
+    }
 
     const adminClient = createAdminClient()
     const { data, error } = await adminClient
