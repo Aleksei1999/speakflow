@@ -212,6 +212,23 @@ export default async function TeacherDashboardPage() {
     .order("scheduled_at", { ascending: true })
   const todayLessons = (todayLessonsRaw ?? []) as any[]
 
+  // --- Today's hosted Speaking Clubs (teacher = host) ---
+  const { data: hostedTodayRaw } = await (supabase as any)
+    .from("club_hosts")
+    .select(
+      "club_id, clubs!inner(id, topic, starts_at, duration_min, is_published, cancelled_at, seats_taken, capacity)"
+    )
+    .eq("host_id", user.id)
+    .gte("clubs.starts_at", todayStart.toISOString())
+    .lte("clubs.starts_at", todayEnd.toISOString())
+  const todayClubs = ((hostedTodayRaw ?? []) as any[])
+    .map((r) => r.clubs)
+    .filter((c) => c && c.is_published && !c.cancelled_at)
+    .sort(
+      (a, b) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    )
+
   const todayStudentIds = [...new Set(todayLessons.map((l) => l.student_id))]
   const { data: todayStudentProfilesRaw } = todayStudentIds.length
     ? await (supabase as any).from("profiles").select("id, full_name").in("id", todayStudentIds)
@@ -433,9 +450,72 @@ export default async function TeacherDashboardPage() {
             <Link href="/teacher/schedule" className="btn btn-sm btn-secondary">Полное расписание</Link>
           </div>
           <div className="card-body">
-            {todayLessons.length === 0 ? (
-              <div className="schedule-empty">На сегодня уроков нет</div>
-            ) : (
+            {todayLessons.length === 0 && todayClubs.length === 0 ? (
+              <div className="schedule-empty">На сегодня уроков и клубов нет</div>
+            ) : null}
+            {todayClubs.length > 0 ? (
+              <>
+                {todayClubs.map((c: any) => {
+                  const at = new Date(c.starts_at)
+                  const access = computeLessonAccess({
+                    scheduledAt: c.starts_at,
+                    durationMinutes: c.duration_min ?? 60,
+                  })
+                  const secondsUntilOpen = Math.max(
+                    0,
+                    Math.floor((access.openAtMs - access.nowMs) / 1000)
+                  )
+                  const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
+                  const isLive = access.status === "live"
+                  const isSoon =
+                    access.status === "waiting" && secondsUntilOpen <= 600
+                  let cta: any
+                  if (isLive) {
+                    cta = <span className="tch-today-join">🎙 Зайти</span>
+                  } else if (isSoon) {
+                    cta = (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                        <span className="tch-today-join tch-today-join--waiting">Скоро откроется</span>
+                        <span className="tch-today-hint">через {minutesUntilOpen} мин</span>
+                      </div>
+                    )
+                  } else if (access.status === "expired") {
+                    cta = <span className="tch-today-join tch-today-join--expired">Завершён</span>
+                  } else {
+                    cta = <span className="status status-pending">ожидается</span>
+                  }
+                  const clickable = isLive || isSoon
+                  const href = `/club/${c.id}/room`
+                  const inner = (
+                    <>
+                      <div className="schedule-time">
+                        <div className="time">{formatLessonTime(at)}</div>
+                        <div className="dur">{c.duration_min ?? 60} мин</div>
+                      </div>
+                      <div className="schedule-info">
+                        <h4>🎙 {c.topic}</h4>
+                        <p>Speaking Club · {c.seats_taken ?? 0}/{c.capacity ?? c.seats_taken ?? 0} участников</p>
+                      </div>
+                      {cta}
+                    </>
+                  )
+                  return clickable ? (
+                    <Link
+                      key={c.id}
+                      href={href}
+                      className={`schedule-link schedule-item${isLive ? " active" : ""}`}
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div key={c.id} className="schedule-item">
+                      {inner}
+                    </div>
+                  )
+                })}
+              </>
+            ) : null}
+            {todayLessons.length === 0 ? null : (
               todayLessons.map((l) => {
                 const at = new Date(l.scheduled_at)
                 const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"

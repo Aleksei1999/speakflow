@@ -197,6 +197,10 @@ export default function AdminClubsClient({
   }
 
   const openEdit = (c: Club) => {
+    if (c.scheduled_at && new Date(c.scheduled_at).getTime() <= Date.now()) {
+      toast.error("Клуб уже начался — редактировать нельзя.")
+      return
+    }
     setForm({
       id: c.id,
       title: c.title,
@@ -483,13 +487,27 @@ export default function AdminClubsClient({
                   )}
                 </div>
                 <div className="club-actions">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => openEdit(c)}
-                  >
-                    Редактировать
-                  </button>
+                  {c.scheduled_at &&
+                  new Date(c.scheduled_at).getTime() <= Date.now() ? (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        fontWeight: 600,
+                        padding: "6px 14px",
+                      }}
+                    >
+                      🔒 Уже начался
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => openEdit(c)}
+                    >
+                      Редактировать
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn btn-sm btn-lime"

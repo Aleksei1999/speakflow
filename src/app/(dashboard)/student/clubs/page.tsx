@@ -826,8 +826,34 @@ function ClubCard({
   const host = primaryHost?.profiles
   const role = primaryHost?.role
 
+  // Compute access window for the "Зайти" CTA — registered students get a
+  // join button when the room is live (5 min before → end + 5 min).
+  const startMs = new Date(club.starts_at).getTime()
+  const durMs = (club.duration_min || 60) * 60_000
+  const openMs = startMs - 5 * 60_000
+  const closeMs = startMs + durMs + 5 * 60_000
+  const nowMsLocal = Date.now()
+  const isLive = nowMsLocal >= openMs && nowMsLocal <= closeMs
+  const isExpired = nowMsLocal > closeMs
+
   let btn: React.ReactNode
-  if (club.is_user_registered) {
+  if (club.is_user_registered && isLive) {
+    btn = (
+      <a
+        href={`/club/${club.id}/room`}
+        className="cc-btn cc-btn--book"
+        style={{ textAlign: "center" }}
+      >
+        🎙 Зайти в клуб
+      </a>
+    )
+  } else if (club.is_user_registered && isExpired) {
+    btn = (
+      <button type="button" className="cc-btn cc-btn--full" disabled>
+        Завершён
+      </button>
+    )
+  } else if (club.is_user_registered) {
     btn = (
       <button
         type="button"
