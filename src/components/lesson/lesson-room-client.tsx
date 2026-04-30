@@ -178,7 +178,8 @@ export function LessonRoomClient({
           disableThirdPartyRequests:true,
           hideConferenceTimer:true,
           hideParticipantsStats:true,
-          filmstrip:{disabled:true},
+          // filmstrip stays on — self-view thumbnail and remote screen-share
+          // tracks live in it; disabling hides them.
           // Connection-quality "Wi-Fi" badges per tile.
           connectionIndicators:{autoHide:true,disabled:true},
         },
@@ -189,7 +190,6 @@ export function LessonRoomClient({
           MOBILE_APP_PROMO:false,
           HIDE_INVITE_MORE_HEADER:true,
           DISABLE_FOCUS_INDICATOR:true,
-          FILM_STRIP_MAX_HEIGHT:0,
           VERTICAL_FILMSTRIP:false,
           TOOLBAR_BUTTONS:[],
           CONNECTION_INDICATOR_DISABLED:true,
