@@ -45,9 +45,18 @@ function formatPrice(kopeks: number): string {
   return `${Math.ceil(kopeks / 100).toLocaleString("ru-RU")} ₽`
 }
 
-function formatTimeUTC(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`
+function formatTimeMoscow(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Europe/Moscow",
+    }).format(new Date(iso))
+  } catch {
+    const d = new Date(iso)
+    return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`
+  }
 }
 
 function getInitials(name: string): string {
@@ -83,6 +92,24 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
   const [teacherRate, setTeacherRate] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [bookingLoading, setBookingLoading] = useState(false)
+  const [nowMs, setNowMs] = useState<number>(() => Date.now())
+
+  // Re-tick once a minute so slots that just slipped into the past go grey
+  // even if the modal was opened a while ago.
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Apply client-side past filter on top of API response.
+  const slotsView = useMemo(() => {
+    return slots.map((s) => {
+      if (!s.available) return s
+      const startMs = new Date(s.startTime).getTime()
+      if (startMs <= nowMs) return { ...s, available: false }
+      return s
+    })
+  }, [slots, nowMs])
 
   useEffect(() => {
     if (!open) {
@@ -364,11 +391,11 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                       <div className="cal-slots">
                         {Array.from({ length: 6 }).map((_, i) => <div key={i} className="cal-slot cal-slot--skeleton" />)}
                       </div>
-                    ) : slots.length === 0 ? (
+                    ) : slotsView.length === 0 ? (
                       <div className="cal-empty">Нет слотов на этот день</div>
                     ) : (
                       <div className="cal-slots">
-                        {slots.map((s) => {
+                        {slotsView.map((s) => {
                           const isSel = selectedSlot === s.startTime
                           const cls = ["cal-slot"]
                           if (!s.available) cls.push("cal-slot--taken")
@@ -380,8 +407,8 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                               disabled={!s.available}
                               onClick={() => s.available && setSelectedSlot(s.startTime)}
                             >
-                              <div className="cal-slot-time">{formatTimeUTC(s.startTime)}</div>
-                              <div className="cal-slot-dur">{s.available ? `${duration} мин · UTC` : "Занято"}</div>
+                              <div className="cal-slot-time">{formatTimeMoscow(s.startTime)}</div>
+                              <div className="cal-slot-dur">{s.available ? `${duration} мин · МСК` : "Занято"}</div>
                             </button>
                           )
                         })}
