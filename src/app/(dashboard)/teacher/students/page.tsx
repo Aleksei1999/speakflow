@@ -4,6 +4,10 @@ import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import TeacherStudentsClient from "./TeacherStudentsClient"
 
+// Не кешируем — список учеников / avatar_url должны быть свежими (миграция 048
+// бэкфилит OAuth-аватары, а старый snapshot мог содержать NULL).
+export const dynamic = "force-dynamic"
+
 const CSS = `
 .tch-std{max-width:1200px;margin:0 auto}
 .tch-std .dash-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
@@ -65,6 +69,11 @@ const CSS = `
 .tch-std .st-avatar.lime{background:var(--lime);color:#0A0A0A}
 .tch-std .st-avatar.dark{background:var(--accent-dark);color:#fff}
 [data-theme="dark"] .tch-std .st-avatar.dark{background:var(--red)}
+/* Hybrid avatar: initials chip under, <img> stretched on top. onError hides
+   the <img> and the initials show through — no broken-image icon. */
+.tch-std .st-avatar-wrap{position:relative;width:40px;height:40px;flex-shrink:0}
+.tch-std .st-avatar-wrap .st-avatar{position:absolute;inset:0;width:100%;height:100%}
+.tch-std .st-avatar-wrap img.st-avatar{object-fit:cover;background:var(--bg)}
 .tch-std .st-name{font-size:14px;font-weight:700}
 .tch-std .st-email{font-size:11px;color:var(--muted);margin-top:1px}
 

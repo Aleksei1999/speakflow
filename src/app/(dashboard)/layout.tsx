@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { LEVEL_XP_THRESHOLDS, type RoastLevel } from "@/lib/level-utils"
 
+// Don't cache the layout — avatar_url / role / progress must always reflect
+// current DB state (e.g. fresh OAuth identity, post-migration backfills).
+export const dynamic = "force-dynamic"
+
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
