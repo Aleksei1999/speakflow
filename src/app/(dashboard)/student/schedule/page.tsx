@@ -165,6 +165,7 @@ function weekdayIdx(d: Date): number {
 
 export default function StudentSchedulePage() {
   const [lessons, setLessons] = useState<LessonRow[]>([])
+  const [trialIds, setTrialIds] = useState<Set<string>>(new Set())
   const [teacherMap, setTeacherMap] = useState<Record<string, TeacherMapEntry>>({})
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [isLoading, setIsLoading] = useState(true)
@@ -209,6 +210,23 @@ export default function StudentSchedulePage() {
 
     const list = (rawLessons ?? []) as LessonRow[]
     setLessons(list)
+
+    // Помечаем уроки, созданные через trial-flow.
+    const lessonIds = list.map((l) => l.id)
+    if (lessonIds.length > 0) {
+      const { data: trials } = await (supabase as any)
+        .from("trial_lesson_requests")
+        .select("assigned_lesson_id")
+        .eq("user_id", user.id)
+        .in("assigned_lesson_id", lessonIds)
+      const tset = new Set<string>()
+      for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+        if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+      }
+      setTrialIds(tset)
+    } else {
+      setTrialIds(new Set())
+    }
 
     const teacherIds = Array.from(new Set(list.map((l) => l.teacher_id).filter(Boolean))) as string[]
     if (teacherIds.length > 0) {
@@ -415,6 +433,7 @@ export default function StudentSchedulePage() {
                 onCellClick={() => setBookingOpen(true)}
                 isHappeningNow={isHappeningNow}
                 teacherMap={teacherMap}
+                trialIds={trialIds}
               />
             ))}
           </div>
@@ -460,9 +479,12 @@ export default function StudentSchedulePage() {
                       {!isCancel && !expired ? <div className="lc-time-xp">+{lesson.duration_minutes === 25 ? 25 : 50} XP</div> : null}
                     </div>
                     <div className="lc-body">
-                      <div className="lc-name">Урок 1-on-1</div>
+                      <div className="lc-name">
+                        {trialIds.has(lesson.id) ? "🎯 Пробный урок" : "Урок 1-on-1"}
+                      </div>
                       <div className="lc-desc">
                         {format(dt, "HH:mm")}–{format(end, "HH:mm")}
+                        {trialIds.has(lesson.id) ? " · бесплатно" : ""}
                         {isDone ? " · ✓ завершён" : ""}
                         {expired && !isDone ? " · время прошло" : ""}
                         {isCancel ? " · отменён" : ""}
@@ -509,6 +531,7 @@ function RowFragment({
   onCellClick,
   isHappeningNow,
   teacherMap,
+  trialIds,
 }: {
   hour: number
   weekDays: Date[]
@@ -517,6 +540,7 @@ function RowFragment({
   onCellClick: () => void
   isHappeningNow: (l: LessonRow) => boolean
   teacherMap: Record<string, TeacherMapEntry>
+  trialIds: Set<string>
 }) {
   const label = `${String(hour).padStart(2, "0")}:00`
   return (
@@ -531,7 +555,7 @@ function RowFragment({
         return (
           <div key={`${day.toISOString()}-${hour}`} className="cg-c" onClick={first ? undefined : onCellClick}>
             {first ? (
-              <EventChip lesson={first} now={now} isHappeningNow={isHappeningNow} teacherName={first.teacher_id ? teacherMap[first.teacher_id]?.full_name ?? null : null} />
+              <EventChip lesson={first} now={now} isHappeningNow={isHappeningNow} teacherName={first.teacher_id ? teacherMap[first.teacher_id]?.full_name ?? null : null} isTrial={trialIds.has(first.id)} />
             ) : null}
           </div>
         )
@@ -545,11 +569,13 @@ function EventChip({
   now,
   isHappeningNow,
   teacherName,
+  isTrial,
 }: {
   lesson: LessonRow
   now: Date
   isHappeningNow: (l: LessonRow) => boolean
   teacherName: string | null
+  isTrial?: boolean
 }) {
   const start = new Date(lesson.scheduled_at)
   const end = new Date(start.getTime() + lesson.duration_minutes * 60_000)
@@ -561,7 +587,7 @@ function EventChip({
   return (
     <div className={cls} style={{ height }}>
       <div className="ev-t">
-        {happening ? "⚡ Сейчас" : shortName ? `Урок · ${shortName}` : "Урок 1-on-1"}
+        {happening ? "⚡ Сейчас" : isTrial ? "🎯 Пробный" : shortName ? `Урок · ${shortName}` : "Урок 1-on-1"}
       </div>
       <div className="ev-s">
         {format(start, "HH:mm")}–{format(end, "HH:mm")}{isDone ? " ✓" : ""}
