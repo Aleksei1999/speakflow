@@ -8,6 +8,7 @@ import Link from "next/link"
 import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
+import { TrialBookingCard } from "./_components/trial-booking-card"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime } from "@/lib/time"
 import { computeLessonAccess } from "@/lib/lesson-access"
@@ -180,7 +181,7 @@ export default async function StudentDashboardPage() {
   const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
   const todayIdx = weekdayIdx(now)
 
-  const [profileResult, progressResult, monthLessonsResult, completedMonthResult, todayLessonsResult, achResult, achDefResult, lbResult, xpDailyResult] =
+  const [profileResult, progressResult, monthLessonsResult, completedMonthResult, todayLessonsResult, achResult, achDefResult, lbResult, xpDailyResult, allLessonsCountResult, trialReqResult] =
     await Promise.all([
       (supabase as any).from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
       (supabase as any).from("user_progress").select("total_xp, english_level, current_streak, longest_streak").eq("user_id", user.id).maybeSingle(),
@@ -215,6 +216,21 @@ export default async function StudentDashboardPage() {
         .select("created_at")
         .eq("user_id", user.id)
         .gte("created_at", weekStart.toISOString()),
+      // Total lessons count — нужен для определения «новичка» (пробный ещё не пройден).
+      (supabase as any)
+        .from("lessons")
+        .select("id", { count: "exact", head: true })
+        .eq("student_id", user.id),
+      // Открытая заявка на пробный (если есть). Новичок может зайти на дашборд
+      // и до того, как заявка создана (например, OAuth signup) — тогда trial = null.
+      (supabase as any)
+        .from("trial_lesson_requests")
+        .select("id, status, assigned_lesson_id, preferred_slot")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "assigned", "scheduled"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ])
 
   const profile = profileResult.data as { full_name: string | null } | null
@@ -232,6 +248,14 @@ export default async function StudentDashboardPage() {
 
   const fullName = profile?.full_name ?? "Ученик"
   const firstName = fullName.split(" ")[0]
+
+  const totalLessonsCount = allLessonsCountResult.count ?? 0
+  const trialReq = (trialReqResult.data ?? null) as
+    | { id: string; status: string; assigned_lesson_id: string | null; preferred_slot: string | null }
+    | null
+  // Карточку показываем новичкам: нет ни одного урока + нет привязанного пробного.
+  const showTrialCard =
+    totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
   const xp = progress?.total_xp ?? 0
   const level: RoastLevel = xpToRoastLevel(xp)
   const thresholds = LEVEL_XP_THRESHOLDS[level]
@@ -327,6 +351,13 @@ export default async function StudentDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {showTrialCard && (
+        <TrialBookingCard
+          pendingRequestId={trialReq?.id ?? null}
+          firstName={firstName}
+        />
+      )}
 
       {/* XP Hero */}
       <div className="xp-hero">
