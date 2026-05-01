@@ -314,18 +314,20 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
         setBookingLoading(false)
         return
       }
-      // Если родитель прокинул onBooked — отдаём scheduledAt и
-      // НЕ редиректим (родитель сам решит куда прыгать).
-      if (onBooked) {
-        toast.success("Урок забронирован")
-        onBooked(selectedSlot)
-        onOpenChange(false)
-        setBookingLoading(false)
-        return
+      // Сначала сообщаем родителю (он может дёрнуть refetch без reload),
+      // потом всё равно делаем hard-redirect на /student/schedule —
+      // безопасный фолбэк, гарантирующий что новые брони увидят и в
+      // случае рассинхрона client-state.
+      try {
+        onBooked?.(selectedSlot)
+      } catch {
+        // не блокируем navigation
       }
-      // Default: hard-redirect — для мест, которые не передали callback.
       if (data?.redirectUrl) {
         window.location.href = data.redirectUrl
+      } else {
+        onOpenChange(false)
+        setBookingLoading(false)
       }
     } catch {
       toast.error("Ошибка соединения с сервером")
