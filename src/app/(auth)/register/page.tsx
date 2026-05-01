@@ -45,22 +45,6 @@ function readJSON<T>(key: string): T | null {
   }
 }
 
-function nextSlots() {
-  const now = new Date()
-  const mk = (addDays: number, h: number) => {
-    const d = new Date(now)
-    d.setDate(d.getDate() + addDays)
-    d.setHours(h, 0, 0, 0)
-    return d
-  }
-  return [
-    { id: 0, day: 'завтра', time: '10:00', iso: mk(1, 10).toISOString() },
-    { id: 1, day: 'завтра', time: '19:00', iso: mk(1, 19).toISOString() },
-    { id: 2, day: 'послезавтра', time: '11:00', iso: mk(2, 11).toISOString() },
-    { id: 3, day: 'послезавтра', time: '20:00', iso: mk(2, 20).toISOString() },
-  ]
-}
-
 function SteakSVG({ mood, size = 72, color = '#D33F3F' }: { mood: Mood; size?: number; color?: string }) {
   const face: Record<Mood, React.ReactNode> = {
     cool: (
@@ -110,8 +94,6 @@ function RegisterPageInner() {
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
   const [goals, setGoals] = useState<QuizGoals | null>(null)
   const [showPwd, setShowPwd] = useState(false)
-  const slots = useMemo(() => nextSlots(), [])
-  const [selectedSlot, setSelectedSlot] = useState(0)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -129,7 +111,6 @@ function RegisterPageInner() {
   const [success, setSuccess] = useState<{
     name: string
     email: string
-    slot: string
     level: string
     cefr: string
     color: string
@@ -215,7 +196,6 @@ function RegisterPageInner() {
     const parts = name.trim().split(/\s+/)
     const firstName = parts[0]
     const lastName = parts.slice(1).join(' ') || ''
-    const chosen = slots[selectedSlot]
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -226,8 +206,6 @@ function RegisterPageInner() {
           last_name: lastName,
           phone: phone.trim() || null,
           role: isTeacher ? 'teacher' : 'student',
-          // preferred_slot — только для студентского пробного.
-          ...(isTeacher ? {} : { preferred_slot: chosen.iso }),
           // Реферальный код (если есть). Триггер handle_new_user валидирует и,
           // если код невалиден, просто игнорирует — signUp всё равно пройдёт.
           ...(refCode ? { ref_code: refCode } : {}),
@@ -258,7 +236,6 @@ function RegisterPageInner() {
     setSuccess({
       name: firstName,
       email: email.trim(),
-      slot: isTeacher ? '' : `${chosen.day}, ${chosen.time}`,
       level: isTeacher ? '' : (grade?.name || quizResult?.levelName || 'Определим на пробном'),
       cefr: isTeacher ? '' : (grade?.cefr || '—'),
       color: grade?.color || '#D33F3F',
@@ -326,10 +303,6 @@ function RegisterPageInner() {
                     <span className="sd-v">{success.purpose}</span>
                   </div>
                 )}
-                <div className="sd-row">
-                  <span className="sd-k">Пробный</span>
-                  <span className="sd-v">{success.slot}</span>
-                </div>
                 <div className="sd-row">
                   <span className="sd-k">Длительность</span>
                   <span className="sd-v">45 минут</span>
@@ -526,25 +499,6 @@ function RegisterPageInner() {
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
-
-            {!isTeacher && (
-              <div className="field">
-                <label>Удобное время для пробного</label>
-                <div className="slot-grid">
-                  {slots.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`slot ${selectedSlot === s.id ? 'active' : ''}`}
-                      onClick={() => setSelectedSlot(s.id)}
-                    >
-                      <div className="slot-day">{s.day}</div>
-                      <div className="slot-time">{s.time}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <label className="consent">
               <input
