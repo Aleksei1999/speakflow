@@ -518,7 +518,17 @@ export default function StudentSchedulePage() {
         })
       )}
 
-      <LessonBookingModal open={bookingOpen} onOpenChange={setBookingOpen} />
+      <LessonBookingModal
+        open={bookingOpen}
+        onOpenChange={setBookingOpen}
+        onBooked={(scheduledAt) => {
+          // Прыгаем на неделю урока, чтобы свежая бронь сразу была видна.
+          const dt = new Date(scheduledAt)
+          const newWeekStart = startOfWeek(dt, { weekStartsOn: 1 })
+          setWeekCursor(newWeekStart)
+          // useEffect на weekStart вызовет fetchLessons автоматически.
+        }}
+      />
     </div>
   )
 }
