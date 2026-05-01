@@ -188,46 +188,56 @@ export default function StudentSchedulePage() {
 
   const fetchLessons = useCallback(async (from: Date, to: Date) => {
     setIsLoading(true)
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
-
-    setCurrentUserId(user.id)
-
-    const { data: rawLessons } = await (supabase as any)
-      .from("lessons")
-      .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
-      .eq("student_id", user.id)
-      .gte("scheduled_at", from.toISOString())
-      .lte("scheduled_at", to.toISOString())
-      .order("scheduled_at", { ascending: true })
-
-    const list = (rawLessons ?? []) as LessonRow[]
-    setLessons(list)
-
-    // Помечаем уроки, созданные через trial-flow.
-    const lessonIds = list.map((l) => l.id)
-    if (lessonIds.length > 0) {
-      const { data: trials } = await (supabase as any)
-        .from("trial_lesson_requests")
-        .select("assigned_lesson_id")
-        .eq("user_id", user.id)
-        .in("assigned_lesson_id", lessonIds)
-      const tset = new Set<string>()
-      for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
-        if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+      if (!user) {
+        setIsLoading(false)
+        return
       }
-      setTrialIds(tset)
-    } else {
-      setTrialIds(new Set())
-    }
 
+      setCurrentUserId(user.id)
+
+      const { data: rawLessons } = await (supabase as any)
+        .from("lessons")
+        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
+        .eq("student_id", user.id)
+        .gte("scheduled_at", from.toISOString())
+        .lte("scheduled_at", to.toISOString())
+        .order("scheduled_at", { ascending: true })
+
+      const list = (rawLessons ?? []) as LessonRow[]
+      setLessons(list)
+
+      // Помечаем уроки, созданные через trial-flow.
+      const lessonIds = list.map((l) => l.id)
+      if (lessonIds.length > 0) {
+        const { data: trials } = await (supabase as any)
+          .from("trial_lesson_requests")
+          .select("assigned_lesson_id")
+          .eq("user_id", user.id)
+          .in("assigned_lesson_id", lessonIds)
+        const tset = new Set<string>()
+        for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+          if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+        }
+        setTrialIds(tset)
+      } else {
+        setTrialIds(new Set())
+      }
+
+      await fetchTeachers(supabase, list)
+    } catch (e) {
+      console.error("[student/schedule] fetchLessons crashed:", e)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const fetchTeachers = useCallback(async (supabase: any, list: LessonRow[]) => {
     const teacherIds = Array.from(new Set(list.map((l) => l.teacher_id).filter(Boolean))) as string[]
     if (teacherIds.length > 0) {
       // teacher_profiles.user_id → profiles.id (в схеме нет profile_id).
@@ -258,8 +268,6 @@ export default function StudentSchedulePage() {
     } else {
       setTeacherMap({})
     }
-
-    setIsLoading(false)
   }, [])
 
   useEffect(() => {
