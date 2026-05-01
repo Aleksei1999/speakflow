@@ -11,6 +11,7 @@ type AdminStats = {
   students_delta_week: number
   apps_today: number
   apps_delta_day: number
+  teacher_applications_new: number
   lessons_today: number
   live_now: number
   open_tickets: number
@@ -21,16 +22,15 @@ type AdminStats = {
   conversion_paid: number
 }
 
-type TrialRequest = {
+type TeacherApplication = {
   id: string
-  student_name: string
-  level: string | null
-  goal: string | null
-  preferred_slot: string | null
-  status: "new" | "processing" | "matched" | "done" | "cancelled"
-  created_at: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  contact: string | null
   notes: string | null
-  assigned_teacher_id: string | null
+  status: "new" | "in_review" | "approved" | "rejected" | "archived"
+  created_at: string
 }
 
 type SupportThread = {
@@ -57,6 +57,7 @@ const EMPTY_STATS: AdminStats = {
   students_delta_week: 0,
   apps_today: 0,
   apps_delta_day: 0,
+  teacher_applications_new: 0,
   lessons_today: 0,
   live_now: 0,
   open_tickets: 0,
@@ -79,7 +80,7 @@ async function safeFetch(url: string, cookie: string): Promise<any | null> {
 
 async function loadSnapshot(): Promise<{
   stats: AdminStats
-  requests: TrialRequest[]
+  applications: TeacherApplication[]
   tickets: SupportThread[]
   students: RecentStudent[]
 }> {
@@ -91,30 +92,30 @@ async function loadSnapshot(): Promise<{
     if (!host) {
       return {
         stats: EMPTY_STATS,
-        requests: [],
+        applications: [],
         tickets: [],
         students: [],
       }
     }
     const base = `${proto}://${host}`
 
-    const [statsRes, reqRes, ticketsRes, studentsRes] = await Promise.all([
+    const [statsRes, appsRes, ticketsRes, studentsRes] = await Promise.all([
       safeFetch(`${base}/api/admin/stats`, cookie),
-      safeFetch(`${base}/api/admin/trial-requests?limit=5`, cookie),
+      safeFetch(`${base}/api/admin/teacher-applications?status=new&limit=5`, cookie),
       safeFetch(`${base}/api/support/threads?limit=5&admin=1`, cookie),
       safeFetch(`${base}/api/admin/students?limit=5&sort=recent`, cookie),
     ])
 
     return {
       stats: { ...EMPTY_STATS, ...(statsRes ?? {}) },
-      requests: Array.isArray(reqRes?.requests) ? reqRes.requests : [],
+      applications: Array.isArray(appsRes?.applications) ? appsRes.applications : [],
       tickets: Array.isArray(ticketsRes?.threads) ? ticketsRes.threads : [],
       students: Array.isArray(studentsRes?.students) ? studentsRes.students : [],
     }
   } catch {
     return {
       stats: EMPTY_STATS,
-      requests: [],
+      applications: [],
       tickets: [],
       students: [],
     }
