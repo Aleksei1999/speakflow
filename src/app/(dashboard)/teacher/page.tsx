@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns"
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
@@ -195,6 +195,7 @@ export default async function TeacherDashboardPage() {
   const now = new Date()
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
+  const weekAheadEnd = endOfDay(addDays(now, 6))
   const monthStart = startOfMonth(now)
   const monthEnd = endOfMonth(now)
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
@@ -202,15 +203,16 @@ export default async function TeacherDashboardPage() {
   const prevMonthStart = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
   const prevMonthEnd = endOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
 
-  // --- Today's lessons ---
-  const { data: todayLessonsRaw } = await (supabase as any)
+  // --- Upcoming lessons (today + 6 days ahead) ---
+  const { data: upcomingLessonsRaw } = await (supabase as any)
     .from("lessons")
     .select("id, scheduled_at, duration_minutes, status, price, student_id")
     .eq("teacher_id", teacherId)
     .gte("scheduled_at", todayStart.toISOString())
-    .lte("scheduled_at", todayEnd.toISOString())
+    .lte("scheduled_at", weekAheadEnd.toISOString())
     .order("scheduled_at", { ascending: true })
-  const todayLessons = (todayLessonsRaw ?? []) as any[]
+  const upcomingLessons = (upcomingLessonsRaw ?? []) as any[]
+  const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
 
   // --- Today's hosted Speaking Clubs (teacher = host) ---
   const { data: hostedTodayRaw } = await (supabase as any)
@@ -229,20 +231,20 @@ export default async function TeacherDashboardPage() {
         new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
     )
 
-  const todayStudentIds = [...new Set(todayLessons.map((l) => l.student_id))]
-  const { data: todayStudentProfilesRaw } = todayStudentIds.length
-    ? await (supabase as any).from("profiles").select("id, full_name").in("id", todayStudentIds)
+  const upcomingStudentIds = [...new Set(upcomingLessons.map((l) => l.student_id))]
+  const { data: todayStudentProfilesRaw } = upcomingStudentIds.length
+    ? await (supabase as any).from("profiles").select("id, full_name").in("id", upcomingStudentIds)
     : { data: [] }
   const todayStudentsMap = new Map<string, { full_name: string | null }>()
   ;(todayStudentProfilesRaw ?? []).forEach((p: any) => todayStudentsMap.set(p.id, { full_name: p.full_name }))
 
-  // Помечаем пробные уроки (созданы через trial-flow).
-  const todayLessonIds = todayLessons.map((l) => l.id)
-  const { data: trialRaw } = todayLessonIds.length
+  // Помечаем пробные уроки (созданы через trial-flow) — на горизонте недели.
+  const upcomingLessonIds = upcomingLessons.map((l) => l.id)
+  const { data: trialRaw } = upcomingLessonIds.length
     ? await (supabase as any)
         .from("trial_lesson_requests")
         .select("assigned_lesson_id")
-        .in("assigned_lesson_id", todayLessonIds)
+        .in("assigned_lesson_id", upcomingLessonIds)
     : { data: [] }
   const trialIdSet = new Set<string>(
     ((trialRaw ?? []) as Array<{ assigned_lesson_id: string | null }>)
@@ -460,12 +462,12 @@ export default async function TeacherDashboardPage() {
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <h3>Сегодня, {format(now, "d MMMM", { locale: ru })}</h3>
+            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 6), "d MMM", { locale: ru })}</h3>
             <Link href="/teacher/schedule" className="btn btn-sm btn-secondary">Полное расписание</Link>
           </div>
           <div className="card-body">
-            {todayLessons.length === 0 && todayClubs.length === 0 ? (
-              <div className="schedule-empty">На сегодня уроков и клубов нет</div>
+            {upcomingLessons.length === 0 && todayClubs.length === 0 ? (
+              <div className="schedule-empty">На ближайшую неделю уроков нет.</div>
             ) : null}
             {todayClubs.length > 0 ? (
               <>
@@ -529,94 +531,126 @@ export default async function TeacherDashboardPage() {
                 })}
               </>
             ) : null}
-            {todayLessons.length === 0 ? null : (
-              todayLessons.map((l) => {
-                const at = new Date(l.scheduled_at)
-                const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
-                const isTrial = trialIdSet.has(l.id)
-
-                const access = computeLessonAccess({
-                  scheduledAt: l.scheduled_at,
-                  durationMinutes: l.duration_minutes ?? 50,
-                  status: l.status,
-                })
-                const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
-                const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
-
-                const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled" && l.status !== "no_show"
-                const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled" && l.status !== "no_show"
-                const isActive = isLive
-                const lessonHref = `/teacher/lesson/${l.id}`
-
-                let cta: any
-                if (l.status === "completed") {
-                  cta = <span className="status status-success">✓ завершён</span>
-                } else if (l.status === "cancelled" || l.status === "no_show" || access.status === "cancelled") {
-                  cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
-                } else if (isLive) {
-                  cta = <span className="tch-today-join">Начать</span>
-                } else if (isSoon) {
-                  cta = (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                      <span className="tch-today-join tch-today-join--waiting">Скоро откроется</span>
-                      <span className="tch-today-hint">через {minutesUntilOpen} мин</span>
-                    </div>
-                  )
-                } else if (access.status === "expired") {
-                  cta = <span className="tch-today-join tch-today-join--expired">Урок завершён</span>
-                } else {
-                  cta = <span className="status status-pending">ожидается</span>
+            {upcomingLessons.length === 0 ? null : (
+              upcomingLessons.map((l, idx) => {
+                // Заголовок-разделитель «Сегодня / Завтра / Сб 3 мая» перед первой
+                // строкой нового дня.
+                const dt0 = new Date(l.scheduled_at)
+                const prev = idx > 0 ? upcomingLessons[idx - 1] : null
+                const sameDayAsPrev = prev && isSameDay(new Date(prev.scheduled_at), dt0)
+                let dayLabel = ""
+                if (!sameDayAsPrev) {
+                  if (isSameDay(dt0, now)) dayLabel = "Сегодня"
+                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = "Завтра"
+                  else dayLabel = format(dt0, "EEEE, d MMMM", { locale: ru })
                 }
-
-                const clickable = isLive || isSoon
-                const rowClass = `schedule-item ${isActive ? "active" : ""}`
-                const rowInner = (
-                  <>
-                    <div className="schedule-time">
-                      <div className="time">{formatLessonTime(at)}</div>
-                      <div className="dur">{l.duration_minutes} мин</div>
+                return [
+                  !sameDayAsPrev ? (
+                    <div
+                      key={`hdr-${l.id}`}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: ".5px",
+                        color: "var(--muted)",
+                        padding: "10px 4px 4px",
+                        marginTop: idx === 0 ? 0 : 4,
+                        borderTop: idx === 0 ? "none" : "1px dashed var(--border)",
+                      }}
+                    >
+                      {dayLabel}
                     </div>
-                    <div className="schedule-info">
-                      <h4>
-                        {studentName}
-                        {isTrial ? (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                              marginLeft: 8,
-                              background: "rgba(230,57,70,.10)",
-                              color: "var(--red)",
-                              fontSize: 10,
-                              fontWeight: 800,
-                              padding: "2px 8px",
-                              borderRadius: 100,
-                              letterSpacing: ".3px",
-                              textTransform: "uppercase",
-                              border: "1px solid rgba(230,57,70,.2)",
-                              verticalAlign: "middle",
-                            }}
-                          >
-                            🎯 Пробный
-                          </span>
-                        ) : null}
-                      </h4>
-                      <p>{isTrial ? "Пробный урок · бесплатно" : "Урок английского"}</p>
-                    </div>
-                    {cta}
-                  </>
-                )
+                  ) : null,
+                  ((l) => {
+                    const at = new Date(l.scheduled_at)
+                    const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
+                    const isTrial = trialIdSet.has(l.id)
 
-                return clickable ? (
-                  <Link key={l.id} href={lessonHref} className={`schedule-link ${rowClass}`}>
-                    {rowInner}
-                  </Link>
-                ) : (
-                  <div key={l.id} className={rowClass}>
-                    {rowInner}
-                  </div>
-                )
+                    const access = computeLessonAccess({
+                      scheduledAt: l.scheduled_at,
+                      durationMinutes: l.duration_minutes ?? 50,
+                      status: l.status,
+                    })
+                    const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
+                    const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
+
+                    const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled" && l.status !== "no_show"
+                    const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled" && l.status !== "no_show"
+                    const isActive = isLive
+                    const lessonHref = `/teacher/lesson/${l.id}`
+
+                    let cta: any
+                    if (l.status === "completed") {
+                      cta = <span className="status status-success">✓ завершён</span>
+                    } else if (l.status === "cancelled" || l.status === "no_show" || access.status === "cancelled") {
+                      cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
+                    } else if (isLive) {
+                      cta = <span className="tch-today-join">Начать</span>
+                    } else if (isSoon) {
+                      cta = (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                          <span className="tch-today-join tch-today-join--waiting">Скоро откроется</span>
+                          <span className="tch-today-hint">через {minutesUntilOpen} мин</span>
+                        </div>
+                      )
+                    } else if (access.status === "expired") {
+                      cta = <span className="tch-today-join tch-today-join--expired">Урок завершён</span>
+                    } else {
+                      cta = <span className="status status-pending">ожидается</span>
+                    }
+
+                    const clickable = isLive || isSoon
+                    const rowClass = `schedule-item ${isActive ? "active" : ""}`
+                    const rowInner = (
+                      <>
+                        <div className="schedule-time">
+                          <div className="time">{formatLessonTime(at)}</div>
+                          <div className="dur">{l.duration_minutes} мин</div>
+                        </div>
+                        <div className="schedule-info">
+                          <h4>
+                            {studentName}
+                            {isTrial ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  marginLeft: 8,
+                                  background: "rgba(230,57,70,.10)",
+                                  color: "var(--red)",
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  padding: "2px 8px",
+                                  borderRadius: 100,
+                                  letterSpacing: ".3px",
+                                  textTransform: "uppercase",
+                                  border: "1px solid rgba(230,57,70,.2)",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                🎯 Пробный
+                              </span>
+                            ) : null}
+                          </h4>
+                          <p>{isTrial ? "Пробный урок · бесплатно" : "Урок английского"}</p>
+                        </div>
+                        {cta}
+                      </>
+                    )
+
+                    return clickable ? (
+                      <Link key={l.id} href={lessonHref} className={`schedule-link ${rowClass}`}>
+                        {rowInner}
+                      </Link>
+                    ) : (
+                      <div key={l.id} className={rowClass}>
+                        {rowInner}
+                      </div>
+                    )
+                  })(l),
+                ]
               })
             )}
           </div>
