@@ -905,6 +905,7 @@ function RowFragment({
                 lesson={first}
                 isHappeningNow={isHappeningNow}
                 studentName={first.student_id ? studentMap[first.student_id]?.full_name ?? null : null}
+                isTrial={trialIds.has(first.id)}
               />
             ) : isClickable ? (
               "+"
@@ -920,10 +921,12 @@ function EventChip({
   lesson,
   isHappeningNow,
   studentName,
+  isTrial,
 }: {
   lesson: LessonRow
   isHappeningNow: (l: LessonRow) => boolean
   studentName: string | null
+  isTrial?: boolean
 }) {
   const start = new Date(lesson.scheduled_at)
   const end = new Date(start.getTime() + lesson.duration_minutes * 60_000)
@@ -935,7 +938,7 @@ function EventChip({
   return (
     <div className={cls} style={{ height }}>
       <div className="ev-t">
-        {happening ? "⚡ Сейчас" : shortName ? `Урок · ${shortName}` : "Урок 1-on-1"}
+        {happening ? "⚡ Сейчас" : isTrial ? "🎯 Пробный" : shortName ? `Урок · ${shortName}` : "Урок 1-on-1"}
       </div>
       <div className="ev-s">
         {format(start, "HH:mm")}–{format(end, "HH:mm")}{isDone ? " ✓" : ""}

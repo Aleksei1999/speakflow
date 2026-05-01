@@ -256,6 +256,20 @@ export default async function StudentDashboardPage() {
   // Карточку показываем новичкам: нет ни одного урока + нет привязанного пробного.
   const showTrialCard =
     totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
+
+  // Помечаем сегодняшние пробные уроки (для лейбла «Пробный урок» вместо «Урок 1-on-1»).
+  const todayTrialIds = new Set<string>()
+  if (todayLessons.length > 0) {
+    const todayIds = todayLessons.map((l) => l.id)
+    const { data: tlist } = await (supabase as any)
+      .from("trial_lesson_requests")
+      .select("assigned_lesson_id")
+      .eq("user_id", user.id)
+      .in("assigned_lesson_id", todayIds)
+    for (const t of (tlist ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+      if (t.assigned_lesson_id) todayTrialIds.add(t.assigned_lesson_id)
+    }
+  }
   const xp = progress?.total_xp ?? 0
   const level: RoastLevel = xpToRoastLevel(xp)
   const thresholds = LEVEL_XP_THRESHOLDS[level]
@@ -459,6 +473,7 @@ export default async function StudentDashboardPage() {
                 // Вся строка кликабельная, если можно войти/скоро открывается
                 const clickable = isLive || isSoon
                 const rowClass = `sch-item${isActive ? " active" : ""}`
+                const isTrial = todayTrialIds.has(l.id)
                 const rowInner = (
                   <>
                     <div className="sch-time">
@@ -466,8 +481,10 @@ export default async function StudentDashboardPage() {
                       <div className="d">{l.duration_minutes} мин</div>
                     </div>
                     <div className="sch-info">
-                      <h4>Урок 1-on-1</h4>
-                      <p>{teacher ? `с ${teacher}` : "Преподаватель назначен"}</p>
+                      <h4>
+                        {isTrial ? "🎯 Пробный урок" : "Урок 1-on-1"}
+                      </h4>
+                      <p>{teacher ? `с ${teacher}` : "Преподаватель назначен"}{isTrial ? " · бесплатно" : ""}</p>
                     </div>
                     {cta}
                   </>
