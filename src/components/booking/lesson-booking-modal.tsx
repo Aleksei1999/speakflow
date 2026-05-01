@@ -92,6 +92,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
   const [teacherRate, setTeacherRate] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [bookingLoading, setBookingLoading] = useState(false)
+  const [pinSlot, setPinSlot] = useState(false)
   const [nowMs, setNowMs] = useState<number>(() => Date.now())
 
   // Re-tick once a minute so slots that just slipped into the past go grey
@@ -220,6 +221,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
           teacherId: selectedTeacher.userId,
           scheduledAt: selectedSlot,
           durationMinutes: String(duration),
+          pin: pinSlot,
         }),
       })
       const data = await res.json()
@@ -418,6 +420,33 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                 )}
               </div>
               <div className="cal-footer">
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 13,
+                    color: "var(--text)",
+                    cursor: selectedSlot ? "pointer" : "not-allowed",
+                    opacity: selectedSlot ? 1 : 0.5,
+                    padding: "8px 4px",
+                    flex: 1,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={pinSlot}
+                    disabled={!selectedSlot}
+                    onChange={(e) => setPinSlot(e.target.checked)}
+                    style={{ accentColor: "#E63946" }}
+                  />
+                  <span>
+                    🔁 Закрепить за собой это время
+                    <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 6 }}>
+                      (будем напоминать про повторную запись)
+                    </span>
+                  </span>
+                </label>
                 <button
                   className="cal-btn cal-btn--red"
                   disabled={!selectedSlot || bookingLoading}
