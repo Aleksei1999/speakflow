@@ -236,6 +236,20 @@ export default async function TeacherDashboardPage() {
   const todayStudentsMap = new Map<string, { full_name: string | null }>()
   ;(todayStudentProfilesRaw ?? []).forEach((p: any) => todayStudentsMap.set(p.id, { full_name: p.full_name }))
 
+  // Помечаем пробные уроки (созданы через trial-flow).
+  const todayLessonIds = todayLessons.map((l) => l.id)
+  const { data: trialRaw } = todayLessonIds.length
+    ? await (supabase as any)
+        .from("trial_lesson_requests")
+        .select("assigned_lesson_id")
+        .in("assigned_lesson_id", todayLessonIds)
+    : { data: [] }
+  const trialIdSet = new Set<string>(
+    ((trialRaw ?? []) as Array<{ assigned_lesson_id: string | null }>)
+      .map((t) => t.assigned_lesson_id)
+      .filter((x): x is string => Boolean(x))
+  )
+
   // --- Month counts (current + prev for delta) ---
   const [{ count: monthCount }, { count: prevMonthCount }] = await Promise.all([
     (supabase as any)
@@ -519,6 +533,7 @@ export default async function TeacherDashboardPage() {
               todayLessons.map((l) => {
                 const at = new Date(l.scheduled_at)
                 const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
+                const isTrial = trialIdSet.has(l.id)
 
                 const access = computeLessonAccess({
                   scheduledAt: l.scheduled_at,
@@ -562,8 +577,32 @@ export default async function TeacherDashboardPage() {
                       <div className="dur">{l.duration_minutes} мин</div>
                     </div>
                     <div className="schedule-info">
-                      <h4>{studentName}</h4>
-                      <p>Урок английского</p>
+                      <h4>
+                        {studentName}
+                        {isTrial ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              marginLeft: 8,
+                              background: "rgba(230,57,70,.10)",
+                              color: "var(--red)",
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: "2px 8px",
+                              borderRadius: 100,
+                              letterSpacing: ".3px",
+                              textTransform: "uppercase",
+                              border: "1px solid rgba(230,57,70,.2)",
+                              verticalAlign: "middle",
+                            }}
+                          >
+                            🎯 Пробный
+                          </span>
+                        ) : null}
+                      </h4>
+                      <p>{isTrial ? "Пробный урок · бесплатно" : "Урок английского"}</p>
                     </div>
                     {cta}
                   </>

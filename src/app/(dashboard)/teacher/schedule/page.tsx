@@ -147,7 +147,9 @@ const TCH_SCHEDULE_CSS = `
 .tch-schedule .lc-time-xp{font-size:.55rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(216,242,106,.15);border-radius:4px}
 
 .tch-schedule .lc-body{flex:1;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;min-width:0}
-.tch-schedule .lc-name{font-size:.92rem;font-weight:700;margin-bottom:2px}
+.tch-schedule .lc-name{font-size:.92rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.tch-schedule .lc-trial-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(230,57,70,.10);color:var(--red);font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.3px;text-transform:uppercase;border:1px solid rgba(230,57,70,.2)}
+.tch-schedule .lc-time-xp--trial{color:var(--red);background:rgba(230,57,70,.10) !important}
 .tch-schedule .lc-desc{font-size:.72rem;color:var(--muted);line-height:1.4}
 
 .tch-schedule .lc-teacher{display:flex;align-items:center;gap:8px;padding:14px 12px;border-left:1px solid var(--border);flex-shrink:0}
@@ -269,6 +271,7 @@ export default function TeacherSchedulePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [now, setNow] = useState<Date>(new Date())
+  const [trialIds, setTrialIds] = useState<Set<string>>(new Set())
 
   // Assign-dialog state
   const [assignOpen, setAssignOpen] = useState(false)
@@ -341,6 +344,22 @@ export default function TeacherSchedulePage() {
 
     const list = (rawLessons ?? []) as LessonRow[]
     setLessons(list)
+
+    // Помечаем уроки, которые были созданы через trial-flow.
+    const lessonIds = list.map((l) => l.id)
+    if (lessonIds.length > 0) {
+      const { data: trials } = await (supabase as any)
+        .from("trial_lesson_requests")
+        .select("assigned_lesson_id")
+        .in("assigned_lesson_id", lessonIds)
+      const tset = new Set<string>()
+      for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+        if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+      }
+      setTrialIds(tset)
+    } else {
+      setTrialIds(new Set())
+    }
 
     const studentIds = Array.from(new Set(list.map((l) => l.student_id).filter(Boolean))) as string[]
     if (studentIds.length > 0) {
@@ -743,6 +762,7 @@ export default function TeacherSchedulePage() {
                 const rowCls = `lc${happening ? " lc--now" : ""}${isDone || expired ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}`
                 const stripCls = `lc-strip${isDone || expired ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}`
                 const priceRub = lesson.price ? Math.round(lesson.price / 100) : null
+                const isTrial = trialIds.has(lesson.id)
                 return (
                   <div key={lesson.id} className={rowCls}>
                     <div className={stripCls} />
@@ -750,11 +770,16 @@ export default function TeacherSchedulePage() {
                       <div className="lc-time-val">{format(dt, "HH:mm")}</div>
                       <div className="lc-time-dur">{lesson.duration_minutes} мин</div>
                       {!isCancel && !expired && priceRub ? <div className="lc-time-xp">{priceRub.toLocaleString("ru-RU")} ₽</div> : null}
+                      {!isCancel && !expired && isTrial ? <div className="lc-time-xp lc-time-xp--trial">Бесплатно</div> : null}
                     </div>
                     <div className="lc-body">
-                      <div className="lc-name">Урок 1-on-1</div>
+                      <div className="lc-name">
+                        {isTrial ? <span className="lc-trial-badge">🎯 Пробный</span> : null}
+                        {isTrial ? "Пробный урок" : "Урок 1-on-1"}
+                      </div>
                       <div className="lc-desc">
                         {format(dt, "HH:mm")}–{format(end, "HH:mm")}
+                        {isTrial ? " · бесплатное знакомство" : ""}
                         {isDone ? " · ✓ завершён" : ""}
                         {expired && !isDone ? " · время прошло" : ""}
                         {isCancel ? " · отменён" : ""}
