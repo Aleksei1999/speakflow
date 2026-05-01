@@ -17,6 +17,7 @@ const bodySchema = z.object({
     .string()
     .datetime({ message: 'preferredSlot must be ISO datetime' })
     .optional(),
+  teacherProfileId: z.string().uuid().optional(),
 })
 
 export async function POST(request: Request) {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     preferredSlot: parsed.data.preferredSlot ?? null,
     notes: parsed.data.notes ?? null,
     levelTestId: parsed.data.levelTestId ?? null,
+    teacherProfileId: parsed.data.teacherProfileId ?? null,
   })
 
   if (!result) {
