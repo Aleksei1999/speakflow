@@ -175,7 +175,7 @@ export default async function StudentDashboardPage() {
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
   const weekStart = startOfDay(subDays(now, 6))
-  const weekAheadEnd = endOfDay(addDays(now, 6))
+  const weekAheadEnd = endOfDay(addDays(now, 13))
 
   // Day of week index (0=Mon .. 6=Sun) — российская неделя
   const weekdayIdx = (d: Date) => (d.getDay() + 6) % 7
@@ -428,7 +428,7 @@ export default async function StudentDashboardPage() {
       <div className="main-grid">
         <div className="card">
           <div className="card-head">
-            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 6), "d MMM", { locale: ru })}</h3>
+            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 13), "d MMM", { locale: ru })}</h3>
             <div style={{ display: "flex", gap: 6 }}>
               <Link href="/student/schedule" className="btn btn-sm btn-outline">Всё расписание</Link>
               <BookingLauncher className="btn btn-sm btn-red">+ Записаться</BookingLauncher>
