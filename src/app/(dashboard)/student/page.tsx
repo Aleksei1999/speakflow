@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
 import { cookies, headers } from "next/headers"
-import { format, startOfDay, endOfDay, subDays } from "date-fns"
+import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
@@ -175,6 +175,7 @@ export default async function StudentDashboardPage() {
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
   const weekStart = startOfDay(subDays(now, 6))
+  const weekAheadEnd = endOfDay(addDays(now, 6))
 
   // Day of week index (0=Mon .. 6=Sun) — российская неделя
   const weekdayIdx = (d: Date) => (d.getDay() + 6) % 7
@@ -200,7 +201,7 @@ export default async function StudentDashboardPage() {
         .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
         .eq("student_id", user.id)
         .gte("scheduled_at", todayStart.toISOString())
-        .lte("scheduled_at", todayEnd.toISOString())
+        .lte("scheduled_at", weekAheadEnd.toISOString())
         .order("scheduled_at", { ascending: true }),
       (supabase as any)
         .from("user_achievements")
@@ -235,7 +236,9 @@ export default async function StudentDashboardPage() {
 
   const profile = profileResult.data as { full_name: string | null } | null
   const progress = progressResult.data as { total_xp: number | null; english_level: string | null; current_streak: number | null; longest_streak: number | null } | null
-  const todayLessons = (todayLessonsResult.data ?? []) as Array<{ id: string; scheduled_at: string; duration_minutes: number; status: string; jitsi_room_name: string | null; teacher_id: string | null }>
+  // Уроки на ближайшие 7 дней (включая сегодня).
+  const upcomingLessons = (todayLessonsResult.data ?? []) as Array<{ id: string; scheduled_at: string; duration_minutes: number; status: string; jitsi_room_name: string | null; teacher_id: string | null }>
+  const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
   const monthLessonsCount = monthLessonsResult.count ?? 0
   const completedMonthCount = completedMonthResult.count ?? 0
   const earnedAchIds = new Set(((achResult.data ?? []) as Array<{ achievement_id: string }>).map((a) => a.achievement_id))
@@ -257,15 +260,15 @@ export default async function StudentDashboardPage() {
   const showTrialCard =
     totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
 
-  // Помечаем сегодняшние пробные уроки (для лейбла «Пробный урок» вместо «Урок 1-on-1»).
+  // Помечаем пробные уроки на горизонте недели (для лейбла «🎯 Пробный»).
   const todayTrialIds = new Set<string>()
-  if (todayLessons.length > 0) {
-    const todayIds = todayLessons.map((l) => l.id)
+  if (upcomingLessons.length > 0) {
+    const ids = upcomingLessons.map((l) => l.id)
     const { data: tlist } = await (supabase as any)
       .from("trial_lesson_requests")
       .select("assigned_lesson_id")
       .eq("user_id", user.id)
-      .in("assigned_lesson_id", todayIds)
+      .in("assigned_lesson_id", ids)
     for (const t of (tlist ?? []) as Array<{ assigned_lesson_id: string | null }>) {
       if (t.assigned_lesson_id) todayTrialIds.add(t.assigned_lesson_id)
     }
@@ -421,17 +424,47 @@ export default async function StudentDashboardPage() {
       <div className="main-grid">
         <div className="card">
           <div className="card-head">
-            <h3>Сегодня, {format(now, "d MMMM", { locale: ru })}</h3>
+            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 6), "d MMM", { locale: ru })}</h3>
             <div style={{ display: "flex", gap: 6 }}>
               <Link href="/student/schedule" className="btn btn-sm btn-outline">Всё расписание</Link>
               <BookingLauncher className="btn btn-sm btn-red">+ Записаться</BookingLauncher>
             </div>
           </div>
           <div className="card-body">
-            {todayLessons.length === 0 ? (
-              <div className="sch-empty">На сегодня уроков нет. Запишись на следующий слот 👆</div>
+            {upcomingLessons.length === 0 ? (
+              <div className="sch-empty">На ближайшую неделю уроков нет. Запишись на следующий слот 👆</div>
             ) : (
-              todayLessons.map((l) => {
+              upcomingLessons.map((l, idx) => {
+                // Заголовок-разделитель «Сегодня / Завтра / Сб 3 мая» перед первой
+                // строкой нового дня.
+                const dt0 = new Date(l.scheduled_at)
+                const prev = idx > 0 ? upcomingLessons[idx - 1] : null
+                const sameDayAsPrev = prev && isSameDay(new Date(prev.scheduled_at), dt0)
+                let dayLabel = ""
+                if (!sameDayAsPrev) {
+                  if (isSameDay(dt0, now)) dayLabel = "Сегодня"
+                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = "Завтра"
+                  else dayLabel = format(dt0, "EEEE, d MMMM", { locale: ru })
+                }
+                return [
+                  !sameDayAsPrev ? (
+                    <div
+                      key={`hdr-${l.id}`}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: ".5px",
+                        color: "var(--muted)",
+                        padding: "10px 4px 4px",
+                        marginTop: idx === 0 ? 0 : 4,
+                        borderTop: idx === 0 ? "none" : "1px dashed var(--border)",
+                      }}
+                    >
+                      {dayLabel}
+                    </div>
+                  ) : null,
+                  ((l) => {
                 const dt = new Date(l.scheduled_at)
                 const teacher = l.teacher_id ? teacherMap[l.teacher_id]?.full_name : null
 
@@ -504,6 +537,8 @@ export default async function StudentDashboardPage() {
                     {rowInner}
                   </div>
                 )
+              })(l),
+                ]
               })
             )}
           </div>
