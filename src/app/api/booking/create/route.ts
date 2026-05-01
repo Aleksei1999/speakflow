@@ -56,6 +56,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Pin-флаг: если фронт прислал pin=true, после успешной брони
+    // сохраним слот в student_preferred_slots для рекуррентных
+    // подсказок «записаться снова» на дашборде.
+    const wantsPin: boolean = Boolean((body as any)?.pin)
+
     // Prevent booking in the past
     const scheduledDate = new Date(scheduledAt)
     if (scheduledDate <= new Date()) {
@@ -106,6 +111,58 @@ export async function POST(request: NextRequest) {
     }
 
     const teacherProfileId = teacherProfile.id
+
+    // ─────────────────────────────────────────────────────────────────
+    // RULE: один день — один преподаватель.
+    // Если в этот же календарный день (Europe/Moscow) у ученика уже
+    // есть активный урок с ДРУГИМ преподавателем — отклоняем.
+    // К тому же преподу можно бронировать сколько угодно слотов.
+    // ─────────────────────────────────────────────────────────────────
+    {
+      const dayMs = 24 * 60 * 60 * 1000
+      // Окно «день в Москве» считаем грубо как ±12ч от слота — этого
+      // достаточно для пересечения по UTC-датам в МСК (UTC+3),
+      // потом фильтруем на стороне SQL по дате в Europe/Moscow.
+      const minIso = new Date(scheduledDate.getTime() - dayMs).toISOString()
+      const maxIso = new Date(scheduledDate.getTime() + dayMs).toISOString()
+      const { data: dayLessons } = await supabase
+        .from('lessons')
+        .select('id, teacher_id, scheduled_at, status')
+        .eq('student_id', user.id)
+        .gte('scheduled_at', minIso)
+        .lte('scheduled_at', maxIso)
+        .in('status', ['booked', 'in_progress', 'completed', 'pending_payment'])
+
+      const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' })
+      const slotDay = fmt.format(scheduledDate)
+      const conflict = (dayLessons ?? []).find((l: any) => {
+        if (!l.teacher_id || !l.scheduled_at) return false
+        if (l.teacher_id === teacherProfileId) return false
+        const lDay = fmt.format(new Date(l.scheduled_at))
+        return lDay === slotDay
+      })
+      if (conflict) {
+        // Достаём имя другого преподавателя для понятного сообщения.
+        const { data: otherTp } = await supabase
+          .from('teacher_profiles')
+          .select('user_id')
+          .eq('id', conflict.teacher_id)
+          .maybeSingle()
+        let otherName = ''
+        if (otherTp?.user_id) {
+          const { data: otherProf } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', otherTp.user_id)
+            .maybeSingle()
+          otherName = otherProf?.full_name ?? ''
+        }
+        const msg = otherName
+          ? `В этот день у тебя уже урок с ${otherName}. Записаться можно только к одному преподавателю в день.`
+          : 'В этот день у тебя уже урок с другим преподавателем. Записаться можно только к одному преподу в день.'
+        return NextResponse.json({ error: msg }, { status: 409 })
+      }
+    }
 
     // Call is_slot_available() to prevent double-booking (atomic check).
     // p_teacher_id expects teacher_profiles.id (matches lessons.teacher_id FK).
@@ -204,6 +261,39 @@ export async function POST(request: NextRequest) {
       .eq('id', lesson.id)
 
     void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
+
+    // Закрепляем слот, если ученик попросил.
+    if (wantsPin) {
+      const moscow = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Moscow',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false,
+      })
+        .formatToParts(scheduledDate)
+      const wd = moscow.find((p) => p.type === 'weekday')?.value
+      const hh = parseInt(moscow.find((p) => p.type === 'hour')?.value ?? '0', 10)
+      const mm = parseInt(moscow.find((p) => p.type === 'minute')?.value ?? '0', 10)
+      const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+      const weekday = wd ? wdMap[wd] ?? null : null
+      if (weekday !== null && Number.isFinite(hh)) {
+        await supabase
+          .from('student_preferred_slots')
+          .upsert(
+            {
+              student_id: user.id,
+              teacher_id: teacherProfileId,
+              weekday,
+              hour: hh,
+              minute: mm,
+              duration_minutes: durationMinutes,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'student_id,weekday,hour,minute,teacher_id' }
+          )
+      }
+    }
 
     return NextResponse.json({
       lessonId: lesson.id,
