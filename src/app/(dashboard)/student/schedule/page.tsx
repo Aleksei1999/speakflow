@@ -27,7 +27,7 @@ type LessonRow = {
   teacher_id: string | null
 }
 
-type TeacherMapEntry = { full_name: string | null; initials: string }
+type TeacherMapEntry = { full_name: string | null; initials: string; avatar_url: string | null }
 
 const SCHEDULE_CSS = `
 .stu-schedule{max-width:1100px;margin:0 auto}
@@ -229,44 +229,46 @@ export default function StudentSchedulePage() {
         setTrialIds(new Set())
       }
 
-      await fetchTeachers(supabase, list)
+      // Преподаватели уроков — теперь с avatar_url (раньше fallback мог
+      // оставлять только инициалы у строк с актуальным фото).
+      const teacherIds = Array.from(new Set(list.map((l) => l.teacher_id).filter(Boolean))) as string[]
+      if (teacherIds.length > 0) {
+        const { data: teachersRaw } = await (supabase as any)
+          .from("teacher_profiles")
+          .select("id, user_id")
+          .in("id", teacherIds)
+        const teachers = (teachersRaw ?? []) as Array<{ id: string; user_id: string }>
+        const userIds = teachers.map((t) => t.user_id).filter(Boolean)
+        if (userIds.length > 0) {
+          const { data: profilesRaw } = await (supabase as any)
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", userIds)
+          const pMap = Object.fromEntries(
+            ((profilesRaw ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null }>)
+              .map((p) => [p.id, p])
+          )
+          const nextMap: Record<string, TeacherMapEntry> = {}
+          for (const t of teachers) {
+            const p = pMap[t.user_id]
+            const fullName = p?.full_name ?? null
+            nextMap[t.id] = {
+              full_name: fullName,
+              initials: getInitials(fullName),
+              avatar_url: p?.avatar_url ?? null,
+            }
+          }
+          setTeacherMap(nextMap)
+        } else {
+          setTeacherMap({})
+        }
+      } else {
+        setTeacherMap({})
+      }
     } catch (e) {
       console.error("[student/schedule] fetchLessons crashed:", e)
     } finally {
       setIsLoading(false)
-    }
-  }, [])
-
-  const fetchTeachers = useCallback(async (supabase: any, list: LessonRow[]) => {
-    const teacherIds = Array.from(new Set(list.map((l) => l.teacher_id).filter(Boolean))) as string[]
-    if (teacherIds.length > 0) {
-      // teacher_profiles.user_id → profiles.id (в схеме нет profile_id).
-      const { data: teachersRaw } = await (supabase as any)
-        .from("teacher_profiles")
-        .select("id, user_id")
-        .in("id", teacherIds)
-      const teachers = (teachersRaw ?? []) as Array<{ id: string; user_id: string }>
-      const userIds = teachers.map((t) => t.user_id).filter(Boolean)
-      if (userIds.length > 0) {
-        const { data: profilesRaw } = await (supabase as any)
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", userIds)
-        const pMap = Object.fromEntries(
-          ((profilesRaw ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p])
-        )
-        const nextMap: Record<string, TeacherMapEntry> = {}
-        for (const t of teachers) {
-          const p = pMap[t.user_id]
-          const fullName = p?.full_name ?? null
-          nextMap[t.id] = { full_name: fullName, initials: getInitials(fullName) }
-        }
-        setTeacherMap(nextMap)
-      } else {
-        setTeacherMap({})
-      }
-    } else {
-      setTeacherMap({})
     }
   }, [])
 
