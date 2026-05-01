@@ -237,18 +237,33 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('Ошибка создания урока:', insertError)
+      console.error('[booking/create] lessons INSERT failed', {
+        message: insertError.message,
+        code: (insertError as any)?.code,
+        details: (insertError as any)?.details,
+        hint: (insertError as any)?.hint,
+        teacherProfileId,
+        scheduledAt,
+      })
 
-      // Handle unique constraint violation (race condition double-booking)
-      if (insertError.code === '23505') {
+      const code = (insertError as any)?.code
+      // 23505 = unique_violation, 23P01 = exclusion_violation (lessons_no_overlap GiST)
+      if (code === '23505' || code === '23P01') {
         return NextResponse.json(
-          { error: 'Выбранное время уже занято. Пожалуйста, выберите другой слот.' },
+          { error: 'Это время уже забронировано у преподавателя. Пожалуйста, выберите другой слот.' },
           { status: 409 }
+        )
+      }
+      // 23514 = check_violation, 23503 = fk_violation — отдаём как 400 с подсказкой
+      if (code === '23514' || code === '23503') {
+        return NextResponse.json(
+          { error: 'Не удалось создать урок: некорректные данные. Попробуйте другой слот.' },
+          { status: 400 }
         )
       }
 
       return NextResponse.json(
-        { error: 'Ошибка создания урока' },
+        { error: 'Не удалось создать урок (' + (insertError.message ?? 'неизвестная ошибка') + ')' },
         { status: 500 }
       )
     }
