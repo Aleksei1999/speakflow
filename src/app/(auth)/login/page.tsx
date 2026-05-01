@@ -18,9 +18,11 @@ function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
+  const skipChoice = searchParams.get('as') === 'student'
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [oauthPending, setOauthPending] = useState(false)
+  const [showChoice, setShowChoice] = useState(!skipChoice)
 
   const {
     register,
@@ -85,6 +87,57 @@ function LoginPageContent() {
       setOauthPending(false)
       setServerError('Не удалось подключиться к Google. Попробуйте ещё раз.')
     }
+  }
+
+  if (showChoice) {
+    return (
+      <div className="fade-in">
+        <style>{`
+          .role-choice{display:flex;flex-direction:column;gap:12px;padding:8px 0 4px}
+          .role-choice h2{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0 0 6px;text-align:center}
+          .role-choice .sub{font-size:14px;color:var(--auth-muted,rgba(0,0,0,.55));text-align:center;margin:0 0 18px}
+          .role-card{display:flex;align-items:center;gap:14px;text-align:left;padding:16px 18px;border-radius:14px;border:1.5px solid var(--auth-border,rgba(0,0,0,.12));background:var(--auth-surface,#fff);transition:all .15s;cursor:pointer;text-decoration:none;color:inherit;width:100%;font-family:inherit}
+          .role-card:hover{border-color:var(--auth-red,#D33F3F);transform:translateY(-1px)}
+          .role-card .ic{flex-shrink:0;width:44px;height:44px;border-radius:12px;background:rgba(211,63,63,.08);display:flex;align-items:center;justify-content:center;color:var(--auth-red,#D33F3F);font-size:22px}
+          .role-card .tx{display:flex;flex-direction:column;gap:2px;flex:1}
+          .role-card .tx b{font-size:15px;font-weight:700}
+          .role-card .tx span{font-size:12px;color:var(--auth-muted,rgba(0,0,0,.55));line-height:1.35}
+          .role-card .arr{color:var(--auth-muted,rgba(0,0,0,.4));font-size:18px;flex-shrink:0}
+          .role-bottom{text-align:center;margin-top:18px;font-size:13px;color:var(--auth-muted,rgba(0,0,0,.55))}
+          .role-bottom a{color:var(--auth-red,#D33F3F);font-weight:600;text-decoration:none}
+        `}</style>
+        <div className="role-choice">
+          <h2>Кто ты?</h2>
+          <p className="sub">Выбери, чтобы продолжить</p>
+
+          <button
+            type="button"
+            className="role-card"
+            onClick={() => setShowChoice(false)}
+          >
+            <div className="ic">🎓</div>
+            <div className="tx">
+              <b>Я ученик</b>
+              <span>Войти в личный кабинет</span>
+            </div>
+            <div className="arr">→</div>
+          </button>
+
+          <Link href="/teach" className="role-card">
+            <div className="ic">👨‍🏫</div>
+            <div className="tx">
+              <b>Я преподаватель</b>
+              <span>Подать заявку — мы свяжемся и подключим</span>
+            </div>
+            <div className="arr">→</div>
+          </Link>
+
+          <div className="role-bottom">
+            Уже преподаёшь у нас? <button type="button" onClick={() => setShowChoice(false)} style={{ background: 'none', border: 'none', color: 'var(--auth-red, #D33F3F)', fontWeight: 600, cursor: 'pointer', padding: 0, font: 'inherit' }}>Войти</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
