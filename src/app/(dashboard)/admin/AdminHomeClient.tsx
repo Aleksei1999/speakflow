@@ -164,6 +164,7 @@ type AdminStats = {
   students_delta_week: number
   apps_today: number
   apps_delta_day: number
+  teacher_applications_new: number
   lessons_today: number
   live_now: number
   open_tickets: number
@@ -174,16 +175,15 @@ type AdminStats = {
   conversion_paid: number
 }
 
-type TrialRequest = {
+type TeacherApplication = {
   id: string
-  student_name: string
-  level: string | null
-  goal: string | null
-  preferred_slot: string | null
-  status: "new" | "processing" | "matched" | "done" | "cancelled"
-  created_at: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  contact: string | null
   notes: string | null
-  assigned_teacher_id: string | null
+  status: "new" | "in_review" | "approved" | "rejected" | "archived"
+  created_at: string
 }
 
 type SupportThread = {
@@ -209,7 +209,7 @@ type Props = {
   fullName: string
   initial: {
     stats: AdminStats
-    requests: TrialRequest[]
+    applications: TeacherApplication[]
     tickets: SupportThread[]
     students: RecentStudent[]
   }
@@ -268,17 +268,23 @@ function appStatusLabel(s: string): { cls: string; text: string } {
   switch (s) {
     case "new":
       return { cls: "app-status-new", text: "новая" }
-    case "processing":
-      return { cls: "app-status-pending", text: "обрабатывается" }
-    case "matched":
-      return { cls: "app-status-done", text: "✓ подобрали" }
-    case "done":
-      return { cls: "app-status-done", text: "✓ готово" }
-    case "cancelled":
-      return { cls: "app-status-pending", text: "отмена" }
+    case "in_review":
+      return { cls: "app-status-pending", text: "на рассмотрении" }
+    case "approved":
+      return { cls: "app-status-done", text: "✓ одобрена" }
+    case "rejected":
+      return { cls: "app-status-pending", text: "отклонена" }
+    case "archived":
+      return { cls: "app-status-pending", text: "архив" }
     default:
       return { cls: "app-status-pending", text: s || "—" }
   }
+}
+
+function teacherAppName(a: TeacherApplication): string {
+  const parts = [a.first_name, a.last_name].filter(Boolean) as string[]
+  if (parts.length > 0) return parts.join(" ")
+  return a.email || a.contact || "Без имени"
 }
 
 function ticketPriorityClass(p: string): string {
@@ -332,7 +338,8 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
       const now = new Date()
       const day = format(now, "EEEE, d MMMM", { locale: ru })
       const parts = [day.charAt(0).toUpperCase() + day.slice(1)]
-      if (stats.apps_today > 0) parts.push(`${stats.apps_today} новых заявок`)
+      if (stats.teacher_applications_new > 0)
+        parts.push(`${stats.teacher_applications_new} заявок преподавателей`)
       if (stats.open_tickets > 0) parts.push(`${stats.open_tickets} тикетов`)
       return parts.join(" · ")
     } catch {
@@ -404,12 +411,14 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
           </div>
         </div>
         <div className="stat-card accent">
-          <div className="label">Заявок сегодня</div>
-          <div className="value">{stats.apps_today}</div>
+          <div className="label">Заявки преподавателей</div>
+          <div className="value">{stats.teacher_applications_new}</div>
           <div
-            className={`change ${stats.apps_delta_day > 0 ? "positive" : ""}`}
+            className={`change ${stats.teacher_applications_new > 0 ? "positive" : ""}`}
           >
-            {deltaDayText}
+            {stats.teacher_applications_new > 0
+              ? `${stats.teacher_applications_new} ждут разбора`
+              : "Все разобраны"}
           </div>
         </div>
         <div className="stat-card">
@@ -437,39 +446,39 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <h3>Новые заявки на пробный</h3>
+            <h3>Заявки преподавателей</h3>
             <Link href="/admin/trial-requests" className="btn btn-sm btn-secondary">
               Все заявки
             </Link>
           </div>
           <div className="card-body">
-            {initial.requests.length === 0 ? (
-              <div className="empty">Пока нет заявок</div>
+            {initial.applications.length === 0 ? (
+              <div className="empty">Новых заявок нет</div>
             ) : (
               <div className="apps-list">
-                {initial.requests.slice(0, 5).map((r, i) => {
-                  const st = appStatusLabel(r.status)
-                  const hot = r.status === "new"
+                {initial.applications.slice(0, 5).map((a, i) => {
+                  const st = appStatusLabel(a.status)
+                  const hot = a.status === "new"
+                  const name = teacherAppName(a)
                   return (
                     <div
-                      key={r.id}
+                      key={a.id}
                       className={`app-item${hot ? " hot" : ""}`}
                     >
                       <div
                         className={`app-avatar ${avatarClassByIndex(i)}`}
                       >
-                        {initialsOf(r.student_name)}
+                        {initialsOf(name)}
                       </div>
                       <div className="app-info">
-                        <h4>{r.student_name}</h4>
+                        <h4>{name}</h4>
                         <p>
-                          {[r.level, r.goal, r.preferred_slot]
-                            .filter(Boolean)
-                            .join(" · ") || "—"}
+                          {[a.email, a.contact].filter(Boolean).join(" · ") ||
+                            "—"}
                         </p>
                       </div>
                       <span className={`app-status ${st.cls}`}>{st.text}</span>
-                      <div className="app-meta">{timeAgoRu(r.created_at)}</div>
+                      <div className="app-meta">{timeAgoRu(a.created_at)}</div>
                     </div>
                   )
                 })}
