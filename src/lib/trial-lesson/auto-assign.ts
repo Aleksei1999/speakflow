@@ -83,6 +83,14 @@ export async function autoAssignTrial(args: {
 
   if (args.preferredSlot) {
     let teacherProfileId: string | null = null
+    let chosenSource: "explicit" | "fallback" | "none" = "none"
+
+    console.log("[autoAssignTrial] start", {
+      requestId,
+      userId,
+      preferredSlot: args.preferredSlot,
+      explicitTeacher: args.teacherProfileId ?? null,
+    })
 
     // 1) Если фронт прислал явного преподавателя — валидируем его через
     // list_trial_teachers (свободен ли он на этот слот).
@@ -98,12 +106,18 @@ export async function autoAssignTrial(args: {
       if (rpcErr) {
         console.error("[autoAssignTrial] list_trial_teachers rpc error", rpcErr)
       }
-      const match = (Array.isArray(candidates) ? candidates : []).find(
+      const list = Array.isArray(candidates) ? candidates : []
+      console.log("[autoAssignTrial] list_trial_teachers returned", {
+        count: list.length,
+        ids: list.map((c: any) => c.teacher_profile_id),
+      })
+      const match = list.find(
         (c: any) => c.teacher_profile_id === args.teacherProfileId
       )
       if (match) {
         teacherProfileId = match.teacher_profile_id
         teacherUserId = match.teacher_user_id ?? null
+        chosenSource = "explicit"
       }
     }
 
@@ -121,14 +135,17 @@ export async function autoAssignTrial(args: {
         console.error("[autoAssignTrial] find_trial_teacher rpc error", rpcErr)
       }
       const candidate = Array.isArray(candidates) ? candidates[0] : null
+      console.log("[autoAssignTrial] find_trial_teacher returned", {
+        teacherProfileId: candidate?.teacher_profile_id ?? null,
+      })
       if (candidate?.teacher_profile_id) {
         teacherProfileId = candidate.teacher_profile_id
         teacherUserId = candidate.teacher_user_id ?? null
+        chosenSource = "fallback"
       }
     }
 
     if (teacherProfileId) {
-
       // Insert lesson (status='booked', free trial — price=0).
       const { data: lesson, error: lessonErr } = await admin
         .from("lessons")
@@ -161,9 +178,30 @@ export async function autoAssignTrial(args: {
           })
           .eq("id", requestId)
         status = "scheduled"
+        console.log("[autoAssignTrial] success", {
+          requestId,
+          lessonId,
+          teacherProfileId,
+          chosenSource,
+        })
       } else {
-        console.error("[autoAssignTrial] lesson insert failed", lessonErr)
+        // Полный объект ошибки в лог — увидим точную причину PG-fail'а.
+        console.error("[autoAssignTrial] lesson INSERT failed", {
+          message: lessonErr?.message,
+          code: (lessonErr as any)?.code,
+          details: (lessonErr as any)?.details,
+          hint: (lessonErr as any)?.hint,
+          teacherProfileId,
+          studentId: userId,
+          scheduled_at: args.preferredSlot,
+        })
       }
+    } else {
+      console.error("[autoAssignTrial] no teacher resolved", {
+        requestId,
+        explicit: args.teacherProfileId ?? null,
+        preferredSlot: args.preferredSlot,
+      })
     }
   }
 
