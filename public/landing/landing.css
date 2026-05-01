@@ -60,11 +60,11 @@ nav.pushed{top:38px}
 [data-theme="light"] .theme-knob{transform:translateX(24px)}
 .nav-cta{display:inline-flex;align-items:center;justify-content:center;padding:10px 22px;background:var(--red);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.3s;text-decoration:none;white-space:nowrap}
 .nav-cta:hover{background:var(--red-light);transform:translateY(-2px);box-shadow:0 8px 25px rgba(230,57,70,0.3)}
-.nav-cta-group{display:flex;align-items:center;gap:8px}
-.nav-cta--student{background:var(--red);color:#fff}
-.nav-cta--student:hover{background:var(--red-light)}
-.nav-cta--teacher{background:transparent;color:var(--text);border:1.5px solid var(--text)}
-.nav-cta--teacher:hover{background:var(--text);color:var(--bg);transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.15)}
+.nav-cta-group{display:flex;align-items:center;gap:12px}
+.nav-cta.nav-cta--student{background:var(--red)!important;color:#fff!important;border:none!important}
+.nav-cta.nav-cta--student:hover{background:var(--red-light)!important}
+.nav-cta.nav-cta--teacher{background:transparent!important;color:var(--text)!important;border:1.5px solid var(--text)!important;box-shadow:none!important}
+.nav-cta.nav-cta--teacher:hover{background:var(--text)!important;color:var(--bg)!important;transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.15)!important}
 
 /* ===== SECTIONS BASE ===== */
 section{padding:110px 48px}
