@@ -35,8 +35,14 @@ interface SlotsResponse {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /**
+   * Если задано — после успешной брони модалка вызовет коллбэк с
+   * scheduledAt вместо hard-redirect. Это позволяет родителю
+   * (например, /student/schedule) переключиться на неделю урока
+   * и сделать refetch без полного reload.
+   */
   initialDate?: Date
-  onBooked?: () => void
+  onBooked?: (scheduledAt: string) => void
 }
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -308,7 +314,16 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
         setBookingLoading(false)
         return
       }
-      onBooked?.()
+      // Если родитель прокинул onBooked — отдаём scheduledAt и
+      // НЕ редиректим (родитель сам решит куда прыгать).
+      if (onBooked) {
+        toast.success("Урок забронирован")
+        onBooked(selectedSlot)
+        onOpenChange(false)
+        setBookingLoading(false)
+        return
+      }
+      // Default: hard-redirect — для мест, которые не передали callback.
       if (data?.redirectUrl) {
         window.location.href = data.redirectUrl
       }
