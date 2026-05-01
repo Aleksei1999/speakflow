@@ -3,62 +3,67 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Trial booking card · превью для Ивана</title>
+<title>Trial booking · превью для Ивана</title>
 <style>
   :root{
     --bg:#FAF7F2;--surface:#fff;--text:#0A0A0A;--muted:#6B6B6B;
-    --border:rgba(0,0,0,.08);--red:#E63946;--lime:#C9F571;
-    --shadow:rgba(0,0,0,.06);
+    --border:rgba(0,0,0,.08);--red:#E63946;
   }
   body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;color:var(--text);padding:32px 16px;display:flex;justify-content:center}
   .wrap{max-width:760px;width:100%}
-  .label{font-size:11px;letter-spacing:.6px;text-transform:uppercase;font-weight:700;color:var(--muted);margin:0 0 8px}
+  .label{font-size:11px;letter-spacing:.6px;text-transform:uppercase;font-weight:700;color:var(--muted);margin:24px 0 8px}
   h1.demo{font-size:24px;font-weight:800;letter-spacing:-.5px;margin:0 0 20px}
   h1.demo span{color:var(--red);font-weight:600}
   .note{background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
   .note b{color:var(--text)}
-
-  /* === Карточка пробного урока === */
   .trial-card{background:linear-gradient(135deg,rgba(230,57,70,.06),rgba(74,222,128,.04));border:1px solid var(--border);border-radius:18px;padding:22px 24px;margin-bottom:16px}
-  .trial-head{display:flex;gap:14px;margin-bottom:14px}
-  .trial-emoji{flex-shrink:0;width:48px;height:48px;border-radius:14px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 0 rgba(180,30,45,.25)}
-  .trial-head-tx{flex:1}
-  .trial-head-tx h3{font-size:18px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px}
-  .trial-head-tx p{font-size:13px;color:var(--muted);margin:0;line-height:1.4}
-  .trial-features{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  .trial-feat{font-size:11px;font-weight:600;padding:5px 10px;border-radius:100px;background:var(--surface);border:1px solid var(--border)}
-  .trial-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
-  .trial-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
-  .trial-slot{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .15s;color:var(--text);font-family:inherit}
-  .trial-slot:hover{border-color:var(--red)}
-  .trial-slot.active{background:rgba(230,57,70,.10);border-color:var(--red)}
-  .trial-slot-day{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:3px}
-  .trial-slot.active .trial-slot-day{color:var(--red)}
-  .trial-slot-time{font-size:15px;font-weight:800;letter-spacing:-.3px}
-  .trial-btn-primary{width:100%;background:var(--red);color:#fff;font-size:14px;font-weight:700;padding:13px 18px;border-radius:12px;border:none;cursor:pointer;box-shadow:0 3px 0 rgba(180,30,45,.3)}
-  .trial-foot{font-size:11px;color:var(--muted);text-align:center;margin-top:10px}
-  .trial-foot a{color:var(--red);text-decoration:none;font-weight:600}
-
-  /* === Состояние «успех» === */
   .trial-card--done{text-align:center;padding:32px 24px}
   .trial-done-icon{width:56px;height:56px;border-radius:50%;background:rgba(74,222,128,.15);color:#22C55E;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
   .trial-card--done h3{font-size:20px;font-weight:800;letter-spacing:-.4px;margin:0 0 8px}
   .trial-done-sub{font-size:13px;color:var(--muted);max-width:520px;margin:0 auto 18px;line-height:1.5}
   .trial-done-sub b{color:var(--text);font-weight:700}
+  .trial-head{display:flex;gap:14px;margin-bottom:14px}
+  .trial-emoji{flex-shrink:0;width:48px;height:48px;border-radius:14px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 0 rgba(180,30,45,.25)}
+  .trial-head-tx h3{font-size:18px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px}
+  .trial-head-tx p{font-size:13px;color:var(--muted);margin:0;line-height:1.4}
+  .trial-features{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .trial-feat{font-size:11px;font-weight:600;padding:5px 10px;border-radius:100px;background:var(--surface);border:1px solid var(--border)}
+  .trial-step-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+  .trial-step-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .trial-back{flex-shrink:0;width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
+  .trial-step-when{font-size:14px;font-weight:700}
+  .trial-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .trial-slot{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;font-family:inherit}
+  .trial-slot.active{background:rgba(230,57,70,.10);border-color:var(--red)}
+  .trial-slot-day{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:3px}
+  .trial-slot.active .trial-slot-day{color:var(--red)}
+  .trial-slot-time{font-size:15px;font-weight:800;letter-spacing:-.3px}
+  .trial-teachers{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .trial-teacher{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:12px;text-align:left;cursor:pointer;font-family:inherit}
+  .trial-teacher.active{background:rgba(230,57,70,.06);border-color:var(--red)}
+  .trial-t-avatar{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .trial-t-tx{flex:1;min-width:0}
+  .trial-t-name{font-size:14px;font-weight:700;margin-bottom:2px}
+  .trial-t-meta{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .trial-t-bio{font-size:12px;color:var(--muted);line-height:1.4}
+  .trial-t-radio{flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:18px;line-height:1}
+  .trial-teacher.active .trial-t-radio{border-color:var(--red)}
+  .trial-btn-primary{width:100%;background:var(--red);color:#fff;font-size:14px;font-weight:700;padding:13px 18px;border-radius:12px;border:none;cursor:pointer;box-shadow:0 3px 0 rgba(180,30,45,.3);font-family:inherit}
   .trial-btn-secondary{display:inline-block;padding:11px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;text-decoration:none}
+  .trial-foot{font-size:11px;color:var(--muted);text-align:center;margin-top:10px}
+  .trial-foot a{color:var(--red);text-decoration:none;font-weight:600}
 </style>
 </head>
 <body>
 <div class="wrap">
   <p class="label">Превью</p>
-  <h1 class="demo">Дашборд <span>Ивана</span> — карточка пробного</h1>
+  <h1 class="demo">Дашборд <span>Ивана</span> — пробный за 2 шага</h1>
   <div class="note">
-    На <b>/student</b> у новичка (0 уроков, нет привязанного пробного) поверх XP-hero появляется эта карточка.
-    Тап по слоту → POST <code>/api/trial-lesson/request</code> → autoAssignTrial.
-    После того как у ученика появится <b>хотя бы один урок</b> в <code>lessons</code> — карточка скрывается автоматически.
+    На <b>/student</b> у новичка появляется карточка из двух шагов:<br>
+    <b>1.</b> выбор времени → <b>2.</b> выбор преподавателя из тех, кто свободен на этот слот → бронь.
   </div>
 
-  <p class="label">1. Состояние при первом заходе</p>
+  <p class="label">Шаг 1 — выбор времени</p>
   <div class="trial-card">
     <div class="trial-head">
       <div class="trial-emoji">🎯</div>
@@ -72,7 +77,7 @@
       <span class="trial-feat">💸 Бесплатно</span>
       <span class="trial-feat">🎓 Под твой уровень</span>
     </div>
-    <div class="trial-label">Удобное время (МСК)</div>
+    <div class="trial-step-label">Шаг 1 / 2 · удобное время (МСК)</div>
     <div class="trial-slots">
       <button class="trial-slot active"><div class="trial-slot-day">Сегодня</div><div class="trial-slot-time">19:00</div></button>
       <button class="trial-slot"><div class="trial-slot-day">Завтра</div><div class="trial-slot-time">10:00</div></button>
@@ -83,11 +88,72 @@
       <button class="trial-slot"><div class="trial-slot-day">Послезавтра</div><div class="trial-slot-time">13:00</div></button>
       <button class="trial-slot"><div class="trial-slot-day">Послезавтра</div><div class="trial-slot-time">16:00</div></button>
     </div>
-    <button class="trial-btn-primary">Записаться на пробный</button>
-    <p class="trial-foot">Нужно другое время? <a href="#">Выбрать преподавателя самому →</a></p>
+    <button class="trial-btn-primary">Далее — выбрать преподавателя →</button>
+    <p class="trial-foot">Нужно другое время? <a href="#">Открыть полный каталог →</a></p>
   </div>
 
-  <p class="label" style="margin-top:32px">2. После клика — преподаватель найден</p>
+  <p class="label">Шаг 2 — выбор преподавателя на этот слот</p>
+  <div class="trial-card">
+    <div class="trial-step-row">
+      <button class="trial-back">←</button>
+      <div>
+        <div class="trial-step-label" style="margin-bottom:2px">Шаг 2 / 2 · преподаватель</div>
+        <div class="trial-step-when">сегодня, 19:00 МСК</div>
+      </div>
+    </div>
+    <div class="trial-step-label">Кто проведёт урок</div>
+    <div class="trial-teachers">
+      <button class="trial-teacher active">
+        <div class="trial-t-avatar">SA</div>
+        <div class="trial-t-tx">
+          <div class="trial-t-name">Sarah Anderson</div>
+          <div class="trial-t-meta">★ 4.9 · 152 отз. · 8 лет опыта</div>
+          <div class="trial-t-bio">CELTA, специализация — разговорный английский, IELTS preparation, бизнес-английский для IT.</div>
+        </div>
+        <div class="trial-t-radio">●</div>
+      </button>
+      <button class="trial-teacher">
+        <div class="trial-t-avatar">МК</div>
+        <div class="trial-t-tx">
+          <div class="trial-t-name">Мария Кузнецова</div>
+          <div class="trial-t-meta">★ 4.8 · 87 отз. · 5 лет опыта</div>
+          <div class="trial-t-bio">Преподаватель с опытом в Cambridge English, готовлю к FCE/CAE, веду речевые клубы для уровней B1+.</div>
+        </div>
+        <div class="trial-t-radio"></div>
+      </button>
+      <button class="trial-teacher">
+        <div class="trial-t-avatar">AS</div>
+        <div class="trial-t-tx">
+          <div class="trial-t-name">Alex Smirnov</div>
+          <div class="trial-t-meta">★ 4.7 · 41 отз. · 3 лет опыта</div>
+          <div class="trial-t-bio">Игровой подход, фокус на разговорной практике без зубрёжки. Подойдёт новичкам и тем, кто давно не говорил.</div>
+        </div>
+        <div class="trial-t-radio"></div>
+      </button>
+    </div>
+    <button class="trial-btn-primary">Записаться</button>
+  </div>
+
+  <p class="label">Если на этот слот никого нет</p>
+  <div class="trial-card">
+    <div class="trial-step-row">
+      <button class="trial-back">←</button>
+      <div>
+        <div class="trial-step-label" style="margin-bottom:2px">Шаг 2 / 2 · преподаватель</div>
+        <div class="trial-step-when">завтра, 10:00 МСК</div>
+      </div>
+    </div>
+    <div style="text-align:center;padding:24px 16px;color:var(--muted);font-size:13px;line-height:1.5">
+      <b style="display:block;color:var(--text);font-size:15px;margin-bottom:6px">На это время никто не свободен 😔</b>
+      <p style="margin:0;font-size:12px">Можно вернуться и выбрать другой слот, либо записаться без автоназначения — куратор подберёт преподавателя и подтвердит время в Telegram.</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <a class="trial-btn-secondary" href="#">← Другое время</a>
+        <button class="trial-btn-primary" style="width:auto;padding:11px 18px">Без выбора — куратору</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="label">После клика «Записаться» — урок назначен</p>
   <div class="trial-card trial-card--done">
     <div class="trial-done-icon">✓</div>
     <h3>Готово, до встречи!</h3>
@@ -96,15 +162,6 @@
       Зайти в комнату можно за 5 минут до начала прямо отсюда.
     </p>
     <a href="#" class="trial-btn-secondary">Открыть расписание</a>
-  </div>
-
-  <p class="label" style="margin-top:32px">3. После клика — преподавателя пока нет</p>
-  <div class="trial-card trial-card--done">
-    <div class="trial-done-icon">✓</div>
-    <h3>Заявка принята, Иван</h3>
-    <p class="trial-done-sub">
-      Хотел <b>пятница, 1 мая, 19:00</b> МСК. Свободного преподавателя на это время сейчас нет — куратор напишет в Telegram, как только подтвердит слот (обычно в течение часа).
-    </p>
   </div>
 </div>
 </body>
