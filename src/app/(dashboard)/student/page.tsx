@@ -9,7 +9,6 @@ import { BookingLauncher } from "./_components/booking-launcher"
 import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 import { TrialBookingCard } from "./_components/trial-booking-card"
-import { PreferredSlotBanner } from "./_components/preferred-slot-banner"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime } from "@/lib/time"
 import { computeLessonAccess } from "@/lib/lesson-access"
@@ -235,11 +234,9 @@ export default async function StudentDashboardPage() {
         .maybeSingle(),
     ])
 
-  // Закреплённые ученика слоты → подсказка «записаться повторно».
-  const { data: prefRows } = await (supabase as any)
-    .from("student_preferred_slots")
-    .select("id, teacher_id, weekday, hour, minute, duration_minutes")
-    .eq("student_id", user.id)
+  // Закреплённые слоты теперь потребляются модалкой бронирования
+  // (автоподбор «обычного времени» по weekday в МСК), а не баннером
+  // на дашборде. Запрос здесь не нужен.
 
   const profile = profileResult.data as { full_name: string | null } | null
   const progress = progressResult.data as { total_xp: number | null; english_level: string | null; current_streak: number | null; longest_streak: number | null } | null
@@ -266,80 +263,6 @@ export default async function StudentDashboardPage() {
   // Карточку показываем новичкам: нет ни одного урока + нет привязанного пробного.
   const showTrialCard =
     totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
-
-  // Считаем следующее повторение для каждого закреплённого слота +
-  // подтягиваем имя преподавателя.
-  const preferredSlots: Array<{
-    teacherProfileId: string | null
-    teacherUserId: string | null
-    teacherName: string | null
-    weekday: number
-    hour: number
-    minute: number
-    duration: number
-    nextIso: string
-    weekdayLabel: string
-    timeLabel: string
-  }> = []
-  const prefList = (prefRows ?? []) as Array<{
-    teacher_id: string | null
-    weekday: number
-    hour: number
-    minute: number
-    duration_minutes: number
-  }>
-  if (prefList.length > 0) {
-    const tIds = Array.from(new Set(prefList.map((p) => p.teacher_id).filter(Boolean))) as string[]
-    let teacherMapPref: Record<string, { name: string; userId: string }> = {}
-    if (tIds.length > 0) {
-      const { data: tps } = await (supabase as any)
-        .from("teacher_profiles")
-        .select("id, user_id")
-        .in("id", tIds)
-      const tpRows = (tps ?? []) as Array<{ id: string; user_id: string }>
-      const userIds = tpRows.map((t) => t.user_id).filter(Boolean)
-      if (userIds.length > 0) {
-        const { data: profs } = await (supabase as any)
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", userIds)
-        const pm = Object.fromEntries(
-          ((profs ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name])
-        )
-        for (const t of tpRows) teacherMapPref[t.id] = { name: pm[t.user_id] ?? "", userId: t.user_id }
-      }
-    }
-    const ru7 = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"] // 0=вс
-    const todayDow = now.getDay() // 0=Sun
-    const upcomingSlotIsoSet = new Set(
-      upcomingLessons.map((l) => new Date(l.scheduled_at).toISOString())
-    )
-    for (const p of prefList) {
-      let daysAhead = (p.weekday - todayDow + 7) % 7
-      const candidate = new Date(now)
-      candidate.setHours(p.hour, p.minute, 0, 0)
-      if (daysAhead === 0 && candidate.getTime() <= now.getTime()) daysAhead = 7
-      candidate.setDate(candidate.getDate() + daysAhead)
-      const iso = candidate.toISOString()
-      // Если этот же слот уже забронирован — не предлагаем.
-      if (upcomingSlotIsoSet.has(iso)) continue
-      const tInfo = p.teacher_id ? teacherMapPref[p.teacher_id] : null
-      preferredSlots.push({
-        teacherProfileId: p.teacher_id,
-        teacherUserId: tInfo?.userId ?? null,
-        teacherName: tInfo?.name ?? null,
-        weekday: p.weekday,
-        hour: p.hour,
-        minute: p.minute,
-        duration: p.duration_minutes,
-        nextIso: iso,
-        weekdayLabel: ru7[p.weekday],
-        timeLabel: `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`,
-      })
-    }
-    // Не показываем больше 2 подсказок одновременно.
-    preferredSlots.splice(2)
-  }
 
   // Помечаем пробные уроки на горизонте недели (для лейбла «🎯 Пробный»).
   const todayTrialIds = new Set<string>()
@@ -512,7 +435,6 @@ export default async function StudentDashboardPage() {
             </div>
           </div>
           <div className="card-body">
-            <PreferredSlotBanner slots={preferredSlots} />
             {upcomingLessons.length === 0 ? (
               <div className="sch-empty">На ближайшую неделю уроков нет. Запишись на следующий слот 👆</div>
             ) : (
