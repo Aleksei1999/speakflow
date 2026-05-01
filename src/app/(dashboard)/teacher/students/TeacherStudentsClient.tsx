@@ -169,6 +169,49 @@ function DotsIcon() {
   )
 }
 
+// Hybrid avatar: render initials underneath + <img> on top. If <img> errors
+// (CORS, 404, blocked) we hide it and the coloured initials chip shows
+// through — never a broken-image icon.
+function StudentAvatar({
+  url,
+  name,
+  avClass,
+}: {
+  url: string | null
+  name: string
+  avClass: string
+}) {
+  const [broken, setBroken] = useState(false)
+  // Reset on URL change so a fresh upload retries.
+  useEffect(() => {
+    setBroken(false)
+  }, [url])
+
+  if (!url || broken) {
+    return (
+      <div className={`st-avatar ${avClass}`.trim()}>
+        {initialsOf(name) || "?"}
+      </div>
+    )
+  }
+
+  return (
+    <div className="st-avatar-wrap">
+      <div className={`st-avatar ${avClass}`.trim()}>
+        {initialsOf(name) || "?"}
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="st-avatar"
+        src={url}
+        alt={name}
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+    </div>
+  )
+}
+
 export default function TeacherStudentsClient({ initial }: { initial: Snapshot }) {
   const [data, setData] = useState<Snapshot>(initial)
   const [levelFilter, setLevelFilter] = useState<LevelFilterKey>("all")
@@ -404,18 +447,12 @@ function StudentRow({ student }: { student: StudentItem }) {
     <tr>
       <td>
         <div className="st-user">
-          {student.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="st-avatar"
-              src={student.avatar_url}
-              alt={student.full_name}
-            />
-          ) : (
-            <div className={`st-avatar ${avClass}`.trim()}>
-              {initialsOf(student.full_name) || "?"}
-            </div>
-          )}
+          <StudentAvatar
+            url={student.avatar_url}
+            name={student.full_name}
+            avClass={avClass}
+          />
+          {/* Avatar above; falls back to initials on <img> error. */}
           <div>
             <div className="st-name">{student.full_name}</div>
             {student.email ? <div className="st-email">{student.email}</div> : null}
