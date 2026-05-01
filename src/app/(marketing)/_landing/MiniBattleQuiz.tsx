@@ -12,10 +12,11 @@ type GoalsStep = {
   subtitle: string
   options: { id: string; label: string; desc: string; icon: string }[]
 }
-type Mode = "intro" | "question" | "result" | "goals" | "form" | "success" | "gameover"
-type Mood = "happy" | "neutral" | "worried" | "wow" | "cool" | "dead"
+type Mode = "intro" | "question" | "result" | "goals" | "form" | "success" | "gameover" | "bonus_offer"
+type Mood = "happy" | "neutral" | "worried" | "wow" | "cool" | "dead" | "frozen"
 
 const TOTAL_QUESTIONS = 12
+const BONUS_QUESTIONS = 7
 const STARTING_LEVEL = 2 as const
 const MAX_LIVES = 3
 
@@ -177,6 +178,26 @@ function SteakSVG({ mood, size = 100, color = "#D33F3F" }: { mood: Mood; size?: 
         <path d="M34 44 L42 52 M42 44 L34 52" stroke="#1a1a1a" strokeWidth={2.4} strokeLinecap="round" />
         <path d="M54 44 L62 52 M62 44 L54 52" stroke="#1a1a1a" strokeWidth={2.4} strokeLinecap="round" />
         <path d="M 36 64 Q 48 58, 60 64" stroke="#1a1a1a" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      </>
+    ),
+    frozen: (
+      <>
+        {/* squinting eyes */}
+        <path d="M32 47 L42 47" stroke="#1a1a1a" strokeWidth={2.4} strokeLinecap="round" />
+        <path d="M54 47 L64 47" stroke="#1a1a1a" strokeWidth={2.4} strokeLinecap="round" />
+        {/* chattering zigzag mouth */}
+        <path
+          d="M 34 62 L 38 58 L 42 62 L 46 58 L 50 62 L 54 58 L 58 62 L 62 58"
+          stroke="#1a1a1a"
+          strokeWidth={2.4}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* snowflakes */}
+        <text x="14" y="34" fontSize="14" opacity="0.85">❄</text>
+        <text x="76" y="30" fontSize="11" opacity="0.7">❄</text>
+        <text x="78" y="80" fontSize="9" opacity="0.6">❄</text>
       </>
     ),
   }
@@ -350,6 +371,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     timeline: null,
     intensity: null,
   })
+  const [bonusActive, setBonusActive] = useState(false)
 
   const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -380,6 +402,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     setLocked(false)
     setGoalsStep(0)
     setGoals({ purpose: null, timeline: null, intensity: null })
+    setBonusActive(false)
   }, [])
 
   const startBattle = useCallback(() => {
@@ -422,11 +445,24 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
           setMode("gameover")
           return
         }
-        if (nextIndex >= TOTAL_QUESTIONS) {
+        // Конец основного раунда (12 вопросов)
+        if (!bonusActive && nextIndex >= TOTAL_QUESTIONS) {
+          // Идеальный счёт → предлагаем бонусные 7 вопросов + Speaking Club
+          if (nextTotalRight >= TOTAL_QUESTIONS) {
+            setMode("bonus_offer")
+            return
+          }
           setMode("result")
           return
         }
-        const next = pickQuestion(usedIdx, nextLvl)
+        // Конец бонусного раунда (12 + 7 = 19)
+        if (bonusActive && nextIndex >= TOTAL_QUESTIONS + BONUS_QUESTIONS) {
+          setMode("result")
+          return
+        }
+        // В бонусе всегда тянем самый высокий уровень (C1+)
+        const askLvl: 1 | 2 | 3 | 4 = bonusActive ? 4 : nextLvl
+        const next = pickQuestion(usedIdx, askLvl)
         if (!next) {
           setMode("result")
           return
@@ -442,8 +478,28 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
         setQIndex(nextIndex)
       }, 1100)
     },
-    [locked, currentQ, answered, totalRight, lives, currentLvl, qIndex, usedIdx, pickQuestion]
+    [locked, currentQ, answered, totalRight, lives, currentLvl, qIndex, usedIdx, pickQuestion, bonusActive]
   )
+
+  const acceptBonus = useCallback(() => {
+    setBonusActive(true)
+    // Берём первый бонус-вопрос на C1+ (lvl=4)
+    const next = pickQuestion(usedIdx, 4)
+    if (!next) {
+      setMode("result")
+      return
+    }
+    setUsedIdx((prev) => {
+      const s = new Set(prev)
+      s.add(next.idx)
+      return s
+    })
+    setCurrentQ(next)
+    setPicked(null)
+    setLocked(false)
+    setQIndex(TOTAL_QUESTIONS) // продолжаем с 13-го
+    setMode("question")
+  }, [pickQuestion, usedIdx])
 
   useEffect(() => {
     return () => {
@@ -520,7 +576,8 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     [goalsStep]
   )
 
-  const progressPct = (qIndex / TOTAL_QUESTIONS) * 100
+  const totalLen = bonusActive ? TOTAL_QUESTIONS + BONUS_QUESTIONS : TOTAL_QUESTIONS
+  const progressPct = (qIndex / totalLen) * 100
   const mood: Mood = lives === 3 ? "happy" : lives === 2 ? "neutral" : "worried"
 
   return (
@@ -565,7 +622,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
               <div className="mb-progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
             <div className="mb-q-counter">
-              {qIndex + 1}/{TOTAL_QUESTIONS}
+              {qIndex + 1}/{totalLen}{bonusActive ? " 🔥" : ""}
             </div>
             <button className="mb-skip-btn" onClick={skipToResult} type="button">
               Пропустить
@@ -610,19 +667,48 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
       {mode === "gameover" && (
         <div className="mb-gameover">
           <div style={{ marginBottom: 16 }}>
-            <SteakSVG mood="dead" size={130} color="#3a2a1a" />
+            <SteakSVG mood="frozen" size={130} color="#7AB8D8" />
           </div>
-          <div className="mb-cta-title" style={{ color: "var(--red)" }}>
-            Пережарился…
+          <div className="mb-cta-title" style={{ color: "#3B82F6" }}>
+            Заморозился…
           </div>
           <p className="mb-intro-desc">
-            Стейк сгорел на {qIndex} вопросе. Но мы уже примерно поняли твой уровень — посмотрим?
+            Жизни закончились на {qIndex} вопросе — стейк остыл. Но мы уже примерно поняли твой уровень.
           </p>
           <button className="mb-btn-primary" onClick={() => setMode("result")} type="button" style={{ marginBottom: 10 }}>
             Показать результат
           </button>
           <button className="mb-btn-ghost" onClick={startBattle} type="button">
             Попробовать ещё раз
+          </button>
+        </div>
+      )}
+
+      {mode === "bonus_offer" && (
+        <div className="mb-gameover">
+          <div style={{ marginBottom: 16 }}>
+            <SteakSVG mood="cool" size={130} color="#5C3A1E" />
+          </div>
+          <div className="mb-cta-title" style={{ color: "var(--red)" }}>
+            🔥 Идеальный раунд!
+          </div>
+          <p className="mb-intro-desc">
+            Все 12 из 12 правильно. Хочешь ещё <b>7 вопросов на C1+</b> и попробовать наш Speaking Club?
+          </p>
+          <button
+            className="mb-btn-primary"
+            onClick={acceptBonus}
+            type="button"
+            style={{ marginBottom: 10 }}
+          >
+            Поехали — +7 вопросов
+          </button>
+          <button
+            className="mb-btn-ghost"
+            onClick={() => setMode("result")}
+            type="button"
+          >
+            Просто результат
           </button>
         </div>
       )}
@@ -698,6 +784,38 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
               )
             })}
           </div>
+
+          {bonusActive && (
+            <div
+              className="mb-cta-card"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(74,222,128,0.10), rgba(211,63,63,0.06))",
+                borderColor: "rgba(74,222,128,0.35)",
+              }}
+            >
+              <div className="mb-cta-label" style={{ color: "#16A34A" }}>
+                🎤 Для продвинутых
+              </div>
+              <div className="mb-cta-card-title">Speaking Club — еженедельные разговорные клубы</div>
+              <div className="mb-cta-desc">
+                Раз в неделю собираемся группой 4–6 человек на твоём уровне.
+                Свободный английский, темы из жизни, ведущий-носитель или сильный преподаватель. На C1+ — самые интересные дискуссии.
+              </div>
+              <div className="mb-cta-features">
+                <div className="mb-cta-feat"><CheckIcon /> 60 минут живого разговора</div>
+                <div className="mb-cta-feat"><CheckIcon /> Темы C1+ и выше</div>
+                <div className="mb-cta-feat"><CheckIcon /> Первая встреча — бесплатно</div>
+              </div>
+              <Link
+                href={isAuthenticated ? "/student/clubs" : "/register?goal=clubs"}
+                className="mb-btn-primary mb-btn-full"
+                style={{ textDecoration: "none", textAlign: "center", display: "inline-flex", justifyContent: "center" }}
+              >
+                Записаться в Speaking Club
+              </Link>
+            </div>
+          )}
 
           <div className="mb-cta-card">
             <div className="mb-cta-label">Следующий шаг</div>
