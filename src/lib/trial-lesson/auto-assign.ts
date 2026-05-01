@@ -29,6 +29,12 @@ export async function autoAssignTrial(args: {
   preferredSlot: string | null
   notes?: string | null
   levelTestId?: string | null
+  /**
+   * Если ученик уже выбрал конкретного преподавателя в UI — назначаем его
+   * (после проверки, что слот реально его и нет overlap'a). Иначе берём
+   * первого по find_trial_teacher.
+   */
+  teacherProfileId?: string | null
 }): Promise<TrialAutoAssignResult | null> {
   const { userId } = args
   const admin = createAdminClient()
@@ -76,22 +82,52 @@ export async function autoAssignTrial(args: {
   let status: TrialAutoAssignResult["status"] = "pending"
 
   if (args.preferredSlot) {
-    const { data: candidates, error: rpcErr } = await admin.rpc(
-      "find_trial_teacher",
-      {
-        p_slot: args.preferredSlot,
-        p_duration: TRIAL_DURATION_MIN,
-        p_tz: "Europe/Moscow",
+    let teacherProfileId: string | null = null
+
+    // 1) Если фронт прислал явного преподавателя — валидируем его через
+    // list_trial_teachers (свободен ли он на этот слот).
+    if (args.teacherProfileId) {
+      const { data: candidates, error: rpcErr } = await admin.rpc(
+        "list_trial_teachers",
+        {
+          p_slot: args.preferredSlot,
+          p_duration: TRIAL_DURATION_MIN,
+          p_tz: "Europe/Moscow",
+        }
+      )
+      if (rpcErr) {
+        console.error("[autoAssignTrial] list_trial_teachers rpc error", rpcErr)
       }
-    )
-    if (rpcErr) {
-      console.error("[autoAssignTrial] find_trial_teacher rpc error", rpcErr)
+      const match = (Array.isArray(candidates) ? candidates : []).find(
+        (c: any) => c.teacher_profile_id === args.teacherProfileId
+      )
+      if (match) {
+        teacherProfileId = match.teacher_profile_id
+        teacherUserId = match.teacher_user_id ?? null
+      }
     }
 
-    const candidate = Array.isArray(candidates) ? candidates[0] : null
-    if (candidate?.teacher_profile_id) {
-      const teacherProfileId: string = candidate.teacher_profile_id
-      teacherUserId = candidate.teacher_user_id ?? null
+    // 2) Иначе/если выбранный уже занят — фолбэк на топ-1 по рейтингу.
+    if (!teacherProfileId) {
+      const { data: candidates, error: rpcErr } = await admin.rpc(
+        "find_trial_teacher",
+        {
+          p_slot: args.preferredSlot,
+          p_duration: TRIAL_DURATION_MIN,
+          p_tz: "Europe/Moscow",
+        }
+      )
+      if (rpcErr) {
+        console.error("[autoAssignTrial] find_trial_teacher rpc error", rpcErr)
+      }
+      const candidate = Array.isArray(candidates) ? candidates[0] : null
+      if (candidate?.teacher_profile_id) {
+        teacherProfileId = candidate.teacher_profile_id
+        teacherUserId = candidate.teacher_user_id ?? null
+      }
+    }
+
+    if (teacherProfileId) {
 
       // Insert lesson (status='booked', free trial — price=0).
       const { data: lesson, error: lessonErr } = await admin
