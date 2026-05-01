@@ -195,7 +195,7 @@ export default async function TeacherDashboardPage() {
   const now = new Date()
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
-  const weekAheadEnd = endOfDay(addDays(now, 6))
+  const weekAheadEnd = endOfDay(addDays(now, 13))
   const monthStart = startOfMonth(now)
   const monthEnd = endOfMonth(now)
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
@@ -462,7 +462,7 @@ export default async function TeacherDashboardPage() {
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 6), "d MMM", { locale: ru })}</h3>
+            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 13), "d MMM", { locale: ru })}</h3>
             <Link href="/teacher/schedule" className="btn btn-sm btn-secondary">Полное расписание</Link>
           </div>
           <div className="card-body">
