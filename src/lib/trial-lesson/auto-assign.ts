@@ -79,6 +79,7 @@ export async function autoAssignTrial(args: {
   // 2) Try to assign a teacher when a slot was provided.
   let lessonId: string | null = null
   let teacherUserId: string | null = null
+  let teacherProfileIdAssigned: string | null = null
   let status: TrialAutoAssignResult["status"] = "pending"
 
   if (args.preferredSlot) {
@@ -164,24 +165,39 @@ export async function autoAssignTrial(args: {
 
       if (!lessonErr && lesson?.id) {
         lessonId = lesson.id
+        teacherProfileIdAssigned = teacherProfileId
         await admin
           .from("lessons")
           .update({ jitsi_room_name: `speakflow-${lesson.id}` })
           .eq("id", lesson.id)
 
-        await admin
+        // ВАЖНО: assigned_teacher_id FK → teacher_profiles.id (а не profiles.id),
+        // status разрешён в check как 'scheduled' (мигр 047).
+        const { error: updErr } = await admin
           .from("trial_lesson_requests")
           .update({
             status: "scheduled",
-            assigned_teacher_id: teacherUserId,
+            assigned_teacher_id: teacherProfileId,
             assigned_lesson_id: lesson.id,
           })
           .eq("id", requestId)
+        if (updErr) {
+          console.error("[autoAssignTrial] trial_request UPDATE failed", {
+            message: updErr.message,
+            code: (updErr as any)?.code,
+            details: (updErr as any)?.details,
+            hint: (updErr as any)?.hint,
+            requestId,
+            lessonId,
+            teacherProfileId,
+          })
+        }
         status = "scheduled"
         console.log("[autoAssignTrial] success", {
           requestId,
           lessonId,
           teacherProfileId,
+          teacherUserId,
           chosenSource,
         })
       } else {
