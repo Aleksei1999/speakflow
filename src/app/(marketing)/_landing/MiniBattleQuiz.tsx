@@ -670,7 +670,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
             <SteakSVG mood="frozen" size={130} color="#7AB8D8" />
           </div>
           <div className="mb-cta-title" style={{ color: "#3B82F6" }}>
-            Заморозился…
+            Frozen…
           </div>
           <p className="mb-intro-desc">
             Жизни закончились на {qIndex} вопросе — стейк остыл. Но мы уже примерно поняли твой уровень.
