@@ -6,27 +6,18 @@ import AdminTrialRequestsClient from "./AdminTrialRequestsClient"
 
 export const dynamic = "force-dynamic"
 
-type TrialRequest = {
+type TeacherApplication = {
   id: string
-  student_id: string | null
-  student_name: string
-  student_email: string | null
-  student_phone: string | null
-  level: string | null
-  goal: string | null
-  preferred_slot: string | null
+  first_name: string
+  last_name: string
+  email: string
+  contact: string
   notes: string | null
-  status: "new" | "processing" | "matched" | "done" | "cancelled"
-  assigned_teacher_id: string | null
-  assigned_teacher_name: string | null
+  status: "new" | "in_review" | "approved" | "rejected" | "archived"
+  reviewed_by: string | null
+  reviewed_at: string | null
   created_at: string
   updated_at: string
-}
-
-type TeacherOption = {
-  id: string
-  full_name: string
-  level_range: string | null
 }
 
 async function safeFetch(url: string, cookie: string): Promise<any> {
@@ -39,32 +30,17 @@ async function safeFetch(url: string, cookie: string): Promise<any> {
   }
 }
 
-async function loadSnapshot(): Promise<{
-  requests: TrialRequest[]
-  teachers: TeacherOption[]
-}> {
+async function loadApplications(): Promise<TeacherApplication[]> {
   const hdrs = await headers()
   const host = hdrs.get("host")
   const proto = hdrs.get("x-forwarded-proto") ?? "http"
   const cookie = hdrs.get("cookie") ?? ""
-  if (!host) return { requests: [], teachers: [] }
-  const base = `${proto}://${host}`
-
-  const [reqRes, teacherRes] = await Promise.all([
-    safeFetch(`${base}/api/admin/trial-requests`, cookie),
-    safeFetch(`${base}/api/teachers?limit=100`, cookie),
-  ])
-
-  return {
-    requests: Array.isArray(reqRes?.requests) ? reqRes.requests : [],
-    teachers: Array.isArray(teacherRes?.teachers)
-      ? teacherRes.teachers.map((t: any) => ({
-          id: t.id,
-          full_name: t.full_name || t.name || "—",
-          level_range: t.level_range ?? null,
-        }))
-      : [],
-  }
+  if (!host) return []
+  const json = await safeFetch(
+    `${proto}://${host}/api/admin/teacher-applications`,
+    cookie
+  )
+  return Array.isArray(json?.applications) ? json.applications : []
 }
 
 export default async function AdminTrialRequestsPage() {
@@ -80,10 +56,12 @@ export default async function AdminTrialRequestsPage() {
     .eq("id", user.id)
     .single()
   if (!profile) redirect("/login")
-  if (profile.role === "student") redirect("/student")
-  if (profile.role === "teacher") redirect("/teacher")
-  if (profile.role !== "admin") redirect("/login")
+  if (profile.role !== "admin") {
+    if (profile.role === "teacher") redirect("/teacher")
+    if (profile.role === "student") redirect("/student")
+    redirect("/login")
+  }
 
-  const snap = await loadSnapshot()
-  return <AdminTrialRequestsClient initial={snap} />
+  const initial = await loadApplications()
+  return <AdminTrialRequestsClient initial={initial} />
 }
