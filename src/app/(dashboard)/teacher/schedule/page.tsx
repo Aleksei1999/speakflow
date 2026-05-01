@@ -723,6 +723,7 @@ export default function TeacherSchedulePage() {
                 onCellClick={(day, h) => openAssignDialog(day, h)}
                 isHappeningNow={isHappeningNow}
                 studentMap={studentMap}
+                trialIds={trialIds}
               />
             ))}
           </div>
@@ -852,6 +853,7 @@ function RowFragment({
   onCellClick,
   isHappeningNow,
   studentMap,
+  trialIds,
 }: {
   hour: number
   weekDays: Date[]
@@ -860,6 +862,7 @@ function RowFragment({
   onCellClick: (day: Date, hour: number) => void
   isHappeningNow: (l: LessonRow) => boolean
   studentMap: Record<string, StudentMapEntry>
+  trialIds: Set<string>
 }) {
   const label = `${String(hour).padStart(2, "0")}:00`
   return (
