@@ -12,6 +12,7 @@ import { requireAdmin } from "@/lib/admin-guard"
 //   {
 //     students_active: number,   // students active last 30d (by created_at fallback)
 //     apps_today: number,        // trial_lesson_requests created today
+//     teacher_applications_new: number, // teacher_applications.status='new'
 //     lessons_today: number,     // lessons scheduled today in any non-cancelled state
 //     live_now: number,          // lessons.status='in_progress'
 //     open_tickets: number,      // support_threads where status in ('open','pending')
@@ -49,6 +50,7 @@ export async function GET(_request: NextRequest) {
     const [
       studentsActiveRes,
       appsTodayRes,
+      teacherAppsNewRes,
       lessonsTodayRes,
       liveNowRes,
       openTicketsRes,
@@ -64,6 +66,10 @@ export async function GET(_request: NextRequest) {
         .select("id", { count: "exact", head: true })
         .gte("created_at", todayStart)
         .lt("created_at", todayEnd),
+      admin
+        .from("teacher_applications")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "new"),
       admin
         .from("lessons")
         .select("id", { count: "exact", head: true })
@@ -103,6 +109,7 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({
       students_active: studentsActiveRes.count ?? 0,
       apps_today: appsTodayRes.count ?? 0,
+      teacher_applications_new: teacherAppsNewRes.count ?? 0,
       lessons_today: lessonsTodayRes.count ?? 0,
       live_now: liveNowRes.count ?? 0,
       open_tickets: openTicketsRes.count ?? 0,
