@@ -33,6 +33,11 @@ const SHELL_CSS = `
 .dash .profile-card{background:var(--surface-2);border-radius:18px;padding:20px 14px;text-align:center;margin-bottom:18px;transition:background .2s ease}
 .dash .profile-photo{width:64px;height:64px;border-radius:50%;background:var(--red);border:3px solid var(--lime);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;object-fit:cover}
 .dash .profile-photo-img{width:64px;height:64px;border-radius:50%;border:3px solid var(--lime);margin:0 auto 10px;display:block;object-fit:cover}
+/* Hybrid avatar: initials underneath, <img> on top. If <img> fails to load,
+   onError hides it and the initials fallback shows through. */
+.dash .profile-photo-wrap{position:relative;width:64px;height:64px;margin:0 auto 10px}
+.dash .profile-photo-wrap .profile-photo,
+.dash .profile-photo-wrap .profile-photo-img{position:absolute;inset:0;margin:0}
 .dash .profile-name{font-weight:800;font-size:16px;letter-spacing:-.3px}
 .dash .profile-role{font-size:12px;color:var(--muted);margin-top:3px}
 .dash .profile-level{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(230,57,70,.08);color:var(--red)}
@@ -194,6 +199,11 @@ type Props = {
 export function DashboardShell({ fullName, avatarUrl, role, gamification, teacherStats, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+
+  // Track <img> load failures so we can fall back to initials. Reset whenever
+  // the URL changes (e.g. user re-uploads avatar in /settings).
+  const [avatarBroken, setAvatarBroken] = useState(false)
+  useEffect(() => { setAvatarBroken(false) }, [avatarUrl])
 
   useEffect(() => {
     if (role) {
@@ -362,8 +372,21 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           </Link>
 
           <div className="profile-card">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={fullName} className="profile-photo-img" />
+            {avatarUrl && !avatarBroken ? (
+              <div className="profile-photo-wrap">
+                {/* Initials sit underneath; <img> covers them when it loads.
+                    If the <img> errors out (CORS, 404, blocked) onError hides
+                    it via state and the initials show through. */}
+                <div className="profile-photo">{initials || "?"}</div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl}
+                  alt={fullName}
+                  className="profile-photo-img"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarBroken(true)}
+                />
+              </div>
             ) : (
               <div className="profile-photo">{initials || "?"}</div>
             )}
