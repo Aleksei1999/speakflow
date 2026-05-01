@@ -118,14 +118,9 @@ export default function LandingClient({ isAuthenticated = false, homeHref = "/st
               <span>Личный кабинет</span>
             </Link>
           ) : (
-            <div className="nav-cta-group">
-              <Link href="/teach" className="nav-cta nav-cta--teacher">
-                <span>Для преподавателя</span>
-              </Link>
-              <Link href="/login" className="nav-cta nav-cta--student">
-                <span>Войти</span>
-              </Link>
-            </div>
+            <Link href="/login" className="nav-cta">
+              <span>Войти</span>
+            </Link>
           )}
         </div>
       </nav>
