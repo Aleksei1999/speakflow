@@ -94,6 +94,17 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
   const [bookingLoading, setBookingLoading] = useState(false)
   const [pinSlot, setPinSlot] = useState(false)
   const [nowMs, setNowMs] = useState<number>(() => Date.now())
+  // Закреплённые ученика слоты — для автоподбора «обычного времени».
+  type PreferredSlot = {
+    teacherProfileId: string | null
+    weekday: number
+    hour: number
+    minute: number
+    duration: number
+  }
+  const [preferredSlots, setPreferredSlots] = useState<PreferredSlot[]>([])
+  // ISO выбранного слота, который был автоматически предложен (для бейджа).
+  const [autoSuggestedSlot, setAutoSuggestedSlot] = useState<string | null>(null)
 
   // Re-tick once a minute so slots that just slipped into the past go grey
   // even if the modal was opened a while ago.
@@ -121,9 +132,29 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
         setSelectedSlot(null)
         setSlots([])
         setTeachersFilter("all")
+        setAutoSuggestedSlot(null)
       }, 200)
       return () => clearTimeout(t)
     }
+  }, [open])
+
+  // Когда модалка открывается — подтягиваем закреплённые слоты ученика
+  // (раз за сессию модалки достаточно).
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/student/preferred-slots", { cache: "no-store" })
+        if (!res.ok) return
+        const json = await res.json()
+        if (cancelled) return
+        if (Array.isArray(json?.slots)) setPreferredSlots(json.slots)
+      } catch {
+        // тихо: автоподбор просто не сработает
+      }
+    })()
+    return () => { cancelled = true }
   }, [open])
 
   useEffect(() => {
@@ -159,10 +190,11 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
     return () => { cancelled = true }
   }, [open, step])
 
-  const loadSlots = useCallback(async (teacherUserId: string, date: Date, dur: Duration) => {
+  const loadSlots = useCallback(async (teacherUserId: string, date: Date, dur: Duration, teacherProfileId?: string | null) => {
     setSlotsLoading(true)
     setSlots([])
     setSelectedSlot(null)
+    setAutoSuggestedSlot(null)
     try {
       const dateStr = format(date, "yyyy-MM-dd")
       const res = await fetch(`/api/booking/slots?teacherId=${teacherUserId}&date=${dateStr}&duration=${dur}`)
@@ -176,23 +208,63 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
       const list = Array.isArray(payload.slots) ? payload.slots : (payload.slots?.[dur] ?? [])
       setSlots(list)
       setTeacherRate(payload.teacherRate ?? 0)
+
+      // Автоподбор «обычного времени»: ищем preferredSlot с weekday=date.MSK
+      // и среди свободных слотов находим тот же час+минуту по МСК.
+      try {
+        const wdParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "Europe/Moscow",
+          weekday: "short",
+        }).formatToParts(date)
+        const wd = wdParts.find((p) => p.type === "weekday")?.value
+        const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+        const targetWeekday = wd ? wdMap[wd] : null
+        if (targetWeekday !== null) {
+          // Сначала ищем preferred у этого же преподавателя; иначе любой.
+          const candidates = preferredSlots.filter((p) => p.weekday === targetWeekday)
+          const same = teacherProfileId
+            ? candidates.find((p) => p.teacherProfileId === teacherProfileId)
+            : null
+          const pref = same ?? candidates[0] ?? null
+          if (pref) {
+            const fmt = new Intl.DateTimeFormat("en-GB", {
+              timeZone: "Europe/Moscow",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })
+            const target = `${String(pref.hour).padStart(2, "0")}:${String(pref.minute).padStart(2, "0")}`
+            const match = list.find((s) => {
+              if (!s.available) return false
+              const t = fmt.format(new Date(s.startTime))
+              return t === target
+            })
+            if (match) {
+              setSelectedSlot(match.startTime)
+              setAutoSuggestedSlot(match.startTime)
+            }
+          }
+        }
+      } catch {
+        // если что-то пошло не так — просто не предлагаем
+      }
     } catch {
       toast.error("Ошибка соединения с сервером")
     } finally {
       setSlotsLoading(false)
     }
-  }, [])
+  }, [preferredSlots])
 
   useEffect(() => {
     if (step !== "calendar" || !selectedTeacher || !selectedDate) return
-    loadSlots(selectedTeacher.userId, selectedDate, duration)
+    loadSlots(selectedTeacher.userId, selectedDate, duration, selectedTeacher.teacherProfileId)
   }, [step, selectedTeacher, selectedDate, duration, loadSlots])
 
   useLessonsRealtime({
     teacherId: selectedTeacher?.teacherProfileId ?? null,
     enabled: open && step === "calendar" && !!selectedTeacher && !!selectedDate,
     onChange: () => {
-      if (selectedTeacher && selectedDate) loadSlots(selectedTeacher.userId, selectedDate, duration)
+      if (selectedTeacher && selectedDate) loadSlots(selectedTeacher.userId, selectedDate, duration, selectedTeacher.teacherProfileId)
     },
   })
 
@@ -227,7 +299,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
       const data = await res.json()
       if (res.status === 409) {
         toast.error("Слот только что занят, выберите другой")
-        if (selectedDate) loadSlots(selectedTeacher.userId, selectedDate, duration)
+        if (selectedDate) loadSlots(selectedTeacher.userId, selectedDate, duration, selectedTeacher.teacherProfileId)
         setBookingLoading(false)
         return
       }
@@ -399,18 +471,26 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                       <div className="cal-slots">
                         {slotsView.map((s) => {
                           const isSel = selectedSlot === s.startTime
+                          const isAuto = autoSuggestedSlot === s.startTime
                           const cls = ["cal-slot"]
                           if (!s.available) cls.push("cal-slot--taken")
                           if (isSel) cls.push("selected")
+                          if (isAuto) cls.push("cal-slot--preferred")
                           return (
                             <button
                               key={s.startTime}
                               className={cls.join(" ")}
                               disabled={!s.available}
                               onClick={() => s.available && setSelectedSlot(s.startTime)}
+                              title={isAuto ? "Твоё обычное время — предложили автоматически" : undefined}
                             >
-                              <div className="cal-slot-time">{formatTimeMoscow(s.startTime)}</div>
-                              <div className="cal-slot-dur">{s.available ? `${duration} мин · МСК` : "Занято"}</div>
+                              <div className="cal-slot-time">
+                                {isAuto ? "🔁 " : ""}
+                                {formatTimeMoscow(s.startTime)}
+                              </div>
+                              <div className="cal-slot-dur">
+                                {isAuto ? "обычное время" : s.available ? `${duration} мин · МСК` : "Занято"}
+                              </div>
                             </button>
                           )
                         })}
@@ -515,6 +595,9 @@ const MODAL_CSS = `
 .cal-slot.selected .cal-slot-dur{color:rgba(255,255,255,.7)}
 .cal-slot--taken{opacity:.35;cursor:not-allowed}
 .cal-slot--taken .cal-slot-time{text-decoration:line-through}
+.cal-slot--preferred:not(.selected){border-color:#16A34A;background:rgba(74,222,128,.10);box-shadow:0 0 0 2px rgba(74,222,128,.15)}
+.cal-slot--preferred:not(.selected) .cal-slot-dur{color:#16A34A;font-weight:700}
+.cal-slot--preferred.selected{box-shadow:0 0 0 2px rgba(74,222,128,.35)}
 .cal-slot--skeleton{height:54px;background:var(--surface-2);border-color:transparent;animation:calSkel 1.2s ease-in-out infinite;pointer-events:none}
 @keyframes calSkel{50%{opacity:.5}}
 .cal-empty{padding:16px;text-align:center;font-size:.82rem;color:var(--muted);border:1px dashed var(--border);border-radius:12px}
