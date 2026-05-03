@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const ykPayment = await yookassa.createPayment({
       amountKopecks: lesson.price,
-      description: 'Урок английского языка - SpeakFlow',
+      description: 'Урок английского языка - Raw English',
       returnUrl: `${siteUrl}/student/schedule`,
       metadata: {
         lesson_id: lessonId,
