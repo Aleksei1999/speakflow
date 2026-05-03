@@ -1,6 +1,6 @@
-export const SITE_NAME = 'SpeakFlow'
-export const BRAND_NAME = 'RAW English'
-export const SITE_DESCRIPTION = 'Современная EdTech-платформа с AI-технологиями для изучения английского языка'
+export const SITE_NAME = 'Raw English'
+export const BRAND_NAME = 'Raw English'
+export const SITE_DESCRIPTION = 'Современная EdTech-платформа для изучения английского языка'
 
 export const ROLES = { STUDENT: 'student', TEACHER: 'teacher', ADMIN: 'admin' } as const
 export type Role = (typeof ROLES)[keyof typeof ROLES]

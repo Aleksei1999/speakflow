@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * Telegram Bot API клиент для SpeakFlow.
+ * Telegram Bot API клиент для Raw English.
  *
  * Используется для отправки уведомлений пользователям, привязавшим
  * Telegram-аккаунт через код подтверждения.

@@ -11,13 +11,13 @@ import {
 } from "@/components/teachers/teacher-filters"
 
 export const metadata: Metadata = {
-  title: "Наши преподаватели | SpeakFlow",
+  title: "Наши преподаватели | Raw English",
   description:
     "Найдите идеального преподавателя английского языка. Фильтры по специализации, цене, рейтингу и языку преподавания.",
   openGraph: {
-    title: "Наши преподаватели | SpeakFlow",
+    title: "Наши преподаватели | Raw English",
     description:
-      "Найдите идеального преподавателя английского языка на SpeakFlow.",
+      "Найдите идеального преподавателя английского языка на Raw English.",
   },
 }
 

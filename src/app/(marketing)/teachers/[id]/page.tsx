@@ -125,7 +125,7 @@ export async function generateMetadata({
   const teacherData = await getTeacherData(id)
 
   if (!teacherData) {
-    return { title: "Преподаватель не найден | SpeakFlow" }
+    return { title: "Преподаватель не найден | Raw English" }
   }
 
   const profile = teacherData.profiles as unknown as Profile
@@ -133,15 +133,15 @@ export async function generateMetadata({
   const name = profile?.full_name || "Преподаватель"
 
   return {
-    title: `${name} — преподаватель английского | SpeakFlow`,
+    title: `${name} — преподаватель английского | Raw English`,
     description: teacher.bio
       ? teacher.bio.slice(0, 160)
-      : `${name} — преподаватель английского языка на SpeakFlow. Рейтинг: ${teacher.rating.toFixed(1)}. Стоимость от ${teacher.hourly_rate} ₽/час.`,
+      : `${name} — преподаватель английского языка на Raw English. Рейтинг: ${teacher.rating.toFixed(1)}. Стоимость от ${teacher.hourly_rate} ₽/час.`,
     openGraph: {
-      title: `${name} — преподаватель английского | SpeakFlow`,
+      title: `${name} — преподаватель английского | Raw English`,
       description:
         teacher.bio?.slice(0, 160) ||
-        `Запишитесь на урок с ${name} на SpeakFlow`,
+        `Запишитесь на урок с ${name} на Raw English`,
       images: profile?.avatar_url ? [{ url: profile.avatar_url }] : undefined,
     },
   }
