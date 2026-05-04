@@ -14,6 +14,7 @@ export type LessonAccessStatus =
   | "live"       // окно открыто — пускаем в комнату
   | "expired"    // слишком поздно — урок закончился
   | "cancelled"  // статус урока = cancelled — блокируем
+  | "no_show"    // статус урока = no_show — пропущен (визуально отдельно от cancelled)
 
 export interface LessonAccessInput {
   scheduledAt: string | Date | number
@@ -50,6 +51,8 @@ export function computeLessonAccess({
   let accessStatus: LessonAccessStatus
   if (status === "cancelled") {
     accessStatus = "cancelled"
+  } else if (status === "no_show") {
+    accessStatus = "no_show"
   } else if (nowMs < openAtMs) {
     accessStatus = "waiting"
   } else if (nowMs > closeAtMs) {

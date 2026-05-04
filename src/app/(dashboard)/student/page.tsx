@@ -83,6 +83,8 @@ const STU_CSS = `
 .stu-home .sch-status--done{background:rgba(34,197,94,.1);color:#22c55e}
 .stu-home .sch-status--pending{color:var(--muted)}
 .stu-home .sch-status--cancel{background:rgba(230,57,70,.08);color:var(--red)}
+.stu-home .sch-status--missed{background:rgba(245,158,11,.10);color:#B45309;border:1px solid rgba(245,158,11,.35)}
+[data-theme="dark"] .stu-home .sch-status--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 .stu-home .sch-empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px}
 
 .stu-home .sch-link{display:block;text-decoration:none;color:inherit}
@@ -95,6 +97,8 @@ const STU_CSS = `
 .stu-today-join--waiting:hover{background:var(--bg);transform:none}
 .stu-today-join--expired{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
 .stu-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
+.stu-today-join--missed{background:rgba(245,158,11,.10);color:#B45309;cursor:not-allowed;box-shadow:none;border:1px solid rgba(245,158,11,.35);font-weight:700}
+[data-theme="dark"] .stu-today-join--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 .stu-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .stu-home .streak-cal{display:flex;gap:4px;margin-top:10px}
@@ -490,6 +494,8 @@ export default async function StudentDashboardPage() {
                 let cta: any
                 if (l.status === "completed") {
                   cta = <span className="sch-status sch-status--done">✓ завершён</span>
+                } else if (l.status === "no_show" || access.status === "no_show") {
+                  cta = <span className="stu-today-join stu-today-join--missed">Пропущен</span>
                 } else if (l.status === "cancelled" || access.status === "cancelled") {
                   cta = <span className="stu-today-join stu-today-join--cancelled">Отменён</span>
                 } else if (isLive) {
