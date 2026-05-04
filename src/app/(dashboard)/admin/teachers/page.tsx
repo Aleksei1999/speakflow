@@ -311,22 +311,52 @@ function AdminTeachersContent() {
     setLoading(true)
     const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from('teacher_profiles')
-      .select(
-        '*, profile:profiles!teacher_profiles_user_id_fkey(full_name, email, avatar_url, is_active)'
-      )
-      .order('created_at', { ascending: false })
+    try {
+      // Сплитим nested-join на 2 запроса — оригинальный
+      // 'profile:profiles!teacher_profiles_user_id_fkey(...)' иногда
+      // подвисал на клиенте без видимой ошибки.
+      const { data: rawTeachers, error: tpErr } = await supabase
+        .from('teacher_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-    if (!error && data) {
+      if (tpErr) {
+        console.error('[admin/teachers] teacher_profiles select failed', tpErr)
+        setLoading(false)
+        return
+      }
+
+      const list = rawTeachers ?? []
+      if (list.length === 0) {
+        setTeachers([])
+        setLoading(false)
+        return
+      }
+
+      const userIds = list.map((t: any) => t.user_id).filter(Boolean) as string[]
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url, is_active')
+        .in('id', userIds)
+
+      if (pErr) {
+        console.error('[admin/teachers] profiles select failed', pErr)
+      }
+      const pMap = new Map<string, any>(
+        ((profiles ?? []) as any[]).map((p) => [p.id, p])
+      )
+
       setTeachers(
-        data.map((t: any) => ({
+        list.map((t: any) => ({
           ...t,
-          profile: t.profile ?? null,
+          profile: pMap.get(t.user_id) ?? null,
         }))
       )
+    } catch (e) {
+      console.error('[admin/teachers] fetchTeachers crashed', e)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => {
