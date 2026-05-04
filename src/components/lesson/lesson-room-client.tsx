@@ -196,11 +196,8 @@ export function LessonRoomClient({
           MOBILE_APP_PROMO:false,
           HIDE_INVITE_MORE_HEADER:true,
           DISABLE_FOCUS_INDICATOR:true,
-          VERTICAL_FILMSTRIP:true,
+          VERTICAL_FILMSTRIP:false,
           TILE_VIEW_MAX_COLUMNS:2,
-          // Не сворачиваем filmstrip автоматически — нужно видеть участников
-          // во время screen-share.
-          FILM_STRIP_MAX_HEIGHT:120,
           TOOLBAR_BUTTONS:[],
           CONNECTION_INDICATOR_DISABLED:true,
           VIDEO_QUALITY_LABEL_DISABLED:true,
@@ -211,41 +208,28 @@ export function LessonRoomClient({
         userInfo:{displayName:userName},
       })
 
-      // Layout-режимы:
-      // - Никто не шарит экран → tile view (равные тайлы участников).
-      // - Кто-то шарит экран → speaker view: screen-share large +
-      //   filmstrip с участниками сбоку.
-      let screenShareOn = false
-      const applyLayout = () => {
-        try {
-          if (screenShareOn) {
-            jitsiApi.current?.executeCommand("setTileView", false)
-          } else {
-            jitsiApi.current?.executeCommand("setTileView", true)
-            jitsiApi.current?.executeCommand("pinParticipant", null)
-          }
-        } catch {}
+      // Жёстко форсим tile view — startWithTileView иногда игнорится
+      // если кто-то уже в комнате. Через 800мс после init заставим UI.
+      const forceTile = () => {
+        try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
+        try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
-        setTimeout(applyLayout, 200)
+        setTimeout(forceTile, 200)
       })
       jitsiApi.current?.addListener("participantJoined", () => {
-        setTimeout(applyLayout, 100)
+        setTimeout(forceTile, 100)
       })
-      // Когда юзер вышел из tile view (например, кликнул на тайл) —
-      // возвращаем правильный layout согласно screenShareOn.
       jitsiApi.current?.addListener("tileViewChanged", (e: any) => {
-        if (!screenShareOn && e && e.enabled === false) {
-          setTimeout(applyLayout, 50)
+        if (e && e.enabled === false) {
+          setTimeout(forceTile, 50)
         }
       })
-      // Любой screen-share (наш или ученика) переводит в speaker mode.
-      jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
-        screenShareOn = Boolean(e?.on)
-        setTimeout(applyLayout, 100)
+      jitsiApi.current?.addListener("dominantSpeakerChanged", () => {
+        setTimeout(forceTile, 100)
       })
       // safety: на случай если listeners не сработали
-      setTimeout(applyLayout, 1500)
+      setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null}
