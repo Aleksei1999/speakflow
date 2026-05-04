@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 type TeacherRow = {
   id: string
@@ -305,7 +304,6 @@ function TeacherCard({
 function AdminTeachersContent() {
   const [teachers, setTeachers] = useState<TeacherRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('active')
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true)
@@ -398,110 +396,46 @@ function AdminTeachersContent() {
     fetchTeachers()
   }
 
-  const activeTeachers = teachers.filter((t) => t.is_verified)
-  const pendingTeachers = teachers.filter((t) => !t.is_verified)
-
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Управление преподавателями
+          Преподаватели платформы
         </h1>
         <p className="text-sm text-muted-foreground">
-          Верификация и управление преподавателями платформы
+          Все преподаватели на платформе ({teachers.length})
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="active">
-            Активные ({activeTeachers.length})
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            На модерации ({pendingTeachers.length})
-            {pendingTeachers.length > 0 && (
-              <span className="ml-1.5 flex size-5 items-center justify-center rounded-full bg-[#CC3A3A] text-xs text-white">
-                {pendingTeachers.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div
-                className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-                style={{ color: '#CC3A3A' }}
-              />
-              <span className="ml-2 text-sm text-muted-foreground">
-                Загрузка...
-              </span>
-            </div>
-          ) : activeTeachers.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <ShieldCheck className="mb-3 size-10 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">
-                  Нет активных преподавателей
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {activeTeachers.map((teacher) => (
-                <TeacherCard
-                  key={teacher.id}
-                  teacher={teacher}
-                  onVerify={handleVerify}
-                  onReject={handleReject}
-                  onToggleListed={handleToggleListed}
-                  showModeration={false}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="pending">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div
-                className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
-                style={{ color: '#CC3A3A' }}
-              />
-              <span className="ml-2 text-sm text-muted-foreground">
-                Загрузка...
-              </span>
-            </div>
-          ) : pendingTeachers.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckCircle className="mb-3 size-10 text-emerald-400" />
-                <p className="text-sm text-muted-foreground">
-                  Нет преподавателей на модерации
-                </p>
-                <p className="text-xs text-muted-foreground/70">
-                  Все заявки рассмотрены
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {pendingTeachers.map((teacher) => (
-                <TeacherCard
-                  key={teacher.id}
-                  teacher={teacher}
-                  onVerify={handleVerify}
-                  onReject={handleReject}
-                  onToggleListed={handleToggleListed}
-                  showModeration
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div
+            className="size-6 animate-spin rounded-full border-2 border-current border-t-transparent"
+            style={{ color: '#CC3A3A' }}
+          />
+          <span className="ml-2 text-sm text-muted-foreground">Загрузка...</span>
+        </div>
+      ) : teachers.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ShieldCheck className="mb-3 size-10 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Преподавателей пока нет</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {teachers.map((teacher) => (
+            <TeacherCard
+              key={teacher.id}
+              teacher={teacher}
+              onVerify={handleVerify}
+              onReject={handleReject}
+              onToggleListed={handleToggleListed}
+              showModeration={!teacher.is_verified}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
