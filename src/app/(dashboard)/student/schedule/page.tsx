@@ -99,6 +99,7 @@ const SCHEDULE_CSS = `
 .stu-schedule .lc-strip{width:5px;flex-shrink:0;background:var(--lime)}
 .stu-schedule .lc-strip--done{background:#22c55e}
 .stu-schedule .lc-strip--cancel{background:var(--muted)}
+.stu-schedule .lc-strip--missed{background:#F59E0B}
 
 .stu-schedule .lc-time{width:90px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;border-right:1px solid var(--border);background:var(--surface-2)}
 .stu-schedule .lc-time-val{font-size:1.1rem;font-weight:800;letter-spacing:-.5px;line-height:1}
@@ -121,6 +122,8 @@ const SCHEDULE_CSS = `
 .stu-schedule .lc-btn--done{background:rgba(34,197,94,.08);color:#22c55e}
 .stu-schedule .lc-btn--wait{background:var(--bg);color:var(--muted)}
 .stu-schedule .lc-btn--cancelled{background:rgba(138,138,134,.08);color:var(--muted)}
+.stu-schedule .lc-btn--missed{background:rgba(245,158,11,.10);color:#B45309;border:1px solid rgba(245,158,11,.35)}
+[data-theme="dark"] .stu-schedule .lc-btn--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 
 .stu-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(216,242,106,.2),0 6px 20px var(--shadow)}
 .stu-schedule .lc--now .lc-time{background:var(--lime)}
@@ -130,6 +133,9 @@ const SCHEDULE_CSS = `
 .stu-schedule .lc--done{opacity:.55}
 .stu-schedule .lc--cancel{opacity:.55}
 .stu-schedule .lc--cancel .lc-name{text-decoration:line-through}
+.stu-schedule .lc--missed{opacity:.7}
+.stu-schedule .ev--missed{background:rgba(245,158,11,.15);color:#B45309;border-color:#F59E0B;opacity:.7}
+[data-theme="dark"] .stu-schedule .ev--missed{color:#FBBF24}
 
 .stu-schedule .empty{padding:50px 20px;text-align:center;color:var(--muted);font-size:.85rem}
 .stu-schedule .loading{padding:50px 20px;display:flex;justify-content:center}
@@ -286,10 +292,16 @@ export default function StudentSchedulePage() {
     return lessons.reduce((sum, l) => (l.status === "completed" ? sum + 50 : sum), 0)
   }, [lessons])
 
-  const weekCount = lessons.filter((l) => l.status !== "cancelled").length
+  const weekCount = lessons.filter((l) => l.status !== "cancelled" && l.status !== "no_show").length
 
   const nextLesson = useMemo(() => {
-    return lessons.find((l) => new Date(l.scheduled_at) >= now && l.status !== "cancelled" && l.status !== "completed")
+    return lessons.find(
+      (l) =>
+        new Date(l.scheduled_at) >= now &&
+        l.status !== "cancelled" &&
+        l.status !== "no_show" &&
+        l.status !== "completed"
+    )
   }, [lessons, now])
 
   const completedCount = useMemo(
@@ -301,7 +313,7 @@ export default function StudentSchedulePage() {
   const timeRows = useMemo(() => {
     const hours = new Set<number>()
     for (const l of lessons) {
-      if (l.status === "cancelled") continue
+      if (l.status === "cancelled" || l.status === "no_show") continue
       const d = new Date(l.scheduled_at)
       hours.add(d.getHours())
     }
@@ -320,17 +332,17 @@ export default function StudentSchedulePage() {
   }
 
   function canJoin(l: LessonRow): boolean {
-    if (l.status === "completed" || l.status === "cancelled") return false
+    if (l.status === "completed" || l.status === "cancelled" || l.status === "no_show") return false
     return accessState(l).status === "live"
   }
 
   function isHappeningNow(l: LessonRow): boolean {
-    if (l.status === "completed" || l.status === "cancelled") return false
+    if (l.status === "completed" || l.status === "cancelled" || l.status === "no_show") return false
     return accessState(l).status === "live"
   }
 
   function isExpired(l: LessonRow): boolean {
-    if (l.status === "completed" || l.status === "cancelled") return false
+    if (l.status === "completed" || l.status === "cancelled" || l.status === "no_show") return false
     return accessState(l).status === "expired"
   }
 
@@ -475,18 +487,19 @@ export default function StudentSchedulePage() {
                 const end = new Date(dt.getTime() + lesson.duration_minutes * 60_000)
                 const isDone = lesson.status === "completed"
                 const isCancel = lesson.status === "cancelled"
+                const isMissed = lesson.status === "no_show"
                 const expired = isExpired(lesson)
                 const joinable = canJoin(lesson)
                 const teacher = lesson.teacher_id ? teacherMap[lesson.teacher_id] : null
-                const rowCls = `lc${happening ? " lc--now" : ""}${isDone || expired ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}`
-                const stripCls = `lc-strip${isDone || expired ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}`
+                const rowCls = `lc${happening ? " lc--now" : ""}${isDone || expired ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}${isMissed ? " lc--missed" : ""}`
+                const stripCls = `lc-strip${isDone || expired ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}${isMissed ? " lc-strip--missed" : ""}`
                 return (
                   <div key={lesson.id} className={rowCls}>
                     <div className={stripCls} />
                     <div className="lc-time">
                       <div className="lc-time-val">{format(dt, "HH:mm")}</div>
                       <div className="lc-time-dur">{lesson.duration_minutes} мин</div>
-                      {!isCancel && !expired ? <div className="lc-time-xp">+{lesson.duration_minutes === 25 ? 25 : 50} XP</div> : null}
+                      {!isCancel && !isMissed && !expired ? <div className="lc-time-xp">+{lesson.duration_minutes === 25 ? 25 : 50} XP</div> : null}
                     </div>
                     <div className="lc-body">
                       <div className="lc-name">
@@ -498,6 +511,7 @@ export default function StudentSchedulePage() {
                         {isDone ? " · ✓ завершён" : ""}
                         {expired && !isDone ? " · время прошло" : ""}
                         {isCancel ? " · отменён" : ""}
+                        {isMissed ? " · пропущен" : ""}
                       </div>
                     </div>
                     <div className="lc-teacher">
@@ -512,6 +526,8 @@ export default function StudentSchedulePage() {
                         <span className="lc-btn lc-btn--done">✓ Завершён</span>
                       ) : isCancel ? (
                         <span className="lc-btn lc-btn--cancelled">Отменён</span>
+                      ) : isMissed ? (
+                        <span className="lc-btn lc-btn--missed">Пропущен</span>
                       ) : expired ? (
                         <span className="lc-btn lc-btn--cancelled">Урок завершён</span>
                       ) : joinable ? (
@@ -569,7 +585,7 @@ function RowFragment({
       {weekDays.map((day) => {
         const lessonsInCell = lessons.filter((l) => {
           const d = new Date(l.scheduled_at)
-          return isSameDay(d, day) && d.getHours() === hour && l.status !== "cancelled"
+          return isSameDay(d, day) && d.getHours() === hour && l.status !== "cancelled" && l.status !== "no_show"
         })
         const first = lessonsInCell[0]
         return (
