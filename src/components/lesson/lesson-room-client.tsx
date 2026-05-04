@@ -212,11 +212,23 @@ export function LessonRoomClient({
       // если кто-то уже в комнате. Через 800мс после init заставим UI.
       const forceTile = () => {
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
+        try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTile, 200)
       })
       jitsiApi.current?.addListener("participantJoined", () => {
+        setTimeout(forceTile, 100)
+      })
+      // Если юзер кликнул на тайл и Jitsi переключился в speaker view —
+      // мгновенно возвращаем tile-режим обратно.
+      jitsiApi.current?.addListener("tileViewChanged", (e: any) => {
+        if (e && e.enabled === false) {
+          setTimeout(forceTile, 50)
+        }
+      })
+      // То же для попыток pin — отвергаем сразу.
+      jitsiApi.current?.addListener("dominantSpeakerChanged", () => {
         setTimeout(forceTile, 100)
       })
       // safety: на случай если listeners не сработали
