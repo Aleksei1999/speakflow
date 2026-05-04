@@ -306,8 +306,9 @@ export function LessonRoomClient({
 
       const { data: urlData } = supabase.storage.from("lesson-files").getPublicUrl(path)
 
-      // 2. Регистрируем материал — server создаст запись в lesson_materials
-      // под admin-клиентом (RLS-aware route).
+      // 2. Регистрируем материал в общей таблице `materials` — RLS
+      // открывает её студенту через lesson.student_id = auth.uid(),
+      // поэтому файл сразу появится в /student/materials.
       const res = await fetch("/api/lesson/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -316,6 +317,9 @@ export function LessonRoomClient({
           userId,
           title: file.name,
           fileUrl: urlData.publicUrl,
+          storagePath: path,
+          mimeType: file.type || null,
+          fileSize: file.size,
           content: `${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
         }),
       })
