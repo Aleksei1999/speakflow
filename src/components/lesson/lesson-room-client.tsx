@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 interface Props {
   lessonId: string
@@ -275,13 +276,59 @@ export function LessonRoomClient({
     setHwTitle("");setHwDesc("");setHwOpen(false);loadHw()
   },[hwTitle,hwDesc,lessonId,userId,studentId,loadHw])
 
-  // File upload
+  // File upload — direct-to-storage чтобы обойти Vercel 4.5MB лимит,
+  // потом записать строку в lesson_materials через /api/lesson/materials.
   const uploadFile = useCallback(async(file:File)=>{
     setUploading(true)
-    const fd = new FormData()
-    fd.append("file",file);fd.append("lessonId",lessonId);fd.append("userId",userId);fd.append("title",file.name)
-    await fetch("/api/lesson/upload",{method:"POST",body:fd})
-    setUploading(false);loadMats()
+    try {
+      // Жёсткий лимит на материалы урока — 50 MB.
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`Файл «${file.name}» больше 50 МБ. Загрузи поменьше.`)
+        return
+      }
+
+      const supabase = createClient()
+      const ext = file.name.split(".").pop() || "bin"
+      const path = `lessons/${lessonId}/${Date.now()}-${file.name.replace(/[^a-zA-Zа-яА-Я0-9._-]/g, "_")}`
+
+      // 1. Заливаем напрямую в Storage (минуем Vercel-роут с 4.5MB кэпом).
+      const up = await supabase.storage
+        .from("lesson-files")
+        .upload(path, file, { contentType: file.type, upsert: false })
+      if (up.error) {
+        console.error("[lesson-room] storage upload failed", up.error)
+        alert(`Не удалось загрузить файл: ${up.error.message}`)
+        return
+      }
+
+      const { data: urlData } = supabase.storage.from("lesson-files").getPublicUrl(path)
+
+      // 2. Регистрируем материал — server создаст запись в lesson_materials
+      // под admin-клиентом (RLS-aware route).
+      const res = await fetch("/api/lesson/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId,
+          userId,
+          title: file.name,
+          fileUrl: urlData.publicUrl,
+          content: `${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
+        }),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => "")
+        console.error("[lesson-room] /api/lesson/materials failed", res.status, text)
+        alert(`Файл загружен, но карточка не создалась: ${text || res.status}`)
+        return
+      }
+    } catch (e: any) {
+      console.error("[lesson-room] uploadFile crashed", e)
+      alert(`Ошибка загрузки: ${e?.message ?? "неизвестная"}`)
+    } finally {
+      setUploading(false)
+      loadMats()
+    }
   },[lessonId,userId,loadMats])
 
   const toggleMic=()=>{jitsiApi.current?.executeCommand("toggleAudio");setMicOn(v=>!v)}
