@@ -54,6 +54,7 @@ export type NotificationType =
   | 'welcome'
   | 'booking_confirmation'
   | 'lesson_cancelled'
+  | 'lesson_missed'
   | 'lesson_reminder'
   | 'lesson_summary_ready'
   | 'payment_receipt'
@@ -74,6 +75,7 @@ const TRANSACTIONAL_TYPES: ReadonlySet<NotificationType> = new Set([
   'welcome',
   'booking_confirmation',
   'lesson_cancelled',
+  'lesson_missed',
   'lesson_summary_ready',
   'payment_receipt',
 ])
@@ -292,6 +294,28 @@ export async function sendNotification(
 
 // ---------- Построение контента ----------
 
+function formatMoscowDateTime(iso: unknown): string {
+  if (typeof iso !== 'string' || !iso) return ''
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    const date = new Intl.DateTimeFormat('ru-RU', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'long',
+      timeZone: 'Europe/Moscow',
+    }).format(d)
+    const time = new Intl.DateTimeFormat('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Moscow',
+    }).format(d)
+    return `${date}, ${time} МСК`
+  } catch {
+    return ''
+  }
+}
+
 function formatClubWhen(iso: unknown): string {
   if (typeof iso !== 'string' || !iso) return ''
   try {
@@ -346,6 +370,33 @@ function buildEmailContent(
             ${reason ? `<div style="margin-top:8px"><b>Причина:</b> ${reason}</div>` : ''}
           </div>
           <p style="margin:0 0 12px;font-size:13px;color:#8A8A86">Можно перезаписаться на другое время в личном кабинете.</p>
+        </div>
+      `
+      return { subject, html }
+    }
+
+    case 'lesson_missed': {
+      const role = (data as any).recipientRole === 'student' ? 'student' : 'teacher'
+      const studentName = data.studentName || 'Ученик'
+      const teacherName = data.teacherName || 'Преподаватель'
+      const whenStr = formatMoscowDateTime((data as any).scheduled_at)
+      const subject =
+        role === 'teacher'
+          ? `Ученик не пришёл на урок · ${whenStr || ''}`.trim()
+          : `Ты пропустил урок · ${whenStr || ''}`.trim()
+      const bodyText =
+        role === 'teacher'
+          ? `⚠️ Ученик не пришёл на урок: ${studentName}, было запланировано ${whenStr}. Урок помечен как пропущенный.`
+          : `😞 Ты пропустил урок с ${teacherName} (${whenStr}). Если случайно — напиши преподу в чат.`
+      const html = `
+        <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px">
+          <h1 style="font-size:22px;font-weight:800;margin:0 0 12px">${
+            role === 'teacher' ? 'Ученик пропустил урок' : 'Ты пропустил урок'
+          }</h1>
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.55">${bodyText}</p>
+          <p style="margin:0;font-size:13px;color:#8A8A86">
+            <a href="${appUrl}/${role === 'teacher' ? 'teacher' : 'student'}/schedule" style="color:#0A0A0A;text-decoration:underline">Открыть расписание</a>
+          </p>
         </div>
       `
       return { subject, html }
@@ -487,6 +538,17 @@ function buildTelegramText(
       ]
       if (reason) lines.push(``, `<i>Причина:</i> ${reason}`)
       return lines.join('\n')
+    }
+
+    case 'lesson_missed': {
+      const role = (data as any).recipientRole === 'student' ? 'student' : 'teacher'
+      const studentName = data.studentName || 'Ученик'
+      const teacherName = data.teacherName || 'Преподаватель'
+      const whenStr = formatMoscowDateTime((data as any).scheduled_at)
+      if (role === 'teacher') {
+        return `⚠️ Ученик не пришёл на урок: <b>${studentName}</b>, было запланировано ${whenStr}. Урок помечен как пропущенный.`
+      }
+      return `😞 Ты пропустил урок с <b>${teacherName}</b> (${whenStr}). Если случайно — напиши преподу в чат.`
     }
 
     case 'lesson_reminder':
