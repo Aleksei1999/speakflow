@@ -288,8 +288,11 @@ export function LessonRoomClient({
       }
 
       const supabase = createClient()
-      const ext = file.name.split(".").pop() || "bin"
-      const path = `lessons/${lessonId}/${Date.now()}-${file.name.replace(/[^a-zA-Zа-яА-Я0-9._-]/g, "_")}`
+      // Supabase Storage не принимает кириллицу в key — оставляем только
+      // ASCII-safe символы. Полное имя файла сохраняется в title колонке.
+      const ext = (file.name.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "bin"
+      const rand = Math.random().toString(36).slice(2, 10)
+      const path = `lessons/${lessonId}/${Date.now()}-${rand}.${ext}`
 
       // 1. Заливаем напрямую в Storage (минуем Vercel-роут с 4.5MB кэпом).
       const up = await supabase.storage
