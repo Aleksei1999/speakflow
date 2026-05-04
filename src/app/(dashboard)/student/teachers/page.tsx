@@ -296,6 +296,11 @@ export default function StudentTeachersPage() {
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [reviews, setReviews] = useState<Review[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
+  // Форма «Оставить отзыв»
+  const [reviewFormOpen, setReviewFormOpen] = useState(false)
+  const [reviewRating, setReviewRating] = useState<number>(5)
+  const [reviewComment, setReviewComment] = useState<string>("")
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
   const [booking, setBooking] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
@@ -450,8 +455,50 @@ export default function StudentTeachersPage() {
       setReviews([])
       setSelectedSlot(null)
       setBookingSuccess(false)
+      setReviewFormOpen(false)
+      setReviewRating(5)
+      setReviewComment("")
     }, 300)
   }, [])
+
+  const submitReview = useCallback(async () => {
+    if (!modalTeacher || reviewSubmitting) return
+    if (reviewRating < 1 || reviewRating > 5) {
+      toast.error("Поставь оценку от 1 до 5")
+      return
+    }
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch(`/api/teachers/${modalTeacher.id}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(json?.error || "Не удалось отправить отзыв")
+        setReviewSubmitting(false)
+        return
+      }
+      toast.success("Спасибо за отзыв!")
+      setReviewFormOpen(false)
+      setReviewRating(5)
+      setReviewComment("")
+      // Перезагрузим список отзывов
+      const r = await fetch(`/api/teachers/${modalTeacher.id}/reviews?limit=10`, { cache: "no-store" })
+      if (r.ok) {
+        const data = (await r.json()) as { reviews: Review[] }
+        setReviews(data.reviews ?? [])
+      }
+    } catch {
+      toast.error("Ошибка сети")
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }, [modalTeacher, reviewRating, reviewComment, reviewSubmitting])
 
   // ESC closes modal.
   useEffect(() => {
@@ -800,7 +847,144 @@ export default function StudentTeachersPage() {
               </div>
 
               <div className="prof-section">
-                <div className="prof-section-title">Отзывы учеников</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
+                    gap: 10,
+                  }}
+                >
+                  <div className="prof-section-title" style={{ marginBottom: 0 }}>
+                    Отзывы учеников
+                  </div>
+                  {!reviewFormOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewFormOpen(true)}
+                      style={{
+                        background: "var(--red, #E63946)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "7px 14px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 2px 0 rgba(180,30,45,.3)",
+                      }}
+                    >
+                      ✍️ Оставить отзыв
+                    </button>
+                  )}
+                </div>
+
+                {reviewFormOpen && (
+                  <div
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: 14,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>
+                        Оценка
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setReviewRating(n)}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 8,
+                              border: "1px solid var(--border)",
+                              background: n <= reviewRating ? "#FBBF24" : "var(--surface)",
+                              color: n <= reviewRating ? "#fff" : "var(--muted)",
+                              fontSize: 18,
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                            }}
+                            aria-label={`${n} из 5`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      maxLength={1000}
+                      placeholder="Расскажи как прошёл урок (необязательно)"
+                      rows={3}
+                      style={{
+                        width: "100%",
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        color: "var(--text)",
+                        fontFamily: "inherit",
+                        resize: "vertical",
+                        marginBottom: 10,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewFormOpen(false)
+                          setReviewComment("")
+                          setReviewRating(5)
+                        }}
+                        disabled={reviewSubmitting}
+                        style={{
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
+                          color: "var(--text)",
+                          borderRadius: 10,
+                          padding: "8px 14px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        onClick={submitReview}
+                        disabled={reviewSubmitting}
+                        style={{
+                          background: "var(--red, #E63946)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 10,
+                          padding: "8px 16px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          boxShadow: "0 2px 0 rgba(180,30,45,.3)",
+                          fontFamily: "inherit",
+                          opacity: reviewSubmitting ? 0.6 : 1,
+                        }}
+                      >
+                        {reviewSubmitting ? "Отправляем…" : "Отправить"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="prof-reviews">
                   {reviewsLoading ? (
                     <div className="prof-section-loading">Загрузка…</div>
