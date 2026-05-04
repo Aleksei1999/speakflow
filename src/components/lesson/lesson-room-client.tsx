@@ -182,6 +182,11 @@ export function LessonRoomClient({
           // tracks live in it; disabling hides them.
           // Connection-quality "Wi-Fi" badges per tile.
           connectionIndicators:{autoHide:true,disabled:true},
+          // Tile view: всегда показываем равные тайлы для всех участников
+          // включая себя. Без этого — при 1 remote'e только он на весь
+          // экран, локальное видео скрыто.
+          startWithTileView:true,
+          disableTileView:false,
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -191,6 +196,7 @@ export function LessonRoomClient({
           HIDE_INVITE_MORE_HEADER:true,
           DISABLE_FOCUS_INDICATOR:true,
           VERTICAL_FILMSTRIP:false,
+          TILE_VIEW_MAX_COLUMNS:2,
           TOOLBAR_BUTTONS:[],
           CONNECTION_INDICATOR_DISABLED:true,
           VIDEO_QUALITY_LABEL_DISABLED:true,
@@ -200,6 +206,20 @@ export function LessonRoomClient({
         },
         userInfo:{displayName:userName},
       })
+
+      // Жёстко форсим tile view — startWithTileView иногда игнорится
+      // если кто-то уже в комнате. Через 800мс после init заставим UI.
+      const forceTile = () => {
+        try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
+      }
+      jitsiApi.current?.addListener("videoConferenceJoined", () => {
+        setTimeout(forceTile, 200)
+      })
+      jitsiApi.current?.addListener("participantJoined", () => {
+        setTimeout(forceTile, 100)
+      })
+      // safety: на случай если listeners не сработали
+      setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null}
