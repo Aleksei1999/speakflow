@@ -123,3 +123,100 @@ export async function GET(
     return NextResponse.json({ reviews: [] })
   }
 }
+
+const postSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z.string().trim().max(1000).optional().nullable(),
+})
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: teacherProfileId } = await params
+    if (!UUID_REGEX.test(teacherProfileId)) {
+      return NextResponse.json({ error: 'Преподаватель не найден' }, { status: 404 })
+    }
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const parsed = postSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Некорректные данные' },
+        { status: 400 }
+      )
+    }
+
+    // Ищем последний completed урок этого ученика с этим преподом,
+    // на который ещё нет отзыва.
+    const { data: candidates, error: lessonsErr } = await supabase
+      .from('lessons')
+      .select('id, scheduled_at')
+      .eq('teacher_id', teacherProfileId)
+      .eq('student_id', user.id)
+      .eq('status', 'completed')
+      .order('scheduled_at', { ascending: false })
+    if (lessonsErr) {
+      console.error('[reviews POST] lessons select failed', lessonsErr)
+      return NextResponse.json({ error: 'Ошибка БД' }, { status: 500 })
+    }
+    const ids = (candidates ?? []).map((l: any) => l.id)
+    if (ids.length === 0) {
+      return NextResponse.json(
+        { error: 'Оставить отзыв можно только после проведённого урока' },
+        { status: 403 }
+      )
+    }
+
+    const { data: existing } = await supabase
+      .from('reviews')
+      .select('lesson_id')
+      .in('lesson_id', ids)
+    const reviewedSet = new Set(((existing ?? []) as any[]).map((r) => r.lesson_id))
+    const targetLesson = ids.find((id: string) => !reviewedSet.has(id))
+    if (!targetLesson) {
+      return NextResponse.json(
+        { error: 'Вы уже оставили отзыв на все проведённые уроки с этим преподавателем' },
+        { status: 409 }
+      )
+    }
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('reviews')
+      .insert({
+        lesson_id: targetLesson,
+        student_id: user.id,
+        teacher_id: teacherProfileId,
+        rating: parsed.data.rating,
+        comment: parsed.data.comment?.trim() || null,
+      })
+      .select('id, rating, comment, created_at')
+      .single()
+
+    if (insertErr) {
+      console.error('[reviews POST] insert failed', insertErr)
+      const code = (insertErr as any)?.code
+      if (code === '23505') {
+        return NextResponse.json({ error: 'Отзыв уже оставлен' }, { status: 409 })
+      }
+      return NextResponse.json(
+        { error: insertErr.message || 'Не удалось сохранить отзыв' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ review: inserted })
+  } catch (error) {
+    console.error('Непредвиденная ошибка POST /api/teachers/[id]/reviews:', error)
+    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+  }
+}
