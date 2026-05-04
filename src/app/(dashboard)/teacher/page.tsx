@@ -91,6 +91,8 @@ const TCH_CSS = `
 .tch-today-join--waiting:hover{background:var(--bg);transform:none}
 .tch-today-join--expired{background:var(--bg);color:var(--muted);cursor:not-allowed;box-shadow:none;border:1px solid var(--border);font-weight:700}
 .tch-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
+.tch-today-join--missed{background:rgba(245,158,11,.10);color:#B45309;cursor:not-allowed;box-shadow:none;border:1px solid rgba(245,158,11,.35);font-weight:700}
+[data-theme="dark"] .tch-today-join--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 .tch-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .tch-home .quick-actions{display:flex;flex-direction:column;gap:8px}
@@ -583,7 +585,9 @@ export default async function TeacherDashboardPage() {
                     let cta: any
                     if (l.status === "completed") {
                       cta = <span className="status status-success">✓ завершён</span>
-                    } else if (l.status === "cancelled" || l.status === "no_show" || access.status === "cancelled") {
+                    } else if (l.status === "no_show" || access.status === "no_show") {
+                      cta = <span className="tch-today-join tch-today-join--missed">Пропущен</span>
+                    } else if (l.status === "cancelled" || access.status === "cancelled") {
                       cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
                     } else if (isLive) {
                       cta = <span className="tch-today-join">Начать</span>
