@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { useUser } from "@/hooks/use-user"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/teachers response shapes)
@@ -262,6 +263,11 @@ function shortSpecs(specs: string[]): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentTeachersPage() {
+  // Если страница рендерится под админом (re-export в /admin/teachers) —
+  // прячем booking/review UI: админ только просматривает каталог.
+  const { role } = useUser()
+  const readOnly = role === "admin"
+
   // Filter UI state (draft — applied only on "Найти" click).
   const [searchDraft, setSearchDraft] = useState("")
   const [specDraft, setSpecDraft] = useState<SpecKey>("all")
@@ -820,31 +826,33 @@ export default function StudentTeachersPage() {
                 </div>
               ) : null}
 
-              <div className="prof-section">
-                <div className="prof-section-title">Ближайшие слоты</div>
-                <div className="prof-slots">
-                  {slotsLoading ? (
-                    <div className="prof-slots-empty">Загружаем расписание…</div>
-                  ) : slots.length === 0 ? (
-                    <div className="prof-slots-empty">
-                      Свободных слотов на ближайшую неделю нет.
-                    </div>
-                  ) : (
-                    slots.map((s) => (
-                      <button
-                        key={s.starts_at}
-                        type="button"
-                        className={`prof-slot${selectedSlot?.starts_at === s.starts_at ? " selected" : ""}`}
-                        onClick={() => setSelectedSlot(s)}
-                        aria-pressed={selectedSlot?.starts_at === s.starts_at}
-                      >
-                        <div className="prof-slot-day">{s.day_label}</div>
-                        <div className="prof-slot-time">{s.time_label}</div>
-                      </button>
-                    ))
-                  )}
+              {!readOnly && (
+                <div className="prof-section">
+                  <div className="prof-section-title">Ближайшие слоты</div>
+                  <div className="prof-slots">
+                    {slotsLoading ? (
+                      <div className="prof-slots-empty">Загружаем расписание…</div>
+                    ) : slots.length === 0 ? (
+                      <div className="prof-slots-empty">
+                        Свободных слотов на ближайшую неделю нет.
+                      </div>
+                    ) : (
+                      slots.map((s) => (
+                        <button
+                          key={s.starts_at}
+                          type="button"
+                          className={`prof-slot${selectedSlot?.starts_at === s.starts_at ? " selected" : ""}`}
+                          onClick={() => setSelectedSlot(s)}
+                          aria-pressed={selectedSlot?.starts_at === s.starts_at}
+                        >
+                          <div className="prof-slot-day">{s.day_label}</div>
+                          <div className="prof-slot-time">{s.time_label}</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="prof-section">
                 <div
@@ -859,7 +867,7 @@ export default function StudentTeachersPage() {
                   <div className="prof-section-title" style={{ marginBottom: 0 }}>
                     Отзывы учеников
                   </div>
-                  {!reviewFormOpen && (
+                  {!reviewFormOpen && !readOnly && (
                     <button
                       type="button"
                       onClick={() => setReviewFormOpen(true)}
@@ -1021,23 +1029,25 @@ export default function StudentTeachersPage() {
               </div>
             </div>
 
-            <div className="prof-footer">
-              {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
-              {/* <div className="prof-price">
-                <b>{formatRub(modalTeacher.hourly_rate_rub)}</b> / 60 мин
-              </div> */}
-              <div className="prof-price">
-                <b>Бесплатно</b>
+            {!readOnly && (
+              <div className="prof-footer">
+                {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
+                {/* <div className="prof-price">
+                  <b>{formatRub(modalTeacher.hourly_rate_rub)}</b> / 60 мин
+                </div> */}
+                <div className="prof-price">
+                  <b>Бесплатно</b>
+                </div>
+                <button
+                  type="button"
+                  className={`prof-book${bookingSuccess ? " success" : ""}`}
+                  onClick={bookLesson}
+                  disabled={!selectedSlot || booking || bookingSuccess}
+                >
+                  {bookBtnLabel}
+                </button>
               </div>
-              <button
-                type="button"
-                className={`prof-book${bookingSuccess ? " success" : ""}`}
-                onClick={bookLesson}
-                disabled={!selectedSlot || booking || bookingSuccess}
-              >
-                {bookBtnLabel}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       ) : null}
