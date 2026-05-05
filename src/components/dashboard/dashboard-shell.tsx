@@ -445,7 +445,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
               const isActive = pathname === item.href || (!isHome && pathname.startsWith(item.href))
               return (
                 <li key={item.href + item.label}>
-                  <Link href={item.href} className={isActive ? "active" : ""}>
+                  <Link href={item.href} prefetch={false} className={isActive ? "active" : ""}>
                     <Icon svg={item.icon} />
                     {item.label}
                     {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
@@ -459,7 +459,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           <ul className="nav">
             {bottomItems.map((item) => (
               <li key={item.label}>
-                <Link href={item.href}>
+                <Link href={item.href} prefetch={false}>
                   <Icon svg={item.icon} />
                   {item.label}
                 </Link>
