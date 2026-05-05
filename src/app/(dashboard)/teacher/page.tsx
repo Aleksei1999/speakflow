@@ -439,8 +439,8 @@ export default async function TeacherDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="stats-grid" data-onboarding="tch-stats">
-        <div className="stat-card">
+      <div className="stats-grid">
+        <div className="stat-card" data-onboarding="tch-stat-month">
           <div className="label">Уроков в месяце</div>
           <div className="value">{monthCount ?? 0}</div>
           <div className={`change ${monthDelta != null && monthDelta >= 0 ? "positive" : ""}`}>
