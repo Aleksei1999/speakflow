@@ -198,7 +198,7 @@ function AdminUsersContent() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Управление пользователями
+          Управление <span className="gl">пользователями</span>
         </h1>
         <p className="text-sm text-muted-foreground">
           Просмотр и управление аккаунтами пользователей

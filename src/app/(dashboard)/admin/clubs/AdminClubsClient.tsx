@@ -342,7 +342,7 @@ export default function AdminClubsClient({
 
       <div className="page-hdr">
         <div>
-          <h1>Speaking Clubs</h1>
+          <h1>Speaking <span className="gl">Clubs</span></h1>
           <div className="sub">Всего: {clubs.length}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
