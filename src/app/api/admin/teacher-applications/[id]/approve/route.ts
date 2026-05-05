@@ -9,6 +9,10 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 import { sendEmail } from "@/lib/resend/client"
+import {
+  invalidateProfile,
+  invalidateTeacherStats,
+} from "@/lib/cache/invalidate"
 
 export const dynamic = "force-dynamic"
 
@@ -207,6 +211,12 @@ export async function POST(
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", id)
+
+    // Approve flips role student→teacher and (often) creates a teacher_profile —
+    // both feed the dashboard cache for that user. Evict so they see the
+    // correct sidebar/stats on next navigation.
+    invalidateProfile(userId)
+    invalidateTeacherStats(userId)
 
     // 6. Шлём письмо с креденшелами.
     const siteUrl =

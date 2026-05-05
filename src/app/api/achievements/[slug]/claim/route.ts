@@ -6,6 +6,7 @@ import {
   computeUserMetrics,
   evaluateAchievementProgress,
 } from '@/lib/gamification/metrics'
+import { invalidateUserProgress } from '@/lib/cache/invalidate'
 
 export async function POST(
   _request: NextRequest,
@@ -87,6 +88,9 @@ export async function POST(
         source_id: def.id,
       })
     }
+
+    // total_xp / english_level / current_streak get bumped by award_xp trigger.
+    invalidateUserProgress(user.id)
 
     return NextResponse.json({
       achievement_id: def.id,
