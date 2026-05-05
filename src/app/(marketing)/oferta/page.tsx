@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Публичная оферта о заключении договора оказания информационно-консультационных услуг по обучению английскому языку на платформе Raw English.",
 }
 
+// Pure static legal copy — regenerate at most once per day.
+export const revalidate = 86400
+
 export default function OfertaPage() {
   return (
     <LegalShell

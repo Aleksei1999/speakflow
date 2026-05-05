@@ -1,13 +1,35 @@
 // @ts-nocheck
 "use client"
 
-import { useEffect, createElement } from "react"
+import { useEffect, useMemo, createElement } from "react"
 import Script from "next/script"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { RawLogo } from "@/components/ui/raw-logo"
+import { useUser } from "@/hooks/use-user"
 import "./landing.css"
 import "./icons3d.css"
-import MiniBattleQuiz from "./MiniBattleQuiz"
+
+// Heavy quiz (~58 KB source, ~226 KB bundled) — lazy-load it so the homepage's
+// initial JS payload stays small. ssr:false because the quiz is purely client-side
+// (uses useState extensively) and rendering it on the server adds bytes to no benefit.
+const MiniBattleQuiz = dynamic(() => import("./MiniBattleQuiz"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        minHeight: 400,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text3)",
+        fontSize: "0.95rem",
+      }}
+    >
+      Загружаем квиз…
+    </div>
+  ),
+})
 
 function I3(props: {
   kind: string
@@ -28,12 +50,17 @@ function I3(props: {
   return createElement("i3", attrs)
 }
 
-type LandingClientProps = {
-  isAuthenticated?: boolean
-  homeHref?: string
-}
-
-export default function LandingClient({ isAuthenticated = false, homeHref = "/student" }: LandingClientProps = {}) {
+export default function LandingClient() {
+  // Resolve auth on the client so the page itself can be statically generated.
+  // While loading, we treat user as anonymous → CTAs render "Войти" / "/register".
+  // After hydration, useUser() flips and the CTA swaps to "Личный кабинет" + correct role-href.
+  const { user, role, isLoading } = useUser()
+  const isAuthenticated = !!user && !isLoading
+  const homeHref = useMemo(() => {
+    if (role === "admin") return "/admin"
+    if (role === "teacher") return "/teacher"
+    return "/student"
+  }, [role])
   const ctaHref = isAuthenticated ? homeHref : "/register"
   useEffect(() => {
     const html = document.documentElement

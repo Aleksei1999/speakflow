@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "Политика в отношении обработки персональных данных на платформе Raw English (https://raw-english.com). Оператор — ИП Кратковская В. В.",
 }
 
+// Pure static legal copy — regenerate at most once per day.
+export const revalidate = 86400
+
 export default function PrivacyPage() {
   return (
     <LegalShell
