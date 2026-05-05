@@ -27,7 +27,8 @@ const CSS = `
 .ob-overlay{position:fixed;inset:0;z-index:9998;pointer-events:none}
 .ob-overlay.ob-overlay--blocking{pointer-events:auto;background:rgba(10,10,10,0)}
 .ob-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.ob-mark{stroke:#D8F26A;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 12px rgba(216,242,106,.55))}
+.ob-mark{stroke:#D8F26A;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ob-svg{filter:drop-shadow(0 0 10px rgba(216,242,106,.45))}
 .ob-mark--draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:obDraw .75s cubic-bezier(.65,0,.35,1) forwards}
 @keyframes obDraw{to{stroke-dashoffset:0}}
 .ob-tip{position:absolute;z-index:9999;background:#1A1A18;color:#fff;border-radius:14px;padding:14px 16px;max-width:300px;box-shadow:0 18px 40px rgba(0,0,0,.45);pointer-events:auto;animation:obFadeIn .25s ease-out}
@@ -148,8 +149,51 @@ export default function OnboardingTour({ steps, active, onClose }: Props) {
     }
   }
 
-  // Approximate path length for stroke-dasharray (perimeter of rounded rect).
-  const len = rect ? 2 * (ovalW + ovalH) : 0
+  // Build an organic hand-drawn oval as a polyline — wraps around 1.15× so the end
+  // overshoots the start (like a marker stroke), with a slight rotation and per-point
+  // wobble. Length of the polyline is summed as we go to feed stroke-dasharray.
+  const ovalPath = useMemo(() => {
+    if (!rect) return { d: "", length: 0 }
+    const cx = ovalLeft + ovalW / 2
+    const cy = ovalTop + ovalH / 2
+    const rx = ovalW / 2 + 6
+    const ry = ovalH / 2 + 8
+    const tilt = -0.06 // ~-3.5°
+    const cosT = Math.cos(tilt)
+    const sinT = Math.sin(tilt)
+
+    const segments = 80
+    const sweep = 1.18 // 118% of full circle — overshoot
+    const start = -Math.PI * 0.55 // chosen so the seam sits at top-left
+    const end = start + Math.PI * 2 * sweep
+
+    const pts: [number, number][] = []
+    for (let i = 0; i <= segments; i++) {
+      const t = start + (end - start) * (i / segments)
+      // base ellipse
+      const ex = rx * Math.cos(t)
+      const ey = ry * Math.sin(t)
+      // hand-drawn jitter (deterministic, reproducible)
+      const jx = Math.sin(i * 1.7 + 0.3) * 1.6 + Math.sin(i * 0.6) * 0.8
+      const jy = Math.cos(i * 1.3 + 0.7) * 1.6 + Math.cos(i * 0.4) * 0.8
+      // rotate by tilt
+      const px = cx + (ex + jx) * cosT - (ey + jy) * sinT
+      const py = cy + (ex + jx) * sinT + (ey + jy) * cosT
+      pts.push([px, py])
+    }
+
+    let length = 0
+    let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`
+    for (let i = 1; i < pts.length; i++) {
+      const dx = pts[i][0] - pts[i - 1][0]
+      const dy = pts[i][1] - pts[i - 1][1]
+      length += Math.sqrt(dx * dx + dy * dy)
+      d += ` L ${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)}`
+    }
+    return { d, length }
+  }, [rect, ovalLeft, ovalTop, ovalW, ovalH])
+
+  const len = ovalPath.length
 
   const handleNext = () => {
     if (idx < total - 1) {
@@ -171,22 +215,17 @@ export default function OnboardingTour({ steps, active, onClose }: Props) {
       <div className="ob-overlay">
         {rect ? (
           <svg className="ob-svg" key={`${idx}-${tick}`}>
-            {/* Wobble path: вытянутый овал-маркер с лёгким перерасходом по углам, как от руки */}
+            <defs>
+              <filter id="ob-rough" x="-10%" y="-10%" width="120%" height="120%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="3" />
+                <feDisplacementMap in="SourceGraphic" scale="2.4" />
+              </filter>
+            </defs>
             <path
               className="ob-mark ob-mark--draw"
               style={{ ["--len" as any]: len }}
-              d={`
-                M ${ovalLeft + 12} ${ovalTop}
-                Q ${ovalLeft - 6} ${ovalTop} ${ovalLeft - 4} ${ovalTop + 14}
-                L ${ovalLeft - 5} ${ovalTop + ovalH - 14}
-                Q ${ovalLeft - 8} ${ovalTop + ovalH + 6} ${ovalLeft + 14} ${ovalTop + ovalH + 4}
-                L ${ovalLeft + ovalW - 16} ${ovalTop + ovalH + 5}
-                Q ${ovalLeft + ovalW + 6} ${ovalTop + ovalH + 4} ${ovalLeft + ovalW + 4} ${ovalTop + ovalH - 14}
-                L ${ovalLeft + ovalW + 5} ${ovalTop + 16}
-                Q ${ovalLeft + ovalW + 4} ${ovalTop - 6} ${ovalLeft + ovalW - 18} ${ovalTop - 4}
-                L ${ovalLeft + 14} ${ovalTop - 5}
-                Q ${ovalLeft - 6} ${ovalTop - 4} ${ovalLeft + 8} ${ovalTop + 4}
-              `}
+              filter="url(#ob-rough)"
+              d={ovalPath.d}
             />
           </svg>
         ) : null}
