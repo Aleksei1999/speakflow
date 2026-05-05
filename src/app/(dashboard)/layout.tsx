@@ -79,7 +79,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       gamification={gamification}
       teacherStats={teacherStats}
     >
-      {children}
+      <div className="dashboard-content" key="dashboard-content">{children}</div>
     </DashboardShell>
   )
 }

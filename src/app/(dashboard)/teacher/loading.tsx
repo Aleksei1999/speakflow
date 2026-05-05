@@ -1,6 +1,6 @@
-// Generic dashboard skeleton — used as fallback while a route segment streams.
-// Specific loading.tsx files in /student, /teacher and /admin override this.
-export default function DashboardLoading() {
+// Skeleton for teacher-area routes. Mirrors the rough shape of the teacher
+// dashboard (rating hero + 4 stat cards + content blocks).
+export default function TeacherLoading() {
   return (
     <div
       className="dashboard-content"
@@ -9,7 +9,11 @@ export default function DashboardLoading() {
       style={{ display: "flex", flexDirection: "column", gap: 16, padding: 4 }}
     >
       <span className="sr-only">Загрузка…</span>
-      <div className="skeleton-block" style={{ height: 140 }} />
+
+      {/* Hero */}
+      <div className="skeleton-block" style={{ height: 160 }} />
+
+      {/* 4 stat cards */}
       <div
         style={{
           display: "grid",
@@ -22,7 +26,18 @@ export default function DashboardLoading() {
         <div className="skeleton-block" style={{ height: 96 }} />
         <div className="skeleton-block" style={{ height: 96 }} />
       </div>
-      <div className="skeleton-block" style={{ height: 280 }} />
+
+      {/* Schedule + students columns */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
+          gap: 16,
+        }}
+      >
+        <div className="skeleton-block" style={{ height: 320 }} />
+        <div className="skeleton-block" style={{ height: 320 }} />
+      </div>
     </div>
   )
 }
