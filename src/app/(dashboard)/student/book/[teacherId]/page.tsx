@@ -326,7 +326,7 @@ export default function BookTeacherPage() {
           <ArrowLeft className="size-4" />
         </Button>
         <div>
-          <h1 className="text-lg font-semibold">Бронирование <span className="gl">урока</span></h1>
+          <h1 className="text-lg font-semibold">Бронирование <span className="gl">lesson</span></h1>
           <p className="text-sm text-muted-foreground">
             Преподаватель: {teacher.name}
           </p>

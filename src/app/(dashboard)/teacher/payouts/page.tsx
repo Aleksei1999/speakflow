@@ -380,7 +380,7 @@ export default async function TeacherPayoutsPage() {
       <div className="tch-pay">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">выплаты</span></h1>
+            <h1>Мои <span className="gl">payouts</span></h1>
             <div className="sub">
               Ближайшая: {nextPayoutLabel} · {monthLessonCount} {pluralLessons(monthLessonCount)} в этом месяце
               {rating > 0 ? ` · рейтинг ${rating.toFixed(1)} ★` : ""}
