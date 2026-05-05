@@ -228,7 +228,7 @@ export default async function TeacherStudentsPage() {
       <div className="tch-std">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">ученики</span></h1>
+            <h1>Мои <span className="gl">students</span></h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>

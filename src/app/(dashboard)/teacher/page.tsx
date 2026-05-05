@@ -419,7 +419,7 @@ export default async function TeacherDashboardPage() {
 
       <div className="dashboard-header">
         <div>
-          <h1>{greeting}, <span className="gl">{firstName}</span> <span className="wave">👋</span></h1>
+          <h1>{greeting}, {firstName}! <span className="gl">👋</span></h1>
           <div className="sub">
             {format(now, "EEEE, d MMMM", { locale: ru })} · {todayCount} {pluralLessons(todayCount)} сегодня
           </div>

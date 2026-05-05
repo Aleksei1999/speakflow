@@ -39,7 +39,7 @@ export default async function StudentSummariesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI-<span className="gl">саммари</span></h1>
+        <h1 className="text-2xl font-bold tracking-tight">AI-<span className="gl">summary</span></h1>
         <p className="text-sm text-muted-foreground">
           Автоматические резюме ваших уроков
         </p>

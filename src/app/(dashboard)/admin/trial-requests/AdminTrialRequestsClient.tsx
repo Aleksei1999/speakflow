@@ -204,7 +204,7 @@ export default function AdminTrialRequestsClient({
 
       <div className="page-hdr">
         <div>
-          <h1>Заявки <span className="gl">преподавателей</span></h1>
+          <h1>Заявки <span className="gl">teachers</span></h1>
           <div className="sub">
             Всего: {counts.all} · новых: {counts.new} · в работе:{" "}
             {counts.in_review} · одобрено: {counts.approved}
