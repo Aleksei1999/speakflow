@@ -172,8 +172,9 @@ export async function GET(request: NextRequest) {
     const [{ data: profiles }, { data: progress }] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, email')
-        .in('id', ids),
+        .select('id, full_name, avatar_url, email, role')
+        .in('id', ids)
+        .eq('role', 'student'),
       supabase
         .from('user_progress')
         .select('user_id, english_level, total_xp, current_streak, lessons_completed')
