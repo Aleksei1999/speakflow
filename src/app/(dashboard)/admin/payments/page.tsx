@@ -351,7 +351,7 @@ function AdminPaymentsContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Управление <span className="gl">платежами</span>
+            Управление <span className="gl">payments</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Просмотр платежей и управление возвратами

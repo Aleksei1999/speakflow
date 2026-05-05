@@ -407,7 +407,7 @@ export default function AdminSupportClient({
 
       <div className="page-hdr">
         <div>
-          <h1>Центр <span className="gl">поддержки</span></h1>
+          <h1>Центр <span className="gl">support</span></h1>
           <div className="sub">
             Всего: {threads.length} · открытых: {counts.open} · в работе:{" "}
             {counts.pending}

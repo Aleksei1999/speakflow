@@ -282,7 +282,7 @@ export default function StudentLeaderboardPage() {
 
       <div className="lb-hdr">
         <h1>
-          Leader<span className="gl">board</span>
+          Мой <span className="gl">leaderboard</span>
         </h1>
         <div className="lb-hdr-sub">
           Соревнуйся с коммьюнити · Топ-3 каждый месяц получают призы

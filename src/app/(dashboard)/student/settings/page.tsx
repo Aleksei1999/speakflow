@@ -494,7 +494,7 @@ export default function StudentSettingsPage() {
       <div className="settings-page">
         <div className="hdr">
           <h1>
-            <span className="gl">Settings</span>
+            Мои <span className="gl">settings</span>
           </h1>
         </div>
 

@@ -360,7 +360,7 @@ export default function SupportClient({
         <div className="sp-hdr">
           <div>
             <h1>
-              <span className="gl">Поддержка</span>
+              Центр <span className="gl">support</span>
             </h1>
             <div className="sub">
               Напишите нам, если что-то не работает или нужен совет. Мы отвечаем в течение рабочего дня.

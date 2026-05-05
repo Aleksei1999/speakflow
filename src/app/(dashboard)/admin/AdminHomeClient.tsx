@@ -373,7 +373,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
 
       <div className="dashboard-header">
         <div>
-          <h1>Админ <span className="gl">панель</span></h1>
+          <h1>Admin <span className="gl">panel</span></h1>
           <div className="sub">{subLine}</div>
         </div>
         <div className="user-menu">

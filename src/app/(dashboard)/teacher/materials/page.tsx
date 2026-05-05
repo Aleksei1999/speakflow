@@ -246,7 +246,7 @@ export default async function TeacherMaterialsPage() {
       <div className="tch-mat">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">материалы</span></h1>
+            <h1>Мои <span className="gl">materials</span></h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>
