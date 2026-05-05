@@ -46,7 +46,7 @@ export default async function AdminSchedulePage() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="page-hdr">
         <div>
-          <h1>Общее расписание</h1>
+          <h1>Общее <span className="gl">расписание</span></h1>
           <div className="sub">Все уроки платформы в одном календаре</div>
         </div>
         <Link href="/admin" className="btn">

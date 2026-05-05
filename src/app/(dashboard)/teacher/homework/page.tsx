@@ -226,7 +226,7 @@ export default async function TeacherHomeworkPage() {
       <div className="tch-hw">
         <div className="dash-hdr">
           <div>
-            <h1>Домашние задания</h1>
+            <h1>Домашние <span className="gl">задания</span></h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>

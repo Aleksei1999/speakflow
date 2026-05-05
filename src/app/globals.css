@@ -165,6 +165,15 @@
   animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
+/* Global brand accent: <h1>Часть <span class="gl">слово</span></h1>.
+   Scoped overrides (e.g. .teachers-page .gl) take precedence by specificity. */
+.gl {
+  font-family: var(--font-gluten, 'Gluten', cursive);
+  color: var(--red, #E63946);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dashboard-content { animation: none; }
   .skeleton-block { animation: none; }

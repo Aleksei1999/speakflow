@@ -186,7 +186,7 @@ export default function AdminStudentsClient({ initial }: { initial: Student[] })
 
       <div className="page-hdr">
         <div>
-          <h1>Ученики</h1>
+          <h1>Все <span className="gl">ученики</span></h1>
           <div className="sub">
             Всего: {initial.length.toLocaleString("ru-RU")} · показано{" "}
             {filtered.length.toLocaleString("ru-RU")}

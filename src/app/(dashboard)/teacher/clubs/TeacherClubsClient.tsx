@@ -140,7 +140,7 @@ export default function TeacherClubsClient({
 
       <div className="page-hdr">
         <div>
-          <h1>Speaking Clubs</h1>
+          <h1>Speaking <span className="gl">Clubs</span></h1>
           <div className="sub">
             Клубы, где ты ведущий — всего {clubs.length}
           </div>
