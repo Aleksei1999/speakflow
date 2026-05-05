@@ -99,6 +99,9 @@ const STU_CSS = `
 .stu-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
 .stu-today-join--missed{background:rgba(245,158,11,.10);color:#B45309;cursor:not-allowed;box-shadow:none;border:1px solid rgba(245,158,11,.35);font-weight:700}
 [data-theme="dark"] .stu-today-join--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
+.stu-today-join--live{background:#16A34A;color:#fff;border:1px solid #15803D;font-weight:800;box-shadow:0 4px 14px rgba(22,163,74,.25);animation:livePulse 1.6s ease-in-out infinite}
+.stu-today-join--live:hover{background:#15803D;transform:translateY(-1px)}
+@keyframes livePulse{0%,100%{box-shadow:0 4px 14px rgba(22,163,74,.25)}50%{box-shadow:0 4px 22px rgba(22,163,74,.55)}}
 .stu-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .stu-home .streak-cal{display:flex;gap:4px;margin-top:10px}
@@ -498,6 +501,8 @@ export default async function StudentDashboardPage() {
                   cta = <span className="stu-today-join stu-today-join--missed">Пропущен</span>
                 } else if (l.status === "cancelled" || access.status === "cancelled") {
                   cta = <span className="stu-today-join stu-today-join--cancelled">Отменён</span>
+                } else if (isLive && l.status === "in_progress") {
+                  cta = <span className="stu-today-join stu-today-join--live">● Идёт сейчас</span>
                 } else if (isLive) {
                   cta = <span className="stu-today-join">Начать</span>
                 } else if (isSoon) {

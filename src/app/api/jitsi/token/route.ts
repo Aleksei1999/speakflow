@@ -59,11 +59,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, что пользователь -- участник урока
+    // Проверяем, что пользователь -- участник урока.
+    // student_id хранит auth.uid(), teacher_id — teacher_profiles.id,
+    // поэтому учителя приходится резолвить через teacher_profiles.
     const isStudent = lesson.student_id === user.id
-    const isTeacher = lesson.teacher_id === user.id
 
+    let isTeacher = false
+    if (!isStudent) {
+      const { data: tp } = await supabase
+        .from('teacher_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (tp?.id && lesson.teacher_id === tp.id) {
+        isTeacher = true
+      }
+    }
+
+    // Админ тоже может зайти (например для модерации)
+    let isAdmin = false
     if (!isStudent && !isTeacher) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (prof?.role === 'admin') isAdmin = true
+    }
+
+    if (!isStudent && !isTeacher && !isAdmin) {
       return NextResponse.json(
         { error: 'Вы не являетесь участником этого урока' },
         { status: 403 }
@@ -132,7 +156,7 @@ export async function POST(request: NextRequest) {
       name: profile?.full_name ?? 'Участник',
       email: profile?.email ?? user.email ?? '',
       avatarUrl: profile?.avatar_url,
-      isModerator: isTeacher,
+      isModerator: isTeacher || isAdmin,
     })
 
     return NextResponse.json({
