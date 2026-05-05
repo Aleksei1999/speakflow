@@ -149,45 +149,79 @@ export default function OnboardingTour({ steps, active, onClose }: Props) {
     }
   }
 
-  // Build an organic hand-drawn oval as a polyline — wraps around 1.15× so the end
-  // overshoots the start (like a marker stroke), with a slight rotation and per-point
-  // wobble. Length of the polyline is summed as we go to feed stroke-dasharray.
+  // Hand-drawn marker outline. We trace the perimeter of a "stadium"
+  // (rounded rect with semicircular caps), add deterministic wobble per
+  // sample, slightly tilt the whole thing, and overshoot the seam by ~15%
+  // so the stroke crosses past its start like a real marker pass.
+  // For thin/tall rects this collapses naturally to an oval; for wide ones
+  // it stays a sane pill — never a giant stretched ellipse.
   const ovalPath = useMemo(() => {
     if (!rect) return { d: "", length: 0 }
-    const cx = ovalLeft + ovalW / 2
-    const cy = ovalTop + ovalH / 2
-    const rx = ovalW / 2 + 6
-    const ry = ovalH / 2 + 8
-    const tilt = -0.06 // ~-3.5°
+    const padX = 8
+    const padY = 6
+    const left = ovalLeft - padX
+    const top = ovalTop - padY
+    const w = ovalW + padX * 2
+    const h = ovalH + padY * 2
+    const cap = h / 2 // полукруг по высоте
+    const cx = left + w / 2
+    const cy = top + h / 2
+    const tilt = -0.025 // ~-1.4° для лёгкого «от руки»
     const cosT = Math.cos(tilt)
     const sinT = Math.sin(tilt)
 
-    const segments = 80
-    const sweep = 1.18 // 118% of full circle — overshoot
-    const start = -Math.PI * 0.55 // chosen so the seam sits at top-left
-    const end = start + Math.PI * 2 * sweep
+    const segArc = 24
+    const segStraight = Math.max(2, Math.round((w - 2 * cap) / 14))
 
-    const pts: [number, number][] = []
-    for (let i = 0; i <= segments; i++) {
-      const t = start + (end - start) * (i / segments)
-      // base ellipse
-      const ex = rx * Math.cos(t)
-      const ey = ry * Math.sin(t)
-      // hand-drawn jitter (deterministic, reproducible)
-      const jx = Math.sin(i * 1.7 + 0.3) * 1.6 + Math.sin(i * 0.6) * 0.8
-      const jy = Math.cos(i * 1.3 + 0.7) * 1.6 + Math.cos(i * 0.4) * 0.8
-      // rotate by tilt
-      const px = cx + (ex + jx) * cosT - (ey + jy) * sinT
-      const py = cy + (ex + jx) * sinT + (ey + jy) * cosT
-      pts.push([px, py])
+    // Список сегментов периметра в порядке обхода:
+    //   top straight → right arc → bottom straight → left arc → overshoot top
+    const raw: [number, number][] = []
+    // top straight (left to right)
+    for (let i = 0; i <= segStraight; i++) {
+      const x = left + cap + (w - 2 * cap) * (i / segStraight)
+      raw.push([x, top])
     }
+    // right cap (от 270° через 0° к 90°)
+    const rcx = left + w - cap
+    for (let i = 1; i <= segArc; i++) {
+      const t = -Math.PI / 2 + Math.PI * (i / segArc)
+      raw.push([rcx + cap * Math.cos(t), cy + cap * Math.sin(t)])
+    }
+    // bottom straight (right to left)
+    for (let i = 1; i <= segStraight; i++) {
+      const x = left + w - cap - (w - 2 * cap) * (i / segStraight)
+      raw.push([x, top + h])
+    }
+    // left cap (от 90° через 180° к 270°)
+    const lcx = left + cap
+    for (let i = 1; i <= segArc; i++) {
+      const t = Math.PI / 2 + Math.PI * (i / segArc)
+      raw.push([lcx + cap * Math.cos(t), cy + cap * Math.sin(t)])
+    }
+    // overshoot — продолжаем по верхней прямой ~25% длины
+    const overshoot = Math.max(2, Math.round(segStraight * 0.35))
+    for (let i = 1; i <= overshoot; i++) {
+      const x = left + cap + (w - 2 * cap) * (i / segStraight)
+      raw.push([x, top])
+    }
+
+    // tilt + jitter
+    const pts: [number, number][] = raw.map(([x, y], i) => {
+      const dx = x - cx
+      const dy = y - cy
+      const rx = dx * cosT - dy * sinT
+      const ry = dx * sinT + dy * cosT
+      const jx = Math.sin(i * 1.7 + 0.3) * 1.4
+      const jy = Math.cos(i * 1.3 + 0.7) * 1.2
+      return [cx + rx + jx, cy + ry + jy]
+    })
 
     let length = 0
     let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`
     for (let i = 1; i < pts.length; i++) {
-      const dx = pts[i][0] - pts[i - 1][0]
-      const dy = pts[i][1] - pts[i - 1][1]
-      length += Math.sqrt(dx * dx + dy * dy)
+      const dxp = pts[i][0] - pts[i - 1][0]
+      const dyp = pts[i][1] - pts[i - 1][1]
+      length += Math.sqrt(dxp * dxp + dyp * dyp)
       d += ` L ${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)}`
     }
     return { d, length }

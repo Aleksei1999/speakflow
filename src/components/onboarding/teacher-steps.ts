@@ -2,9 +2,9 @@ import type { TourStep } from "./OnboardingTour"
 
 export const TEACHER_TOUR_STEPS: TourStep[] = [
   {
-    target: "[data-onboarding='tch-stats']",
+    target: "[data-onboarding='tch-stat-month']",
     title: "Здесь твоя статистика",
-    text: "Смотри сегодняшние уроки, доход за неделю и рейтинг — всё на одной карточке.",
+    text: "Сегодняшние уроки, доход за неделю и рейтинг — следи за прогрессом на этих карточках.",
     placement: "bottom",
   },
   {
