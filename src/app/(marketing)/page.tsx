@@ -1,6 +1,5 @@
 // @ts-nocheck
 import type { Metadata } from "next"
-import { createClient } from "@/lib/supabase/server"
 import LandingClient from "./_landing/LandingClient"
 
 export const metadata: Metadata = {
@@ -9,22 +8,10 @@ export const metadata: Metadata = {
     "EdTech-платформа с геймификацией: XP, стрики, 37 ачивок, speaking clubs и уроки 1-on-1. Прожарь свой английский от Raw до Well Done.",
 }
 
-export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+// Make homepage statically generated, revalidated hourly so Vercel can cache it on the edge.
+// Auth state is resolved on the client via useUser() inside LandingClient — see CTA logic there.
+export const revalidate = 3600
 
-  let homeHref = "/student"
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-    const role = profile?.role
-    if (role === "admin") homeHref = "/admin"
-    else if (role === "teacher") homeHref = "/teacher"
-    else homeHref = "/student"
-  }
-
-  return <LandingClient isAuthenticated={!!user} homeHref={homeHref} />
+export default function Home() {
+  return <LandingClient />
 }
