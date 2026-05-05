@@ -22,6 +22,11 @@ export default function OnboardingLauncher({ role }: Props) {
     let cancelled = false
 
     async function load() {
+      // Debug-override: ?tour=1 в URL запускает тур независимо от статуса.
+      const forceTour =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("tour") === "1"
+
       const supabase = createClient()
       const {
         data: { user },
@@ -34,16 +39,19 @@ export default function OnboardingLauncher({ role }: Props) {
         .eq("id", user.id)
         .maybeSingle()
 
-      if (cancelled || !data) return
-      if (data.onboarding_step !== "pending") return
+      if (cancelled) return
+      const actualRole = data?.role || role
 
-      // Подбираем набор шагов по реальной роли (на случай несовпадения пропа).
-      const actualRole = data.role || role
+      if (!forceTour) {
+        if (!data) return
+        if (data.onboarding_step !== "pending") return
+      }
+
       if (actualRole === "teacher") {
         setSteps(TEACHER_TOUR_STEPS)
       } else {
-        // Для student/admin пока туров нет — сразу помечаем completed.
-        await fetch("/api/onboarding/complete", { method: "POST" })
+        // Для student/admin пока туров нет — сразу помечаем completed (но не при forceTour).
+        if (!forceTour) await fetch("/api/onboarding/complete", { method: "POST" })
         return
       }
 
