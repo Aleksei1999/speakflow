@@ -7,8 +7,8 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { useUser } from "@/hooks/use-user"
-import "./landing.css"
-import "./icons3d.css"
+// CSS подключаем через <link> в JSX (см. ниже), чтобы Next не пакетировал
+// landing-стили в shared client chunk и не preload'ил их на dashboard-страницах.
 
 // Heavy quiz (~58 KB source, ~226 KB bundled) — lazy-load it so the homepage's
 // initial JS payload stays small. ssr:false because the quiz is purely client-side
@@ -85,6 +85,11 @@ export default function LandingClient() {
 
   return (
     <>
+      {/* Landing-стили подключаются как обычные <link>, не через Next bundler.
+          Это предотвращает их попадание в shared client chunk → нет лишних
+          preload'ов на dashboard-страницах. */}
+      <link rel="stylesheet" href="/landing/landing.css" />
+      <link rel="stylesheet" href="/landing/icons3d.css" />
       <Script
         src="/landing/icons3d.js"
         strategy="afterInteractive"
