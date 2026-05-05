@@ -266,7 +266,7 @@ export default function OnboardingTour({ steps, active, onClose }: Props) {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div className="ob-veil" onClick={handleSkip} />
+      <div className="ob-veil" />
       <div className="ob-overlay">
         {rect ? (
           <svg className="ob-svg" key={`${idx}-${tick}`}>
