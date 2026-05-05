@@ -26,10 +26,14 @@ export function useUser() {
         }
         setUser(user)
         if (user) {
-          const { data, error: profileError } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+          // maybeSingle() — не бросает PGRST116 на 0 строк (которые
+          // могут появиться в transient race с handle_new_user trigger).
+          const { data, error: profileError } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
           if (profileError) {
             setError(`profile: ${profileError.message}`)
-          } else {
+          } else if (data) {
+            // Записываем только при наличии данных — не клобим валидный
+            // profile null'ом из-за transient hiccup.
             setProfile(data)
           }
         }
@@ -46,7 +50,9 @@ export function useUser() {
         setUser(session?.user ?? null)
         if (session?.user) {
           const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
-          setProfile(data)
+          // Не клобим валидный profile null'ом если fetch не вернул
+          // данные (RLS hiccup, network blip, transient race).
+          if (data) setProfile(data)
         } else {
           setProfile(null)
         }
