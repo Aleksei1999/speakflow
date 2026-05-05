@@ -7,6 +7,7 @@ import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
 import { computeLessonAccess } from "@/lib/lesson-access"
+import OnboardingLauncher from "@/components/onboarding/OnboardingLauncher"
 
 // Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
 export const dynamic = "force-dynamic"
@@ -420,6 +421,7 @@ export default async function TeacherDashboardPage() {
   return (
     <div className="tch-home">
       <style dangerouslySetInnerHTML={{ __html: TCH_CSS }} />
+      <OnboardingLauncher role="teacher" />
 
       <div className="dashboard-header">
         <div>
@@ -437,7 +439,7 @@ export default async function TeacherDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="stats-grid">
+      <div className="stats-grid" data-onboarding="tch-stats">
         <div className="stat-card">
           <div className="label">Уроков в месяце</div>
           <div className="value">{monthCount ?? 0}</div>

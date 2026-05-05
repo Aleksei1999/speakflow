@@ -443,8 +443,10 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
             {navItems.map((item) => {
               const isHome = item.href === `/${currentRole}`
               const isActive = pathname === item.href || (!isHome && pathname.startsWith(item.href))
+              // Слаг для data-onboarding (для якорей онбординг-тура).
+              const navSlug = item.href.split("/").filter(Boolean).pop() || "home"
               return (
-                <li key={item.href + item.label}>
+                <li key={item.href + item.label} data-onboarding={`nav-${navSlug}`}>
                   <Link href={item.href} prefetch={false} className={isActive ? "active" : ""}>
                     <Icon svg={item.icon} />
                     {item.label}
