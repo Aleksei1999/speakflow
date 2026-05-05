@@ -721,20 +721,6 @@ export default function TeacherColleaguesPage() {
               ) : null}
             </div>
 
-            <div className="prof-footer">
-              <a
-                className={`prof-msg${
-                  mailtoHref ? "" : " prof-msg--disabled"
-                }`}
-                href={mailtoHref ?? undefined}
-                aria-disabled={!mailtoHref}
-                onClick={(e) => {
-                  if (!mailtoHref) e.preventDefault()
-                }}
-              >
-                ✉️ Написать
-              </a>
-            </div>
           </div>
         </div>
       ) : null}
@@ -850,25 +836,6 @@ function ColleagueCard({
           >
             Открыть профиль
           </button>
-          <a
-            className={`t-btn t-btn--primary${
-              hasEmail ? "" : " t-btn--disabled"
-            }`}
-            href={
-              hasEmail
-                ? `mailto:${teacher.email}?subject=${encodeURIComponent(
-                    "Raw English — коллега пишет"
-                  )}`
-                : undefined
-            }
-            onClick={(e) => {
-              e.stopPropagation()
-              if (!hasEmail) e.preventDefault()
-            }}
-            aria-disabled={!hasEmail}
-          >
-            ✉️ Написать
-          </a>
         </div>
       </div>
     </div>
