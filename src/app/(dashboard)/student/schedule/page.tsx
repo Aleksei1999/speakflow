@@ -124,6 +124,9 @@ const SCHEDULE_CSS = `
 .stu-schedule .lc-btn--cancelled{background:rgba(138,138,134,.08);color:var(--muted)}
 .stu-schedule .lc-btn--missed{background:rgba(245,158,11,.10);color:#B45309;border:1px solid rgba(245,158,11,.35)}
 [data-theme="dark"] .stu-schedule .lc-btn--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
+.stu-schedule .lc-btn--live{background:#16A34A;color:#fff;border:1px solid #15803D;font-weight:800;box-shadow:0 2px 0 rgba(21,128,61,.3);animation:lcLivePulse 1.6s ease-in-out infinite}
+.stu-schedule .lc-btn--live:hover{background:#15803D}
+@keyframes lcLivePulse{0%,100%{box-shadow:0 2px 0 rgba(21,128,61,.3)}50%{box-shadow:0 2px 0 rgba(21,128,61,.3),0 0 18px rgba(22,163,74,.45)}}
 
 .stu-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(216,242,106,.2),0 6px 20px var(--shadow)}
 .stu-schedule .lc--now .lc-time{background:var(--lime)}
@@ -530,6 +533,8 @@ export default function StudentSchedulePage() {
                         <span className="lc-btn lc-btn--missed">Пропущен</span>
                       ) : expired ? (
                         <span className="lc-btn lc-btn--cancelled">Урок завершён</span>
+                      ) : joinable && lesson.status === "in_progress" ? (
+                        <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--live">● Идёт сейчас</Link>
                       ) : joinable ? (
                         <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Зайти в урок</Link>
                       ) : (

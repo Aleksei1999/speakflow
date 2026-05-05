@@ -93,6 +93,9 @@ const TCH_CSS = `
 .tch-today-join--cancelled{background:rgba(230,57,70,.08);color:var(--red);cursor:not-allowed;box-shadow:none;border:1px solid rgba(230,57,70,.2);font-weight:700}
 .tch-today-join--missed{background:rgba(245,158,11,.10);color:#B45309;cursor:not-allowed;box-shadow:none;border:1px solid rgba(245,158,11,.35);font-weight:700}
 [data-theme="dark"] .tch-today-join--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
+.tch-today-join--live{background:#16A34A;color:#fff;border:1px solid #15803D;font-weight:800;box-shadow:0 4px 14px rgba(22,163,74,.25);animation:tchLivePulse 1.6s ease-in-out infinite}
+.tch-today-join--live:hover{background:#15803D;transform:translateY(-1px)}
+@keyframes tchLivePulse{0%,100%{box-shadow:0 4px 14px rgba(22,163,74,.25)}50%{box-shadow:0 4px 22px rgba(22,163,74,.55)}}
 .tch-today-hint{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
 
 .tch-home .quick-actions{display:flex;flex-direction:column;gap:8px}
@@ -589,6 +592,8 @@ export default async function TeacherDashboardPage() {
                       cta = <span className="tch-today-join tch-today-join--missed">Пропущен</span>
                     } else if (l.status === "cancelled" || access.status === "cancelled") {
                       cta = <span className="tch-today-join tch-today-join--cancelled">Отменён</span>
+                    } else if (isLive && l.status === "in_progress") {
+                      cta = <span className="tch-today-join tch-today-join--live">● Идёт сейчас</span>
                     } else if (isLive) {
                       cta = <span className="tch-today-join">Начать</span>
                     } else if (isSoon) {
