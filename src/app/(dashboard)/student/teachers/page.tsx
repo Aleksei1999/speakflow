@@ -129,6 +129,8 @@ const TEACHERS_CSS = `
 
 .teachers-page .t-book-btn{width:100%;padding:11px;border:none;border-radius:12px;background:var(--accent-dark);color:#fff;font-size:.82rem;font-weight:700;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:inherit}
 .teachers-page .t-book-btn:hover{background:var(--red)}
+.teachers-page .t-book-btn--readonly{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.teachers-page .t-book-btn--readonly:hover{background:var(--red);color:#fff;border-color:var(--red)}
 
 /* Tags */
 .teachers-page .t-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
@@ -1172,12 +1174,11 @@ function TeacherCard({
         {readOnly && (
           <button
             type="button"
-            className="t-book-btn"
+            className="t-book-btn t-book-btn--readonly"
             onClick={(e) => {
               e.stopPropagation()
               onOpen()
             }}
-            style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}
           >
             Подробнее
           </button>
