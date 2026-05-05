@@ -168,7 +168,10 @@ const COLLEAGUES_CSS = `
 .colleagues-page .prof-stat-val{font-size:1.1rem;font-weight:800;line-height:1;color:var(--text)}
 .colleagues-page .prof-stat-lbl{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
 
-.colleagues-page .prof-body{padding:24px 28px 28px;overflow-y:auto;flex:1}
+.colleagues-page .prof-body{padding:24px 28px 32px;overflow-y:auto;flex:1;min-height:200px}
+.colleagues-page .prof-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;color:var(--muted);font-size:.82rem;gap:8px}
+.colleagues-page .prof-empty-emoji{font-size:2rem;opacity:.5}
+.colleagues-page .prof-empty b{display:block;color:var(--text);font-size:1rem;margin-bottom:2px}
 .colleagues-page .prof-section{margin-bottom:20px}
 .colleagues-page .prof-section-title{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
 .colleagues-page .prof-bio{font-size:.88rem;color:var(--text);line-height:1.7;white-space:pre-wrap}
@@ -642,16 +645,27 @@ export default function TeacherColleaguesPage() {
 
             <div className="prof-body">
               {/* Профиль (расширенный) */}
-              <div className="prof-section">
-                <div className="prof-section-title">Профиль</div>
-                {detailLoading && !modalTeacher.bio ? (
+              {detailLoading && !modalTeacher.bio ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Профиль</div>
                   <div className="prof-section-loading">Загрузка…</div>
-                ) : (
-                  <div className="prof-bio">
-                    {modalTeacher.bio || "Коллега пока не добавил описание."}
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : modalTeacher.bio ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Профиль</div>
+                  <div className="prof-bio">{modalTeacher.bio}</div>
+                </div>
+              ) : !modalTeacher.experience_years &&
+                !modalTeacher.education &&
+                modalTeacher.languages.length === 0 &&
+                modalTeacher.specializations.length === 0 &&
+                modalTeacher.certificates.length === 0 ? (
+                <div className="prof-empty">
+                  <div className="prof-empty-emoji">📝</div>
+                  <b>Профиль ещё не заполнен</b>
+                  <span>Коллега пока не добавил информацию о себе.</span>
+                </div>
+              ) : null}
 
               {/* Факты: опыт + языки + образование */}
               {(modalTeacher.experience_years != null ||
