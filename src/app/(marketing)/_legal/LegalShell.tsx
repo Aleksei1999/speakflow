@@ -4,8 +4,6 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { RawLogo } from "@/components/ui/raw-logo"
-import "../_landing/landing.css"
-import "./legal.css"
 
 type Props = {
   eyebrow: string
@@ -29,6 +27,8 @@ export default function LegalShell({ eyebrow, title, subtitle, children }: Props
 
   return (
     <div className="legal-page">
+      <link rel="stylesheet" href="/landing/landing.css" />
+      <link rel="stylesheet" href="/landing/legal.css" />
       <nav className="legal-nav">
         <div className="legal-nav-inner">
           <Link href="/" aria-label="На главную" style={{ display: "inline-flex", alignItems: "center" }}>
