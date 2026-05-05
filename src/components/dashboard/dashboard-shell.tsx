@@ -443,11 +443,17 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
             {navItems.map((item) => {
               const isHome = item.href === `/${currentRole}`
               const isActive = pathname === item.href || (!isHome && pathname.startsWith(item.href))
-              // Слаг для data-onboarding (для якорей онбординг-тура).
+              // Слаг для data-onboarding (для якорей онбординг-тура) — на самой ссылке,
+              // а не на <li>, чтобы getBoundingClientRect возвращал реальный visual rect.
               const navSlug = item.href.split("/").filter(Boolean).pop() || "home"
               return (
-                <li key={item.href + item.label} data-onboarding={`nav-${navSlug}`}>
-                  <Link href={item.href} prefetch={false} className={isActive ? "active" : ""}>
+                <li key={item.href + item.label}>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    className={isActive ? "active" : ""}
+                    data-onboarding={`nav-${navSlug}`}
+                  >
                     <Icon svg={item.icon} />
                     {item.label}
                     {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
