@@ -50,9 +50,28 @@ const CSS = `
 function getRect(selector: string | null): DOMRect | null {
   if (!selector) return null
   const el = document.querySelector(selector) as HTMLElement | null
-  if (!el) return null
-  el.scrollIntoView({ block: "center", behavior: "smooth" })
-  return el.getBoundingClientRect()
+  if (!el) {
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.warn("[onboarding] target not found:", selector)
+    }
+    return null
+  }
+  const r = el.getBoundingClientRect()
+  // Если элемент свёрнут (display:none / 0×0) — шаг лучше пропустить.
+  if (r.width < 4 || r.height < 4) {
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.warn("[onboarding] target rect is empty:", selector, r)
+    }
+    return null
+  }
+  // scrollIntoView только если элемент сейчас не виден полностью.
+  const inView = r.top >= 0 && r.bottom <= window.innerHeight
+  if (!inView) {
+    el.scrollIntoView({ block: "center", behavior: "smooth" })
+  }
+  return r
 }
 
 export default function OnboardingTour({ steps, active, onClose }: Props) {
@@ -71,14 +90,16 @@ export default function OnboardingTour({ steps, active, onClose }: Props) {
       const r = getRect(step.target)
       setRect(r)
     }
-    // initial measure may happen before scrollIntoView animation finishes — ремирим через 350мс
+    // initial measure may happen before scrollIntoView animation finishes — ремирим несколько раз
     measure()
-    const t = setTimeout(measure, 380)
+    const t1 = setTimeout(measure, 200)
+    const t2 = setTimeout(measure, 480)
     const onResize = () => setTick((t) => t + 1)
     window.addEventListener("resize", onResize)
     window.addEventListener("scroll", onResize, true)
     return () => {
-      clearTimeout(t)
+      clearTimeout(t1)
+      clearTimeout(t2)
       window.removeEventListener("resize", onResize)
       window.removeEventListener("scroll", onResize, true)
     }
