@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { invalidateProfile } from '@/lib/cache/invalidate'
 
 // ---------------------------------------------------------------------------
 // Defaults — kept in one place and mirrored in migration 025.
@@ -238,6 +239,10 @@ export async function PATCH(request: NextRequest) {
       console.error('Ошибка обновления настроек:', updErr)
       return NextResponse.json({ error: 'Не удалось сохранить настройки' }, { status: 500 })
     }
+
+    // Sidebar (DashboardShell) reads full_name/avatar_url/role via cache —
+    // any setting save can mutate avatar_url (uploads) so evict.
+    invalidateProfile(user.id)
 
     return NextResponse.json({ ok: true, updated: Object.keys(patch).length })
   } catch (err) {

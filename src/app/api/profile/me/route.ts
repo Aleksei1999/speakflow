@@ -9,6 +9,7 @@ import {
   getLevelCEFR,
   type RoastLevel,
 } from '@/lib/level-utils'
+import { invalidateProfile } from '@/lib/cache/invalidate'
 
 // ---------------------------------------------------------------------------
 // GET /api/profile/me
@@ -407,6 +408,9 @@ export async function PATCH(request: NextRequest) {
       console.error('Ошибка обновления профиля:', error)
       return NextResponse.json({ error: 'Не удалось обновить профиль' }, { status: 500 })
     }
+
+    // Dashboard sidebar reads full_name/avatar_url from cache.
+    invalidateProfile(user.id)
 
     return NextResponse.json({ ok: true, updated: Object.keys(patch).length })
   } catch (err) {

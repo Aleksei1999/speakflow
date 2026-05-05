@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { invalidateUserProgress } from '@/lib/cache/invalidate'
 
 const bodySchema = z.object({
   time_spent_sec: z.number().int().min(0).max(24 * 3600).optional(),
@@ -146,6 +147,11 @@ export async function POST(
         }
         courseCompleted = true
       }
+    }
+
+    // Any lesson XP / course XP write changes total_xp + level → evict cache.
+    if (!alreadyCompleted || courseCompleted) {
+      invalidateUserProgress(user.id)
     }
 
     return NextResponse.json({

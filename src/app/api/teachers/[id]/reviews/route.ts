@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { invalidateTeacherStats } from '@/lib/cache/invalidate'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -212,6 +213,22 @@ export async function POST(
         { error: insertErr.message || 'Не удалось сохранить отзыв' },
         { status: 500 }
       )
+    }
+
+    // teacher_profiles.rating + total_reviews are recalculated by a DB trigger
+    // (see existing aggregate). The trigger writes by user_id keying, but our
+    // cache is keyed by user_id as well — look up the teacher's auth user_id
+    // from teacher_profiles.id and evict the cached hero stats.
+    try {
+      const { data: tp } = await supabase
+        .from('teacher_profiles')
+        .select('user_id')
+        .eq('id', teacherProfileId)
+        .maybeSingle()
+      if (tp?.user_id) invalidateTeacherStats(tp.user_id)
+    } catch (err) {
+      // Non-fatal — TTL will refresh within 60s anyway.
+      console.error('[reviews POST] teacher_stats invalidation failed', err)
     }
 
     return NextResponse.json({ review: inserted })
