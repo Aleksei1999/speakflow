@@ -81,6 +81,10 @@ export default function AdminTrialRequestsClient({
   const [items, setItems] = useState<Application[]>(initial)
   const [tab, setTab] = useState<"all" | Application["status"]>("new")
   const [refreshing, setRefreshing] = useState(false)
+  // Approve-модалка
+  const [approveFor, setApproveFor] = useState<Application | null>(null)
+  const [approveEmail, setApproveEmail] = useState("")
+  const [approving, setApproving] = useState(false)
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {
@@ -126,6 +130,50 @@ export default function AdminTrialRequestsClient({
       document.removeEventListener("visibilitychange", onVis)
     }
   }, [])
+
+  const openApprove = (app: Application) => {
+    setApproveFor(app)
+    setApproveEmail(app.email || "")
+  }
+
+  const submitApprove = async () => {
+    if (!approveFor) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(approveEmail.trim())) {
+      toast.error("Некорректный email")
+      return
+    }
+    setApproving(true)
+    try {
+      const res = await fetch(
+        `/api/admin/teacher-applications/${approveFor.id}/approve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: approveEmail.trim() }),
+        }
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(json?.error || "Не удалось одобрить")
+        setApproving(false)
+        return
+      }
+      if (json?.emailSent === false) {
+        toast.error(`Аккаунт создан, но email не ушёл: ${json?.emailError || "—"}`)
+      } else if (json?.userExisted) {
+        toast.success("Аккаунт уже существовал — пароль обновлён, письмо ушло")
+      } else {
+        toast.success("Учитель одобрен — письмо с паролем отправлено")
+      }
+      setApproveFor(null)
+      setApproveEmail("")
+      refresh()
+    } catch {
+      toast.error("Ошибка сети")
+    } finally {
+      setApproving(false)
+    }
+  }
 
   const setStatus = async (id: string, status: Application["status"]) => {
     setItems((cur) =>
@@ -232,6 +280,27 @@ export default function AdminTrialRequestsClient({
                   <span className={`stat ${it.status}`}>
                     {STATUS_LABEL[it.status]}
                   </span>
+                  {it.status !== "approved" && (
+                    <button
+                      type="button"
+                      onClick={() => openApprove(it)}
+                      style={{
+                        background: "#22C55E",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 2px 0 rgba(22,163,74,.3)",
+                        fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ✓ Одобрить
+                    </button>
+                  )}
                   <select
                     className="status-select"
                     value={it.status}
@@ -249,6 +318,121 @@ export default function AdminTrialRequestsClient({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {approveFor && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !approving) {
+              setApproveFor(null)
+            }
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 480,
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,.3)",
+            }}
+          >
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, color: "var(--text)" }}>
+              Одобрить заявку
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>
+              Создадим аккаунт преподавателя <b style={{ color: "var(--text)" }}>{approveFor.first_name} {approveFor.last_name}</b>,
+              сгенерируем пароль и отправим письмо с данными для входа на указанный email.
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".5px",
+                  color: "var(--muted)",
+                  marginBottom: 6,
+                }}
+              >
+                Email для входа
+              </label>
+              <input
+                type="email"
+                value={approveEmail}
+                onChange={(e) => setApproveEmail(e.target.value)}
+                placeholder="teacher@example.com"
+                disabled={approving}
+                style={{
+                  width: "100%",
+                  background: "var(--bg)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  color: "var(--text)",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+                По умолчанию — email из заявки. Можно изменить, если нужно.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setApproveFor(null)}
+                disabled={approving}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                  borderRadius: 10,
+                  padding: "9px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={submitApprove}
+                disabled={approving}
+                style={{
+                  background: "#22C55E",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "9px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 0 rgba(22,163,74,.3)",
+                  fontFamily: "inherit",
+                  opacity: approving ? 0.6 : 1,
+                }}
+              >
+                {approving ? "Создаём аккаунт…" : "✓ Одобрить и отправить пароль"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
