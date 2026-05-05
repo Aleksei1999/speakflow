@@ -205,6 +205,22 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   const [avatarBroken, setAvatarBroken] = useState(false)
   useEffect(() => { setAvatarBroken(false) }, [avatarUrl])
 
+  // Smooth scroll-to-top whenever route changes between dashboard sections so
+  // the user lands at the top of the new page instead of mid-scroll.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const main = document.querySelector(".dash .main-content") as HTMLElement | null
+    const opts: ScrollToOptions = { top: 0, left: 0, behavior: "smooth" }
+    try {
+      main?.scrollTo(opts)
+      window.scrollTo(opts)
+    } catch {
+      // Older browsers without smooth-scroll support
+      if (main) main.scrollTop = 0
+      window.scrollTo(0, 0)
+    }
+  }, [pathname])
+
   useEffect(() => {
     if (role) {
       if (
