@@ -717,6 +717,7 @@ export default function StudentTeachersPage() {
               key={t.id}
               teacher={t}
               onOpen={() => openProfile(t)}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -1084,9 +1085,11 @@ function SortTab({
 function TeacherCard({
   teacher,
   onOpen,
+  readOnly,
 }: {
   teacher: Teacher
   onOpen: () => void
+  readOnly?: boolean
 }) {
   const specLabel = shortSpecs(teacher.specializations).toUpperCase()
   const tags = teacher.specializations.slice(0, 3)
@@ -1149,16 +1152,31 @@ function TeacherCard({
             <b>Бесплатно</b>
           </div>
         </div>
-        <button
-          type="button"
-          className="t-book-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            onOpen()
-          }}
-        >
-          Записаться
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            className="t-book-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpen()
+            }}
+          >
+            Записаться
+          </button>
+        )}
+        {readOnly && (
+          <button
+            type="button"
+            className="t-book-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpen()
+            }}
+            style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}
+          >
+            Подробнее
+          </button>
+        )}
       </div>
     </div>
   )
