@@ -49,24 +49,24 @@ const CSS = `
 
 function getRect(selector: string | null): DOMRect | null {
   if (!selector) return null
-  const el = document.querySelector(selector) as HTMLElement | null
-  if (!el) {
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
-      console.warn("[onboarding] target not found:", selector)
-    }
-    return null
-  }
+  if (typeof window === "undefined") return null
+
+  const matches = document.querySelectorAll(selector)
+  // eslint-disable-next-line no-console
+  console.log("[onboarding] lookup", selector, "→", matches.length, "match(es)")
+
+  const el = matches[0] as HTMLElement | undefined
+  if (!el) return null
+
   const r = el.getBoundingClientRect()
-  // Если элемент свёрнут (display:none / 0×0) — шаг лучше пропустить.
-  if (r.width < 4 || r.height < 4) {
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
-      console.warn("[onboarding] target rect is empty:", selector, r)
-    }
-    return null
-  }
-  // scrollIntoView только если элемент сейчас не виден полностью.
+  // eslint-disable-next-line no-console
+  console.log("[onboarding] rect", selector, {
+    top: r.top, left: r.left, width: r.width, height: r.height,
+    display: getComputedStyle(el).display, visibility: getComputedStyle(el).visibility,
+  })
+
+  if (r.width < 4 || r.height < 4) return null
+
   const inView = r.top >= 0 && r.bottom <= window.innerHeight
   if (!inView) {
     el.scrollIntoView({ block: "center", behavior: "smooth" })
