@@ -356,8 +356,9 @@ export default async function TeacherDashboardPage() {
     ? await Promise.all([
         (supabase as any)
           .from("profiles")
-          .select("id, full_name, email, avatar_url")
-          .in("id", studentIds),
+          .select("id, full_name, email, avatar_url, role")
+          .in("id", studentIds)
+          .eq("role", "student"),
         (supabase as any)
           .from("user_progress")
           .select("user_id, total_xp, english_level")
