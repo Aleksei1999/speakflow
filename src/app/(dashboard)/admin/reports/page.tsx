@@ -46,7 +46,7 @@ export default async function AdminReportsPage() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="page-hdr">
         <div>
-          <h1>Отчёты</h1>
+          <h1>Аналитика и <span className="gl">отчёты</span></h1>
           <div className="sub">Аналитика и выгрузки по платформе</div>
         </div>
         <Link href="/admin" className="btn">

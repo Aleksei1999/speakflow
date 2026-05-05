@@ -760,7 +760,7 @@ function AdminContentContent() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Управление контентом
+          Управление <span className="gl">контентом</span>
         </h1>
         <p className="text-sm text-muted-foreground">
           Достижения, тест уровня и настройки платформы

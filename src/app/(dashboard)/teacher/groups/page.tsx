@@ -77,7 +77,7 @@ export default async function TeacherGroupsPage() {
       <div className="tch-grp">
         <div className="dash-hdr">
           <div>
-            <h1>Группы</h1>
+            <h1>Мои <span className="gl">группы</span></h1>
             <div className="sub">Объединяй учеников в группы — удобно рассылать материалы и домашки</div>
           </div>
         </div>
