@@ -14,6 +14,7 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { invalidateUserProgress } from '@/lib/cache/invalidate'
 
 const LANDING_XP_CAP = 200
 const LANDING_LEVEL_CAP = 8
@@ -91,6 +92,9 @@ export async function POST(request: Request) {
     console.error('[claim-landing-xp] insert failed:', insertError)
     return NextResponse.json({ error: 'Не удалось начислить XP' }, { status: 500 })
   }
+
+  // Trigger updates total_xp/level on user_progress; evict the cache.
+  invalidateUserProgress(user.id)
 
   return NextResponse.json({
     credited: amountToCredit,

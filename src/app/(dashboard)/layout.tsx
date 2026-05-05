@@ -2,9 +2,17 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { LEVEL_XP_THRESHOLDS, type RoastLevel } from "@/lib/level-utils"
+import {
+  getCachedProfile,
+  getCachedUserProgress,
+  getCachedTeacherStats,
+} from "@/lib/cache/dashboard"
 
-// Don't cache the layout — avatar_url / role / progress must always reflect
-// current DB state (e.g. fresh OAuth identity, post-migration backfills).
+// Layout is still force-dynamic (we still need fresh auth check and
+// the children may be dynamic). The three Supabase reads below are
+// served from `unstable_cache` keyed by user.id with short TTLs and
+// per-user tags — see src/lib/cache/dashboard.ts. Mutation sites
+// call `revalidateTag` to evict on writes.
 export const dynamic = "force-dynamic"
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
@@ -14,28 +22,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  // Parallelize profile + user_progress + teacher_profiles in a single round-trip —
-  // we don't know the role yet, so we eagerly fetch both progress sources and pick
-  // the relevant one below. Cheaper than a second sequential round-trip.
-  const [{ data: profileRaw }, { data: progressRaw }, { data: teacherRaw }] = await Promise.all([
-    (supabase as any)
-      .from("profiles")
-      .select("full_name, avatar_url, role")
-      .eq("id", user.id)
-      .maybeSingle(),
-    (supabase as any)
-      .from("user_progress")
-      .select("total_xp, english_level, current_streak")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    (supabase as any)
-      .from("teacher_profiles")
-      .select("rating, total_reviews, experience_years")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+  // All three reads are now served from the per-user tagged cache.
+  // We still fan them out in parallel — the first miss after
+  // invalidation has the same shape as the old uncached code.
+  const [profile, progressRaw, teacherRaw] = await Promise.all([
+    getCachedProfile(user.id),
+    getCachedUserProgress(user.id),
+    getCachedTeacherStats(user.id),
   ])
 
-  const profile = profileRaw as { full_name: string | null; avatar_url: string | null; role: "student" | "teacher" | "admin" | null } | null
   const role = profile?.role ?? null
 
   let gamification: {

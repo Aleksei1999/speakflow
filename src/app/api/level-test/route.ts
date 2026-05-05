@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
+import { invalidateUserProgress } from '@/lib/cache/invalidate'
 
 const RAW_LEVEL_MAP: Record<string, string> = {
   raw: 'Raw',
@@ -79,6 +80,8 @@ export async function POST(request: Request) {
 
     if (progressError) {
       console.error('[level-test] progress sync failed:', progressError)
+    } else {
+      invalidateUserProgress(user.id)
     }
   }
 
