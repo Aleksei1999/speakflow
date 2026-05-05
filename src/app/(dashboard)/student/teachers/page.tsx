@@ -266,14 +266,12 @@ function shortSpecs(specs: string[]): string {
 
 export default function StudentTeachersPage() {
   // Если страница рендерится под админом (re-export в /admin/teachers) —
-  // прячем booking/review UI: админ только просматривает каталог.
-  // Пессимистичный default: readOnly=true пока useUser() не подтвердит
-  // что role==='student'. Иначе при race админ успевает увидеть красную
-  // «Записаться» до того как fetch профиля резолвится. Student'у максимум
-  // дополнительный re-render — кнопка «Подробнее» мгновенно меняется на
-  // «Записаться» когда профиль подтянется.
+  // прячем booking/review UI. Триггерим readOnly только когда роль
+  // ОТВЕРЖДЕНА не-студент (admin/teacher). Пока loading или role=null
+  // (transient profile-fetch error) — оставляем student-режим, иначе
+  // студент с RLS-hiccup'ом залипал в «Подробнее» вечно.
   const { role, isLoading: userLoading } = useUser()
-  const readOnly = userLoading || role !== "student"
+  const readOnly = !userLoading && role !== null && role !== "student"
 
   // Filter UI state (draft — applied only on "Найти" click).
   const [searchDraft, setSearchDraft] = useState("")
