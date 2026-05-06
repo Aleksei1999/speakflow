@@ -126,6 +126,12 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [loading, setLoading] = useState(false)
 
+  // Hydration guard для time-зависимых рендеров (formatRelative / formatDueMeta).
+  // На сервере и клиенте Date.now() разный → расхождение HTML → React #418.
+  // С `mounted=true` time-метки появляются только после client mount.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   // Modals
   const [createOpen, setCreateOpen] = useState(false)
   const [reviewId, setReviewId] = useState<string | null>(null)
@@ -360,6 +366,7 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
             <HomeworkCard
               key={h.id}
               hw={h}
+              mounted={mounted}
               onReview={() => setReviewId(h.id)}
               onRemind={() => remindStudent(h.id)}
               onDelete={() => deleteHomework(h.id)}
@@ -400,11 +407,13 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
 // ---------------------------------------------------------------
 function HomeworkCard({
   hw,
+  mounted,
   onReview,
   onRemind,
   onDelete,
 }: {
   hw: HomeworkItem
+  mounted: boolean
   onReview: () => void
   onRemind: () => void
   onDelete: () => void
@@ -418,7 +427,7 @@ function HomeworkCard({
       ? "graded"
       : ""
 
-  const dueMeta = formatDueMeta(hw.due_date, hw.ui_status)
+  const dueMeta = mounted ? formatDueMeta(hw.due_date, hw.ui_status) : { text: "", tone: "normal" as const }
 
   const score = hw.score_10 ?? (hw.grade !== null ? Number(hw.grade) / 10 : null)
   const scoreClass =
@@ -449,7 +458,7 @@ function HomeworkCard({
         <div className="hw-meta">
           {hw.ui_status === "submitted" && hw.submitted_at ? (
             <span>
-              <b>Сдано</b> {formatRelative(hw.submitted_at)}
+              <b>Сдано</b> {mounted ? formatRelative(hw.submitted_at) : ""}
             </span>
           ) : null}
           {hw.ui_status === "reviewed" && hw.reviewed_at ? (
@@ -477,7 +486,7 @@ function HomeworkCard({
           ) : null}
           {hw.ui_status === "assigned" && hw.created_at ? (
             <span>
-              Выдано {formatRelative(hw.created_at)}
+              Выдано {mounted ? formatRelative(hw.created_at) : ""}
             </span>
           ) : null}
           {hw.ui_status === "reviewed" && hw.teacher_feedback ? (
