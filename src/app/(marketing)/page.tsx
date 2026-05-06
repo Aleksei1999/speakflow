@@ -1,7 +1,5 @@
 // @ts-nocheck
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import LandingClient from "./_landing/LandingClient"
 
 export const metadata: Metadata = {
@@ -10,26 +8,10 @@ export const metadata: Metadata = {
     "EdTech-платформа с геймификацией: XP, стрики, 37 ачивок, speaking clubs и уроки 1-on-1. Прожарь свой английский от Raw до Well Done.",
 }
 
-// Серверный auth-check — нужен динамический рендер. Без force-dynamic
-// Next бы кэшировал HTML и редирект для логиненных не сработал.
-export const dynamic = "force-dynamic"
+// Make homepage statically generated, revalidated hourly so Vercel can cache it on the edge.
+// Auth state is resolved on the client via useUser() inside LandingClient — see CTA logic there.
+export const revalidate = 3600
 
-export default async function Home() {
-  // Залогиненный юзер кликает на лого / открывает / — мгновенно
-  // отправляем в его дашборд, без мерцания landing-XP overlay.
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-    const role = profile?.role
-    if (role === "admin") redirect("/admin")
-    if (role === "teacher") redirect("/teacher")
-    redirect("/student")
-  }
-
+export default function Home() {
   return <LandingClient />
 }
