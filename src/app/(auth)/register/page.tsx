@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { type QuizResult } from '@/components/onboarding/level-quiz'
 import { RawLogo } from '@/components/ui/raw-logo'
+import { transliterateRu } from '@/lib/transliterate'
 
 type Mood = 'happy' | 'neutral' | 'worried' | 'wow' | 'cool' | 'dead'
 
@@ -193,17 +194,26 @@ function RegisterPageInner() {
     if (!validate()) return
     setPending(true)
     const supabase = createClient()
-    const parts = name.trim().split(/\s+/)
-    const firstName = parts[0]
-    const lastName = parts.slice(1).join(' ') || ''
+    const trimmedName = name.trim()
+    const parts = trimmedName.split(/\s+/)
+    const firstNameRaw = parts[0]
+    const lastNameRaw = parts.slice(1).join(' ') || ''
+    // Транслитерируем кириллицу в латиницу (для шрифта Gluten cursive на
+    // карточках). Если уже ASCII — вернётся как есть. Оригинал сохраняем
+    // в full_name_ru для возможного отката.
+    const firstName = transliterateRu(firstNameRaw)
+    const lastName = transliterateRu(lastNameRaw)
+    const fullNameLatin =
+      [firstName, lastName].filter(Boolean).join(' ').trim() || trimmedName
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
         data: {
-          full_name: name.trim(),
+          full_name: fullNameLatin,
           first_name: firstName,
           last_name: lastName,
+          full_name_ru: trimmedName !== fullNameLatin ? trimmedName : null,
           phone: phone.trim() || null,
           role: isTeacher ? 'teacher' : 'student',
           // Реферальный код (если есть). Триггер handle_new_user валидирует и,
@@ -234,7 +244,10 @@ function RegisterPageInner() {
       }).catch(() => {})
     }
     setSuccess({
-      name: firstName,
+      // На success-экране приветствуем пользователя той формой, которую он
+      // ввёл (кириллицей или латиницей) — менее «инопланетно». В БД лежит
+      // латинская версия и используется в карточках преподавателей.
+      name: firstNameRaw,
       email: email.trim(),
       level: isTeacher ? '' : (grade?.name || quizResult?.levelName || 'Определим на пробном'),
       cefr: isTeacher ? '' : (grade?.cefr || '—'),
