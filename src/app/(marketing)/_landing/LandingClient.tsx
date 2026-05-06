@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client"
 
-import { useEffect, useMemo, createElement } from "react"
+import { useEffect, useMemo, useState, createElement } from "react"
 import Script from "next/script"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -50,17 +50,46 @@ function I3(props: {
   return createElement("i3", attrs)
 }
 
+// Synchronous read of the public auth-flag cookie set by middleware.
+// Returns the user's role (or empty string) on the client; "" on the server
+// — keeping the static (ISR) HTML output identical for cached responses.
+function readAuthedCookie(): string {
+  if (typeof document === "undefined") return ""
+  const m = document.cookie.match(/(?:^|; )rwen_authed=([^;]+)/)
+  return m ? decodeURIComponent(m[1]!) : ""
+}
+
+function roleToHome(role: string | null | undefined): string {
+  if (role === "admin") return "/admin"
+  if (role === "teacher") return "/teacher"
+  return "/student"
+}
+
 export default function LandingClient() {
-  // Resolve auth on the client so the page itself can be statically generated.
-  // While loading, we treat user as anonymous → CTAs render "Войти" / "/register".
-  // After hydration, useUser() flips and the CTA swaps to "Личный кабинет" + correct role-href.
-  const { user, role, isLoading } = useUser()
-  const isAuthenticated = !!user && !isLoading
-  const homeHref = useMemo(() => {
-    if (role === "admin") return "/admin"
-    if (role === "teacher") return "/teacher"
-    return "/student"
-  }, [role])
+  // 1) On first client render, seed auth state from the public cookie that
+  //    middleware sets. This avoids waiting ~300–800ms for Supabase
+  //    `auth.getUser()` to resolve in useUser().
+  // 2) The page is still statically generated (ISR). The cached HTML contains
+  //    BOTH nav variants — we toggle which one is visible via CSS using the
+  //    `data-authed` attribute set on <html> by the bootstrap script in
+  //    app/layout.tsx (also derived from the same cookie). That gives a
+  //    flash-free first paint for both authed and anonymous users.
+  // 3) useUser() then verifies and updates state if the cookie was stale
+  //    (e.g. token expired but cookie still around).
+  const [cookieRole, setCookieRole] = useState<string>("")
+  useEffect(() => {
+    setCookieRole(readAuthedCookie())
+  }, [])
+
+  const { user, role: hookRole, isLoading } = useUser()
+
+  // Authed if either the cookie OR the resolved hook says so. We trust the
+  // hook over the cookie once it has loaded (handles signed-out-elsewhere).
+  const hookAuthed = !!user && !isLoading
+  const isAuthenticated = isLoading ? !!cookieRole : hookAuthed
+  const effectiveRole = hookAuthed ? hookRole : cookieRole || null
+
+  const homeHref = useMemo(() => roleToHome(effectiveRole), [effectiveRole])
   const ctaHref = isAuthenticated ? homeHref : "/register"
   useEffect(() => {
     const html = document.documentElement
@@ -145,33 +174,45 @@ export default function LandingClient() {
           <div className="theme-toggle" id="themeToggle">
             <div className="theme-knob" id="themeKnob">☀️</div>
           </div>
-          {isAuthenticated ? (
-            <Link href={homeHref} className="nav-cta">
-              <span>Личный кабинет</span>
-            </Link>
-          ) : (
-            <div
-              className="nav-cta-group"
-              style={{ display: "inline-flex", alignItems: "center", gap: "16px" }}
+          {/*
+            Both nav variants are rendered into the static HTML. The
+            `data-authed` attribute set on <html> by the inline bootstrap
+            script in app/layout.tsx (derived from the public `rwen_authed`
+            cookie) drives which one is visible via the CSS rules below —
+            this avoids a flash on cached ISR responses for logged-in users.
+            React's `isAuthenticated` is synced with the same cookie via
+            useEffect, so once useUser() resolves it can override the role
+            href if needed; visibility itself stays CSS-driven.
+          */}
+          <style>{`
+            .rw-nav-anon, .rw-nav-authed { display: inline-flex; }
+            html[data-authed="1"] .rw-nav-anon { display: none !important; }
+            html:not([data-authed="1"]) .rw-nav-authed { display: none !important; }
+          `}</style>
+          <Link href={homeHref} className="nav-cta rw-nav-authed">
+            <span>Личный кабинет</span>
+          </Link>
+          <div
+            className="nav-cta-group rw-nav-anon"
+            style={{ alignItems: "center", gap: "16px" }}
+          >
+            <Link
+              href="/teach"
+              className="nav-cta nav-cta--teacher"
+              style={{
+                background: "transparent",
+                color: "var(--text)",
+                border: "1.5px solid var(--text)",
+                boxShadow: "none",
+                marginRight: "4px",
+              }}
             >
-              <Link
-                href="/teach"
-                className="nav-cta nav-cta--teacher"
-                style={{
-                  background: "transparent",
-                  color: "var(--text)",
-                  border: "1.5px solid var(--text)",
-                  boxShadow: "none",
-                  marginRight: "4px",
-                }}
-              >
-                <span>Для преподавателя</span>
-              </Link>
-              <Link href="/login" className="nav-cta nav-cta--student">
-                <span>Войти</span>
-              </Link>
-            </div>
-          )}
+              <span>Для преподавателя</span>
+            </Link>
+            <Link href="/login" className="nav-cta nav-cta--student">
+              <span>Войти</span>
+            </Link>
+          </div>
         </div>
       </nav>
 
