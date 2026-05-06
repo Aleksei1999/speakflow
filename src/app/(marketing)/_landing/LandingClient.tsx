@@ -5,7 +5,6 @@ import { useEffect, useMemo, createElement } from "react"
 import Script from "next/script"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { useUser } from "@/hooks/use-user"
 // CSS подключаем через <link> в JSX (см. ниже), чтобы Next не пакетировал
@@ -64,18 +63,12 @@ export default function LandingClient() {
   }, [role])
   const ctaHref = isAuthenticated ? homeHref : "/register"
 
-  // Залогиненным юзерам лендинг не показываем — сразу в их дашборд.
-  // Это убирает Level Up overlay, "Стать участником" CTA и прочий
-  // лидогенерационный шум, неуместный для авторизованных.
-  const router = useRouter()
-  useEffect(() => {
-    if (isAuthenticated && homeHref) {
-      router.replace(homeHref)
-    }
-  }, [isAuthenticated, homeHref, router])
+  // Геймификация (XP-бар, Level Up overlay, confetti, MiniBattleQuiz) —
+  // только для гостей. Залогиненный юзер по клику на лого видит лендинг
+  // как нормальную информационную страницу, без оверлеев, не как лид.
+  const showGame = !isLoading && !isAuthenticated
 
   useEffect(() => {
-    if (isAuthenticated) return
     const html = document.documentElement
     const prevTheme = html.dataset.theme
     html.dataset.theme = "light"
@@ -85,22 +78,19 @@ export default function LandingClient() {
       __landingInit?: () => void
       __landingDispose?: () => void
     }
-    // Defensive: fire hydrate + init even if onReady didn't.
-    w.I3?.hydrate()
-    w.__landingInit?.()
+    // Геймификацию запускаем только для гостей — landing.js управляет
+    // gameLevel/luOverlay, для залогиненных это лишний шум.
+    if (showGame) {
+      w.I3?.hydrate()
+      w.__landingInit?.()
+    }
     return () => {
       if (prevTheme) html.dataset.theme = prevTheme
       else delete html.dataset.theme
       delete html.dataset.landing
       w.__landingDispose?.()
     }
-  }, [isAuthenticated])
-
-  // Пока useUser резолвится или редиректит залогиненных — отдаём пустой
-  // фон. Это предотвращает мелькание landing-XP-overlay для авторизованных.
-  if (isLoading || isAuthenticated) {
-    return <div style={{ minHeight: "100vh", background: "#FAFAF8" }} />
-  }
+  }, [showGame])
 
   return (
     <>
@@ -114,38 +104,44 @@ export default function LandingClient() {
         strategy="afterInteractive"
         onReady={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
       />
-      <Script
-        src="/landing/landing.js"
-        strategy="afterInteractive"
-        onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
-      />
+      {showGame ? (
+        <Script
+          src="/landing/landing.js"
+          strategy="afterInteractive"
+          onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
+        />
+      ) : null}
 
-      {/* Game XP Bar */}
-      <div className="game-bar" id="gameBar">
-        <div className="game-bar-inner">
-          <div className="gb-level">
-            <span className="num" id="gbLvl">1</span> Level
-          </div>
-          <div className="gb-track">
-            <div className="gb-fill" id="gbFill"></div>
-          </div>
-          <div className="gb-xp">
-            <b id="gbXP">0</b> / 100 XP
+      {/* Game XP Bar — только для гостей */}
+      {showGame ? (
+        <div className="game-bar" id="gameBar">
+          <div className="game-bar-inner">
+            <div className="gb-level">
+              <span className="num" id="gbLvl">1</span> Level
+            </div>
+            <div className="gb-track">
+              <div className="gb-fill" id="gbFill"></div>
+            </div>
+            <div className="gb-xp">
+              <b id="gbXP">0</b> / 100 XP
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
-      {/* Level Up Overlay */}
-      <div className="lu-overlay" id="luOverlay">
-        <div className="lu-box">
-          <div className="lu-emoji" id="luEmoji">⭐</div>
-          <div className="lu-title">Level Up!</div>
-          <div className="lu-name" id="luName">Level 2</div>
-          <div className="lu-sub" id="luSub">Ты узнал, как это работает</div>
+      {/* Level Up Overlay — только для гостей */}
+      {showGame ? (
+        <div className="lu-overlay" id="luOverlay">
+          <div className="lu-box">
+            <div className="lu-emoji" id="luEmoji">⭐</div>
+            <div className="lu-title">Level Up!</div>
+            <div className="lu-name" id="luName">Level 2</div>
+            <div className="lu-sub" id="luSub">Ты узнал, как это работает</div>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <canvas id="confetti"></canvas>
+      {showGame ? <canvas id="confetti"></canvas> : null}
 
       {/* Nav */}
       <nav id="navbar">
