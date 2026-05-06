@@ -143,14 +143,18 @@
 }
 
 /* ===== Smooth dashboard navigation transitions ===== */
+/* Fade-in для смены роутов в дашборде. Раньше тут был translateY,
+   но он создавал новый containing block для всех fixed-потомков
+   (.dashboard-content имел will-change: transform), и из-за этого
+   position:fixed модалок (inset:0) обрезался по контейнеру, не по
+   viewport. Без transform модалки фиксируются корректно. */
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dashboard-content {
   animation: pageEnter .22s cubic-bezier(.16, 1, .3, 1) both;
-  will-change: opacity, transform;
 }
 
 @keyframes skeletonPulse {
