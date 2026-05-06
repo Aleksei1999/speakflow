@@ -383,9 +383,9 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS }} />
       <div className="dash">
         <aside className="sidebar">
-          <Link href="/" className="sidebar-logo" aria-label="Raw English">
+          <div className="sidebar-logo" aria-label="Raw English">
             <RawLogo size={34} />
-          </Link>
+          </div>
 
           <div className="profile-card">
             {avatarUrl && !avatarBroken ? (
