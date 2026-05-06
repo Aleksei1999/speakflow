@@ -103,9 +103,7 @@ export default function LandingClient() {
     }
     // Defensive: fire hydrate + init even if onReady didn't.
     w.I3?.hydrate()
-    // TEMP: gamification отключена — не запускаем landing.js scroll-триггеры
-    // и Level Up overlay. Чтобы вернуть, раскомментируй вызов и блоки ниже.
-    // w.__landingInit?.()
+    w.__landingInit?.()
     return () => {
       if (prevTheme) html.dataset.theme = prevTheme
       else delete html.dataset.theme
@@ -126,18 +124,16 @@ export default function LandingClient() {
         strategy="afterInteractive"
         onReady={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
       />
-      {/* TEMP: gamification отключена — landing.js со scroll-триггерами уровней
-          и Level Up overlay не подгружается. Расскомментируй <Script /> и
-          блоки game-bar / lu-overlay / canvas#confetti ниже, чтобы вернуть.
       <Script
         src="/landing/landing.js"
         strategy="afterInteractive"
         onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
       />
-      */}
 
-      {/* TEMP: Game XP Bar отключён
-      <div className="game-bar" id="gameBar">
+      {/* TEMP: gamification отключена через inline style (display:none).
+          Markup оставлен в DOM, чтобы landing.js не падал на null-узлах
+          (он использует gameBar/luOverlay/confetti для scroll-триггеров). */}
+      <div className="game-bar" id="gameBar" style={{ display: "none" }}>
         <div className="game-bar-inner">
           <div className="gb-level">
             <span className="num" id="gbLvl">1</span> Level
@@ -150,10 +146,8 @@ export default function LandingClient() {
           </div>
         </div>
       </div>
-      */}
 
-      {/* TEMP: Level Up Overlay отключён
-      <div className="lu-overlay" id="luOverlay">
+      <div className="lu-overlay" id="luOverlay" style={{ display: "none" }}>
         <div className="lu-box">
           <div className="lu-emoji" id="luEmoji">⭐</div>
           <div className="lu-title">Level Up!</div>
@@ -162,8 +156,7 @@ export default function LandingClient() {
         </div>
       </div>
 
-      <canvas id="confetti"></canvas>
-      */}
+      <canvas id="confetti" style={{ display: "none" }}></canvas>
 
       {/* Nav */}
       <nav id="navbar">
