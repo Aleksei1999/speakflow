@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   description: "Онлайн-платформа для изучения английского языка с AI-репетитором",
 };
 
+// Read the public `rwen_authed` cookie BEFORE React hydration and set
+// data-authed / data-role on <html>. This lets the statically-cached
+// landing render the correct nav CTA (Личный кабинет vs Войти) without
+// waiting for the client-side useUser() Supabase round-trip and without
+// turning the page into force-dynamic — keeping ISR intact.
+const authBootstrapScript = `(function(){try{var m=document.cookie.match(/(?:^|; )rwen_authed=([^;]+)/);var r=m?decodeURIComponent(m[1]):'';var html=document.documentElement;if(r){html.setAttribute('data-authed','1');html.setAttribute('data-role',r);}else{html.removeAttribute('data-authed');html.removeAttribute('data-role');}}catch(e){}})();`
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +35,11 @@ export default function RootLayout({
     <html
       lang="ru"
       className={`${inter.variable} ${gluten.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: authBootstrapScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Preloader />
         {children}

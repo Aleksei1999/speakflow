@@ -50,5 +50,30 @@ export async function updateSession(request: NextRequest) {
     clearRoleCookie(supabaseResponse)
   }
 
+  // Public (non-httpOnly) flag cookie so the static landing can read auth
+  // state on the client BEFORE React hydration / before the slow
+  // `useUser()` Supabase round-trip resolves. Format: "<role>" (e.g.
+  // "student" / "teacher" / "admin") for authed users, or absent.
+  // This cookie is NOT a security boundary — actual auth still goes through
+  // Supabase. It's purely a render hint.
+  if (user) {
+    supabaseResponse.cookies.set('rwen_authed', role ?? 'student', {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: true,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7d; refreshed on every middleware pass
+    })
+  } else {
+    // Clear the flag so logged-out users don't see a stale "Личный кабинет".
+    supabaseResponse.cookies.set('rwen_authed', '', {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: true,
+      path: '/',
+      maxAge: 0,
+    })
+  }
+
   return { user, role, supabaseResponse }
 }
