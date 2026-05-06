@@ -236,6 +236,9 @@ export async function POST(
       userExisted,
       emailSent: emailRes.success,
       emailError: emailRes.success ? null : emailRes.error,
+      // Если письмо не ушло, возвращаем пароль админу — чтобы он мог
+      // передать его преподу вручную. При успешной отправке скрываем.
+      password: emailRes.success ? null : password,
     })
   } catch (err) {
     console.error("POST /api/admin/teacher-applications/[id]/approve:", err)

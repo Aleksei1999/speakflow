@@ -84,6 +84,7 @@ export default function AdminTrialRequestsClient({
   // Approve-модалка
   const [approveFor, setApproveFor] = useState<Application | null>(null)
   const [approveEmail, setApproveEmail] = useState("")
+  const [pwdShow, setPwdShow] = useState<{ email: string; password: string } | null>(null)
   const [approving, setApproving] = useState(false)
 
   const counts = useMemo(() => {
@@ -159,7 +160,14 @@ export default function AdminTrialRequestsClient({
         return
       }
       if (json?.emailSent === false) {
-        toast.error(`Аккаунт создан, но email не ушёл: ${json?.emailError || "—"}`)
+        // Email не ушёл — показываем пароль админу, чтобы он мог передать вручную.
+        if (json?.password) {
+          setPwdShow({ email: json.email || approveEmail.trim(), password: json.password })
+        }
+        toast.error(
+          `Аккаунт создан, но email не ушёл (${json?.emailError || "?"}). Скопируй пароль ниже и передай преподу вручную.`,
+          { duration: 10000 }
+        )
       } else if (json?.userExisted) {
         toast.success("Аккаунт уже существовал — пароль обновлён, письмо ушло")
       } else {
@@ -430,6 +438,97 @@ export default function AdminTrialRequestsClient({
                 }}
               >
                 {approving ? "Создаём аккаунт…" : "✓ Одобрить и отправить пароль"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pwdShow && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPwdShow(null)
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1001,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 480,
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,.3)",
+            }}
+          >
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, color: "var(--text)" }}>
+              Email не ушёл — передай пароль вручную
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, lineHeight: 1.5 }}>
+              Аккаунт уже создан. Скопируй данные ниже и отправь преподу любым удобным способом — это единственный момент, когда сгенерированный пароль виден.
+            </p>
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", marginBottom: 4 }}>
+                Email
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", wordBreak: "break-all" }}>
+                {pwdShow.email}
+              </div>
+            </div>
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", marginBottom: 4 }}>
+                Пароль (одноразовый показ)
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", wordBreak: "break-all", letterSpacing: ".5px" }}>
+                {pwdShow.password}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Email: ${pwdShow.email}\nПароль: ${pwdShow.password}\nВход: https://raw-english.com/login`)
+                  toast.success("Скопировано в буфер")
+                }}
+                style={{
+                  background: "var(--accent-dark)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "9px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                📋 Скопировать
+              </button>
+              <button
+                type="button"
+                onClick={() => setPwdShow(null)}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                  borderRadius: 10,
+                  padding: "9px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Готово
               </button>
             </div>
           </div>
