@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
+import { transliterateRu } from "@/lib/transliterate"
 
 export const dynamic = "force-dynamic"
 
@@ -45,11 +46,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, duplicate: true, id: dup.id })
     }
 
+    // Latinize incoming Cyrillic names so the rendered teacher card uses the
+    // Gluten cursive font (designed for Latin glyphs). Original is kept in
+    // notes-prefix so admins can still see what the teacher actually typed.
+    const firstLatin = transliterateRu(d.first_name)
+    const lastLatin = transliterateRu(d.last_name)
+
     const { data: app, error } = await admin
       .from("teacher_applications")
       .insert({
-        first_name: d.first_name,
-        last_name: d.last_name,
+        first_name: firstLatin,
+        last_name: lastLatin,
         email: d.email,
         contact: d.contact,
         notes: d.notes ?? null,
@@ -65,10 +72,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Telegram fan-out to admins (fire-and-forget).
+    // Telegram fan-out to admins (fire-and-forget). Show admins the *latinized*
+    // name (matches what they'll see in /admin/teacher-applications and the
+    // future teacher card), but include the original Cyrillic in parens for
+    // disambiguation.
     void notifyAdmins({
       applicationId: app.id,
-      data: d,
+      data: {
+        ...d,
+        first_name: firstLatin,
+        last_name: lastLatin,
+        original_first_name: d.first_name,
+        original_last_name: d.last_name,
+      },
     }).catch(() => {})
 
     return NextResponse.json({ ok: true, id: app.id })
@@ -89,6 +105,8 @@ async function notifyAdmins(args: {
     email: string
     contact: string
     notes?: string | null
+    original_first_name?: string
+    original_last_name?: string
   }
 }) {
   const admin = createAdminClient()
@@ -100,10 +118,15 @@ async function notifyAdmins(args: {
   if (!admins || admins.length === 0) return
 
   const fullName = `${args.data.first_name} ${args.data.last_name}`.trim()
+  const originalFull =
+    `${args.data.original_first_name ?? ""} ${args.data.original_last_name ?? ""}`.trim()
+  const showOriginal =
+    originalFull && originalFull.toLowerCase() !== fullName.toLowerCase()
   const text =
     `🧑‍🏫 <b>Новая заявка от преподавателя</b>\n\n` +
-    `<b>${fullName}</b>\n` +
-    `📧 ${args.data.email}\n` +
+    `<b>${fullName}</b>` +
+    (showOriginal ? ` <i>(${originalFull})</i>` : "") +
+    `\n📧 ${args.data.email}\n` +
     `📱 ${args.data.contact}\n` +
     (args.data.notes ? `\n💬 ${args.data.notes}\n` : "") +
     `\n<code>${args.applicationId}</code>`

@@ -13,6 +13,7 @@ import {
   invalidateProfile,
   invalidateTeacherStats,
 } from "@/lib/cache/invalidate"
+import { transliterateRu } from "@/lib/transliterate"
 
 export const dynamic = "force-dynamic"
 
@@ -114,11 +115,18 @@ export async function POST(
       )
     }
 
-    const fullName = [app.first_name, app.last_name].filter(Boolean).join(" ").trim() || targetEmail
+    // Latinize defensively — заявки до миграции 057 могут лежать кириллицей.
+    // Если строка уже на ASCII, transliterateRu вернёт её без изменений.
+    const firstLatin = transliterateRu(app.first_name)
+    const lastLatin = transliterateRu(app.last_name)
+    const originalFull = [app.first_name, app.last_name].filter(Boolean).join(" ").trim()
+    const fullName =
+      [firstLatin, lastLatin].filter(Boolean).join(" ").trim() || targetEmail
     const password = generatePassword(12)
 
-    // 2. Создаём auth-юзера. handle_new_user (мигр 032/048) сам сделает
+    // 2. Создаём auth-юзера. handle_new_user (мигр 032/048/057) сам сделает
     //    profiles+user_progress; передаём role=teacher через user_metadata.
+    //    Имя — уже на латинице.
     let userId: string | null = null
     let userExisted = false
     const createRes = await admin.auth.admin.createUser({
@@ -127,8 +135,9 @@ export async function POST(
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
-        first_name: app.first_name,
-        last_name: app.last_name,
+        first_name: firstLatin,
+        last_name: lastLatin,
+        full_name_ru: originalFull || null,
         role: "teacher",
         phone: app.contact ?? null,
       },
@@ -174,10 +183,19 @@ export async function POST(
       return NextResponse.json({ error: "Не удалось получить id пользователя" }, { status: 500 })
     }
 
-    // 3. Поднимаем роль до teacher (handle_new_user мог по дефолту student).
+    // 3. Поднимаем роль до teacher (handle_new_user мог по дефолту student)
+    //    и затираем имя на латиницу (на случай, если триггер взял что-то иное
+    //    из старого user_metadata при существующем юзере).
     await admin
       .from("profiles")
-      .update({ role: "teacher", full_name: fullName, email: targetEmail })
+      .update({
+        role: "teacher",
+        full_name: fullName,
+        first_name: firstLatin,
+        last_name: lastLatin,
+        full_name_ru: originalFull || null,
+        email: targetEmail,
+      })
       .eq("id", userId)
 
     // 4. Создаём teacher_profiles, если нет.
