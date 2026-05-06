@@ -62,6 +62,12 @@ export default function LandingClient() {
     return "/student"
   }, [role])
   const ctaHref = isAuthenticated ? homeHref : "/register"
+
+  // Геймификация (XP-бар, Level Up overlay, confetti, landing.js
+  // scroll-триггеры) — только для гостей. Залогиненный юзер видит
+  // обычный лендинг с кнопкой «Личный кабинет», без оверлеев.
+  const showGame = !isLoading && !isAuthenticated
+
   useEffect(() => {
     const html = document.documentElement
     const prevTheme = html.dataset.theme
@@ -72,16 +78,15 @@ export default function LandingClient() {
       __landingInit?: () => void
       __landingDispose?: () => void
     }
-    // Defensive: fire hydrate + init even if onReady didn't.
     w.I3?.hydrate()
-    w.__landingInit?.()
+    if (showGame) w.__landingInit?.()
     return () => {
       if (prevTheme) html.dataset.theme = prevTheme
       else delete html.dataset.theme
       delete html.dataset.landing
       w.__landingDispose?.()
     }
-  }, [])
+  }, [showGame])
 
   return (
     <>
@@ -95,38 +100,44 @@ export default function LandingClient() {
         strategy="afterInteractive"
         onReady={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
       />
-      <Script
-        src="/landing/landing.js"
-        strategy="afterInteractive"
-        onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
-      />
+      {showGame ? (
+        <Script
+          src="/landing/landing.js"
+          strategy="afterInteractive"
+          onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
+        />
+      ) : null}
 
-      {/* Game XP Bar */}
-      <div className="game-bar" id="gameBar">
-        <div className="game-bar-inner">
-          <div className="gb-level">
-            <span className="num" id="gbLvl">1</span> Level
-          </div>
-          <div className="gb-track">
-            <div className="gb-fill" id="gbFill"></div>
-          </div>
-          <div className="gb-xp">
-            <b id="gbXP">0</b> / 100 XP
+      {/* Game XP Bar — только для гостей */}
+      {showGame ? (
+        <div className="game-bar" id="gameBar">
+          <div className="game-bar-inner">
+            <div className="gb-level">
+              <span className="num" id="gbLvl">1</span> Level
+            </div>
+            <div className="gb-track">
+              <div className="gb-fill" id="gbFill"></div>
+            </div>
+            <div className="gb-xp">
+              <b id="gbXP">0</b> / 100 XP
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
-      {/* Level Up Overlay */}
-      <div className="lu-overlay" id="luOverlay">
-        <div className="lu-box">
-          <div className="lu-emoji" id="luEmoji">⭐</div>
-          <div className="lu-title">Level Up!</div>
-          <div className="lu-name" id="luName">Level 2</div>
-          <div className="lu-sub" id="luSub">Ты узнал, как это работает</div>
+      {/* Level Up Overlay — только для гостей */}
+      {showGame ? (
+        <div className="lu-overlay" id="luOverlay">
+          <div className="lu-box">
+            <div className="lu-emoji" id="luEmoji">⭐</div>
+            <div className="lu-title">Level Up!</div>
+            <div className="lu-name" id="luName">Level 2</div>
+            <div className="lu-sub" id="luSub">Ты узнал, как это работает</div>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <canvas id="confetti"></canvas>
+      {showGame ? <canvas id="confetti"></canvas> : null}
 
       {/* Nav */}
       <nav id="navbar">
