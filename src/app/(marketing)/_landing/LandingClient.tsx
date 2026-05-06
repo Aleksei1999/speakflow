@@ -5,6 +5,7 @@ import { useEffect, useMemo, createElement } from "react"
 import Script from "next/script"
 import Link from "next/link"
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { useUser } from "@/hooks/use-user"
 // CSS подключаем через <link> в JSX (см. ниже), чтобы Next не пакетировал
@@ -62,7 +63,19 @@ export default function LandingClient() {
     return "/student"
   }, [role])
   const ctaHref = isAuthenticated ? homeHref : "/register"
+
+  // Залогиненным юзерам лендинг не показываем — сразу в их дашборд.
+  // Это убирает Level Up overlay, "Стать участником" CTA и прочий
+  // лидогенерационный шум, неуместный для авторизованных.
+  const router = useRouter()
   useEffect(() => {
+    if (isAuthenticated && homeHref) {
+      router.replace(homeHref)
+    }
+  }, [isAuthenticated, homeHref, router])
+
+  useEffect(() => {
+    if (isAuthenticated) return
     const html = document.documentElement
     const prevTheme = html.dataset.theme
     html.dataset.theme = "light"
@@ -81,7 +94,13 @@ export default function LandingClient() {
       delete html.dataset.landing
       w.__landingDispose?.()
     }
-  }, [])
+  }, [isAuthenticated])
+
+  // Пока useUser резолвится или редиректит залогиненных — отдаём пустой
+  // фон. Это предотвращает мелькание landing-XP-overlay для авторизованных.
+  if (isLoading || isAuthenticated) {
+    return <div style={{ minHeight: "100vh", background: "#FAFAF8" }} />
+  }
 
   return (
     <>
