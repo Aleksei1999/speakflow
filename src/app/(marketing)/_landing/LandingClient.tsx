@@ -103,7 +103,9 @@ export default function LandingClient() {
     }
     // Defensive: fire hydrate + init even if onReady didn't.
     w.I3?.hydrate()
-    w.__landingInit?.()
+    // TEMP: gamification отключена — не запускаем landing.js scroll-триггеры
+    // и Level Up overlay. Чтобы вернуть, раскомментируй вызов и блоки ниже.
+    // w.__landingInit?.()
     return () => {
       if (prevTheme) html.dataset.theme = prevTheme
       else delete html.dataset.theme
@@ -124,13 +126,17 @@ export default function LandingClient() {
         strategy="afterInteractive"
         onReady={() => (window as unknown as { I3?: { hydrate: () => void } }).I3?.hydrate()}
       />
+      {/* TEMP: gamification отключена — landing.js со scroll-триггерами уровней
+          и Level Up overlay не подгружается. Расскомментируй <Script /> и
+          блоки game-bar / lu-overlay / canvas#confetti ниже, чтобы вернуть.
       <Script
         src="/landing/landing.js"
         strategy="afterInteractive"
         onReady={() => (window as unknown as { __landingInit?: () => void }).__landingInit?.()}
       />
+      */}
 
-      {/* Game XP Bar */}
+      {/* TEMP: Game XP Bar отключён
       <div className="game-bar" id="gameBar">
         <div className="game-bar-inner">
           <div className="gb-level">
@@ -144,8 +150,9 @@ export default function LandingClient() {
           </div>
         </div>
       </div>
+      */}
 
-      {/* Level Up Overlay */}
+      {/* TEMP: Level Up Overlay отключён
       <div className="lu-overlay" id="luOverlay">
         <div className="lu-box">
           <div className="lu-emoji" id="luEmoji">⭐</div>
@@ -156,6 +163,7 @@ export default function LandingClient() {
       </div>
 
       <canvas id="confetti"></canvas>
+      */}
 
       {/* Nav */}
       <nav id="navbar">
