@@ -119,6 +119,10 @@ export default function LandingClient() {
           preload'ов на dashboard-страницах. */}
       <link rel="stylesheet" href="/landing/landing.css" />
       <link rel="stylesheet" href="/landing/icons3d.css" />
+      {/* Гейминг скрыт через display:none, но landing.js всё равно добавляет
+          к <nav> класс .pushed (top:38px — место под XP-бар). Переопределяем
+          обратно на top:0, чтобы не было пустой полосы сверху. */}
+      <style>{`nav#navbar.pushed{top:0!important}`}</style>
       <Script
         src="/landing/icons3d.js"
         strategy="afterInteractive"
