@@ -13,6 +13,10 @@ import { useUser } from "@/hooks/use-user"
 // Heavy quiz (~58 KB source, ~226 KB bundled) — lazy-load it so the homepage's
 // initial JS payload stays small. ssr:false because the quiz is purely client-side
 // (uses useState extensively) and rendering it on the server adds bytes to no benefit.
+// Pricing-секция тоже клиентская и легковесная, но грузим её лениво,
+// чтобы первый paint лендинга не разбухал ещё на ~6KB.
+const PricingSection = dynamic(() => import("./PricingSection"), { ssr: false })
+
 const MiniBattleQuiz = dynamic(() => import("./MiniBattleQuiz"), {
   ssr: false,
   loading: () => (
@@ -175,6 +179,7 @@ export default function LandingClient() {
             <li><a href="#lvl5">Геймификация</a></li>
             <li><a href="#lvl6">Форматы</a></li>
             <li><a href="#lvl7">Membership</a></li>
+            <li><a href="#pricing">Цены</a></li>
           </ul>
           <div className="theme-toggle" id="themeToggle">
             <div className="theme-knob" id="themeKnob">☀️</div>
@@ -457,6 +462,9 @@ export default function LandingClient() {
           </div>
         </div>
       </section>
+
+      {/* PRICING — общий источник тарифов с /student/balance */}
+      <PricingSection />
 
       {/* LEVEL 8: FINAL */}
       <section className="cta-section" id="cta" data-level="8" data-xp="8" data-lu="Финал!">
