@@ -421,7 +421,8 @@ export default async function TeacherDashboardPage() {
   return (
     <div className="tch-home">
       <style dangerouslySetInnerHTML={{ __html: TCH_CSS }} />
-      <OnboardingLauncher role="teacher" />
+      {/* TEMP: онбординг-тур закомментирован. Чтобы вернуть — раскомментируй. */}
+      {/* <OnboardingLauncher role="teacher" /> */}
 
       <div className="dashboard-header">
         <div>
