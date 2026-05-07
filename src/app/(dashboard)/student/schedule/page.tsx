@@ -199,9 +199,13 @@ export default function StudentSchedulePage() {
     setIsLoading(true)
     try {
       const supabase = createClient()
+      // getSession() читает локальную сессию мгновенно, без сетевого
+      // round-trip к /auth/v1/user — раньше getUser() зависал на reverse
+      // proxy, и /student/schedule навсегда оставалось в isLoading=true.
       const {
-        data: { user },
-      } = await supabase.auth.getUser()
+        data: { session },
+      } = await supabase.auth.getSession()
+      const user = session?.user ?? null
 
       if (!user) {
         setIsLoading(false)
