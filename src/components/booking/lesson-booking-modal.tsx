@@ -69,6 +69,14 @@ function getInitials(name: string): string {
   return name.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
 
+// Стабильный цвет фона аватара по имени — чтобы плашки не были одинаково красными.
+const AVATAR_COLORS = ["#E63946", "#16A34A", "#2563EB", "#9333EA", "#F59E0B", "#0891B2"]
+function colorFromName(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
+
 function buildMonthDays(view: Date): (Date | null)[] {
   const first = startOfMonth(view)
   const last = endOfMonth(view)
@@ -433,8 +441,29 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                           if (!selectedDate) setSelectedDate(today)
                         }}
                       >
-                        <div className="tch-avatar">
-                          {t.avatarUrl ? <img src={t.avatarUrl} alt={t.name} /> : getInitials(t.name)}
+                        <div
+                          className="tch-avatar"
+                          style={!t.avatarUrl ? { background: colorFromName(t.name) } : undefined}
+                        >
+                          {t.avatarUrl ? (
+                            <img
+                              src={t.avatarUrl}
+                              alt={t.name}
+                              onError={(e) => {
+                                // Если файл недоступен (например удалён из Storage)
+                                // — прячем картинку, инициалы покажутся из span ниже.
+                                const img = e.currentTarget
+                                img.style.display = "none"
+                                const span = img.nextElementSibling as HTMLElement | null
+                                if (span) span.style.display = "flex"
+                                const card = img.closest(".tch-avatar") as HTMLElement | null
+                                if (card) card.style.background = colorFromName(t.name)
+                              }}
+                            />
+                          ) : null}
+                          <span style={{ display: t.avatarUrl ? "none" : "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
+                            {getInitials(t.name)}
+                          </span>
                         </div>
                         <div className="tch-info">
                           <div className="tch-name">{t.name}</div>
