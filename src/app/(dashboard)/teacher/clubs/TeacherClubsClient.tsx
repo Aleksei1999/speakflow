@@ -6,6 +6,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { computeLessonAccess } from "@/lib/lesson-access"
+import { formatTimeUntil } from "@/lib/format-time-until"
 
 const CSS = `
 .tch-clubs{max-width:1200px;margin:0 auto}
@@ -260,8 +261,7 @@ export default function TeacherClubsClient({
                     return (
                       <div className="join-row">
                         <button type="button" className="join-btn waiting" disabled>
-                          ⏳ Откроется через {minutesLeft}{" "}
-                          {minutesLeft === 1 ? "мин" : "мин"}
+                          ⏳ Откроется через {formatTimeUntil(minutesLeft)}
                         </button>
                       </div>
                     )
