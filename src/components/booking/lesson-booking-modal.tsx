@@ -168,30 +168,73 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
     let cancelled = false
     ;(async () => {
       setTeachersLoading(true)
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("teacher_profiles")
-        .select("id, user_id, hourly_rate, rating, specializations, experience_years, profiles:profiles!teacher_profiles_user_id_fkey(full_name, avatar_url)")
-        .eq("is_listed", true)
+      try {
+        const supabase = createClient()
+        // 2 раздельных запроса вместо PostgREST embed:
+        // raw embed `profiles!teacher_profiles_user_id_fkey(...)` иногда
+        // молча возвращает пустой массив (RLS/relationship cache), и
+        // студент видит «Преподаватели не найдены».
+        const { data: tpRaw, error: tpErr } = await (supabase as any)
+          .from("teacher_profiles")
+          .select("id, user_id, hourly_rate, rating, specializations, experience_years")
+          .eq("is_listed", true)
 
-      if (cancelled) return
-      if (error) {
-        toast.error("Не удалось загрузить преподавателей")
-        setTeachersLoading(false)
-        return
+        if (cancelled) return
+        if (tpErr) {
+          console.error("[booking] teacher_profiles load failed:", tpErr)
+          toast.error("Не удалось загрузить преподавателей")
+          setTeachers([])
+          setTeachersLoading(false)
+          return
+        }
+
+        const tps = (tpRaw ?? []) as Array<{
+          id: string
+          user_id: string
+          hourly_rate: number | null
+          rating: number | null
+          specializations: string[] | null
+          experience_years: number | null
+        }>
+        const userIds = Array.from(new Set(tps.map((t) => t.user_id).filter(Boolean)))
+        const profilesById: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
+        if (userIds.length > 0) {
+          const { data: profilesRaw, error: prErr } = await (supabase as any)
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", userIds)
+          if (prErr) {
+            console.error("[booking] profiles load failed:", prErr)
+          }
+          for (const p of (profilesRaw ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null }>) {
+            profilesById[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url }
+          }
+        }
+
+        if (cancelled) return
+        const list: TeacherOption[] = tps.map((row) => {
+          const prof = profilesById[row.user_id]
+          return {
+            teacherProfileId: row.id,
+            userId: row.user_id,
+            name: prof?.full_name ?? "Преподаватель",
+            avatarUrl: prof?.avatar_url ?? null,
+            hourlyRate: row.hourly_rate ?? 0,
+            rating: row.rating,
+            specializations: row.specializations ?? [],
+            experienceYears: row.experience_years ?? 0,
+          }
+        })
+        setTeachers(list)
+      } catch (e) {
+        if (!cancelled) {
+          console.error("[booking] teachers fetch crashed:", e)
+          toast.error("Ошибка соединения с сервером")
+          setTeachers([])
+        }
+      } finally {
+        if (!cancelled) setTeachersLoading(false)
       }
-      const list: TeacherOption[] = ((data as unknown as Array<Record<string, unknown>>) ?? []).map((row) => ({
-        teacherProfileId: row.id as string,
-        userId: row.user_id as string,
-        name: (row as { profiles?: { full_name?: string } }).profiles?.full_name ?? "Преподаватель",
-        avatarUrl: (row as { profiles?: { avatar_url?: string | null } }).profiles?.avatar_url ?? null,
-        hourlyRate: (row.hourly_rate as number) ?? 0,
-        rating: (row.rating as number | null) ?? null,
-        specializations: (row.specializations as string[]) ?? [],
-        experienceYears: (row.experience_years as number) ?? 0,
-      }))
-      setTeachers(list)
-      setTeachersLoading(false)
     })()
     return () => { cancelled = true }
   }, [open, step])
