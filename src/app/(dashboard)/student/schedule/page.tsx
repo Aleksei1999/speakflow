@@ -195,8 +195,12 @@ export default function StudentSchedulePage() {
     [weekStart]
   )
 
-  const fetchLessons = useCallback(async (from: Date, to: Date) => {
-    setIsLoading(true)
+  const fetchLessons = useCallback(async (from: Date, to: Date, opts?: { silent?: boolean }) => {
+    // silent=true — refetch без моргания спиннером. Используем для
+    // realtime-событий: WebSocket к Supabase Realtime через RU-прокси
+    // часто реконнектится и стрелял бы isLoading=true каждые пару секунд,
+    // из-за чего пользователю казалось что страница «то грузит, то нет».
+    if (!opts?.silent) setIsLoading(true)
     try {
       const supabase = createClient()
       // getSession() читает локальную сессию мгновенно, без сетевого
@@ -208,7 +212,7 @@ export default function StudentSchedulePage() {
       const user = session?.user ?? null
 
       if (!user) {
-        setIsLoading(false)
+        if (!opts?.silent) setIsLoading(false)
         return
       }
 
@@ -281,7 +285,7 @@ export default function StudentSchedulePage() {
     } catch (e) {
       console.error("[student/schedule] fetchLessons crashed:", e)
     } finally {
-      setIsLoading(false)
+      if (!opts?.silent) setIsLoading(false)
     }
   }, [])
 
@@ -291,7 +295,7 @@ export default function StudentSchedulePage() {
 
   useLessonsRealtime({
     studentId: currentUserId,
-    onChange: () => fetchLessons(weekStart, weekEnd),
+    onChange: () => fetchLessons(weekStart, weekEnd, { silent: true }),
   })
 
   // Month XP (lesson XP, approximate) — used for "XP за неделю" stat.
