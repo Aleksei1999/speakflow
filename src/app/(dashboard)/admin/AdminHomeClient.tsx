@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -293,45 +293,61 @@ function ticketPriorityClass(p: string): string {
   return "priority-low"
 }
 
+type ServerTask = {
+  id: string
+  kind: string
+  title: string
+  meta: string[]
+  urgent: boolean
+  href: string | null
+  ts: string | null
+}
+
 export default function AdminHomeClient({ fullName, initial }: Props) {
   const stats = initial.stats
-  const [tasks, setTasks] = useState([
-    {
-      id: "t1",
-      title: "Подобрать преподавателя B2 на понедельник 19:00",
-      meta: ["срочно", "Роман Смирнов", "до 18:00"],
-      urgent: true,
-      done: false,
-    },
-    {
-      id: "t2",
-      title: "Связаться с Анной Беловой — пропала после пробного",
-      meta: ["лид", "B1 · для работы"],
-      urgent: false,
-      done: false,
-    },
-    {
-      id: "t3",
-      title: "Подтвердить переводы преподавателям за март",
-      meta: ["финансы", "47 преподавателей"],
-      urgent: false,
-      done: false,
-    },
-    {
-      id: "t4",
-      title: "Проверить модерацию speaking club «Pitch night»",
-      meta: ["контент"],
-      urgent: false,
-      done: true,
-    },
-    {
-      id: "t5",
-      title: "Обновить прайс на пакет из 20 уроков",
-      meta: ["маркетинг"],
-      urgent: false,
-      done: false,
-    },
-  ])
+  // Реальные задачи из /api/admin/tasks. Локальный «done» — оптимистичный
+  // dismiss (хранится в localStorage), серверу мы их пока не пишем.
+  const [serverTasks, setServerTasks] = useState<ServerTask[]>([])
+  const [tasksLoading, setTasksLoading] = useState(true)
+  const [doneIds, setDoneIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set()
+    try {
+      const raw = window.localStorage.getItem("admin_done_tasks")
+      const arr = raw ? (JSON.parse(raw) as string[]) : []
+      return new Set(arr)
+    } catch {
+      return new Set()
+    }
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/admin/tasks", { cache: "no-store" })
+        if (!res.ok) {
+          setServerTasks([])
+          return
+        }
+        const json = (await res.json()) as { tasks: ServerTask[] }
+        if (cancelled) return
+        setServerTasks(json.tasks ?? [])
+      } catch {
+        if (!cancelled) setServerTasks([])
+      } finally {
+        if (!cancelled) setTasksLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Привязываем к UI-форме, которой ждёт остальной jsx ниже.
+  const tasks = useMemo(
+    () => serverTasks.map((t) => ({ ...t, done: doneIds.has(t.id) })),
+    [serverTasks, doneIds]
+  )
 
   const subLine = useMemo(() => {
     try {
@@ -362,9 +378,17 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
         : "как вчера"
 
   const toggleTask = (id: string) => {
-    setTasks((cur) =>
-      cur.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
-    )
+    setDoneIds((cur) => {
+      const next = new Set(cur)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      try {
+        window.localStorage.setItem("admin_done_tasks", JSON.stringify(Array.from(next)))
+      } catch {
+        // ignore — просто не сохранили
+      }
+      return next
+    })
   }
 
   return (
@@ -546,19 +570,33 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
           </div>
           <div className="card-body">
             <div className="task-list">
-              {tasks.map((t) => (
+              {tasksLoading ? (
+                <div className="empty">Загружаем задачи…</div>
+              ) : tasks.length === 0 ? (
+                <div className="empty">🎉 На сегодня всё чисто. Новых заявок, тикетов и подвисших оплат нет.</div>
+              ) : tasks.map((t) => (
                 <div
                   key={t.id}
                   className={`task-item${t.urgent ? " urgent" : ""}${
                     t.done ? " done" : ""
                   }`}
-                  onClick={() => toggleTask(t.id)}
-                  role="button"
-                  tabIndex={0}
+                  role="group"
                 >
-                  <div className="task-check"></div>
+                  <div
+                    className="task-check"
+                    onClick={() => toggleTask(t.id)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t.done ? "Снять отметку выполнения" : "Отметить выполненной"}
+                  ></div>
                   <div className="task-body">
-                    <div className="task-title">{t.title}</div>
+                    {t.href ? (
+                      <Link href={t.href} className="task-title" style={{ display: "block" }}>
+                        {t.title}
+                      </Link>
+                    ) : (
+                      <div className="task-title">{t.title}</div>
+                    )}
                     <div className="task-meta">
                       {t.meta.map((m, i) => (
                         <span
