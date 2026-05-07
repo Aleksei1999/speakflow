@@ -1,6 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import {
+  TOPUP_TIERS,
+  PRO_FEATURES_YES,
+  FREE_FEATURES,
+  PRO_PRICE_RUB,
+  formatRub as formatRubShared,
+  plural as pluralShared,
+  type TopupTier as TopupTierShared,
+} from "@/lib/pricing"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — billing slice of GET /api/profile/me
@@ -149,61 +158,15 @@ const BALANCE_CSS = `
 // Top-up tiers (config — RUB amounts align with Yookassa-friendly tiers)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TopupTier = {
-  amount: number
-  lessons: number
-  bonus: string | null
-  save: string | null
-  perPrice: number
-  badge: "default" | "popular" | "best"
-  btnLabel: string
-  btnVariant: "default" | "red" | "lime"
-}
-
-const TOPUP_TIERS: TopupTier[] = [
-  { amount: 5400, lessons: 3, bonus: null, save: null, perPrice: 1800, badge: "default", btnLabel: "Пополнить", btnVariant: "default" },
-  { amount: 9000, lessons: 6, bonus: "+1 урок бесплатно", save: "Экономия 1 800 ₽", perPrice: 1286, badge: "popular", btnLabel: "Пополнить", btnVariant: "red" },
-  { amount: 18000, lessons: 13, bonus: "+3 урока бесплатно", save: "Экономия 5 400 ₽", perPrice: 1125, badge: "best", btnLabel: "Лучшая цена", btnVariant: "lime" },
-  { amount: 36000, lessons: 28, bonus: "+8 уроков бесплатно", save: "Экономия 14 400 ₽", perPrice: 1000, badge: "default", btnLabel: "Пополнить", btnVariant: "default" },
-]
-
-const PRO_FEATURES_YES = [
-  "Уроки 1-on-1 с преподавателями (с баланса)",
-  "Тест уровня прожарки",
-  "Расширенный профиль",
-  "**Speaking Clubs** — безлимитно",
-  "**Debate & Wine Clubs**",
-  "**Геймификация:** XP, стрики, 6 уровней прожарки",
-  "**37 ачивок** с реальными призами (мерч, скидки)",
-  "**Лидерборд** — соревнуйся, побеждай, получай подарки",
-  "**AI-персонализация** и план обучения",
-  "**Персональные видео-уроки** после каждого занятия",
-  "**Guest Pass** — приведи друга бесплатно",
-  "**Чат коммьюнити** 24/7",
-]
-
-const FREE_FEATURES: Array<{ text: string; yes: boolean }> = [
-  { text: "Уроки 1-on-1 с преподавателями (с баланса)", yes: true },
-  { text: "Тест уровня прожарки", yes: true },
-  { text: "Базовый профиль", yes: true },
-  { text: "Speaking Clubs", yes: false },
-  { text: "Debate & Wine Clubs", yes: false },
-  { text: "Геймификация: XP, стрики, уровни", yes: false },
-  { text: "Ачивки и призы", yes: false },
-  { text: "Лидерборд", yes: false },
-  { text: "AI-персонализация и план обучения", yes: false },
-  { text: "Персональные видео-уроки", yes: false },
-  { text: "Guest Pass для друга", yes: false },
-  { text: "Чат коммьюнити 24/7", yes: false },
-]
+// Цены и фичи — единый источник правды в src/lib/pricing.ts.
+// Здесь только локальный alias типа, чтобы остальной код не трогать.
+type TopupTier = TopupTierShared
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatRub(n: number): string {
-  return new Intl.NumberFormat("ru-RU").format(n)
-}
+const formatRub = formatRubShared
 
 const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 const MONTHS_FULL = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
@@ -219,13 +182,7 @@ function formatDate(iso: string | null, mode: "short" | "full" = "short"): strin
   return mode === "full" && year !== now.getFullYear() ? `${day} ${month} ${year}` : `${day} ${month}`
 }
 
-function plural(n: number, forms: [string, string, string]): string {
-  const m10 = n % 10
-  const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return forms[0]
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return forms[1]
-  return forms[2]
-}
+const plural = pluralShared
 
 function renderBold(text: string): React.ReactNode[] {
   // Replaces **word** chunks with <b>word</b>
@@ -438,7 +395,7 @@ export default function StudentBalancePage() {
                   <span className="gl">Raw</span> Pro
                 </div>
                 <div className="sub-price">
-                  <div className="sub-price-val">1 490 ₽</div>
+                  <div className="sub-price-val">{formatRub(PRO_PRICE_RUB)} ₽</div>
                   <div className="sub-price-per">/ месяц</div>
                 </div>
               </div>
@@ -456,7 +413,7 @@ export default function StudentBalancePage() {
                 </button>
               ) : (
                 <button className="sub-btn sub-btn--upgrade" type="button" onClick={handleUpgrade}>
-                  Подключить Pro — 1 490 ₽/мес
+                  Подключить Pro — {formatRub(PRO_PRICE_RUB)} ₽/мес
                 </button>
               )}
             </div>
