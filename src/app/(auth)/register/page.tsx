@@ -290,16 +290,42 @@ function RegisterPageInner() {
               </svg>
             </div>
             <h2>Готово, {success.name}!</h2>
+            <div className="check-mail">
+              <div className="check-mail-row">
+                <span className="check-mail-emoji">📩</span>
+                <div>
+                  <div className="check-mail-title">Проверь почту — мы отправили письмо для подтверждения</div>
+                  <div className="check-mail-email">{success.email}</div>
+                </div>
+              </div>
+              <ul className="check-mail-tips">
+                <li>Открой письмо от <b>Raw English</b> и нажми кнопку <b>«Подтвердить email»</b>.</li>
+                <li>Не пришло за 1–2 минуты? Загляни в <b>Спам</b> / <b>Промоакции</b> / <b>Соцсети</b>.</li>
+                <li>После подтверждения вернёшься на платформу автоматически.</li>
+              </ul>
+              {(() => {
+                const domain = (success.email.split("@")[1] || "").toLowerCase()
+                const inbox =
+                  domain === "gmail.com" ? "https://mail.google.com/" :
+                  domain.endsWith("yandex.ru") || domain.endsWith("yandex.com") || domain === "ya.ru" ? "https://mail.yandex.ru/" :
+                  domain === "mail.ru" || domain === "bk.ru" || domain === "list.ru" || domain === "inbox.ru" ? "https://e.mail.ru/" :
+                  domain === "outlook.com" || domain === "hotmail.com" || domain === "live.com" ? "https://outlook.live.com/mail/" :
+                  domain === "icloud.com" || domain === "me.com" ? "https://www.icloud.com/mail" :
+                  null
+                return inbox ? (
+                  <a href={inbox} target="_blank" rel="noopener noreferrer" className="btn-mail">
+                    Открыть почту
+                  </a>
+                ) : null
+              })()}
+            </div>
             {isTeacher ? (
-              <p>
-                Аккаунт преподавателя создан. Мы написали тебе на <b>{success.email}</b>{' '}
-                ссылку для подтверждения email. После входа заполни профиль и расписание —
-                и можно работать.
+              <p className="post-mail-note">
+                После подтверждения зайди в <b>«Профиль»</b> — заполни фото, цену и образование, чтобы твоя карточка попала в каталог учеников.
               </p>
             ) : (
-              <p>
-                Аккаунт создан. Мы напишем на <b>{success.email}</b> в течение часа,
-                чтобы подтвердить время пробного урока. Стейк уже ждёт.
+              <p className="post-mail-note">
+                После подтверждения мы свяжемся в течение часа, чтобы подтвердить время пробного урока. Стейк уже ждёт.
               </p>
             )}
             {!isTeacher && (
@@ -851,6 +877,56 @@ function RegisterStyles() {
       .sd-row:last-child { border-bottom: none; }
       .sd-k { color: var(--rp-muted); }
       .sd-v { font-weight: 600; color: white; }
+
+      /* Check-mail block — главный CTA после signup. Делаем заметным,
+         с акцентом и дельным списком, чтобы пользователь не тупил
+         с подтверждением email. */
+      .check-mail {
+        background: linear-gradient(180deg, rgba(74,222,128,0.10), rgba(74,222,128,0.04));
+        border: 1px solid rgba(74,222,128,0.35);
+        border-radius: 16px;
+        padding: 18px 18px 16px;
+        max-width: 440px;
+        margin: 0 auto 16px;
+        text-align: left;
+      }
+      .check-mail-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+      .check-mail-emoji { font-size: 26px; line-height: 1; margin-top: 2px; flex-shrink: 0; }
+      .check-mail-title { font-size: 15px; font-weight: 700; color: white; line-height: 1.3; }
+      .check-mail-email { margin-top: 4px; font-size: 13px; color: #4ADE80; font-weight: 600; word-break: break-all; }
+      .check-mail-tips {
+        list-style: none; padding: 0; margin: 0 0 12px;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .check-mail-tips li {
+        position: relative;
+        padding-left: 18px;
+        font-size: 13px; line-height: 1.5;
+        color: var(--rp-muted);
+      }
+      .check-mail-tips li::before {
+        content: '•';
+        position: absolute;
+        left: 4px; top: 0;
+        color: #4ADE80;
+        font-weight: 800;
+      }
+      .check-mail-tips b { color: white; font-weight: 600; }
+      .btn-mail {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 9px 18px; border-radius: 10px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(74,222,128,0.4);
+        color: #4ADE80; font-weight: 600; font-size: 13px;
+        text-decoration: none;
+        transition: all 0.15s;
+      }
+      .btn-mail:hover { background: rgba(74,222,128,0.10); }
+      .post-mail-note {
+        max-width: 420px; margin: 0 auto 24px;
+        font-size: 13px; line-height: 1.5; color: var(--rp-muted);
+      }
+      .post-mail-note b { color: white; font-weight: 600; }
 
       /* Toast */
       .toast {
