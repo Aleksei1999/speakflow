@@ -109,7 +109,12 @@ export default function TeacherClubsClient({
   const [clubs, setClubs] = useState<Club[]>(initial.clubs)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [tick, setTick] = useState(0)
+  // mounted-gate: computeLessonAccess() ниже неявно дёргает Date.now(),
+  // что даёт разный access.status на SSR и client → React error #418.
+  // До mount просто не рендерим time-зависимые CTA-кнопки.
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
+    setMounted(true)
     const t = setInterval(() => setTick((x) => x + 1), 30_000)
     return () => clearInterval(t)
   }, [])
@@ -233,6 +238,9 @@ export default function TeacherClubsClient({
                   </span>
                 </div>
                 {(() => {
+                  // До mount не вычисляем access — иначе Date.now() в нём
+                  // расходится между SSR и first client render → #418.
+                  if (!mounted) return null
                   const access = c.scheduled_at
                     ? computeLessonAccess({
                         scheduledAt: c.scheduled_at,
