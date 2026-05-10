@@ -1126,14 +1126,25 @@ function AvailabilityEditor() {
   const [isLoading, setIsLoading] = useState(true)
   const [showBlockDialog, setShowBlockDialog] = useState(false)
   const [blockDate, setBlockDate] = useState("")
+  // Когда в БД ноль строк — preview-default Пн-Пт 09-18 "врёт" преподу,
+  // он видит активные тогглы и не сохраняет. Из-за этого ученики реально
+  // не могут записаться. Теперь:
+  //  - initial state = всё выключено (один и тот же на server и client),
+  //  - после load если в БД пусто — выставляем preview Пн-Пт 09-18 + флаг
+  //    notSavedYet, на основе которого показываем баннер «нажми Сохранить».
+  const [hasSavedSchedule, setHasSavedSchedule] = useState(false)
 
-  const defaultAvailability: DayAvailability[] = DAY_NAMES.map((_, i) => ({
+  const emptyAvailability: DayAvailability[] = DAY_NAMES.map(() => ({
+    active: false,
+    ranges: [],
+  }))
+  const previewAvailability: DayAvailability[] = DAY_NAMES.map((_, i) => ({
     active: i < 5,
     ranges: i < 5 ? [{ start: "09:00", end: "18:00" }] : [],
   }))
 
   const [availability, setAvailability] =
-    useState<DayAvailability[]>(defaultAvailability)
+    useState<DayAvailability[]>(emptyAvailability)
 
   useEffect(() => {
     async function load() {
@@ -1187,6 +1198,14 @@ function AvailabilityEditor() {
           }
         }
         setAvailability(grouped)
+        setHasSavedSchedule(true)
+      } else {
+        // В БД пусто — заполним preview-расписанием Пн-Пт 09-18, чтобы
+        // преподу не пришлось проставлять с нуля; но сохранения ещё не
+        // было, hasSavedSchedule остаётся false → баннер сверху напомнит
+        // нажать «Сохранить».
+        setAvailability(previewAvailability)
+        setHasSavedSchedule(false)
       }
       setIsLoading(false)
     }
@@ -1326,12 +1345,39 @@ function AvailabilityEditor() {
             <button className="btn btn-outline" onClick={() => setShowBlockDialog(true)}>
               🚫 Заблокировать дату
             </button>
-            <button className="btn btn-lime" onClick={handleSave} disabled={isSaving}>
+            <button
+              className="btn btn-lime"
+              onClick={async () => {
+                await handleSave()
+                setHasSavedSchedule(true)
+              }}
+              disabled={isSaving}
+            >
               {isSaving ? "…" : "💾 Сохранить"}
             </button>
           </div>
         </div>
         <div className="av-body">
+          {!isLoading && !hasSavedSchedule && (
+            <div
+              role="alert"
+              style={{
+                background: "rgba(230,57,70,.08)",
+                border: "1px solid rgba(230,57,70,.25)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 14,
+                fontSize: 13,
+                color: "var(--text)",
+                lineHeight: 1.45,
+              }}
+            >
+              <b style={{ color: "var(--red)" }}>Расписание ещё не сохранено.</b>{" "}
+              Включи нужные дни и нажми <b>«💾 Сохранить»</b> справа сверху.
+              Пока расписание не сохранено, ученики <b>не видят</b> у тебя
+              свободных слотов и не могут записаться.
+            </div>
+          )}
           {isLoading ? (
             <div className="loading"><div className="spinner" /></div>
           ) : (
