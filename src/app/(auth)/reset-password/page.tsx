@@ -36,24 +36,51 @@ export default function ResetPasswordPage() {
     },
   })
 
+  // Раньше страница пускала ЛЮБОГО залогиненного юзера и позволяла сменить
+  // пароль без старого — то есть с украденной сессией можно было захватить
+  // аккаунт. Теперь пускаем только если:
+  //   1) юзер только что пришёл по recovery-link
+  //      (Supabase эмитит событие 'PASSWORD_RECOVERY' из onAuthStateChange),
+  //   ИЛИ
+  //   2) URL содержит type=recovery / code=… от Supabase callback.
+  // Иначе предлагаем запросить новую ссылку через /forgot-password.
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
 
-    async function checkSession() {
-      const { data, error } = await supabase.auth.getUser()
-      if (cancelled) return
-      if (error || !data.user) {
-        setSessionStatus('invalid')
-      } else {
+    // Сценарий 2: query / hash содержит recovery-маркеры — этого достаточно,
+    // чтобы понять что юзер пришёл по письму и сменил сессию.
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      const isRecoveryHint =
+        url.searchParams.get('type') === 'recovery' ||
+        url.hash.includes('type=recovery')
+      if (isRecoveryHint) {
         setSessionStatus('valid')
       }
     }
 
-    void checkSession()
+    // Сценарий 1: ловим событие PASSWORD_RECOVERY от Supabase.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (cancelled) return
+      if (event === 'PASSWORD_RECOVERY') {
+        setSessionStatus('valid')
+      }
+    })
+
+    // Если ни события, ни маркеров за разумное время — отказываем.
+    // (Не отказываем сразу, чтобы успело отработать onAuthStateChange.)
+    const timer = window.setTimeout(() => {
+      if (cancelled) return
+      setSessionStatus((cur) => (cur === 'checking' ? 'invalid' : cur))
+    }, 1500)
 
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
+      subscription.unsubscribe()
     }
   }, [])
 

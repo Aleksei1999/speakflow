@@ -122,14 +122,15 @@ const SETTINGS_CSS = `
 }
 `
 
+// «Оформление» и «Удаление» временно скрыты из NAV — соответствующие
+// секции (AppearanceSection / DangerSection) закомменчены ниже как не-
+// доделанные. Когда раскомментим — добавим обратно.
 const NAV = [
   { id: "account", label: "Аккаунт", icon: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
   { id: "notifications", label: "Уведомления", icon: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></> },
-  { id: "appearance", label: "Оформление", icon: <><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></> },
   { id: "privacy", label: "Безопасность", icon: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
   { id: "connected", label: "Подключения", icon: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></> },
   { id: "subscription", label: "Подписка", icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
-  { id: "danger", label: "Удаление", icon: <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></> },
 ]
 
 const TIMEZONES = [
@@ -511,7 +512,23 @@ export default function StudentSettingsPage() {
                   onClick={() => {
                     setActiveSection(n.id)
                     const el = document.getElementById(`sec-${n.id}`)
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+                    if (!el) return
+                    // Прокручиваем именно scroll-container .main-content
+                    // dashboard-shell'а, иначе scrollIntoView под sticky
+                    // header может «застрять» и оставить элемент за кадром.
+                    const container = document.querySelector(
+                      ".dash .main-content"
+                    ) as HTMLElement | null
+                    if (container) {
+                      const top =
+                        el.getBoundingClientRect().top -
+                        container.getBoundingClientRect().top +
+                        container.scrollTop -
+                        16
+                      container.scrollTo({ top, behavior: "smooth" })
+                    } else {
+                      el.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
                   }}
                 >
                   <svg viewBox="0 0 24 24">{n.icon}</svg>
@@ -975,7 +992,7 @@ function SecuritySection({
             <div className="s-field-label">Изменить пароль</div>
             <div className="s-field-desc">Отправим письмо с ссылкой на восстановление</div>
           </div>
-          <a className="s-btn s-btn--outline" href="/reset-password">Изменить</a>
+          <a className="s-btn s-btn--outline" href="/forgot-password">Изменить</a>
         </div>
         {/* Активные сессии — скрыто до интеграции с Supabase Admin API */}
         {/* <div className="s-field">
