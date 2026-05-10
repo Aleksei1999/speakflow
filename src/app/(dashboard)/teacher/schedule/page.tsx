@@ -269,6 +269,11 @@ function nextRoundHour(d: Date): { date: Date; hour: number } {
 }
 
 export default function TeacherSchedulePage() {
+  // mounted guard: страница time-зависимая (now / weekCursor / format(...)
+  // в JSX), при SSR initial state new Date() != client new Date(), что
+  // даёт React error #418. До mount возвращаем простой skeleton, после —
+  // реальный рендер. SEO нам тут не нужен — за auth-walled страницами.
+  const [mounted, setMounted] = useState(false)
   const [lessons, setLessons] = useState<LessonRow[]>([])
   const [studentMap, setStudentMap] = useState<Record<string, StudentMapEntry>>({})
   const [teacherProfileId, setTeacherProfileId] = useState<string | null>(null)
@@ -276,7 +281,7 @@ export default function TeacherSchedulePage() {
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [now, setNow] = useState<Date>(new Date())
+  const [now, setNow] = useState<Date>(() => new Date())
   const [trialIds, setTrialIds] = useState<Set<string>>(new Set())
 
   // Assign-dialog state
@@ -291,6 +296,12 @@ export default function TeacherSchedulePage() {
   const [assignIsSubmitting, setAssignIsSubmitting] = useState(false)
 
   useEffect(() => {
+    // Сначала переводим компонент в mounted (это всегда после server-render
+    // и first client-render — внутри них state ещё одинаковый, а значит
+    // нет hydration mismatch). После этого можно безопасно тикать now.
+    setMounted(true)
+    setNow(new Date())
+    setWeekCursor(startOfWeek(new Date(), { weekStartsOn: 1 }))
     const t = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(t)
   }, [])
@@ -638,6 +649,21 @@ export default function TeacherSchedulePage() {
     } finally {
       setAssignIsSubmitting(false)
     }
+  }
+
+  if (!mounted) {
+    // Простой skeleton, который ОДИНАКОВ на server и client — значит
+    // нет hydration mismatch. После mount useEffect выше выставит
+    // mounted=true и компонент перерендерит полноценно.
+    return (
+      <div className="tch-schedule">
+        <style dangerouslySetInnerHTML={{ __html: TCH_SCHEDULE_CSS }} />
+        <div className="hdr">
+          <h1>Моё <span className="gl">schedule</span></h1>
+        </div>
+        <div className="empty">Загружаем расписание…</div>
+      </div>
+    )
   }
 
   return (
