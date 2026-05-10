@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { RawLogo } from "@/components/ui/raw-logo";
 import styles from "./hero-copy.module.css";
 
@@ -16,8 +17,10 @@ const navItems = [
 const avatarLetters = ["A", "M", "K", "V", "R"];
 
 export function HeroCopyPage() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
   return (
-    <main className={styles.page} data-theme="dark">
+    <main className={styles.page} data-theme={theme}>
       <header className={styles.navbar}>
         <Link href="/" className={styles.logoLink} aria-label="Raw English">
           <RawLogo size={38} priority className={styles.logo} />
@@ -32,12 +35,14 @@ export function HeroCopyPage() {
         </nav>
 
         <div className={styles.navActions}>
-          <span
+          <button
+            type="button"
             className={styles.themeToggle}
-            aria-hidden="true"
+            aria-label="Переключить тему"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
-            <span>🌙</span>
-          </span>
+            <span>{theme === "dark" ? "🌙" : "☀️"}</span>
+          </button>
           <Link href="/teach" className={styles.teacherButton}>
             Для преподавателя
           </Link>
@@ -69,10 +74,10 @@ export function HeroCopyPage() {
 
           <div className={styles.photoStage}>
             <Image
-              src="/landing/raw-hero-teacher.jpg"
+              src="/landing/raw-hero-teacher-reference.png"
               alt="Преподаватель RAW English за столом с учебными материалами"
-              width={1280}
-              height={720}
+              width={1672}
+              height={941}
               priority
               className={styles.heroPhoto}
             />

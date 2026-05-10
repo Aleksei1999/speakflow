@@ -404,13 +404,21 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
+    // Очистка поля поиска должна срабатывать мгновенно: backspace до
+    // пустой строки иначе попадает в transition+debounce и иногда
+    // визуально «не очищает» с первого раза. На пустой query reload
+    // без debounce и без startTransition.
+    if (!search.trim()) {
+      reload()
+      return
+    }
     debounceRef.current = setTimeout(() => {
       startTransition(() => { reload() })
     }, 250)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [reload])
+  }, [reload, search])
 
   // filter materials (client side) by tab + search
   const filtered = useMemo(() => {

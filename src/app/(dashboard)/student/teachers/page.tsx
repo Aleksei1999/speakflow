@@ -575,7 +575,11 @@ export default function StudentTeachersPage() {
   }, [modalTeacher, selectedSlot, booking, closeProfile])
 
   // ─── Derived UI bits ───────────────────────────────────────────────────────
-  const headerCount = total
+  // Supabase PostgREST count='exact' игнорирует фильтр по joined-таблице
+  // (profiles.full_name ILIKE %…%), поэтому при поиске "Andrei" total
+  // возвращался = 3, хотя реально нашли 1. При активном поиске показываем
+  // длину отфильтрованного массива.
+  const headerCount = applied.search.trim() ? teachers.length : total
 
   const bookBtnLabel = useMemo(() => {
     if (bookingSuccess) return "✓ Записано!"
