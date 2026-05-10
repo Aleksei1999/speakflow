@@ -92,10 +92,21 @@ const SHELL_CSS = `
 .dash [data-slot="tabs-trigger"][data-state="active"]{background:var(--accent-dark);color:#fff}
 .dash [data-slot="avatar-fallback"]{background:var(--lime);color:#0A0A0A;font-weight:700}
 
+/* ===== MOBILE BURGER + DRAWER ===== */
+.dash-burger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);margin-bottom:12px;flex-shrink:0}
+.dash-burger:hover{border-color:var(--text)}
+.dash-burger svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none}
+.dash-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;animation:dashOverlayIn .15s ease}
+@keyframes dashOverlayIn{from{opacity:0}to{opacity:1}}
+@keyframes dashDrawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+
 @media(max-width:900px){
   .dash{grid-template-columns:1fr}
   .dash .sidebar{display:none}
   .dash .main-content{padding:16px}
+  .dash-burger{display:inline-flex}
+  .dash .sidebar.mobile-open{display:flex !important;position:fixed;left:0;top:0;height:100vh;width:280px;z-index:1000;box-shadow:0 0 30px rgba(0,0,0,0.2);animation:dashDrawerIn .2s ease}
+  .dash-overlay.is-open{display:block}
 }
 `
 
@@ -205,6 +216,28 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   // the URL changes (e.g. user re-uploads avatar in /settings).
   const [avatarBroken, setAvatarBroken] = useState(false)
   useEffect(() => { setAvatarBroken(false) }, [avatarUrl])
+
+  // Mobile drawer state — sidebar is hidden on ≤900px, burger toggles it as overlay drawer.
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Auto-close drawer on route change so navigation feels natural.
+  useEffect(() => { setMobileOpen(false) }, [pathname])
+
+  // Lock body scroll while drawer is open + close on Escape.
+  useEffect(() => {
+    if (typeof document === "undefined") return
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [mobileOpen])
 
   // Smooth scroll-to-top whenever route changes between dashboard sections so
   // the user lands at the top of the new page instead of mid-scroll.
@@ -383,7 +416,23 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
     <>
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS }} />
       <div className="dash">
-        <aside className="sidebar">
+        {mobileOpen ? (
+          <div
+            className="dash-overlay is-open"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+        ) : null}
+        <aside
+          className={`sidebar${mobileOpen ? " mobile-open" : ""}`}
+          onClickCapture={(e) => {
+            // Close drawer when a navigation <a>/<Link> is clicked (mobile only).
+            // Cmd/Ctrl/Shift/middle-click let browser open in new tab — also close.
+            if (!mobileOpen) return
+            const target = e.target as HTMLElement | null
+            if (target && target.closest("a")) setMobileOpen(false)
+          }}
+        >
           <div className="sidebar-logo" aria-label="Raw English">
             <RawLogo size={34} />
           </div>
@@ -488,7 +537,22 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           </div>
         </aside>
 
-        <main className="main-content">{children}</main>
+        <main className="main-content">
+          <button
+            type="button"
+            className="dash-burger"
+            aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
+            </svg>
+          </button>
+          {children}
+        </main>
       </div>
       <Toaster position="top-right" richColors />
     </>
