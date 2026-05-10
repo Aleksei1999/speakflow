@@ -1,7 +1,12 @@
 // @ts-nocheck
 // GET /api/clubs/stats
 // Aggregated stats for the /student/clubs page header cards:
-//   1. weekCount         — published clubs starting within current ISO week
+//   1. weekCount         — published, non-cancelled clubs in the current ISO
+//                          week that are still upcoming or in-progress (i.e.
+//                          starts_at + duration_min > now). The label on the
+//                          card reads "клубов доступно" — clubs that already
+//                          finished are NOT доступно, so we must exclude them
+//                          to match the list rendered below the calendar.
 //   2. attendedThisMonth — distinct clubs the user has attended (or that have
 //                          already ended while they were registered) this month
 //   3. nextClub          — user's next upcoming registered club
@@ -55,15 +60,18 @@ export async function GET() {
 
     // Run independent queries in parallel
     const [
-      weekCountRes,
+      weekClubsRes,
       attendedRes,
       nextClubRes,
       xpRes,
     ] = await Promise.all([
-      // 1. Published clubs starting this ISO week
+      // 1. Published, non-cancelled clubs starting this ISO week.
+      //    We pull starts_at + duration_min so we can drop already-finished
+      //    clubs in JS (mirrors the list filter on the page — keeps the stat
+      //    in sync with what the user actually sees below).
       supabase
         .from('clubs')
-        .select('id', { count: 'exact', head: true })
+        .select('id, starts_at, duration_min')
         .eq('is_published', true)
         .is('cancelled_at', null)
         .gte('starts_at', week.start.toISOString())
@@ -100,8 +108,8 @@ export async function GET() {
         .lt('created_at', month.end.toISOString()),
     ])
 
-    if (weekCountRes.error) {
-      console.error('[clubs/stats] weekCount error:', weekCountRes.error)
+    if (weekClubsRes.error) {
+      console.error('[clubs/stats] weekCount error:', weekClubsRes.error)
     }
     if (attendedRes.error) {
       console.error('[clubs/stats] attended error:', attendedRes.error)
@@ -113,7 +121,14 @@ export async function GET() {
       console.error('[clubs/stats] xp error:', xpRes.error)
     }
 
-    const weekCount = weekCountRes.count ?? 0
+    // Drop clubs that have already finished (starts_at + duration_min <= now).
+    // The card label is "клубов доступно", so finished ≠ доступно.
+    const nowMs = now.getTime()
+    const weekCount = (weekClubsRes.data ?? []).filter((row) => {
+      const startMs = row.starts_at ? new Date(row.starts_at).getTime() : 0
+      const durMs = (Number(row.duration_min) || 60) * 60_000
+      return startMs + durMs > nowMs
+    }).length
 
     // Dedupe by club_id; count a club as "attended" if the reg says so, or if
     // the club's end time has passed and the user's registration is still
