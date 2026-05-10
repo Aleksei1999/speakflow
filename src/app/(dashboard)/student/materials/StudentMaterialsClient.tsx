@@ -122,7 +122,7 @@ const STYLES = `
 /* LESSON GROUP */
 .stu-mat2 .lesson-group{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:all .15s}
 .stu-mat2 .lesson-group:hover{border-color:var(--text)}
-.stu-mat2 .lesson-head{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;user-select:none;width:100%;text-align:left;background:none;border:none;color:inherit}
+.stu-mat2 .lesson-head{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;user-select:none;width:100%;text-align:left;background:none;border:none;color:inherit;position:relative;z-index:1;pointer-events:auto}
 .stu-mat2 .lesson-head:hover{background:var(--surface-2,var(--bg))}
 .stu-mat2 .lesson-date{width:54px;height:54px;background:var(--bg);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
 .stu-mat2 .lesson-date.today{background:var(--lime);color:#0A0A0A}
@@ -334,6 +334,9 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
   const [apiMissing, setApiMissing] = useState(false)
   const [pins, setPins] = useState<Set<string>>(new Set())
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [loaded, setLoaded] = useState<boolean>(
+    Array.isArray(initial.materials) && initial.materials.length > 0
+  )
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -394,6 +397,8 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
       })
     } catch {
       // keep previous snapshot
+    } finally {
+      setLoaded(true)
     }
   }, [search])
 
@@ -469,7 +474,20 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
     })
   }, [groups])
 
-  const toggleGroup = (key: string) => {
+  const toggleGroup = (key: string, e?: React.MouseEvent<HTMLElement>) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    // Scroll the clicked header into view so the next click isn't blocked
+    // by a sticky/overlapping element above it.
+    if (e?.currentTarget && typeof (e.currentTarget as HTMLElement).scrollIntoView === "function") {
+      try {
+        (e.currentTarget as HTMLElement).scrollIntoView({ block: "nearest", behavior: "smooth" })
+      } catch {
+        /* ignore */
+      }
+    }
     setOpenGroups((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
@@ -700,7 +718,14 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           </div>
         </div>
 
-        {groups.length === 0 && !apiMissing ? (
+        {groups.length === 0 && !apiMissing && !loaded ? (
+          <div className="empty-state">
+            <b>Загружаем материалы…</b>
+            Это займёт пару секунд.
+          </div>
+        ) : null}
+
+        {groups.length === 0 && !apiMissing && loaded ? (
           <div className="empty-state">
             <b>Пока нет материалов</b>
             Твои преподаватели ещё не поделились материалами. Они появятся здесь, как только учитель их пришлёт.
@@ -720,7 +745,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
             <div key={g.key} className={`lesson-group${open ? " open" : ""}`}>
               <button
                 className="lesson-head"
-                onClick={() => toggleGroup(g.key)}
+                onClick={(e) => toggleGroup(g.key, e)}
                 type="button"
               >
                 <div className={`lesson-date${g.hasNew ? " today" : ""}`}>

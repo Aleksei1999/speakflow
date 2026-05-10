@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import StudentMaterialsClient from "./StudentMaterialsClient"
 
@@ -16,27 +15,7 @@ const EMPTY_SNAPSHOT: InitialSnapshot = {
   },
 }
 
-async function loadInitialSnapshot(): Promise<InitialSnapshot> {
-  try {
-    const hdrs = await headers()
-    const host = hdrs.get("host")
-    const proto = hdrs.get("x-forwarded-proto") ?? "http"
-    if (!host) return EMPTY_SNAPSHOT
-    const cookie = hdrs.get("cookie") ?? ""
-    const res = await fetch(`${proto}://${host}/api/student/materials?type=all&level=all&sort=recent`, {
-      headers: { cookie },
-      cache: "no-store",
-    })
-    if (!res.ok) return EMPTY_SNAPSHOT
-    const json = await res.json()
-    return {
-      materials: Array.isArray(json.materials) ? json.materials : [],
-      counts: { ...EMPTY_SNAPSHOT.counts, ...(json.counts ?? {}) },
-    }
-  } catch {
-    return EMPTY_SNAPSHOT
-  }
-}
+export const dynamic = "force-dynamic"
 
 export default async function StudentMaterialsPage() {
   const supabase = await createClient()
@@ -50,7 +29,7 @@ export default async function StudentMaterialsPage() {
     redirect("/login")
   }
 
-  const snap = await loadInitialSnapshot()
-
-  return <StudentMaterialsClient initial={snap} />
+  // Load on client only — avoids self-fetch loop on reload (host+cookie
+  // sometimes resolves to the CF/RU proxy and stalls). Client uses relative URL.
+  return <StudentMaterialsClient initial={EMPTY_SNAPSHOT} />
 }
