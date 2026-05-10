@@ -57,3 +57,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e?.message }, { status: 500 })
   }
 }
+
+// PUT /api/lesson/notes — idempotent upsert (одна заметка на пользователя
+// в рамках урока). lesson-sidebar.tsx сохраняет редактирование через PUT,
+// чтобы не плодить INSERT-конфликты на уникальном (lesson_id, user_id).
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({} as any))
+    const lessonId: string | undefined = body?.lessonId
+    const rawContent: unknown = body?.content
+
+    const gate = await requireLessonParticipant(lessonId)
+    if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+    if (typeof rawContent !== 'string') {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    }
+    const content = rawContent
+    if (content.length > MAX_NOTE_LEN) {
+      return NextResponse.json(
+        { error: `Content too long (max ${MAX_NOTE_LEN} chars)` },
+        { status: 413 }
+      )
+    }
+
+    const { data, error } = await (gate.admin.from('lesson_notes') as any)
+      .upsert(
+        { lesson_id: gate.lesson.id, user_id: gate.user.id, content, updated_at: new Date().toISOString() },
+        { onConflict: 'lesson_id,user_id' }
+      )
+      .select('id, content, updated_at')
+      .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data)
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message }, { status: 500 })
+  }
+}
