@@ -3,6 +3,10 @@ import { updateSession } from '@/lib/supabase/middleware'
 
 const publicRoutes = ['/', '/teachers', '/teach', '/level-test', '/get-started', '/privacy', '/oferta']
 const authRoutes = ['/login', '/register', '/forgot-password']
+// /forgot-password и /reset-password обязаны быть доступны и
+// залогиненным юзерам (смена пароля из /settings, recovery-flow при
+// активной сессии). Иначе middleware редиректит обратно на dashboard.
+const passwordFlowRoutes = ['/forgot-password', '/reset-password']
 
 function homeForRole(role: string | null): string {
   switch (role) {
@@ -37,8 +41,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Authenticated on auth pages → redirect to their dashboard
-  if (authRoutes.some(route => path === route)) {
+  // Authenticated on auth pages → redirect to their dashboard.
+  // Исключение: password-flow роуты (forgot/reset) — нужны и
+  // залогиненному юзеру, чтобы он мог сменить пароль из настроек.
+  if (
+    authRoutes.some(route => path === route) &&
+    !passwordFlowRoutes.includes(path)
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = homeForRole(role)
     return NextResponse.redirect(url)

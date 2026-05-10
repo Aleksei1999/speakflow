@@ -105,6 +105,7 @@
   color: var(--hero-text);
   background: var(--hero-card);
   box-shadow: 0 12px 32px var(--hero-shadow);
+  cursor: pointer;
 }
 
 .themeToggle span {
@@ -281,30 +282,28 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  transform: translateY(-92px);
 }
 
 .heroPhoto {
-  width: min(980px, 70vw);
-  height: 635px;
-  object-fit: cover;
+  width: min(1260px, 92vw);
+  max-width: none;
+  height: 700px;
+  object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.42));
-  -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 52%, #000 56%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
-  mask-image: radial-gradient(ellipse 72% 78% at 50% 52%, #000 56%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
 }
 
 .page[data-theme="light"] .heroPhoto {
   filter: drop-shadow(0 28px 70px rgba(37, 19, 19, 0.24));
-  -webkit-mask-image: radial-gradient(ellipse 75% 80% at 50% 52%, #000 58%, rgba(0, 0, 0, 0.76) 74%, transparent 100%);
-  mask-image: radial-gradient(ellipse 75% 80% at 50% 52%, #000 58%, rgba(0, 0, 0, 0.76) 74%, transparent 100%);
 }
 
 .tableShade {
   position: absolute;
   left: -6%;
   right: -4%;
-  bottom: 12px;
-  height: 86px;
+  bottom: 0;
+  height: 64px;
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.58));
   pointer-events: none;
 }
