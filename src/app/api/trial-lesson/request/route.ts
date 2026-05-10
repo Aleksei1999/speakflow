@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
@@ -29,6 +30,16 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
   }
+
+  // Студент не должен спамить trial-запросами: 5 запросов в час.
+  // NextRequest нужен только для headers — оборачиваем Request.
+  const limited = await enforceRateLimit(request as any, {
+    name: 'trial-lesson:request',
+    keyParts: [user.id, getClientIp(request as any)],
+    max: 5,
+    windowSeconds: 60 * 60,
+  })
+  if (limited) return limited
 
   let body: unknown = {}
   try {

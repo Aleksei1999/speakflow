@@ -4,6 +4,7 @@ import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 import { transliterateRu } from "@/lib/transliterate"
+import { enforceRateLimit, getClientIp } from "@/lib/api/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -17,6 +18,15 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Public endpoint, поэтому жёсткий IP-лимит: 5 заявок в час.
+    const limited = await enforceRateLimit(request, {
+      name: "teach:apply:ip",
+      keyParts: [getClientIp(request)],
+      max: 5,
+      windowSeconds: 60 * 60,
+    })
+    if (limited) return limited
+
     let body: any
     try {
       body = await request.json()
@@ -32,6 +42,15 @@ export async function POST(request: NextRequest) {
       )
     }
     const d = parsed.data
+
+    // Доп. лимит по email — 1 заявка в 10 минут (нормальный человек повторно не подаёт).
+    const emailLimited = await enforceRateLimit(request, {
+      name: "teach:apply:email",
+      keyParts: [d.email.toLowerCase()],
+      max: 1,
+      windowSeconds: 60 * 10,
+    })
+    if (emailLimited) return emailLimited
 
     const admin = createAdminClient()
 
