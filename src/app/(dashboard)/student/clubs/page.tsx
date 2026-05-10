@@ -341,10 +341,17 @@ export default function StudentClubsPage() {
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const [now, setNow] = useState<Date>(new Date())
+  const [now, setNow] = useState<Date>(() => new Date())
+  // mounted-gate: now/weekCursor initialized via new Date(), а new Date()
+  // на server и client возвращает разные значения → format/dayLabel в JSX
+  // даёт разный текст → React error #418. До mount возвращаем skeleton.
+  const [mounted, setMounted] = useState(false)
 
   // Live clock so "сегодня"/"завтра" labels stay accurate past midnight.
   useEffect(() => {
+    setMounted(true)
+    setNow(new Date())
+    setWeekCursor(startOfWeek(new Date(), { weekStartsOn: 1 }))
     const t = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(t)
   }, [])
@@ -554,6 +561,21 @@ export default function StudentClubsPage() {
   function goToday() { setWeekCursor(startOfWeek(new Date(), { weekStartsOn: 1 })) }
 
   // ─── Render ─────────────────────────────────────────────────────────────
+  // До mount страница time-зависимая (now / weekCursor / format с локалью)
+  // → SSR и client дадут разный HTML, отсюда React #418. Skeleton до mount,
+  // полный рендер — после.
+  if (!mounted) {
+    return (
+      <div className="clubs-page">
+        <style dangerouslySetInnerHTML={{ __html: CLUBS_CSS }} />
+        <div className="hdr">
+          <h1>Speaking <span className="gl">Clubs</span></h1>
+        </div>
+        <div className="hdr-sub">Загружаем клубы…</div>
+      </div>
+    )
+  }
+
   return (
     <div className="clubs-page">
       <style dangerouslySetInnerHTML={{ __html: CLUBS_CSS }} />
