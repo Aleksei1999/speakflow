@@ -375,6 +375,19 @@ export default function AdminClubsClient({
               Math.min(100, (c.registered_count / Math.max(1, c.capacity)) * 100)
             )
             const hot = pct >= 80
+            const isPast =
+              !!c.scheduled_at &&
+              new Date(c.scheduled_at).getTime() <= Date.now()
+            const isCancelled = c.status === "cancelled"
+            const isFull = c.registered_count >= c.capacity
+            const assignDisabled = isFull || isPast || isCancelled
+            const assignReason = isCancelled
+              ? "Клуб отменён"
+              : isPast
+                ? "Клуб уже прошёл"
+                : isFull
+                  ? "Все места заняты"
+                  : "Добавить учеников в этот клуб"
             return (
               <div key={c.id} className="club-card">
                 <div className="hero-top">
@@ -487,8 +500,7 @@ export default function AdminClubsClient({
                   )}
                 </div>
                 <div className="club-actions">
-                  {c.scheduled_at &&
-                  new Date(c.scheduled_at).getTime() <= Date.now() ? (
+                  {isPast ? (
                     <span
                       style={{
                         fontSize: 11,
@@ -512,7 +524,9 @@ export default function AdminClubsClient({
                     type="button"
                     className="btn btn-sm btn-lime"
                     onClick={() => openAssign(c)}
-                    disabled={c.registered_count >= c.capacity}
+                    disabled={assignDisabled}
+                    title={assignReason}
+                    aria-disabled={assignDisabled}
                   >
                     Добавить учеников
                   </button>
