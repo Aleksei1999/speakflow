@@ -364,12 +364,13 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
   }, [stats])
 
   const maxBar = Math.max(...stats.signups_week, 1)
+  // У бэка пока нет данных по предыдущему окну, поэтому показываем
+  // абсолютный прирост за 7 дней без ↑/↓ к прошлой неделе — иначе
+  // дельта противоречила бы графику (см. signups_week).
   const deltaWeekText =
     stats.students_delta_week > 0
-      ? `↑ +${stats.students_delta_week} за неделю`
-      : stats.students_delta_week < 0
-        ? `↓ ${stats.students_delta_week} за неделю`
-        : "Без изменений"
+      ? `+${stats.students_delta_week} за 7 дней`
+      : "Без изменений"
   const deltaDayText =
     stats.apps_delta_day > 0
       ? `↑ +${stats.apps_delta_day} к вчера`

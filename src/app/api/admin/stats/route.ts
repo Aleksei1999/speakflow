@@ -106,14 +106,25 @@ export async function GET(_request: NextRequest) {
       }
     }
 
+    // Aggregate sparkline so client doesn't have to.
+    const signupsTotal = signupsWeek.reduce((a, b) => a + b, 0)
+
     return NextResponse.json({
       students_active: studentsActiveRes.count ?? 0,
+      // У нас пока нет previous-week бэкета, поэтому delta = просто
+      // прирост за последние 7 дней. Клиент рендерит как "+N за 7 дней".
+      students_delta_week: signupsTotal,
       apps_today: appsTodayRes.count ?? 0,
+      apps_delta_day: 0,
       teacher_applications_new: teacherAppsNewRes.count ?? 0,
       lessons_today: lessonsTodayRes.count ?? 0,
       live_now: liveNowRes.count ?? 0,
       open_tickets: openTicketsRes.count ?? 0,
+      tickets_urgent: 0,
       signups_week: signupsWeek,
+      signups_total: signupsTotal,
+      conversion_trial: 0,
+      conversion_paid: 0,
     })
   } catch (err) {
     console.error("Ошибка в /api/admin/stats:", err)
