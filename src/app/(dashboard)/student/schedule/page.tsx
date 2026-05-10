@@ -173,6 +173,13 @@ function weekdayIdx(d: Date): number {
 }
 
 export default function StudentSchedulePage() {
+  // mounted guard: страница time-зависимая (now / weekCursor / format(...)
+  // в JSX), при SSR initial state new Date() != client new Date(), что
+  // даёт React error #418. Из-за этого после bail-out клик на «Записаться»
+  // не доходил до handler-а — модалка не открывалась. До mount возвращаем
+  // skeleton (одинаковый на server и client) — после mount полноценный
+  // рендер. Тот же паттерн что в /teacher/schedule (commit 3603bb1).
+  const [mounted, setMounted] = useState(false)
   const [lessons, setLessons] = useState<LessonRow[]>([])
   const [trialIds, setTrialIds] = useState<Set<string>>(new Set())
   const [teacherMap, setTeacherMap] = useState<Record<string, TeacherMapEntry>>({})
@@ -180,10 +187,16 @@ export default function StudentSchedulePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [now, setNow] = useState<Date>(new Date())
+  const [now, setNow] = useState<Date>(() => new Date())
 
   // Live clock tick so "сейчас" / "ожидается" labels update without refresh.
   useEffect(() => {
+    // Сначала переводим компонент в mounted (это всегда после server-render
+    // и first client-render — внутри них state ещё одинаковый, а значит
+    // нет hydration mismatch). После этого можно безопасно тикать now.
+    setMounted(true)
+    setNow(new Date())
+    setWeekCursor(startOfWeek(new Date(), { weekStartsOn: 1 }))
     const t = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(t)
   }, [])
@@ -382,6 +395,21 @@ export default function StudentSchedulePage() {
   }
   function goToday() {
     setWeekCursor(startOfWeek(new Date(), { weekStartsOn: 1 }))
+  }
+
+  if (!mounted) {
+    // Skeleton ОДИНАКОВ на server и client → нет hydration mismatch.
+    // После mount useEffect выставит mounted=true и компонент перерендерит
+    // полноценно, уже с прицепленным onClick-handler-ом на «Записаться».
+    return (
+      <div className="stu-schedule">
+        <style dangerouslySetInnerHTML={{ __html: SCHEDULE_CSS }} />
+        <div className="hdr">
+          <h1>Моё <span className="gl">schedule</span></h1>
+        </div>
+        <div className="loading"><div className="spinner" /></div>
+      </div>
+    )
   }
 
   return (
