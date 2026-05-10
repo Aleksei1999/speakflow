@@ -1,8 +1,10 @@
 // @ts-nocheck
 "use client"
 
-import { useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import StudentDetailDrawer from "./StudentDetailDrawer"
 
 const CSS = `
 .adm-students{max-width:1400px;margin:0 auto}
@@ -143,6 +145,34 @@ function levelLabel(level: string | null): string {
 }
 
 export default function AdminStudentsClient({ initial }: { initial: Student[] }) {
+  return (
+    <Suspense fallback={<div className="adm-students" />}>
+      <AdminStudentsInner initial={initial} />
+    </Suspense>
+  )
+}
+
+function AdminStudentsInner({ initial }: { initial: Student[] }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const selectedId = searchParams.get("id") || null
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const validSelectedId = selectedId && UUID_RE.test(selectedId) ? selectedId : null
+
+  const closeDrawer = () => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete("id")
+    const qs = next.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  const openStudent = (id: string) => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.set("id", id)
+    router.push(`${pathname}?${next.toString()}`, { scroll: false })
+  }
+
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState<"recent" | "name" | "xp" | "lessons">(
     "recent"
@@ -299,12 +329,13 @@ export default function AdminStudentsClient({ initial }: { initial: Student[] })
                       </span>
                     </td>
                     <td>
-                      <Link
-                        href={`/admin/students?id=${s.id}`}
+                      <button
+                        type="button"
+                        onClick={() => openStudent(s.id)}
                         className="btn btn-sm btn-primary"
                       >
                         Открыть
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -319,6 +350,13 @@ export default function AdminStudentsClient({ initial }: { initial: Student[] })
           </>
         )}
       </div>
+
+      {validSelectedId && (
+        <StudentDetailDrawer
+          studentId={validSelectedId}
+          onClose={closeDrawer}
+        />
+      )}
     </div>
   )
 }
