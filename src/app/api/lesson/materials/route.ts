@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  requireLessonParticipant,
+  requireLessonTeacherOrAdmin,
+} from '@/lib/api/lesson-auth'
 
 // Используем общую таблицу `materials` (а не legacy `lesson_materials`),
 // чтобы загруженные на уроке файлы сразу видел студент в /student/materials
@@ -9,15 +12,23 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const lessonId = request.nextUrl.searchParams.get('lessonId')
-  if (!lessonId) return NextResponse.json({ error: 'Missing lessonId' }, { status: 400 })
+
+  const gate = await requireLessonParticipant(lessonId)
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
 
   try {
-    const admin = createAdminClient()
-    const { data } = await (admin.from('materials') as any)
-      .select('id, lesson_id, teacher_id, title, description, file_url, file_type, mime_type, file_size, storage_path, level, tags, created_at')
+    const { data, error } = await (gate.admin.from('materials') as any)
+      .select(
+        'id, lesson_id, teacher_id, title, description, file_url, file_type, mime_type, file_size, storage_path, level, tags, created_at'
+      )
       .eq('lesson_id', lessonId)
       .order('created_at', { ascending: false })
 
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
     return NextResponse.json(data ?? [])
   } catch (e: any) {
     return NextResponse.json({ error: e?.message }, { status: 500 })
@@ -26,50 +37,59 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const {
       lessonId,
-      userId,
       title,
       content,
       fileUrl,
       storagePath,
       mimeType,
       fileSize,
-    } = body
-    if (!lessonId || !userId || !title) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    } = body ?? {}
+
+    const gate = await requireLessonTeacherOrAdmin(lessonId)
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    const admin = createAdminClient()
-
-    // Резолвим teacher_profiles.id: materials.teacher_id FK на teacher_profiles.id,
-    // а с клиента приходит userId = auth user_id (profiles.id).
-    const { data: tp, error: tpErr } = await admin
-      .from('teacher_profiles')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (tpErr) {
-      console.error('[lesson/materials POST] teacher_profiles lookup failed', tpErr)
+    // Validate title.
+    const trimmedTitle = typeof title === 'string' ? title.trim() : ''
+    if (!trimmedTitle) {
+      return NextResponse.json({ error: 'Missing title' }, { status: 400 })
     }
-    if (!tp?.id) {
+    if (trimmedTitle.length > 200) {
+      return NextResponse.json({ error: 'Title too long' }, { status: 400 })
+    }
+
+    // teacher_id resolution:
+    //  - teacher caller → их teacher_profiles.id (gate.teacherProfileId).
+    //  - admin caller   → берём teacher_id урока (он уже = teacher_profiles.id),
+    //    чтобы материал привязался к преподавателю урока.
+    let teacherIdForRow: string | null = gate.teacherProfileId
+    if (gate.role === 'admin') {
+      teacherIdForRow = gate.lesson.teacher_id ?? null
+    }
+    if (!teacherIdForRow) {
       return NextResponse.json(
-        { error: 'Загружать материалы может только преподаватель' },
-        { status: 403 }
+        { error: 'Не удалось определить teacher_id для материала' },
+        { status: 400 }
       )
     }
 
-    const { data, error } = await (admin.from('materials') as any)
+    const { data, error } = await (gate.admin.from('materials') as any)
       .insert({
         lesson_id: lessonId,
-        teacher_id: tp.id,
-        title,
-        description: content ?? null,
-        file_url: fileUrl ?? '',
-        storage_path: storagePath ?? null,
-        mime_type: mimeType ?? null,
-        file_size: fileSize ?? null,
+        teacher_id: teacherIdForRow,
+        title: trimmedTitle,
+        description: typeof content === 'string' ? content : null,
+        file_url: typeof fileUrl === 'string' ? fileUrl : '',
+        storage_path: typeof storagePath === 'string' ? storagePath : null,
+        mime_type: typeof mimeType === 'string' ? mimeType : null,
+        file_size:
+          typeof fileSize === 'number' && Number.isFinite(fileSize)
+            ? fileSize
+            : null,
         is_public: false,
       })
       .select()
