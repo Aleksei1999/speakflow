@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { LESSON_JOIN_WINDOW, LESSON_POST_WINDOW } from '@/lib/constants'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 
 const tokenRequestSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -23,6 +24,16 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // 60 токенов в минуту — комната переподключается, но это потолок
+    // здравой передeлки JWT для одного юзера.
+    const limited = await enforceRateLimit(request, {
+      name: 'jitsi:token',
+      keyParts: [user.id, getClientIp(request)],
+      max: 60,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // --- 2. Валидация входных данных ---
     let body: unknown
