@@ -193,6 +193,31 @@ export default function AdminSupportClient({
 
   const active = threads.find((t) => t.id === activeId) || null
 
+  // Keep the right-hand panel in sync with the current filter:
+  // if the active thread is not in the filtered list (e.g. user just
+  // switched from "Все" → "В работе" while looking at an open ticket),
+  // jump to the first thread in the new list — or clear selection so
+  // the empty-state «Выберите тикет» is shown.
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (activeId !== null) setActiveId(null)
+      return
+    }
+    if (!activeId || !filtered.some((t) => t.id === activeId)) {
+      setActiveId(filtered[0].id)
+      // If the URL pinned a thread that isn't in this filter,
+      // clear the search param so a refresh doesn't snap back.
+      try {
+        const url = new URL(window.location.href)
+        if (url.searchParams.has("thread")) {
+          url.searchParams.delete("thread")
+          window.history.replaceState({}, "", url.toString())
+        }
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, filtered])
+
   useEffect(() => {
     if (!activeId) {
       setMessages([])
