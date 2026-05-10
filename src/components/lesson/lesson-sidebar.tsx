@@ -37,19 +37,25 @@ export function LessonSidebar({
 
   const supabase = createClient()
 
-  // Load chat messages
+  // Load chat messages.
+  // Initial load — через защищённое API (auth + participant check).
+  // Realtime — оставляем supabase-js: RLS на lesson_messages теперь корректная
+  // (см. миграция 20260510120000), broadcast получают только участники.
   useEffect(() => {
     async function loadMessages() {
-      const { data } = await supabase
-        .from("lesson_messages")
-        .select("*")
-        .eq("lesson_id", lessonId)
-        .order("created_at", { ascending: true })
-      if (data) setMessages(data)
+      try {
+        const res = await fetch(`/api/lesson/messages?lessonId=${encodeURIComponent(lessonId)}`, {
+          cache: "no-store",
+        })
+        if (!res.ok) return
+        const data = (await res.json()) as ChatMessage[] | { error: string }
+        if (Array.isArray(data)) setMessages(data)
+      } catch {
+        // тихо: компонент покажет пустой список
+      }
     }
     loadMessages()
 
-    // Subscribe to realtime
     const channel = supabase
       .channel(`lesson-chat-${lessonId}`)
       .on(
@@ -69,21 +75,29 @@ export function LessonSidebar({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [lessonId])
+  }, [lessonId, supabase])
 
-  // Load notes
+  // Load notes — тоже через защищённое API.
   useEffect(() => {
     async function loadNotes() {
-      const { data } = await supabase
-        .from("lesson_notes")
-        .select("content")
-        .eq("lesson_id", lessonId)
-        .eq("user_id", userId)
-        .maybeSingle()
-      if (data) setNotes((data as any).content)
+      try {
+        const res = await fetch(`/api/lesson/notes?lessonId=${encodeURIComponent(lessonId)}`, {
+          cache: "no-store",
+        })
+        if (!res.ok) return
+        const data = (await res.json()) as Array<{ content: string }> | { error: string }
+        if (Array.isArray(data) && data.length > 0) {
+          // У одного пользователя одна заметка на урок (unique key
+          // lesson_id+user_id), но defensively берём последнюю.
+          const last = data[data.length - 1]
+          if (last?.content) setNotes(last.content)
+        }
+      } catch {
+        // ignore
+      }
     }
     loadNotes()
-  }, [lessonId, userId])
+  }, [lessonId])
 
   // Auto-scroll chat
   useEffect(() => {
@@ -91,21 +105,34 @@ export function LessonSidebar({
   }, [messages])
 
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim()) return
-    await (supabase.from("lesson_messages") as any).insert({
-      lesson_id: lessonId,
-      sender_id: userId,
-      message: newMessage.trim(),
-    })
-    setNewMessage("")
-  }, [newMessage, lessonId, userId])
+    const text = newMessage.trim()
+    if (!text) return
+    try {
+      const res = await fetch("/api/lesson/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, message: text }),
+      })
+      if (!res.ok) return
+      // Не пушим в local state — получим через realtime broadcast
+      // от своего же INSERT, чтобы не было дубликата.
+      setNewMessage("")
+    } catch {
+      // тихо: можно показать toast, но в комнате урока обычно не хочется
+    }
+  }, [newMessage, lessonId])
 
   const saveNotes = useCallback(async () => {
-    await (supabase.from("lesson_notes") as any).upsert(
-      { lesson_id: lessonId, user_id: userId, content: notes },
-      { onConflict: "lesson_id,user_id" }
-    )
-  }, [notes, lessonId, userId])
+    try {
+      await fetch("/api/lesson/notes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, content: notes }),
+      })
+    } catch {
+      // ignore — следующий save попробует ещё раз
+    }
+  }, [notes, lessonId])
 
   const tabs = [
     { key: "chat" as Tab, label: "Чат", icon: MessageSquare },
