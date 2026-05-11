@@ -162,7 +162,18 @@
 .hero {
   position: relative;
   min-height: calc(100vh - 78px);
-  padding: clamp(30px, 4vw, 56px) clamp(24px, 6vw, 110px) 28px;
+  padding: clamp(30px, 4vw, 56px) clamp(24px, 6vw, 110px) 60px;
+}
+
+/* Когда .hero embed'нут на главной (без обёртки .page) — учитываем,
+   что глобальный navbar position:fixed/sticky занимает ~70px сверху;
+   делаем 100vh, а нижний padding больше, чтобы стол с книгами в
+   нижней части фото не обрезался следующим блоком. */
+:global(body) .hero {
+  min-height: 100vh;
+  padding-top: clamp(90px, 10vh, 130px);
+  padding-bottom: clamp(40px, 6vh, 80px);
+  overflow: hidden;
 }
 
 .glow {
@@ -179,9 +190,12 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(330px, 1fr) minmax(410px, 1.1fr) minmax(320px, 0.95fr);
+  /* Дали средней колонке (фото) меньше веса и больше места левой/правой,
+     иначе на ноуте 1280px правый speech-bubble обрезался. */
+  grid-template-columns: minmax(300px, 1fr) minmax(360px, 1fr) minmax(300px, 1fr);
   align-items: center;
-  max-width: 1220px;
+  gap: clamp(16px, 2vw, 40px);
+  max-width: 1320px;
   min-height: 655px;
   margin: 0 auto;
 }
@@ -334,11 +348,13 @@
   z-index: 3;
   align-self: end;
   min-height: 655px;
-  margin-inline: -130px -100px;
+  /* Уменьшил negative-margin: на узких desktop ширинах (1280-1440)
+     фото выпирало за heroGrid и обрезало правую колонку (speech bubble). */
+  margin-inline: -50px -40px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  transform: translateY(-92px);
+  transform: translateY(-40px);
 }
 
 .photoStage::before,
@@ -374,19 +390,22 @@
 }
 
 .heroPhoto {
-  width: min(1260px, 92vw);
-  max-width: none;
-  height: 700px;
+  /* Авто-высота вместо фикс. 700px — теперь фото не упирается в
+     обрезание стола снизу на промежуточных экранах. */
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  max-height: min(720px, 78vh);
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.42));
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-    linear-gradient(to bottom, #000 0%, #000 76%, rgba(0, 0, 0, 0.82) 84%, transparent 100%);
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-    linear-gradient(to bottom, #000 0%, #000 76%, rgba(0, 0, 0, 0.82) 84%, transparent 100%);
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
   mask-composite: intersect;
 }
 
@@ -428,6 +447,14 @@
   align-items: center;
   padding-top: 22px;
   text-align: center;
+  /* Чтобы правая колонка не вылезала за viewport на средних экранах. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leftPanel {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .speechBubble {
