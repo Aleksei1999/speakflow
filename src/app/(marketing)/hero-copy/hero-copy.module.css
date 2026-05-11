@@ -818,21 +818,33 @@
   }
 
   .photoStage {
+    /* На mobile фото идёт ВТОРЫМ блоком — под левым заголовком и
+       streak-плашкой, перед правым h2/CTA. Раньше фото было поверх
+       и опускалось через transform/negative-margin, отчего streak
+       криво накладывался на «well done.». */
     order: 2;
     min-height: auto;
-    margin: -20px -28px -28px;
-    opacity: 0.9;
+    margin: 6px -12px 12px;
+    opacity: 1;
+    transform: none;
   }
 
   .heroPhoto {
-    width: 112vw;
+    width: 100%;
     max-width: none;
     height: auto;
     object-fit: contain;
+    /* Убираем боковую маску, чтобы на узком экране картинка не
+       обрезалась по краям. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
   }
 
   .leftPanel {
     order: 1;
+    /* Чтобы streak-плашка не наезжала на текст и шла нормальным
+       flow'ом — не абсолютная. */
+    align-items: flex-start;
   }
 
   .rightPanel {
@@ -847,8 +859,8 @@
   }
 
   .leftPanel h1 {
-    margin: 22px 0 0;
-    font-size: clamp(46px, 16vw, 68px);
+    margin: 0;
+    font-size: clamp(46px, 14vw, 64px);
   }
 
   .leftPanel h1 strong {
@@ -856,9 +868,9 @@
   }
 
   .streakCard {
-    position: absolute;
-    left: 18px;
-    top: 49%;
+    /* На mobile — обычный flow прямо под «well done.», без абсолюта. */
+    position: static;
+    margin-top: 18px;
     min-height: 58px;
     padding: 10px 12px;
     gap: 10px;
