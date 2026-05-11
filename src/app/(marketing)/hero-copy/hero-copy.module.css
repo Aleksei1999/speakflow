@@ -1,4 +1,7 @@
-.page {
+/* Тема переменных живёт И на .page (страница /hero-copy), И на самом
+   .hero — чтобы блок можно было embed'нуть на главной без обёртки. */
+.page,
+.hero {
   --hero-bg: #050505;
   --hero-bg-soft: #101010;
   --hero-text: #fff8ee;
@@ -11,15 +14,19 @@
   --hero-red-dark: #b92731;
   --hero-lime: #d8f26a;
   --hero-shadow: rgba(0, 0, 0, 0.52);
-  min-height: 100vh;
   color: var(--hero-text);
+}
+
+.page {
+  min-height: 100vh;
   background:
     radial-gradient(circle at 50% 28%, rgba(239, 51, 64, 0.28), transparent 22rem),
     linear-gradient(180deg, var(--hero-bg), var(--hero-bg-soft));
   overflow: hidden;
 }
 
-.page[data-theme="light"] {
+.page[data-theme="light"],
+.hero[data-theme="light"] {
   --hero-bg: #fbfaf7;
   --hero-bg-soft: #fff;
   --hero-text: #181818;
@@ -29,6 +36,9 @@
   --hero-card: rgba(255, 255, 255, 0.78);
   --hero-card-solid: #fff;
   --hero-shadow: rgba(36, 18, 18, 0.14);
+}
+
+.page[data-theme="light"] {
   background:
     radial-gradient(circle at 50% 28%, rgba(239, 51, 64, 0.12), transparent 22rem),
     linear-gradient(180deg, var(--hero-bg), var(--hero-bg-soft));
@@ -353,11 +363,13 @@
   background: linear-gradient(270deg, var(--hero-bg) 0%, color-mix(in srgb, var(--hero-bg) 78%, transparent) 44%, transparent 100%);
 }
 
-.page[data-theme="light"] .photoStage::before {
+.page[data-theme="light"] .photoStage::before,
+.hero[data-theme="light"] .photoStage::before {
   background: linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
 }
 
-.page[data-theme="light"] .photoStage::after {
+.page[data-theme="light"] .photoStage::after,
+.hero[data-theme="light"] .photoStage::after {
   background: linear-gradient(270deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
 }
 
@@ -378,7 +390,8 @@
   mask-composite: intersect;
 }
 
-.page[data-theme="light"] .heroPhoto {
+.page[data-theme="light"] .heroPhoto,
+.hero[data-theme="light"] .heroPhoto {
   filter: drop-shadow(0 28px 70px rgba(37, 19, 19, 0.24));
 }
 
@@ -399,7 +412,8 @@
   pointer-events: none;
 }
 
-.page[data-theme="light"] .tableShade {
+.page[data-theme="light"] .tableShade,
+.hero[data-theme="light"] .tableShade {
   background: linear-gradient(
     180deg,
     transparent 0%,
@@ -610,7 +624,8 @@
   box-shadow: 0 7px 0 #1a1a1a;
 }
 
-.page[data-theme="light"] .secondaryCta {
+.page[data-theme="light"] .secondaryCta,
+.hero[data-theme="light"] .secondaryCta {
   color: var(--hero-text);
   background: var(--hero-card);
   border: 1px solid var(--hero-line);
