@@ -206,7 +206,7 @@
 }
 
 .leftPanel h1 {
-  margin: 58px 0 54px;
+  margin: 0 0 54px;
   font-size: clamp(56px, 7vw, 91px);
   line-height: 0.9;
   font-weight: 950;
@@ -285,6 +285,36 @@
   transform: translateY(-92px);
 }
 
+.photoStage::before,
+.photoStage::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  bottom: -24px;
+  width: 280px;
+  height: 210px;
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.photoStage::before {
+  left: -30%;
+  background: linear-gradient(90deg, var(--hero-bg) 0%, color-mix(in srgb, var(--hero-bg) 78%, transparent) 44%, transparent 100%);
+}
+
+.photoStage::after {
+  right: -28%;
+  background: linear-gradient(270deg, var(--hero-bg) 0%, color-mix(in srgb, var(--hero-bg) 78%, transparent) 44%, transparent 100%);
+}
+
+.page[data-theme="light"] .photoStage::before {
+  background: linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
+}
+
+.page[data-theme="light"] .photoStage::after {
+  background: linear-gradient(270deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
+}
+
 .heroPhoto {
   width: min(1260px, 92vw);
   max-width: none;
@@ -292,6 +322,14 @@
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.42));
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 76%, rgba(0, 0, 0, 0.82) 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 76%, rgba(0, 0, 0, 0.82) 84%, transparent 100%);
+  mask-composite: intersect;
 }
 
 .page[data-theme="light"] .heroPhoto {
@@ -300,16 +338,28 @@
 
 .tableShade {
   position: absolute;
-  left: -6%;
-  right: -4%;
-  bottom: 0;
-  height: 64px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.58));
+  z-index: 4;
+  left: -22%;
+  right: -20%;
+  bottom: -20px;
+  height: 190px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--hero-bg) 74%, transparent) 58%,
+    var(--hero-bg) 100%
+  );
+  filter: blur(2px);
   pointer-events: none;
 }
 
 .page[data-theme="light"] .tableShade {
-  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.7));
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.74) 58%,
+    var(--hero-bg) 100%
+  );
 }
 
 .rightPanel {
@@ -360,6 +410,23 @@
 
 .rightPanel h2 span {
   color: var(--hero-red);
+}
+
+/* «raw» — обычный жирный с красным цветом. */
+.rightPanel h2 .h2Accent {
+  color: var(--hero-red);
+  font-weight: 900;
+  font-style: normal;
+}
+
+/* «well done.» в правой колонке — рукописный (Gluten cursive),
+   симметрично с «well done.» слева. */
+.rightPanel h2 .h2Cursive {
+  color: var(--hero-red);
+  font-family: var(--font-gluten), cursive;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .levelDot,
@@ -427,9 +494,17 @@
 }
 
 .secondaryCta {
+  color: #fff;
+  background: #0A0A0A;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 7px 0 #1a1a1a;
+}
+
+.page[data-theme="light"] .secondaryCta {
   color: var(--hero-text);
   background: var(--hero-card);
   border: 1px solid var(--hero-line);
+  box-shadow: 0 7px 0 rgba(24, 24, 24, 0.08);
 }
 
 .primaryCta:hover,

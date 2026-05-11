@@ -57,7 +57,6 @@ export function HeroCopyPage() {
 
         <div className={styles.heroGrid}>
           <div className={styles.leftPanel}>
-            <p className={styles.eyebrow}>EdTech platform + gamification</p>
             <h1>
               <span>Make it</span>
               <strong>well done.</strong>
@@ -95,9 +94,9 @@ export function HeroCopyPage() {
             <h2>
               Прожарь свой
               <br />
-              английский от <span>raw</span>
+              английский от <span className={styles.h2Accent}>raw</span>
               <br />
-              до <span>well done.</span>
+              до <span className={styles.h2Cursive}>well done.</span>
             </h2>
 
             <div className={styles.xpCard}>
