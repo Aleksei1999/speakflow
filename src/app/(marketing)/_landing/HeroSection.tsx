@@ -39,6 +39,27 @@ export default function HeroSection() {
           .hero на главной, оборачиваем в page-классы через явный wrapper. */}
       <div className={styles.glow} />
 
+      {/* Декоративный «дым» из английских слов на фоне. Заполняет
+          пустые поля слева и справа от фото. aria-hidden — это чистая
+          типографика, не должна попадать в screen reader. */}
+      <div className={styles.floatingWords} aria-hidden="true">
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwWhite} ${styles.fwHuge}`} style={{ top: "6%",  left: "-2%",   opacity: 0.05, transform: "rotate(-6deg)" }}>speak</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwRed}  ${styles.fwLg}`}   style={{ top: "18%", left: "12%",   opacity: 0.32, transform: "rotate(-8deg)" }}>fluent</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwRed}    ${styles.fwMd}`}   style={{ top: "32%", left: "4%",    opacity: 0.16, transform: "rotate(4deg)" }}>practice</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwWhite} ${styles.fwSm}`}  style={{ top: "44%", left: "16%",   opacity: 0.42, transform: "rotate(-3deg)" }}>level up</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwWhite} ${styles.fwXl}`}    style={{ top: "60%", left: "1%",    opacity: 0.07, transform: "rotate(-9deg)" }}>vocabulary</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwRed}    ${styles.fwSm}`}   style={{ top: "74%", left: "13%",   opacity: 0.55, transform: "rotate(2deg)" }}>streak</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwRed}  ${styles.fwMd}`}  style={{ top: "84%", left: "5%",    opacity: 0.22, transform: "rotate(-4deg)" }}>well done</span>
+
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwWhite} ${styles.fwHuge}`} style={{ top: "8%",  right: "-1%",  opacity: 0.06, transform: "rotate(6deg)" }}>grammar</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwRed}  ${styles.fwLg}`} style={{ top: "22%", right: "10%",  opacity: 0.36, transform: "rotate(7deg)" }}>raw</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwRed}    ${styles.fwMd}`}  style={{ top: "36%", right: "3%",   opacity: 0.18, transform: "rotate(-5deg)" }}>native</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwWhite} ${styles.fwSm}`} style={{ top: "48%", right: "16%",  opacity: 0.5,  transform: "rotate(3deg)" }}>debate</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwWhite} ${styles.fwXl}`}   style={{ top: "62%", right: "1%",   opacity: 0.08, transform: "rotate(8deg)" }}>achievement</span>
+        <span className={`${styles.fw} ${styles.fwSans} ${styles.fwRed}    ${styles.fwSm}`}  style={{ top: "76%", right: "12%",  opacity: 0.45, transform: "rotate(-2deg)" }}>XP +50</span>
+        <span className={`${styles.fw} ${styles.fwCursive} ${styles.fwRed}  ${styles.fwMd}`} style={{ top: "86%", right: "5%",   opacity: 0.24, transform: "rotate(5deg)" }}>english</span>
+      </div>
+
       <div className={styles.heroGrid}>
         <div className={styles.leftPanel}>
           <h1>
