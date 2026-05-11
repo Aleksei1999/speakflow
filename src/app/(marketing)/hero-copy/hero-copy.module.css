@@ -167,12 +167,12 @@
 
 /* Когда .hero embed'нут на главной (без обёртки .page) — учитываем,
    что глобальный navbar position:fixed/sticky занимает ~70px сверху;
-   делаем 100vh, а нижний padding больше, чтобы стол с книгами в
-   нижней части фото не обрезался следующим блоком. */
+   и даём блоку достаточно высоты, чтобы стол с книгами в нижней
+   части фото влез целиком. */
 :global(body) .hero {
-  min-height: 100vh;
+  min-height: clamp(820px, 100vh, 1100px);
   padding-top: clamp(90px, 10vh, 130px);
-  padding-bottom: clamp(40px, 6vh, 80px);
+  padding-bottom: clamp(80px, 10vh, 140px);
   overflow: hidden;
 }
 
@@ -190,13 +190,11 @@
   position: relative;
   z-index: 2;
   display: grid;
-  /* Дали средней колонке (фото) меньше веса и больше места левой/правой,
-     иначе на ноуте 1280px правый speech-bubble обрезался. */
-  grid-template-columns: minmax(300px, 1fr) minmax(360px, 1fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(300px, 1fr) minmax(410px, 1.1fr) minmax(300px, 0.95fr);
   align-items: center;
-  gap: clamp(16px, 2vw, 40px);
+  gap: clamp(16px, 2vw, 32px);
   max-width: 1320px;
-  min-height: 655px;
+  min-height: 700px;
   margin: 0 auto;
 }
 
@@ -347,14 +345,14 @@
   position: relative;
   z-index: 3;
   align-self: end;
-  min-height: 655px;
-  /* Уменьшил negative-margin: на узких desktop ширинах (1280-1440)
-     фото выпирало за heroGrid и обрезало правую колонку (speech bubble). */
-  margin-inline: -50px -40px;
+  min-height: 700px;
+  margin-inline: -130px -100px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  transform: translateY(-40px);
+  /* Фото больше не «висит» поверх grid'а с большим отрицательным
+     смещением — увеличиваем сам hero снизу, а не уменьшаем фото. */
+  transform: translateY(0);
 }
 
 .photoStage::before,
@@ -390,21 +388,18 @@
 }
 
 .heroPhoto {
-  /* Авто-высота вместо фикс. 700px — теперь фото не упирается в
-     обрезание стола снизу на промежуточных экранах. */
-  width: 100%;
-  max-width: 720px;
-  height: auto;
-  max-height: min(720px, 78vh);
+  width: min(1260px, 92vw);
+  max-width: none;
+  height: 700px;
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.42));
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
     linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
     linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
   mask-composite: intersect;
 }
