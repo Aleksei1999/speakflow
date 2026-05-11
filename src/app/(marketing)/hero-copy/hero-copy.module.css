@@ -186,6 +186,52 @@
   pointer-events: none;
 }
 
+/* Floating background words — рандомные английские слова slightly faded,
+   разными шрифтами и цветами. Заполняют пустые поля слева/справа от фото. */
+.floatingWords {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fw {
+  position: absolute;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  text-transform: lowercase;
+  white-space: nowrap;
+  user-select: none;
+  will-change: transform;
+  animation: hcFloat 9s ease-in-out infinite;
+}
+
+.fw:nth-child(2n)   { animation-duration: 11s; animation-delay: -1s; }
+.fw:nth-child(3n)   { animation-duration: 13s; animation-delay: -3s; }
+.fw:nth-child(5n+1) { animation-duration: 15s; animation-delay: -5s; }
+
+.fwSans    { font-family: var(--font-sans), Inter, system-ui, sans-serif; font-weight: 950; }
+.fwCursive { font-family: var(--font-gluten), "Gluten", cursive; font-weight: 700; }
+
+.fwRed   { color: var(--hero-red); }
+.fwWhite { color: var(--hero-text); }
+
+.fwSm   { font-size: clamp(20px, 1.8vw, 28px); }
+.fwMd   { font-size: clamp(28px, 2.4vw, 42px); }
+.fwLg   { font-size: clamp(40px, 3.4vw, 60px); }
+.fwXl   { font-size: clamp(56px, 5vw, 84px); }
+.fwHuge { font-size: clamp(70px, 6.4vw, 112px); }
+
+/* На mobile фон-слова мешают и плохо помещаются — выключаем. */
+@media (max-width: 760px) {
+  .floatingWords { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fw { animation: none !important; }
+}
+
 .heroGrid {
   position: relative;
   z-index: 2;
