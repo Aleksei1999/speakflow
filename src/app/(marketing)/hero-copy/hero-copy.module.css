@@ -203,13 +203,26 @@
   text-transform: lowercase;
   white-space: nowrap;
   user-select: none;
-  will-change: transform;
-  animation: hcFloat 9s ease-in-out infinite;
+  will-change: transform, clip-path;
+  /* Эффект «печатной машинки»: слово вырезано справа, потом полоса
+     открывается слева направо. После окончания печати — лёгкий float. */
+  clip-path: inset(0 100% 0 0);
+  transform: rotate(var(--rot, 0deg));
+  animation:
+    hcType var(--type-dur, 1.2s) steps(18, end) var(--type-delay, 0s) forwards,
+    hcFloatRot 9s ease-in-out calc(var(--type-delay, 0s) + var(--type-dur, 1.2s)) infinite;
 }
 
-.fw:nth-child(2n)   { animation-duration: 11s; animation-delay: -1s; }
-.fw:nth-child(3n)   { animation-duration: 13s; animation-delay: -3s; }
-.fw:nth-child(5n+1) { animation-duration: 15s; animation-delay: -5s; }
+@keyframes hcType {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+/* float, который сохраняет наш rotate (var(--rot)). */
+@keyframes hcFloatRot {
+  0%, 100% { transform: rotate(var(--rot, 0deg)) translateY(0); }
+  50%      { transform: rotate(var(--rot, 0deg)) translateY(-6px); }
+}
 
 .fwSans    { font-family: var(--font-sans), Inter, system-ui, sans-serif; font-weight: 950; }
 .fwCursive { font-family: var(--font-gluten), "Gluten", cursive; font-weight: 700; }
@@ -217,7 +230,7 @@
 .fwRed   { color: var(--hero-red); }
 .fwWhite { color: var(--hero-text); }
 
-.fwSm   { font-size: clamp(20px, 1.8vw, 28px); }
+.fwSm   { font-size: clamp(16px, 1.4vw, 22px); }
 .fwMd   { font-size: clamp(28px, 2.4vw, 42px); }
 .fwLg   { font-size: clamp(40px, 3.4vw, 60px); }
 .fwXl   { font-size: clamp(56px, 5vw, 84px); }
@@ -229,7 +242,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fw { animation: none !important; }
+  .fw {
+    animation: none !important;
+    clip-path: inset(0 0 0 0) !important;
+    transform: rotate(var(--rot, 0deg));
+  }
 }
 
 .heroGrid {
