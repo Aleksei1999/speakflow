@@ -226,11 +226,14 @@
 .leftPanel h1 strong {
   margin-top: 12px;
   color: var(--hero-red);
-  font-family: var(--font-gluten), cursive;
+  font-family: var(--font-gluten), "Gluten", cursive;
   font-size: clamp(54px, 7.2vw, 88px);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
+  /* «well done.» — рукописное, всегда в одну строку, даже если
+     контейнер узкий. */
+  white-space: nowrap;
 }
 
 .streakCard,
