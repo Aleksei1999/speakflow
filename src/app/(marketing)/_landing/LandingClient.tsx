@@ -17,6 +17,11 @@ import { useUser } from "@/hooks/use-user"
 // чтобы первый paint лендинга не разбухал ещё на ~6KB.
 const PricingSection = dynamic(() => import("./PricingSection"), { ssr: false })
 
+// Новый hero-блок (с фото преподавателя, speech-bubble, streak/XP cards,
+// анимациями). Стили — CSS module, тема синхронизируется с глобальным
+// data-theme на <html>. SSR на старте, чтобы LCP-картинка попадала в HTML.
+import HeroSection from "./HeroSection"
+
 const MiniBattleQuiz = dynamic(() => import("./MiniBattleQuiz"), {
   ssr: false,
   loading: () => (
@@ -226,64 +231,8 @@ export default function LandingClient() {
         </div>
       </nav>
 
-      {/* LEVEL 1: HERO */}
-      <section className="hero" data-level="1" data-xp="5">
-        <div className="hero-avatars">
-          <div className="floating-person fp1">
-            <div className="person-avatar"><I3 kind="face-m1"></I3></div>
-            <div className="person-bubble">
-              Just leveled up! <I3 kind="fire" size="sm" style={{ verticalAlign: "-4px" }}></I3>
-            </div>
-          </div>
-          <div className="floating-person fp2">
-            <div className="person-avatar"><I3 kind="face-m2"></I3></div>
-            <div className="person-bubble">
-              +50 XP за дебаты <I3 kind="sword" size="sm" style={{ verticalAlign: "-4px" }}></I3>
-            </div>
-          </div>
-          <div className="floating-person fp3">
-            <div className="person-avatar"><I3 kind="face-m3"></I3></div>
-            <div className="person-bubble">
-              Streak: 14 days <I3 kind="xp-star" size="sm" style={{ verticalAlign: "-4px" }}></I3>
-            </div>
-          </div>
-          <div className="floating-person fp4">
-            <div className="person-avatar"><I3 kind="face-m4"></I3></div>
-            <div className="person-bubble">
-              Wine club tonight <I3 kind="wine" size="sm" style={{ verticalAlign: "-4px" }}></I3>
-            </div>
-          </div>
-        </div>
-        <div className="hero-badge">EdTech Platform + Gamification</div>
-        <h1>Make it<br /><span className="gluten">well done.</span></h1>
-        <p className="hero-sub">
-          Персональная платформа с геймификацией, живое коммьюнити, уроки и speaking clubs. Прожарь свой английский от <strong>Raw</strong> до <strong>Well Done</strong>.
-        </p>
-        <div className="hero-cta">
-          <div className="hero-buttons">
-            <a href="#lvl3" className="btn-primary">
-              <I3 kind="fire" size="sm" style={{ verticalAlign: "-4px", marginRight: 4 }}></I3> Начать прохождение
-            </a>
-            <a href="#lvl4" className="btn-ghost">Как это работает</a>
-          </div>
-          <div className="social-proof">
-            <div className="sp-faces">
-              <div className="sp-face"><I3 kind="face-m1"></I3></div>
-              <div className="sp-face"><I3 kind="face-m2"></I3></div>
-              <div className="sp-face"><I3 kind="face-m3"></I3></div>
-              <div className="sp-face"><I3 kind="face-m4"></I3></div>
-              <div className="sp-face"><I3 kind="face-m5"></I3></div>
-            </div>
-            <div className="sp-text"><strong>500+</strong> учеников уже играют</div>
-          </div>
-        </div>
-        <div
-          className="scroll-hint"
-          onClick={() => document.querySelector("[data-level='2']")?.scrollIntoView({ behavior: "smooth" })}
-        >
-          <div className="scroll-line"></div>Level 2 ↓
-        </div>
-      </section>
+      {/* LEVEL 1: HERO (новый, портирован из /hero-copy) */}
+      <HeroSection />
 
       <div className="marquee-wrap">
         <div className="marquee">
