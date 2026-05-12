@@ -413,9 +413,10 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* Фото больше не «висит» поверх grid'а с большим отрицательным
-     смещением — увеличиваем сам hero снизу, а не уменьшаем фото. */
-  transform: translateY(0);
+  /* Поднимаем фото вверх, чтобы стол с книгами/чашкой/паспортом
+     оказался ВЫШЕ блока CTA («Начать прохождение») — иначе нижняя
+     часть фото уезжала за CTA-плашку. */
+  transform: translateY(-90px);
 }
 
 .photoStage::before,
@@ -621,7 +622,9 @@
   position: relative;
   z-index: 10;
   width: min(100%, 760px);
-  margin: -86px auto 0;
+  /* Меньше отрицательного отступа сверху: CTA не лезет так агрессивно
+     поверх нижней части фото, стол остаётся видимым. */
+  margin: -30px auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
