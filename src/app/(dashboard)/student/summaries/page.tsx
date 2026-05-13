@@ -57,6 +57,21 @@ export default async function StudentSummariesPage() {
   const attemptByQuiz = new Map<string, any>()
   for (const a of (attempts ?? []) as any[]) attemptByQuiz.set(a.quiz_id, a)
 
+  // Security MED: correct_index + explanation выдаём клиенту ТОЛЬКО
+  // после того как студент сабмитил квиз (тогда уже не имеет смысла
+  // скрывать). До сабмита — стрипаем. Без этого студент мог открыть
+  // DevTools и увидеть все правильные ответы в jsonb.
+  for (const q of quizBySummary.values()) {
+    const attempted = attemptByQuiz.has(q.id)
+    if (!attempted && Array.isArray(q.questions)) {
+      q.questions = q.questions.map((it: any) => {
+        const { correct_index: _ci, explanation: _ex, ...safe } = it ?? {}
+        void _ci; void _ex
+        return safe
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
