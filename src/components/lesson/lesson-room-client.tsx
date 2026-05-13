@@ -335,14 +335,56 @@ export function LessonRoomClient({
     if (t === "slow-2g" || t === "2g" || t === "3g") setSlowNetworkHint(true)
   }, [])
 
-  // Two-tab guard: ОТКЛЮЧЕН — heartbeat в localStorage не успевал
-  // очищаться на page refresh (React unmount не гарантирован при
-  // unload), и страница после reload видела свой же старый heartbeat
-  // <5с назад и блокировала вход. Коллизия двух реальных вкладок
-  // мониторится recorder'ом (signed URL upsert) и наблюдается в чате.
-  // Если понадобится — переписать на BroadcastChannel + timeout retry.
-  // useEffect — пустой stub чтобы линтер не ругался.
-  useEffect(() => { void duplicateTab }, [duplicateTab])
+  // Two-tab guard: если у этого юзера уже открыт этот урок в другой
+  // вкладке, две конференции на один user_id ломают чат, два MediaRecorder
+  // дерутся за signed URL. Heartbeat в localStorage решает: claim-and-watch.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const KEY = `lesson:${lessonId}:tab`
+    const STALE_MS = 12_000
+    const HEARTBEAT_MS = 5_000
+    const tabId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+    function read(): { tabId: string; ts: number } | null {
+      try {
+        const raw = localStorage.getItem(KEY)
+        if (!raw) return null
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
+    }
+    function write() {
+      try { localStorage.setItem(KEY, JSON.stringify({ tabId, ts: Date.now() })) } catch {}
+    }
+
+    const existing = read()
+    if (existing && existing.tabId !== tabId && Date.now() - existing.ts < STALE_MS) {
+      setDuplicateTab(true)
+      return
+    }
+    write()
+    const iv = setInterval(write, HEARTBEAT_MS)
+
+    function onStorage(e: StorageEvent) {
+      if (e.key !== KEY) return
+      const v = read()
+      if (v && v.tabId !== tabId && Date.now() - v.ts < STALE_MS) {
+        setDuplicateTab(true)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+
+    return () => {
+      clearInterval(iv)
+      window.removeEventListener("storage", onStorage)
+      // Освобождаем slot только если это всё ещё мы.
+      const cur = read()
+      if (cur?.tabId === tabId) {
+        try { localStorage.removeItem(KEY) } catch {}
+      }
+    }
+  }, [lessonId])
 
   // Авто-запись урока. Hook сам разбирается: teacher → /init, student
   // → polls /active. Никаких кнопок: согласие зафиксировано в оферте.
