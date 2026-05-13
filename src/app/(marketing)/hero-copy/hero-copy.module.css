@@ -457,19 +457,6 @@
   top: 420px;
 }
 
-.streakCard > div {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-.streakCard > div b {
-  font-weight: 800;
-}
-.streakCard > div span {
-  font-size: 13px;
-  color: var(--hero-muted, #8a8a86);
-}
-
 .streakBadge {
   width: 44px;
   height: 44px;
@@ -560,81 +547,6 @@
   font-weight: 850;
   text-decoration: none;
   white-space: nowrap;
-}
-
-.ctaDock {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  align-items: flex-start;
-  margin-top: 14px;
-}
-
-.ctaButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.primaryCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 26px;
-  border-radius: 999px;
-  background: var(--hero-red, #e63946);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 800;
-  text-decoration: none;
-  border: none;
-  box-shadow: 0 8px 22px rgba(230, 57, 70, 0.28);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  white-space: nowrap;
-}
-.primaryCta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(230, 57, 70, 0.35);
-}
-.primaryCta:active {
-  transform: translateY(0);
-}
-.primaryCta > span {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.secondaryCta {
-  display: inline-flex;
-  align-items: center;
-  padding: 13px 22px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--hero-ink, #0a0a0a);
-  font-size: 15px;
-  font-weight: 700;
-  text-decoration: none;
-  border: 1.5px solid rgba(10, 10, 10, 0.18);
-  transition: background 0.15s ease, border-color 0.15s ease;
-  white-space: nowrap;
-}
-.secondaryCta:hover {
-  background: rgba(10, 10, 10, 0.04);
-  border-color: rgba(10, 10, 10, 0.3);
-}
-
-@media (max-width: 480px) {
-  .ctaButtons {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .primaryCta,
-  .secondaryCta {
-    justify-content: center;
-    width: 100%;
-  }
 }
 
 .socialProof {
@@ -743,20 +655,7 @@
 
 @media (max-width: 760px) {
   .page {
-    overflow-x: hidden;
-    overflow-y: auto;
-    max-width: 100vw;
-  }
-  .navbar {
-    padding-left: 0;
-    padding-right: 0;
-    max-width: 100vw;
-    box-sizing: border-box;
-  }
-  .navShell {
-    box-sizing: border-box;
-    max-width: calc(100vw - 16px);
-    margin: 0 8px;
+    overflow: auto;
   }
 
   .promoBar {
@@ -772,8 +671,10 @@
     display: none;
   }
 
-  /* navShell-flex для мобилы: одно правило вместо дубля с навбар-padding,
-     который я переопределил выше через box-sizing. */
+  .navbar {
+    padding: 12px 14px 0;
+  }
+
   .navShell {
     display: flex;
     min-height: 58px;

@@ -131,8 +131,8 @@ export default function HeroSection() {
           <div className={styles.streakCard}>
             <div className={styles.streakBadge}>★</div>
             <div>
-              <b>Стрик: 14 дней</b>
-              <span>Новый уровень!</span>
+              <b>Streak: 14 days</b>
+              <span>Just leveled up!</span>
             </div>
           </div>
         </div>
