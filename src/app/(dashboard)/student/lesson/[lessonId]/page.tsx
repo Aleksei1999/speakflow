@@ -103,6 +103,22 @@ export default async function StudentLessonPage({
     })
   } catch {}
 
+  // Помечаем урок как in_progress при первом заходе участника в окно
+  // доступа — иначе cron mark_missed_lessons (миграция 050) через
+  // ~10 мин после окончания пометит его как no_show.
+  if (lesson.status === 'booked') {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin')
+      await createAdminClient()
+        .from('lessons')
+        .update({ status: 'in_progress' })
+        .eq('id', lessonId)
+        .eq('status', 'booked')
+    } catch {
+      /* noop — урок не критично если не обновился, главное JWT уже сгенерирован */
+    }
+  }
+
   return (
     <LessonRoomClient
       lessonId={lesson.id}

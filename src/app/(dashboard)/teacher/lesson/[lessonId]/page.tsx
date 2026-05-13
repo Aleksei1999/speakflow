@@ -93,6 +93,22 @@ export default async function TeacherLessonPage({
     })
   } catch {}
 
+  // Помечаем урок как in_progress при первом заходе. Иначе cron
+  // mark_missed_lessons через ~10 мин после окончания пометит его
+  // как no_show, даже если все были в комнате.
+  if (lesson.status === 'booked') {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin')
+      await createAdminClient()
+        .from('lessons')
+        .update({ status: 'in_progress' })
+        .eq('id', lessonId)
+        .eq('status', 'booked')
+    } catch {
+      /* noop */
+    }
+  }
+
   return (
     <LessonRoomClient
       lessonId={lesson.id}
