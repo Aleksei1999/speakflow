@@ -157,15 +157,14 @@ export function useLessonRecorder({
       return null
     }
 
-    async function uploadOne(blob: Blob, seq: number, recId: string) {
-      // 1. signed URL
+    async function uploadOne(blob: Blob, recId: string): Promise<number> {
+      // 1. signed URL. seq назначает сервер атомарно (HIGH-9 fix).
       const urlRes = await fetch("/api/lesson/recording/chunk-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lessonId,
           recordingId: recId,
-          seq,
           mimeType: mimeRef.current,
         }),
       })
@@ -173,17 +172,16 @@ export function useLessonRecorder({
         const t = await urlRes.text().catch(() => "")
         throw new Error(`chunk-url ${urlRes.status} ${t}`)
       }
-      const { signedUrl, token } = await urlRes.json()
+      const { signedUrl, token, seq } = await urlRes.json()
       if (!signedUrl) throw new Error("no signedUrl")
 
-      // 2. PUT в Storage. Supabase signed upload URL ожидает либо
-      //    Authorization: Bearer <token>, либо x-upsert.
+      // 2. PUT в Storage. write-once: upsert:false на сервере →
+      //    повторная загрузка по тому же URL упадёт.
       const putRes = await fetch(signedUrl, {
         method: "PUT",
         headers: {
           "Content-Type": mimeRef.current,
           ...(token ? { authorization: `Bearer ${token}` } : {}),
-          "x-upsert": "true",
         },
         body: blob,
       })
@@ -192,6 +190,7 @@ export function useLessonRecorder({
         throw new Error(`storage PUT ${putRes.status} ${t}`)
       }
       totalBytesRef.current += blob.size
+      return typeof seq === "number" ? seq : 0
     }
 
     async function drainQueue(recId: string) {
@@ -200,16 +199,16 @@ export function useLessonRecorder({
       try {
         while (queueRef.current.length > 0) {
           const blob = queueRef.current.shift()!
-          const seq = seqRef.current++
           try {
-            await uploadOne(blob, seq, recId)
+            // seq назначает сервер (HIGH-9). Локальный seqRef держим
+            // как «максимально дошедший» для finalize.chunks_count.
+            const seq = await uploadOne(blob, recId)
+            if (seq + 1 > seqRef.current) seqRef.current = seq + 1
             if (!startedFiredRef.current) {
               startedFiredRef.current = true
               onStarted?.()
             }
           } catch (e: any) {
-            // Чанк потерян — лучше идти дальше, чем заблокировать
-            // recorder. На финальной фазе саммари мы простим дырки.
             console.warn("[lesson-recorder] chunk upload failed:", e?.message ?? e)
           }
         }
