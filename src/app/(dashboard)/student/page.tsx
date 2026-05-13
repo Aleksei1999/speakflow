@@ -420,7 +420,7 @@ export default async function StudentDashboardPage() {
           <div className="stat-change">🔥 Рекорд: {longestStreak}</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Уроков за 30 дн.</div>
+          <div className="stat-label">Уроков за месяц</div>
           <div className="stat-val">{monthLessonsCount}</div>
           <div className="stat-change">{completedMonthCount} завершено</div>
         </div>
