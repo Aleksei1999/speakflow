@@ -287,6 +287,18 @@ export function LessonRoomClient({
       jitsiApi.current = api
       setJitsiApiState(api)
 
+      // a11y: проставляем title для iframe, чтобы screen reader'ы
+      // объявляли его как «Видеоконференция урока», а не безымянный
+      // «frame». Jitsi external_api сам создаёт iframe без title.
+      const setIframeTitle = () => {
+        const iframe = jitsiRef.current?.querySelector("iframe")
+        if (iframe && !iframe.hasAttribute("title")) {
+          iframe.setAttribute("title", "Видеоконференция урока")
+        }
+      }
+      setTimeout(setIframeTitle, 100)
+      setTimeout(setIframeTitle, 800)
+
       // Жёстко форсим tile view — startWithTileView иногда игнорится
       // если кто-то уже в комнате. Через 800мс после init заставим UI.
       const forceTile = () => {
@@ -766,7 +778,7 @@ export function LessonRoomClient({
                     </div>
                     <div className="ci">
                       <input type="text" value={newMsg} onChange={e=>setNewMsg(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Написать сообщение..." autoComplete="off"/>
-                      <button className="sb" onClick={sendMsg}>
+                      <button className="sb" onClick={sendMsg} aria-label="Отправить сообщение">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                       </button>
                     </div>
@@ -819,7 +831,7 @@ export function LessonRoomClient({
                     </div>
                     <div className="ci">
                       <input type="text" value={noteInput} onChange={e=>setNoteInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendNote()} placeholder="Написать заметку..." autoComplete="off"/>
-                      <button className="sb" onClick={sendNote}>
+                      <button className="sb" onClick={sendNote} aria-label="Сохранить заметку">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                       </button>
                     </div>
