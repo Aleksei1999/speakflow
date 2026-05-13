@@ -332,7 +332,7 @@ export function useLessonRecorder({
         }
       })
 
-      // Доуплоадить хвост из очереди (последний chunk и любые задержавшиеся)
+      // Доуплоадить хвост из очереди.
       const recId = recordingIdRef.current
       if (recId) {
         try {
@@ -341,26 +341,31 @@ export function useLessonRecorder({
           /* ignore */
         }
 
-        // Finalize. Если не получилось — оставляем status='recording',
-        // другой участник или ручной cleanup закроют.
-        const durationSec = Math.max(
-          1,
-          Math.round((Date.now() - startedAtRef.current) / 1000)
-        )
-        try {
-          await fetch("/api/lesson/recording/finalize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lessonId,
-              recordingId: recId,
-              durationSec,
-              totalBytes: totalBytesRef.current,
-              chunksCount: Math.max(1, seqRef.current),
-            }),
-          })
-        } catch (e) {
-          console.warn("[lesson-recorder] finalize failed:", e)
+        // FIX CRIT-5: finalize теперь teacher-only. Студент мог
+        // на /finalize обвалить запись препода (chunk-url отдаёт 409,
+        // recorder препода молча умирает). Если препод тоже выходит —
+        // сам отдаст finalize. Если оба ушли грязно — sweep_stuck
+        // cron закроет recording через 4ч.
+        if (isTeacher) {
+          const durationSec = Math.max(
+            1,
+            Math.round((Date.now() - startedAtRef.current) / 1000)
+          )
+          try {
+            await fetch("/api/lesson/recording/finalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                lessonId,
+                recordingId: recId,
+                durationSec,
+                totalBytes: totalBytesRef.current,
+                chunksCount: Math.max(1, seqRef.current),
+              }),
+            })
+          } catch (e) {
+            console.warn("[lesson-recorder] finalize failed:", e)
+          }
         }
       }
 
@@ -372,9 +377,10 @@ export function useLessonRecorder({
     const onBeforeUnload = () => {
       // Sync-friendly teardown — браузер не подождёт async, но stop()
       // даст MediaRecorder'у выдать последний dataavailable и закрыть
-      // tracks. Главное — sendBeacon на /finalize, чтобы row не висла
-      // в 'recording' навсегда. Cron-sweep это страхует, но beacon
-      // закрывает урок мгновенно.
+      // tracks. Если это TEACHER — шлём sendBeacon на /finalize.
+      // Если STUDENT — только stop(), без вызова finalize (см. CRIT-5);
+      // recording останется в 'recording' пока учитель не выйдет либо
+      // sweep_stuck cron не подберёт через 4ч.
       try {
         recRef.current?.stop()
       } catch {
@@ -382,7 +388,7 @@ export function useLessonRecorder({
       }
 
       const recId = recordingIdRef.current
-      if (recId && typeof navigator !== "undefined" && navigator.sendBeacon) {
+      if (isTeacher && recId && typeof navigator !== "undefined" && navigator.sendBeacon) {
         const durationSec = Math.max(
           1,
           Math.round((Date.now() - startedAtRef.current) / 1000)
