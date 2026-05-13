@@ -8,10 +8,16 @@ const inter = Inter({
   subsets: ["latin", "cyrillic"],
 });
 
+// Gluten — акцентный «рукописный» шрифт. В CSS используется только
+// font-weight: 600/700 (для 800 браузер берёт ближайшее = 700, для 600
+// — точный матч). Раньше декларировали 400/500/700 — 400 и 500 не
+// использовались, а 600 матчился промежуточно из 500. Сократили до
+// фактически используемого набора → меньше @font-face деклараций в
+// preloaded CSS, меньше preload-хинтов в HTML.
 const gluten = Gluten({
   variable: "--font-gluten",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
