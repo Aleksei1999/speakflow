@@ -777,7 +777,13 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
                   </div>
                 </div>
                 <div className={`lesson-count${g.hasNew ? " has-new" : ""}`}>
-                  {g.hasNew ? `+${g.items.filter((m) => isNew(m.created_at)).length} новых` : `${g.items.length} материалов`}
+                  {g.hasNew ? `+${g.items.filter((m) => isNew(m.created_at)).length} новых` : (() => {
+                    const n = g.items.length;
+                    const mod10 = n % 10;
+                    const mod100 = n % 100;
+                    const word = mod10 === 1 && mod100 !== 11 ? "материал" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "материала" : "материалов";
+                    return `${n} ${word}`;
+                  })()}
                 </div>
                 <span className="lesson-chevron">
                   <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
