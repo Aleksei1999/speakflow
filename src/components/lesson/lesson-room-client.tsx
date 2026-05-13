@@ -30,7 +30,7 @@ declare global { interface Window { JitsiMeetExternalAPI: any } }
 
 const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
-.lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
+.lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px);max-width:100vw;box-sizing:border-box}
 .lr *{box-sizing:border-box}.lr a{color:inherit;text-decoration:none}.lr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0;padding-top:max(14px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
 .lr .lh-side{display:flex;align-items:center}.lr .lh-right{justify-content:flex-end}
@@ -156,6 +156,10 @@ const CSS = `
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){
+  /* На мобиле негативные margin'ы пробивают за dashboard padding и
+     дают ширину > viewport. Сбрасываем — пусть lesson-room держится
+     внутри padding'а layout'а, а не вылезает за него. */
+  .lr{margin:0;width:100%;max-width:100%}
   .lr .lh{padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-left)) 12px max(14px,env(safe-area-inset-right));grid-template-columns:auto 1fr;gap:10px}
   .lr .lh-center{display:none}
   .lr .lh-left{display:flex;align-items:center}
