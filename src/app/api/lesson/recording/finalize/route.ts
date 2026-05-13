@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { requireLessonParticipant } from "@/lib/api/lesson-auth"
+import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
 
 const BodySchema = z.object({
   lessonId: z.string().uuid(),
@@ -30,10 +30,13 @@ export async function POST(req: NextRequest) {
   }
   const { lessonId, recordingId, durationSec, totalBytes, chunksCount } = parsed.data
 
-  // Phase 1.2: финализировать может ЛЮБОЙ участник — кто первый
-  // отвалился, тот и закрывает запись. Если запись уже finalized —
-  // отдаём idempotent ok ниже.
-  const gate = await requireLessonParticipant(lessonId)
+  // FIX CRIT-5: finalize теперь teacher/admin-only. Раньше любой
+  // участник (включая студента) мог финализировать запись на середине
+  // урока — chunk-url тут же отдавал 409 и recorder препода молча
+  // падал. Студентский sendBeacon больше НЕ зовёт этот endpoint.
+  // Если препод закрыл вкладку, sweep_stuck cron (мигр 060) добьёт
+  // recording через 4ч.
+  const gate = await requireLessonTeacherOrAdmin(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { data: rec } = await gate.admin
