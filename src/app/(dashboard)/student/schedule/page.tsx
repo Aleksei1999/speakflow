@@ -11,6 +11,7 @@ import {
   isToday,
   isTomorrow,
   startOfWeek,
+  endOfWeek,
 } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/client"
@@ -123,6 +124,10 @@ const SCHEDULE_CSS = `
 .stu-schedule .lc-btn--wait{background:var(--bg);color:var(--muted)}
 .stu-schedule .lc-btn--cancelled{background:rgba(138,138,134,.08);color:var(--muted)}
 .stu-schedule .lc-btn--missed{background:rgba(245,158,11,.10);color:#B45309;border:1px solid rgba(245,158,11,.35)}
+.stu-schedule .lc-action-stack{display:flex;flex-direction:column;gap:4px;align-items:center}
+.stu-schedule .lc-btn--cancel-link{background:transparent;color:var(--muted);font-size:.7rem;font-weight:600;padding:2px 8px;border:none;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;cursor:pointer}
+.stu-schedule .lc-btn--cancel-link:hover{color:var(--red)}
+.stu-schedule .lc-btn--cancel-link:disabled{opacity:.5;cursor:wait}
 [data-theme="dark"] .stu-schedule .lc-btn--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 .stu-schedule .lc-btn--live{background:#16A34A;color:#fff;border:1px solid #15803D;font-weight:800;box-shadow:0 2px 0 rgba(21,128,61,.3);animation:lcLivePulse 1.6s ease-in-out infinite}
 .stu-schedule .lc-btn--live:hover{background:#15803D}
@@ -188,6 +193,7 @@ export default function StudentSchedulePage() {
   const [bookingOpen, setBookingOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [now, setNow] = useState<Date>(() => new Date())
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   // Live clock tick so "сейчас" / "ожидается" labels update without refresh.
   useEffect(() => {
@@ -301,6 +307,37 @@ export default function StudentSchedulePage() {
       if (!opts?.silent) setIsLoading(false)
     }
   }, [])
+
+  // Отмена урока. Confirm + POST /api/booking/cancel + рефреш списка.
+  // Политика возврата (24ч до начала) живёт на бэке, тут только UX.
+  const cancelLesson = useCallback(async (lessonId: string, scheduledAt: string) => {
+    const dt = new Date(scheduledAt)
+    const hoursLeft = (dt.getTime() - Date.now()) / 3_600_000
+    const hint = hoursLeft < 24
+      ? "До урока меньше 24 часов — возврат не положен по оферте."
+      : "Возврат на баланс будет начислен автоматически."
+    if (!confirm(`Отменить урок на ${format(dt, "EEEE, d MMMM HH:mm", { locale: ru })}?\n\n${hint}`)) return
+    setCancellingId(lessonId)
+    try {
+      const r = await fetch("/api/booking/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        alert(j?.error ?? "Не удалось отменить урок")
+        return
+      }
+      const ws = startOfWeek(weekCursor, { weekStartsOn: 1 })
+      const we = endOfWeek(weekCursor, { weekStartsOn: 1 })
+      await fetchLessons(ws, we, { silent: true })
+    } catch (e: any) {
+      alert(e?.message ?? "Ошибка сети")
+    } finally {
+      setCancellingId(null)
+    }
+  }, [weekCursor, fetchLessons])
 
   useEffect(() => {
     fetchLessons(weekStart, weekEnd)
@@ -574,7 +611,17 @@ export default function StudentSchedulePage() {
                       ) : joinable ? (
                         <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Зайти в урок</Link>
                       ) : (
-                        <span className="lc-btn lc-btn--wait">Запланирован</span>
+                        <div className="lc-action-stack">
+                          <span className="lc-btn lc-btn--wait">Запланирован</span>
+                          <button
+                            type="button"
+                            className="lc-btn lc-btn--cancel-link"
+                            disabled={cancellingId === lesson.id}
+                            onClick={() => cancelLesson(lesson.id, lesson.scheduled_at)}
+                          >
+                            {cancellingId === lesson.id ? "Отменяю..." : "Отменить"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
