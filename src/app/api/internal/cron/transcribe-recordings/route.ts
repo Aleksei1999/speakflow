@@ -49,17 +49,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, picked: null })
   }
 
-  // FIX CRIT-4: исключаем только recording'и с успешным транскриптом
-  // (status='ok'). failed-row либо чистится миграцией 062, либо
-  // считается «нужно retry» — её не существует на момент этого SELECT'а.
+  // CRIT-4: исключаем recording'и с успешным транскриптом (status='ok').
+  // HIGH-cap: также исключаем те, для которых уже ≥5 failed-попыток —
+  // дальше дёргать OpenAI бессмысленно, токсично по quota.
   const ids = candidates.map((c) => c.id)
+  const MAX_ATTEMPTS = 5
   const { data: existing } = await admin
     .from("lesson_transcripts")
-    .select("recording_id")
+    .select("recording_id, status")
     .in("recording_id", ids)
-    .eq("status", "ok")
-  const done = new Set((existing ?? []).map((e: any) => e.recording_id))
-  const target = candidates.find((c) => !done.has(c.id))
+  const failedCounts = new Map<string, number>()
+  const okSet = new Set<string>()
+  for (const row of existing ?? []) {
+    if ((row as any).status === "ok") okSet.add((row as any).recording_id)
+    else if ((row as any).status === "failed") {
+      const k = (row as any).recording_id
+      failedCounts.set(k, (failedCounts.get(k) ?? 0) + 1)
+    }
+  }
+  const target = candidates.find((c) => !okSet.has(c.id) && (failedCounts.get(c.id) ?? 0) < MAX_ATTEMPTS)
   if (!target) {
     return NextResponse.json({ ok: true, picked: null })
   }
@@ -100,11 +108,16 @@ export async function POST(req: NextRequest) {
   const textsByRole: Record<"T" | "S", string[]> = { T: [], S: [] }
   let chunksTranscribed = 0
   let chunksFailed = 0
+  // Реальные ошибки от OpenAI — раньше уходили в console.warn и
+  // терялись в логах. Сохраним 3 первых в error_message, чтобы было
+  // что отлаживать.
+  const errorSamples: string[] = []
 
   for (const chunk of chunks) {
     const dl = await downloadChunk(admin, chunk)
     if (!dl) {
       chunksFailed++
+      if (errorSamples.length < 3) errorSamples.push(`${chunk.name}: download failed`)
       continue
     }
     try {
@@ -128,10 +141,13 @@ export async function POST(req: NextRequest) {
         chunksTranscribed++
       } else {
         chunksFailed++
+        if (errorSamples.length < 3) errorSamples.push(`${chunk.name}: empty response (${dl.bytes}B, ${dl.blob.type})`)
       }
     } catch (e: any) {
-      console.warn(`[cron/transcribe] chunk ${chunk.name} failed:`, e?.message ?? e)
+      const msg = e?.message ?? String(e)
+      console.warn(`[cron/transcribe] chunk ${chunk.name} failed:`, msg)
       chunksFailed++
+      if (errorSamples.length < 3) errorSamples.push(`${chunk.name}: ${msg.slice(0, 200)}`)
     }
   }
 
@@ -144,14 +160,23 @@ export async function POST(req: NextRequest) {
   console.log(`[cron/transcribe] chunks ok=${chunksTranscribed} fail=${chunksFailed} of ${chunks.length}`)
 
   if (segments.length === 0) {
+    // Считаем сколько раз уже пытались для этого recording (cap = 5).
+    const { count: prevAttempts } = await admin
+      .from("lesson_transcripts")
+      .select("id", { count: "exact", head: true })
+      .eq("recording_id", target.id)
+      .eq("status", "failed")
+    const attemptsSoFar = (prevAttempts ?? 0) + 1
+    const reason = `[attempt ${attemptsSoFar}] chunks=${chunks.length} ok=${chunksTranscribed} fail=${chunksFailed}; sample: ${errorSamples.join(" | ") || "n/a"}`
     await admin.from("lesson_transcripts").insert({
       lesson_id: target.lesson_id,
       recording_id: target.id,
       full_text: "",
       status: "failed",
-      error_message: "all transcriptions failed or empty",
+      error_message: reason.slice(0, 1000),
+      attempts: attemptsSoFar,
     })
-    return NextResponse.json({ ok: false, reason: "transcribe_empty" })
+    return NextResponse.json({ ok: false, reason: "transcribe_empty", attempts: attemptsSoFar })
   }
 
   // Простой merge: один блок на роль. На MVP этого достаточно — GPT
