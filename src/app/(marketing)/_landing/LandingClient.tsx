@@ -440,7 +440,7 @@ export default function LandingClient() {
         <ul className="footer-links">
           <li><a href="https://t.me/raw_english" target="_blank" rel="noopener noreferrer">Telegram</a></li>
           <li><a href="https://instagram.com/raw_english" target="_blank" rel="noopener noreferrer">Instagram</a></li>
-          <li><Link href="/register">Связаться</Link></li>
+          <li><a href="mailto:hello@raw-english.com">Связаться</a></li>
           <li><Link href="/privacy">Политика конфиденциальности</Link></li>
           <li><Link href="/oferta">Договор-оферта</Link></li>
         </ul>
