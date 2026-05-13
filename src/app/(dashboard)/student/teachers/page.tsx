@@ -638,6 +638,10 @@ export default function StudentTeachersPage() {
             <option value="it">IT English</option>
           </select>
         </div>
+        {/* HIGH-5 (audit 2026-05-13): пока Yookassa отключена и в карточках
+            показывается «Бесплатно», фильтр цен скрываем — он бессмысленный
+            и сбивает с толку. Вернуть при включении платных уроков. */}
+        {false && (
         <div className="filter-group">
           <label className="filter-label" htmlFor="teachers-price">
             Цена
@@ -655,6 +659,7 @@ export default function StudentTeachersPage() {
             <option value="over_2000">от 2 000 ₽</option>
           </select>
         </div>
+        )}
         <div className="filter-group">
           <label className="filter-label" htmlFor="teachers-native">
             Носитель
@@ -1046,7 +1051,7 @@ export default function StudentTeachersPage() {
                   <b>{formatRub(modalTeacher.hourly_rate_rub)}</b> / 60 мин
                 </div> */}
                 <div className="prof-price">
-                  <b>Бесплатно</b>
+                  <b>Пробный урок</b> · 0 ₽
                 </div>
                 <button
                   type="button"
@@ -1158,7 +1163,7 @@ function TeacherCard({
             <b>{formatRub(teacher.hourly_rate_rub)}</b> / 60 мин
           </div> */}
           <div className="t-price">
-            <b>Бесплатно</b>
+            <b>Пробный</b> · 0 ₽
           </div>
         </div>
         {!readOnly && (

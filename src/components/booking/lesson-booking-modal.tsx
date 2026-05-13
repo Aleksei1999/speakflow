@@ -482,7 +482,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
                           )}
                           {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
                           {/* <div className="tch-price"><b>{formatPrice(t.hourlyRate)}</b> / час</div> */}
-                          <div className="tch-price"><b>Бесплатно</b></div>
+                          <div className="tch-price"><b>Пробный</b> · 0 ₽</div>
                         </div>
                       </button>
                     ))}
