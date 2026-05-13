@@ -7,70 +7,67 @@ import { RawLogo } from "@/components/ui/raw-logo";
 import styles from "./hero-copy.module.css";
 
 const navItems = [
-  { label: "Платформа", href: "#platform" },
-  { label: "Геймификация", href: "#gamification" },
-  { label: "Форматы", href: "#formats" },
-  { label: "Membership", href: "#membership" },
+  { label: "Английский", href: "#english" },
+  { label: "Speaking clubs", href: "#clubs" },
+  { label: "Комьюнити", href: "#community" },
+  { label: "Для детей", href: "#kids" },
   { label: "Цены", href: "#pricing" },
 ];
 
-const avatarLetters = ["A", "M", "K", "V", "R"];
+const formatItems = ["Speaking", "Debate club", "Lectures", "Membership"];
+const avatarLetters = ["A", "M", "K", "V", "R", "S"];
 
 export function HeroCopyPage() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   return (
     <main className={styles.page} data-theme={theme}>
+      <div className={styles.promoBar}>
+        <p>
+          Speaking challenge стартует 20 мая
+          <span>скидка до 40% первым участникам</span>
+        </p>
+        <a href="#lead">Забрать место</a>
+      </div>
+
       <header className={styles.navbar}>
-        <Link href="/" className={styles.logoLink} aria-label="Raw English">
-          <RawLogo size={38} priority className={styles.logo} />
-        </Link>
-
-        <nav className={styles.navLinks} aria-label="Hero copy navigation">
-          {navItems.map((item) => (
-            <a key={item.href} href={item.href}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className={styles.navActions}>
-          <button
-            type="button"
-            className={styles.themeToggle}
-            aria-label="Переключить тему"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            <span>{theme === "dark" ? "🌙" : "☀️"}</span>
-          </button>
-          <Link href="/teach" className={styles.teacherButton}>
-            Для преподавателя
+        <div className={styles.navShell}>
+          <Link href="/" className={styles.logoLink} aria-label="Raw English">
+            <RawLogo size={42} priority className={styles.logo} />
           </Link>
-          <Link href="/login" className={styles.loginButton}>
-            Войти
-          </Link>
+
+          <nav className={styles.navLinks} aria-label="Hero copy navigation">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className={styles.navActions}>
+            <button
+              type="button"
+              className={styles.themeToggle}
+              aria-label="Переключить тему"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              <span>{theme === "dark" ? "🌙" : "☀️"}</span>
+            </button>
+            <Link href="/teach" className={styles.teacherButton}>
+              Для преподавателя
+            </Link>
+            <Link href="/login" className={styles.loginButton}>
+              Войти
+            </Link>
+          </div>
         </div>
       </header>
 
-      <section className={styles.hero} aria-label="RAW English hero concept">
+      <section className={styles.hero} aria-label="RAW English first screen concept">
         <div className={styles.glow} />
+        <div className={styles.arrowShape} aria-hidden="true" />
 
-        <div className={styles.heroGrid}>
-          <div className={styles.leftPanel}>
-            <h1>
-              <span>Make it</span>
-              <strong>well done.</strong>
-            </h1>
-
-            <div className={styles.streakCard}>
-              <div className={styles.streakBadge}>★</div>
-              <div>
-                <b>Streak: 14 days</b>
-                <span>Just leveled up!</span>
-              </div>
-            </div>
-          </div>
-
+        <div className={styles.heroCanvas}>
           <div className={styles.photoStage}>
             <Image
               src="/landing/raw-hero-teacher-reference.png"
@@ -83,41 +80,77 @@ export function HeroCopyPage() {
             <div className={styles.tableShade} />
           </div>
 
-          <div className={styles.rightPanel}>
-            <div className={styles.speechBubble}>
-              Уроки английского,
-              <br />
-              коммьюнити, лекции
-              <br />и speaking clubs
+          <div className={`${styles.statCard} ${styles.statTeachers}`}>
+            <b>24/7</b>
+            <span>практика в комьюнити</span>
+          </div>
+
+          <div className={`${styles.statCard} ${styles.statStudents}`}>
+            <b>500+</b>
+            <span>учеников уже играют</span>
+          </div>
+
+          <div className={`${styles.gameCard} ${styles.streakCard}`}>
+            <div className={styles.streakBadge}>★</div>
+            <div>
+              <b>Streak: 14 days</b>
+              <span>Just leveled up!</span>
             </div>
+          </div>
 
-            <h2>
-              Прожарь свой
-              <br />
-              английский от <span className={styles.h2Accent}>raw</span>
-              <br />
-              до <span className={styles.h2Cursive}>well done.</span>
-            </h2>
+          <div className={`${styles.gameCard} ${styles.xpCard}`}>
+            <div className={styles.levelDot}>M</div>
+            <b>+50 XP за дебаты</b>
+            <span>♟</span>
+          </div>
 
-            <div className={styles.xpCard}>
-              <div className={styles.levelDot}>M</div>
-              <b>+50 XP за дебаты</b>
-              <span>♟</span>
+          <div className={styles.speechBubble}>
+            Уроки, speaking clubs,
+            <br />
+            лекции и живое комьюнити
+          </div>
+
+          <div className={styles.offerPanel}>
+            <div className={styles.offerLabel}>RAW English online</div>
+            <h1>
+              Английский,
+              <br />
+              который хочется
+              <br />
+              <span>проходить каждый день</span>
+            </h1>
+
+            <p>
+              Бесплатно определим уровень и подберём формат: speaking club,
+              дебаты, membership или уроки с преподавателем.
+            </p>
+
+            <form
+              id="lead"
+              className={styles.leadForm}
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <input aria-label="Имя" placeholder="Имя" />
+              <input aria-label="Телефон или Telegram" placeholder="Телефон или Telegram" />
+              <button type="submit">Получить пробный урок</button>
+            </form>
+
+            <div className={styles.formMeta}>
+              <span>✓ без оплаты</span>
+              <span>✓ ответим в Telegram</span>
+              <span>✓ уровень за 15 минут</span>
             </div>
           </div>
         </div>
 
-        <div className={styles.ctaDock}>
-          <div className={styles.ctaButtons}>
-            <Link href="/register" className={styles.primaryCta}>
-              <span>🔥</span>
-              Начать прохождение
-            </Link>
-            <a href="#platform" className={styles.secondaryCta}>
-              Как это работает
-            </a>
+        <div className={styles.bottomRail}>
+          <div className={styles.formatStrip}>
+            {formatItems.map((item) => (
+              <a key={item} href="#formats">
+                {item}
+              </a>
+            ))}
           </div>
-
           <div className={styles.socialProof}>
             <div className={styles.avatarStack} aria-hidden="true">
               {avatarLetters.map((letter) => (
@@ -125,7 +158,7 @@ export function HeroCopyPage() {
               ))}
             </div>
             <p>
-              <b>500+</b> учеников уже играют
+              <b>новые группы</b> каждую неделю
             </p>
           </div>
         </div>
