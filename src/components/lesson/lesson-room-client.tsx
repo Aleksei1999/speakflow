@@ -66,7 +66,17 @@ const CSS = `
 .lr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .lr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
-.lr .quality-badge{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.55);backdrop-filter:blur(10px);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;z-index:10;pointer-events:none}
+.lr .quality-badge{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.55);backdrop-filter:blur(10px);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;z-index:10;pointer-events:none;display:inline-flex;align-items:center;gap:6px}
+.lr .quality-badge .bar{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.lr .quality-badge .bar i{width:3px;background:#fff;border-radius:1px;opacity:.35}
+.lr .quality-badge .bar i:nth-child(1){height:4px}
+.lr .quality-badge .bar i:nth-child(2){height:8px}
+.lr .quality-badge .bar i:nth-child(3){height:12px}
+.lr .quality-badge.good .bar i{opacity:1}
+.lr .quality-badge.fair .bar i:nth-child(1),.lr .quality-badge.fair .bar i:nth-child(2){opacity:1}
+.lr .quality-badge.poor{background:rgba(230,57,70,.85)}
+.lr .quality-badge.poor .bar i:nth-child(1){opacity:1}
+.lr .quality-badge.lost{background:rgba(230,57,70,.95)}
 .lr .vc{display:flex;justify-content:center;gap:12px;padding:6px 0 2px;flex-shrink:0}
 .lr .cb{width:52px;height:52px;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s ease;color:var(--text)}
 .lr .cb:hover{background:#e8e8e4}.lr .cb.active{background:var(--lime)}.lr .cb.danger{background:var(--red);color:#fff;transform:rotate(135deg)}.lr .cb.danger:hover{opacity:.9}
@@ -130,6 +140,13 @@ const CSS = `
 .lr .dup-tab .actions .btn:hover{background:var(--red)}
 .lr .dup-tab .actions .btn.sec{background:var(--bg);color:var(--text)}
 
+/* Slow network hint — мягкий yellow баннер, dismiss'абельный */
+.lr .net-hint{display:flex;align-items:center;gap:10px;background:#FFFBEB;color:#78350F;border-bottom:1px solid #FDE68A;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
+.lr .net-hint .icon{flex-shrink:0;font-size:16px}
+.lr .net-hint .msg{flex:1}
+.lr .net-hint .close{background:transparent;color:#78350F;border:0;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;opacity:.7}
+.lr .net-hint .close:hover{opacity:1}
+
 /* Persistent error banner — pinned под header'ом, юзер закрывает крестиком */
 .lr .rec-error{display:flex;align-items:center;gap:10px;background:#FEF2F2;color:#7F1D1D;border-bottom:1px solid #FECACA;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
 .lr .rec-error .icon{flex-shrink:0;font-size:16px}
@@ -179,6 +196,9 @@ export function LessonRoomClient({
   const [recorderEnabled, setRecorderEnabled] = useState(true)
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [duplicateTab, setDuplicateTab] = useState(false)
+  type ConnQuality = "good" | "fair" | "poor" | "lost" | "unknown"
+  const [connQuality, setConnQuality] = useState<ConnQuality>("unknown")
+  const [slowNetworkHint, setSlowNetworkHint] = useState(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -261,7 +281,17 @@ export function LessonRoomClient({
       }
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTile, 200)
+        setConnQuality("good")
       })
+      // Реальные события качества связи — заменяют хардкоженный «Wi-Fi» бейдж.
+      jitsiApi.current?.addListener("participantConnectionStatusChanged", (e: any) => {
+        const st = String(e?.connectionStatus ?? "").toLowerCase()
+        if (st === "active") setConnQuality((q) => (q === "lost" ? "fair" : "good"))
+        else if (st === "interrupted") setConnQuality("poor")
+        else if (st === "inactive") setConnQuality("fair")
+      })
+      jitsiApi.current?.addListener("connectionFailed", () => setConnQuality("lost"))
+      jitsiApi.current?.addListener("connectionEstablished", () => setConnQuality("good"))
       jitsiApi.current?.addListener("participantJoined", () => {
         setTimeout(forceTile, 100)
       })
@@ -279,6 +309,18 @@ export function LessonRoomClient({
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
+
+  // Pre-call hint: на 2G/slow-2G/3G скорее всего будут лаги. Показываем
+  // ненавязчивый бейдж — пусть юзер либо переключается на Wi-Fi, либо
+  // готов к плохой картинке. navigator.connection — non-standard, но
+  // поддерживается Chromium-семьёй (Android/Win/macOS Chrome, Edge).
+  useEffect(() => {
+    if (typeof navigator === "undefined") return
+    const conn = (navigator as any).connection
+    if (!conn) return
+    const t = conn.effectiveType
+    if (t === "slow-2g" || t === "2g" || t === "3g") setSlowNetworkHint(true)
+  }, [])
 
   // Two-tab guard: если у этого юзера уже открыт этот урок в другой
   // вкладке, две конференции на один user_id ломают чат, два MediaRecorder
@@ -521,6 +563,16 @@ export function LessonRoomClient({
           <div className="lh-side lh-right"><button className="btn-exit" onClick={handleEnd}>Выйти из урока</button></div>
         </header>
 
+        {slowNetworkHint && (
+          <div className="net-hint">
+            <span className="icon">📶</span>
+            <span className="msg">
+              Сеть медленная (мобильный 2G/3G). Возможны лаги — лучше подключиться к Wi-Fi.
+            </span>
+            <button className="close" onClick={() => setSlowNetworkHint(false)} title="Скрыть">×</button>
+          </div>
+        )}
+
         {recorder.status === "error" && recorder.error && !errorDismissed && (
           <div className="rec-error">
             <span className="icon">⚠️</span>
@@ -566,7 +618,16 @@ export function LessonRoomClient({
               <div className="vm">
                 <div className="jitsi-mount" ref={jitsiRef} />
                 <div className="live-badge"><span className="blink"/>LIVE</div>
-                <div className="quality-badge">Wi-Fi</div>
+                {connQuality !== "unknown" && (
+                  <div className={`quality-badge ${connQuality}`}>
+                    <span className="bar"><i/><i/><i/></span>
+                    <span>
+                      {connQuality === "good" ? "Связь" :
+                       connQuality === "fair" ? "Средне" :
+                       connQuality === "poor" ? "Слабо" : "Нет связи"}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="vc">
                 <button className={`cb ${micOn?"active":""}`} title="Микрофон" onClick={toggleMic}>
