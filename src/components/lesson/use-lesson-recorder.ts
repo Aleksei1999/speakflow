@@ -218,7 +218,18 @@ export function useLessonRecorder({
       } catch (e: any) {
         console.warn("[lesson-recorder] getUserMedia denied/failed:", e?.message ?? e)
         setStatus("error")
-        setError("Нет доступа к микрофону")
+        // Конкретизируем причину — UI это покажет учителю, ничего
+        // молча не глотаем.
+        const name = e?.name ?? ""
+        if (name === "NotAllowedError" || name === "SecurityError") {
+          setError("Браузер заблокировал микрофон. Разреши доступ в адресной строке и обнови страницу.")
+        } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+          setError("Микрофон не найден. Подключи микрофон и обнови страницу.")
+        } else if (name === "NotReadableError") {
+          setError("Микрофон занят другим приложением. Закрой Zoom/Skype и обнови страницу.")
+        } else {
+          setError("Не удалось получить доступ к микрофону")
+        }
         return
       }
       if (cancelled) {
