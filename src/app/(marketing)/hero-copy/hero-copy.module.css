@@ -433,13 +433,15 @@
   object-fit: contain;
   object-position: center bottom;
   filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.42));
+  /* Мягкая маска по бокам и снизу, чтобы стол не обрывался жёстким
+     прямоугольником на широких экранах. */
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-    linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
+    linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 72%, rgba(0, 0, 0, 0.7) 88%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-    linear-gradient(to bottom, #000 0%, #000 88%, rgba(0, 0, 0, 0.85) 94%, transparent 100%);
+    linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(to bottom, #000 0%, #000 72%, rgba(0, 0, 0, 0.7) 88%, transparent 100%);
   mask-composite: intersect;
 }
 
