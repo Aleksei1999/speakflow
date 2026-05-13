@@ -30,6 +30,12 @@ interface UseLessonRecorderArgs {
   enabled?: boolean
   /** Колбэк когда запись фактически стартовала (для toast'а) */
   onStarted?: () => void
+  /**
+   * Любое изменение этого значения форсит перезапуск hook'а
+   * (новый getUserMedia, новый MediaRecorder). Используется когда
+   * мы хотим повторить попытку получить mic после отказа.
+   */
+  retryToken?: number
 }
 
 interface UseLessonRecorderReturn {
@@ -66,6 +72,7 @@ export function useLessonRecorder({
   jitsiApi,
   enabled = true,
   onStarted,
+  retryToken = 0,
 }: UseLessonRecorderArgs): UseLessonRecorderReturn {
   const [status, setStatus] = useState<Status>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -89,6 +96,18 @@ export function useLessonRecorder({
     if (typeof window === "undefined") return
 
     let cancelled = false
+
+    // Reset state-machine на каждый run (особенно важно при retry —
+    // teardownStartedRef мог остаться true от прошлой попытки и
+    // блокировал бы новый start).
+    teardownStartedRef.current = false
+    startedFiredRef.current = false
+    uploadingRef.current = false
+    queueRef.current = []
+    seqRef.current = 0
+    totalBytesRef.current = 0
+    recordingIdRef.current = null
+    setRecordingId(null)
 
     const mime = pickMimeType()
     if (!mime) {
@@ -393,7 +412,7 @@ export function useLessonRecorder({
       void teardown()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonId, isTeacher, enabled])
+  }, [lessonId, isTeacher, enabled, retryToken])
 
   // Pause / resume при mute в Jitsi. Без подписки запись бы шла даже
   // когда юзер «выключил микрофон» в UI Jitsi — а это нарушает его

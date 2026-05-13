@@ -209,6 +209,7 @@ export function LessonRoomClient({
   const [recorderEnabled, setRecorderEnabled] = useState(true)
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [duplicateTab, setDuplicateTab] = useState(false)
+  const [recorderRetryToken, setRecorderRetryToken] = useState(0)
   type ConnQuality = "good" | "fair" | "poor" | "lost" | "unknown"
   const [connQuality, setConnQuality] = useState<ConnQuality>("unknown")
   const [slowNetworkHint, setSlowNetworkHint] = useState(false)
@@ -395,11 +396,28 @@ export function LessonRoomClient({
     isTeacher,
     jitsiApi: jitsiApiState,
     enabled: recorderEnabled && !duplicateTab,
+    retryToken: recorderRetryToken,
     onStarted: () => {
       setRecordingToast(true)
       setTimeout(() => setRecordingToast(false), 3500)
     },
   })
+
+  // Если recorder в error (mic denied), и юзер потом разрешил mic в
+  // Jitsi (mute=false), то у нашего origin'а в большинстве браузеров
+  // тоже появилось разрешение → retry имеет шанс сработать.
+  useEffect(() => {
+    if (!jitsiApiState) return
+    const onMute = (data: any) => {
+      if (data?.muted === false && recorder.status === "error") {
+        setRecorderRetryToken((n) => n + 1)
+      }
+    }
+    try { jitsiApiState.addListener?.("audioMuteStatusChanged", onMute) } catch {}
+    return () => {
+      try { jitsiApiState.removeListener?.("audioMuteStatusChanged", onMute) } catch {}
+    }
+  }, [jitsiApiState, recorder.status])
 
   // Chat
   const loadMessages = useCallback(async()=>{
@@ -552,7 +570,10 @@ export function LessonRoomClient({
         {/* Header */}
         <header className="lh">
           <div className="lh-side lh-left">
-            {recorder.status === "recording" && (
+            {/* Pill виден только преподавателю — это его инструмент управления
+                AI-конспектом. Студенту он не нужен (мы пишем фоном, согласие
+                в оферте). */}
+            {isTeacher && recorder.status === "recording" && (
               <span className="rec-pill rec" title="Урок записывается для AI-конспекта">
                 <span className="dot" />
                 <span>Запись</span>
@@ -567,24 +588,32 @@ export function LessonRoomClient({
                 >×</button>
               </span>
             )}
-            {recorder.status === "paused" && (
+            {isTeacher && recorder.status === "paused" && (
               <span className="rec-pill paused" title="Запись приостановлена — микрофон в Jitsi выключен">
                 <span className="dot" /><span>Запись на паузе</span>
               </span>
             )}
-            {(recorder.status === "starting" || recorder.status === "idle") && recorderEnabled && (
+            {isTeacher && (recorder.status === "starting" || recorder.status === "idle") && recorderEnabled && (
               <span className="rec-pill start" title="Готовим AI-запись урока">
                 <span className="dot" /><span>Запускаем запись…</span>
               </span>
             )}
-            {recorder.status === "stopped" && (
+            {isTeacher && recorder.status === "stopped" && (
               <span className="rec-pill off" title="Запись остановлена">
                 <span className="dot" /><span>Запись остановлена</span>
               </span>
             )}
-            {recorder.status === "error" && (
+            {isTeacher && recorder.status === "error" && (
               <span className="rec-pill err" title={recorder.error ?? "Запись недоступна"}>
                 <span className="dot" /><span>Микрофон недоступен</span>
+                <button
+                  className="stop"
+                  title="Попробовать снова"
+                  onClick={() => {
+                    setErrorDismissed(false)
+                    setRecorderRetryToken((n) => n + 1)
+                  }}
+                >↻</button>
               </span>
             )}
           </div>
@@ -604,7 +633,7 @@ export function LessonRoomClient({
           </div>
         )}
 
-        {recorder.status === "error" && recorder.error && !errorDismissed && (
+        {isTeacher && recorder.status === "error" && recorder.error && !errorDismissed && (
           <div className="rec-error">
             <span className="icon">⚠️</span>
             <span className="msg">
@@ -802,7 +831,7 @@ export function LessonRoomClient({
         </div>
       </div>
 
-      {recordingToast && (
+      {isTeacher && recordingToast && (
         <div className="rec-toast">
           <span className="rec-dot" />
           <span>Урок записывается для AI-конспекта</span>
