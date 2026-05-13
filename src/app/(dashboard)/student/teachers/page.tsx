@@ -108,8 +108,8 @@ const TEACHERS_CSS = `
 .teachers-page .t-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;transition:all .25s cubic-bezier(.16,1,.3,1);cursor:pointer;text-align:left;width:100%;padding:0;font-family:inherit;color:inherit}
 .teachers-page .t-card:hover{border-color:var(--red);transform:translateY(-4px);box-shadow:0 12px 30px var(--shadow)}
 
-.teachers-page .t-photo{width:100%;aspect-ratio:4/3;background:var(--bg);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.teachers-page .t-photo-placeholder{font-size:3rem;font-weight:800;color:var(--border);letter-spacing:-2px}
+.teachers-page .t-photo{width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,var(--surface-2),var(--bg));position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.teachers-page .t-photo-placeholder{font-size:3rem;font-weight:800;color:var(--muted);letter-spacing:-2px;opacity:.6}
 .teachers-page .t-photo img{width:100%;height:100%;object-fit:cover}
 .teachers-page .t-native-badge{position:absolute;top:10px;right:10px;padding:4px 10px;border-radius:8px;background:var(--lime);color:#0A0A0A;font-size:.6rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .teachers-page .t-online{position:absolute;bottom:10px;left:10px;padding:3px 8px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.55rem;font-weight:600;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px)}
@@ -152,10 +152,10 @@ const TEACHERS_CSS = `
 .teachers-page .prof-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--lime));z-index:2}
 
 .teachers-page .prof-top{display:flex;gap:20px;padding:24px;border-bottom:1px solid var(--border);position:relative}
-.teachers-page .prof-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1rem;cursor:pointer;z-index:3;font-family:inherit}
+.teachers-page .prof-close{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.1rem;cursor:pointer;z-index:3;font-family:inherit;line-height:1}
 .teachers-page .prof-close:hover{border-color:var(--red);color:var(--red)}
 
-.teachers-page .prof-avatar{width:100px;height:100px;border-radius:22px;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:var(--border);overflow:hidden}
+.teachers-page .prof-avatar{width:100px;height:100px;border-radius:22px;background:linear-gradient(135deg,var(--surface-2),var(--bg));flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:var(--muted);overflow:hidden}
 .teachers-page .prof-avatar img{width:100%;height:100%;object-fit:cover;border-radius:22px}
 .teachers-page .prof-info{flex:1;min-width:0}
 .teachers-page .prof-name{font-family:'Gluten',cursive;font-size:1.4rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}

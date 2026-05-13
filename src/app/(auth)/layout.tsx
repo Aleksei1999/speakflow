@@ -157,12 +157,15 @@ export default function AuthLayout({
         @keyframes authFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         @media (max-width: 500px) {
-          .auth-scope { padding: 0; align-items: flex-end; }
-          .auth-modal { border-radius: 24px 24px 0 0; max-height: 96vh; overflow-y: auto; }
+          /* Полноэкранная форма на мобильных: вверх не остаётся чёрного «парящего» поля
+             с иконками Google/Telegram, как было в bottom-sheet режиме. */
+          .auth-scope { padding: 0; align-items: stretch; justify-content: stretch; }
+          .auth-modal { border-radius: 0; max-width: 100%; min-height: 100dvh; box-shadow: none; }
           .auth-header { padding: 20px 20px 0; }
-          .auth-body { padding: 20px; }
+          .auth-body { padding: 20px 20px 28px; }
           .field-row { flex-direction: column; gap: 14px; }
-          .social-btns { flex-direction: column; }
+          /* Социалки оставляем в строку, чтобы они не "парили" вертикально на пустом фоне */
+          .social-btns { flex-direction: row; }
         }
       `}</style>
 
