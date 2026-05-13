@@ -5,6 +5,7 @@ import { ChevronDown, CheckCircle2, AlertCircle, BookOpen, PenLine, Lightbulb } 
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { QuizRunner, type QuizQuestion } from "./quiz-runner"
 
 interface SummaryExpandableProps {
   id: string
@@ -13,8 +14,26 @@ interface SummaryExpandableProps {
   vocabulary: any[]
   grammarPoints: any[]
   homework: string | null
-  strengths: string | null
-  areasToImprove: string | null
+  strengths: string[] | string | null
+  areasToImprove: string[] | string | null
+  quiz: {
+    id: string
+    questions: QuizQuestion[]
+    previous: {
+      score: number
+      total: number
+      xpAwarded: number
+      answers: { question_index: number; chosen_index: number; correct: boolean }[]
+    } | null
+  } | null
+}
+
+// strengths/areas_to_improve в БД — TEXT[]; старый /api/ai/summary
+// пишет строкой. Нормализуем оба случая в массив.
+function toList(v: string[] | string | null): string[] {
+  if (!v) return []
+  if (Array.isArray(v)) return v.filter(Boolean)
+  return [v]
 }
 
 export function SummaryExpandable({
@@ -26,7 +45,10 @@ export function SummaryExpandable({
   homework,
   strengths,
   areasToImprove,
+  quiz,
 }: SummaryExpandableProps) {
+  const strengthList = toList(strengths)
+  const areasList = toList(areasToImprove)
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -123,27 +145,48 @@ export function SummaryExpandable({
             )}
 
             {/* Strengths */}
-            {strengths && (
+            {strengthList.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <CheckCircle2 className="size-4 text-green-500" />
                   Сильные стороны
                 </div>
-                <p className="text-sm text-muted-foreground">{strengths}</p>
+                <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  {strengthList.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1 shrink-0 rounded-full bg-green-500" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
             {/* Areas to improve */}
-            {areasToImprove && (
+            {areasList.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <AlertCircle className="size-4 text-orange-500" />
                   Области для улучшения
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {areasToImprove}
-                </p>
+                <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  {areasList.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1 shrink-0 rounded-full bg-orange-500" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
               </div>
+            )}
+
+            {/* AI Quiz */}
+            {quiz && quiz.questions.length > 0 && (
+              <QuizRunner
+                quizId={quiz.id}
+                questions={quiz.questions}
+                previous={quiz.previous}
+              />
             )}
           </div>
         )}
