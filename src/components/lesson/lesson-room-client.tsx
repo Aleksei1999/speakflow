@@ -667,7 +667,7 @@ export function LessonRoomClient({
                 <div className="label">Длительность</div>
                 <div className="tmr"><span className="dot"/><span>{mm}:{ss}</span></div>
               </div>
-              <div className="value">{durationMinutes}<small>/мин</small></div>
+              <div className="value">{durationMinutes}<small>мин</small></div>
             </div>
             <div className="stat stat-dark">
               <div className="label">Уровень</div>
