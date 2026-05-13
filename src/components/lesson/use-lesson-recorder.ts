@@ -351,15 +351,38 @@ export function useLessonRecorder({
     void start()
 
     const onBeforeUnload = () => {
-      // Sync-friendly teardown — браузер всё равно не подождёт async
-      // promises, но stop() и navigator.sendBeacon на finalize дадут
-      // шанс хвосту дойти. Без sendBeacon пока обходимся — finalize
-      // не критично, можно дофиксить cron'ом «закрой recording старше
-      // 30 минут».
+      // Sync-friendly teardown — браузер не подождёт async, но stop()
+      // даст MediaRecorder'у выдать последний dataavailable и закрыть
+      // tracks. Главное — sendBeacon на /finalize, чтобы row не висла
+      // в 'recording' навсегда. Cron-sweep это страхует, но beacon
+      // закрывает урок мгновенно.
       try {
         recRef.current?.stop()
       } catch {
         /* ignore */
+      }
+
+      const recId = recordingIdRef.current
+      if (recId && typeof navigator !== "undefined" && navigator.sendBeacon) {
+        const durationSec = Math.max(
+          1,
+          Math.round((Date.now() - startedAtRef.current) / 1000)
+        )
+        const body = JSON.stringify({
+          lessonId,
+          recordingId: recId,
+          durationSec,
+          totalBytes: totalBytesRef.current,
+          chunksCount: Math.max(1, seqRef.current),
+        })
+        try {
+          // Blob с явным content-type — иначе sendBeacon шлёт как
+          // text/plain и наш z.object на сервере падает.
+          const blob = new Blob([body], { type: "application/json" })
+          navigator.sendBeacon("/api/lesson/recording/finalize", blob)
+        } catch {
+          /* ignore */
+        }
       }
     }
     window.addEventListener("beforeunload", onBeforeUnload)
