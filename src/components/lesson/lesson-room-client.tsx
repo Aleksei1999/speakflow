@@ -212,8 +212,6 @@ export function LessonRoomClient({
   type ConnQuality = "good" | "fair" | "poor" | "lost" | "unknown"
   const [connQuality, setConnQuality] = useState<ConnQuality>("unknown")
   const [slowNetworkHint, setSlowNetworkHint] = useState(false)
-  // Ref, не state — forceTile() читает синхронно из closure'а Jitsi listener'ов.
-  const screenShareActiveRef = useRef(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -266,13 +264,6 @@ export function LessonRoomClient({
           // экран, локальное видео скрыто.
           startWithTileView:true,
           disableTileView:false,
-          // Stage filmstrip — когда есть screen-share, участники
-          // показываются полосой над основным видео-стеком.
-          // На Jitsi 8.x это flag для разрешения такого режима.
-          filmstrip:{
-            disableStageFilmstrip:false,
-            stageFilmstripParticipants:2,
-          },
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -297,84 +288,10 @@ export function LessonRoomClient({
 
       // Жёстко форсим tile view — startWithTileView иногда игнорится
       // если кто-то уже в комнате. Через 800мс после init заставим UI.
-      // ВАЖНО: при активном screen-share tile view ломает фокус на
-      // презентации, поэтому проверяем флаг.
       const forceTile = () => {
-        if (screenShareActiveRef.current) return
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
         try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
-
-      // Auto-layout при screen-share. Polling каждые 1.5с надёжнее
-      // событий. КЛЮЧЕВОЕ: используем setLargeVideoParticipant с
-      // videoType='desktop' — pinParticipant закрепляет КАМЕРУ
-      // участника, а нам нужен его DESKTOP-track.
-      let currentSharerId: string | null = null
-
-      const applyLayout = (sharerId: string | null) => {
-        if (sharerId === currentSharerId) return
-        currentSharerId = sharerId
-        screenShareActiveRef.current = sharerId !== null
-        const api = jitsiApi.current
-        if (!api) return
-        try {
-          if (sharerId) {
-            api.executeCommand("setTileView", false)
-            api.executeCommand("pinParticipant", null)
-            // Главное видео = desktop-трек шарящего. Видеотип 'desktop'
-            // заставляет Jitsi достать именно screen-share, а не камеру.
-            setTimeout(() => {
-              try { api.executeCommand("setLargeVideoParticipant", sharerId, "desktop") } catch {}
-            }, 200)
-            // Дополнительная попытка через секунду — если первая улетела
-            // до того как screen track появился в pubsub'е.
-            setTimeout(() => {
-              try { api.executeCommand("setLargeVideoParticipant", sharerId, "desktop") } catch {}
-            }, 1200)
-          } else {
-            // Возврат: убрать pin'ы и в tile view.
-            try { api.executeCommand("pinParticipant", null) } catch {}
-            try { api.executeCommand("setLargeVideoParticipant", null) } catch {}
-            try { api.executeCommand("setTileView", true) } catch {}
-          }
-        } catch { /* noop */ }
-      }
-
-      const pollScreenShare = () => {
-        const api = jitsiApi.current
-        if (!api) return
-        let sharers: string[] = []
-        try {
-          const fn = api.getContentSharingParticipants
-          if (typeof fn === "function") {
-            const r = fn.call(api)
-            if (r && typeof (r as any).then === "function") {
-              ;(r as Promise<any>).then((v) => {
-                const arr: any[] = v?.participants ?? v ?? []
-                sharers = arr
-                  .map((p: any) => (typeof p === "string" ? p : p?.id ?? p?.participantId))
-                  .filter(Boolean)
-                applyLayout(sharers[0] ?? null)
-              }).catch(() => {})
-              return
-            }
-            const arr: any[] = (r as any)?.participants ?? r ?? []
-            sharers = arr
-              .map((p: any) => (typeof p === "string" ? p : p?.id ?? p?.participantId))
-              .filter(Boolean)
-          } else {
-            // Fallback: ищем фейкового участника с " (screen)" в имени.
-            const info = api.getParticipantsInfo?.() ?? []
-            sharers = (info as any[])
-              .filter((p) => /\(screen\)|screen/i.test(String(p?.displayName ?? "")))
-              .map((p) => p?.participantId ?? p?.id)
-              .filter(Boolean)
-          }
-        } catch { /* noop */ }
-        applyLayout(sharers[0] ?? null)
-      }
-      const screenSharePollIv = setInterval(pollScreenShare, 1500)
-      ;(jitsiApi.current as any)._screenSharePollIv = screenSharePollIv
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTile, 200)
         setConnQuality("good")
@@ -403,13 +320,7 @@ export function LessonRoomClient({
       setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
-    return()=>{
-      disposed=true
-      try{ const iv = (jitsiApi.current as any)?._screenSharePollIv; if (iv) clearInterval(iv) }catch{}
-      try{jitsiApi.current?.dispose()}catch{}
-      jitsiApi.current=null
-      setJitsiApiState(null)
-    }
+    return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
 
   // Pre-call hint: на 2G/slow-2G/3G скорее всего будут лаги. Показываем
