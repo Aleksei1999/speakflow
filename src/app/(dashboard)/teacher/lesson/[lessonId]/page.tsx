@@ -87,6 +87,9 @@ export default async function TeacherLessonPage({
       email: user.email ?? '',
       avatarUrl: null,
       isModerator: true,
+    }, {
+      scheduledAt: lesson.scheduled_at,
+      durationMinutes: lesson.duration_minutes,
     })
   } catch {}
 

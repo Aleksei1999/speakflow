@@ -120,6 +120,16 @@ const CSS = `
 .lr .rec-pill .stop{margin-left:2px;background:transparent;color:rgba(255,255,255,.65);border:0;font-size:14px;padding:0 2px;cursor:pointer;line-height:1}
 .lr .rec-pill .stop:hover{color:#fff}
 
+/* Duplicate-tab блокировка: full-screen затемнение с одним сообщением */
+.lr .dup-tab{position:fixed;inset:0;background:rgba(10,10,10,.85);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
+.lr .dup-tab .box{background:var(--surface);border-radius:20px;padding:32px;max-width:420px;text-align:center;display:flex;flex-direction:column;gap:14px}
+.lr .dup-tab h3{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.lr .dup-tab p{font-size:14px;color:var(--muted);line-height:1.5}
+.lr .dup-tab .actions{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.lr .dup-tab .actions .btn{background:var(--black);color:#fff;padding:11px;border-radius:999px;font-size:13px;font-weight:600;border:0;cursor:pointer}
+.lr .dup-tab .actions .btn:hover{background:var(--red)}
+.lr .dup-tab .actions .btn.sec{background:var(--bg);color:var(--text)}
+
 /* Persistent error banner — pinned под header'ом, юзер закрывает крестиком */
 .lr .rec-error{display:flex;align-items:center;gap:10px;background:#FEF2F2;color:#7F1D1D;border-bottom:1px solid #FECACA;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
 .lr .rec-error .icon{flex-shrink:0;font-size:16px}
@@ -168,6 +178,7 @@ export function LessonRoomClient({
   // повторно включить мы пока не поддерживаем (см. teardownStartedRef).
   const [recorderEnabled, setRecorderEnabled] = useState(true)
   const [errorDismissed, setErrorDismissed] = useState(false)
+  const [duplicateTab, setDuplicateTab] = useState(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -269,13 +280,66 @@ export function LessonRoomClient({
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
 
+  // Two-tab guard: если у этого юзера уже открыт этот урок в другой
+  // вкладке, две конференции на один user_id ломают чат, два MediaRecorder
+  // дерутся за signed URL. Heartbeat в localStorage решает: claim-and-watch.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const KEY = `lesson:${lessonId}:tab`
+    const STALE_MS = 12_000
+    const HEARTBEAT_MS = 5_000
+    const tabId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+    function read(): { tabId: string; ts: number } | null {
+      try {
+        const raw = localStorage.getItem(KEY)
+        if (!raw) return null
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
+    }
+    function write() {
+      try { localStorage.setItem(KEY, JSON.stringify({ tabId, ts: Date.now() })) } catch {}
+    }
+
+    const existing = read()
+    if (existing && existing.tabId !== tabId && Date.now() - existing.ts < STALE_MS) {
+      setDuplicateTab(true)
+      return
+    }
+    write()
+    const iv = setInterval(write, HEARTBEAT_MS)
+
+    function onStorage(e: StorageEvent) {
+      if (e.key !== KEY) return
+      const v = read()
+      if (v && v.tabId !== tabId && Date.now() - v.ts < STALE_MS) {
+        setDuplicateTab(true)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+
+    return () => {
+      clearInterval(iv)
+      window.removeEventListener("storage", onStorage)
+      // Освобождаем slot только если это всё ещё мы.
+      const cur = read()
+      if (cur?.tabId === tabId) {
+        try { localStorage.removeItem(KEY) } catch {}
+      }
+    }
+  }, [lessonId])
+
   // Авто-запись урока. Hook сам разбирается: teacher → /init, student
   // → polls /active. Никаких кнопок: согласие зафиксировано в оферте.
+  // ВАЖНО: если duplicateTab — выключаем запись, чтобы не было гонки
+  // двух браузеров на одинаковые chunk-NNNNN.
   const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
     jitsiApi: jitsiApiState,
-    enabled: recorderEnabled,
+    enabled: recorderEnabled && !duplicateTab,
     onStarted: () => {
       setRecordingToast(true)
       setTimeout(() => setRecordingToast(false), 3500)
@@ -648,6 +712,30 @@ export function LessonRoomClient({
         <div className="rec-toast">
           <span className="rec-dot" />
           <span>Урок записывается для AI-конспекта</span>
+        </div>
+      )}
+
+      {duplicateTab && (
+        <div className="dup-tab">
+          <div className="box">
+            <h3>Урок уже открыт</h3>
+            <p>
+              Эта же учётная запись подключена к уроку в другой вкладке.
+              Используй её — если открыть две, чат, запись и AI-конспект
+              перестанут работать.
+            </p>
+            <div className="actions">
+              <button className="btn" onClick={() => window.close()}>
+                Закрыть эту вкладку
+              </button>
+              <button
+                className="btn sec"
+                onClick={() => router.push(isTeacher ? "/teacher" : "/student")}
+              >
+                На главную
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
