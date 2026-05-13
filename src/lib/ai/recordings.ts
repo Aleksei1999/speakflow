@@ -59,53 +59,34 @@ export async function listRecordingChunks(
 }
 
 /**
- * Скачиваем все чанки одной роли и склеиваем в один Buffer.
- * Внимание: для opus/webm простая конкатенация bytestream даёт валидный
- * webm-контейнер только при условии что MediaRecorder писал ту же
- * сессию (а это так — рекордер не reinit'ится). Whisper/gpt-4o-transcribe
- * принимает webm/ogg напрямую.
+ * Скачивает ОДИН чанк по пути в Storage. Возвращает Blob c корректным
+ * MIME для OpenAI (whisper / gpt-4o-transcribe умеют webm/ogg/mp4/mp3).
+ *
+ * FIX (CRIT): раньше тут был downloadRecordingForRole, который ПОБАЙТНО
+ * склеивал webm-чанки в один файл. Это давало невалидный EBML — каждый
+ * MediaRecorder chunk при start(timeslice) — самостоятельный контейнер
+ * с собственным header'ом. OpenAI читал только первый ~20-сек кусок
+ * и возвращал пусто. Транскрипция падала на каждом уроке.
+ *
+ * Новый flow: cron сам обходит chunks по очереди, делает N вызовов
+ * openai.audio.transcriptions.create() и склеивает тексты.
  */
-export async function downloadRecordingForRole(
+export async function downloadChunk(
   admin: Admin,
-  chunks: ChunkFile[],
-  role: ChunkRole
+  chunk: ChunkFile
 ): Promise<{ blob: Blob; bytes: number; ext: string } | null> {
-  const list = chunks.filter((c) => c.role === role)
-  if (list.length === 0) return null
-
-  const buffers: Uint8Array[] = []
-  let total = 0
-  let ext = "webm"
-
-  for (const chunk of list) {
-    const { data, error } = await admin.storage.from(BUCKET).download(chunk.fullPath)
-    if (error || !data) {
-      console.warn(`[ai/recordings] skip chunk (${chunk.fullPath}): ${error?.message ?? "no data"}`)
-      continue
-    }
-    const buf = new Uint8Array(await data.arrayBuffer())
-    buffers.push(buf)
-    total += buf.byteLength
-    const dot = chunk.name.lastIndexOf(".")
-    if (dot > 0) ext = chunk.name.slice(dot + 1)
+  const { data, error } = await admin.storage.from(BUCKET).download(chunk.fullPath)
+  if (error || !data) {
+    console.warn(`[ai/recordings] download chunk failed (${chunk.fullPath}): ${error?.message ?? "no data"}`)
+    return null
   }
-
-  if (buffers.length === 0) return null
-
-  // Собираем единый ArrayBuffer без копирования через Buffer.concat —
-  // в edge runtime Buffer не всегда доступен.
-  const merged = new Uint8Array(total)
-  let offset = 0
-  for (const b of buffers) {
-    merged.set(b, offset)
-    offset += b.byteLength
-  }
-
+  const buf = new Uint8Array(await data.arrayBuffer())
+  const dot = chunk.name.lastIndexOf(".")
+  const ext = dot > 0 ? chunk.name.slice(dot + 1) : "webm"
   const mime =
     ext === "ogg" ? "audio/ogg" :
     ext === "m4a" ? "audio/mp4" :
     ext === "mp3" ? "audio/mpeg" :
     "audio/webm"
-
-  return { blob: new Blob([merged], { type: mime }), bytes: total, ext }
+  return { blob: new Blob([buf], { type: mime }), bytes: buf.byteLength, ext }
 }

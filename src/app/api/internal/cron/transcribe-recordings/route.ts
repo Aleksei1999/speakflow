@@ -15,7 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getOpenAI } from "@/lib/openai/client"
 import {
   listRecordingChunks,
-  downloadRecordingForRole,
+  downloadChunk,
 } from "@/lib/ai/recordings"
 
 export const runtime = "nodejs"
@@ -91,42 +91,54 @@ export async function POST(req: NextRequest) {
   }
 
   const openai = getOpenAI()
+  // FIX CRIT-3: каждый chunk транскрибируем ОТДЕЛЬНО. Раньше всё
+  // склеивалось в один blob → невалидный EBML → пустые ответы.
   const segments: { role: "teacher" | "student"; text: string }[] = []
+  const textsByRole: Record<"T" | "S", string[]> = { T: [], S: [] }
+  let chunksTranscribed = 0
+  let chunksFailed = 0
 
-  for (const role of ["T", "S"] as const) {
-    const dl = await downloadRecordingForRole(admin, chunks, role)
-    if (!dl) continue
-
+  for (const chunk of chunks) {
+    const dl = await downloadChunk(admin, chunk)
+    if (!dl) {
+      chunksFailed++
+      continue
+    }
     try {
-      // OpenAI SDK ждёт File-like с .name. Blob недостаточно — добавим
-      // полифилл через File() конструктор (Node 20+, Edge — оба есть).
       const file = new File(
         [dl.blob],
-        `lesson-${target.lesson_id}-${role}.${dl.ext}`,
+        `lesson-${target.lesson_id}-${chunk.role}-${chunk.seq}.${dl.ext}`,
         { type: dl.blob.type }
       )
-      // gpt-4o-transcribe v1 поддерживает language hint и prompt.
-      // Не задаём language: уроки русско-английские, auto-detect работает лучше.
       const resp = await openai.audio.transcriptions.create({
         file,
         model: MODEL,
         response_format: "text",
         prompt:
-          role === "T"
+          chunk.role === "T"
             ? "Преподаватель ведёт онлайн-урок английского. Это речь преподавателя."
             : "Студент изучает английский. Это речь ученика, возможны ошибки и акцент.",
       })
-      const text = typeof resp === "string" ? resp : (resp as any)?.text ?? ""
-      if (text.trim().length > 0) {
-        segments.push({
-          role: role === "T" ? "teacher" : "student",
-          text: text.trim(),
-        })
+      const text = (typeof resp === "string" ? resp : (resp as any)?.text ?? "").trim()
+      if (text.length > 0) {
+        textsByRole[chunk.role].push(text)
+        chunksTranscribed++
+      } else {
+        chunksFailed++
       }
     } catch (e: any) {
-      console.warn(`[cron/transcribe] OpenAI ${role} failed:`, e?.message ?? e)
+      console.warn(`[cron/transcribe] chunk ${chunk.name} failed:`, e?.message ?? e)
+      chunksFailed++
     }
   }
+
+  for (const role of ["T", "S"] as const) {
+    const joined = textsByRole[role].join(" ").trim()
+    if (joined.length > 0) {
+      segments.push({ role: role === "T" ? "teacher" : "student", text: joined })
+    }
+  }
+  console.log(`[cron/transcribe] chunks ok=${chunksTranscribed} fail=${chunksFailed} of ${chunks.length}`)
 
   if (segments.length === 0) {
     await admin.from("lesson_transcripts").insert({
