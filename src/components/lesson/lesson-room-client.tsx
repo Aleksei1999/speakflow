@@ -32,7 +32,7 @@ const CSS = `
 :root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
 .lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
 .lr *{box-sizing:border-box}.lr a{color:inherit;text-decoration:none}.lr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}
+.lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0;padding-top:max(14px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
 .lr .lh-side{display:flex;align-items:center}.lr .lh-right{justify-content:flex-end}
 .lr .lh-center{display:flex;align-items:center;justify-content:center}
 .lr .lh-center .title{color:#A0A09A;font-size:14px}.lr .lh-center .title strong{color:#fff;font-weight:600;margin-left:4px}
@@ -155,7 +155,20 @@ const CSS = `
 .lr .rec-error .close:hover{opacity:1}
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.lr .lh{padding:12px 14px;grid-template-columns:1fr auto;gap:10px}.lr .lh-left{display:none}.lr .lh-center{justify-content:flex-start}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
+@media(max-width:640px){
+  .lr .lh{padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-left)) 12px max(14px,env(safe-area-inset-right));grid-template-columns:auto 1fr;gap:10px}
+  .lr .lh-center{display:none}
+  .lr .lh-left{display:flex;align-items:center}
+  /* Компактный pill: только dot, скрываем текстовые spans */
+  .lr .rec-pill{padding:6px 9px}
+  .lr .rec-pill > span:not(.dot){display:none}
+  .lr .rec-pill .stop{display:none}
+  .lr .lm{padding:10px;gap:10px}
+  .lr .cb{width:44px;height:44px}
+  .lr .cb svg{width:18px;height:18px}
+  /* toast перенести вниз, чтобы не перекрывал кнопку «Выйти» */
+  .lr .rec-toast{top:auto;bottom:calc(24px + env(safe-area-inset-bottom));font-size:12px;padding:10px 16px}
+}
 `
 
 export function LessonRoomClient({
@@ -505,13 +518,31 @@ export function LessonRoomClient({
   const toggleScreen=()=>{jitsiApi.current?.executeCommand("toggleShareScreen");setScreenOn(v=>!v)}
   const openSettings=()=>{try{jitsiApi.current?.executeCommand("toggleSettings")}catch{/* noop */}}
   const toggleFullscreen=()=>{
-    const el = jitsiRef.current?.parentElement
+    const el = jitsiRef.current?.parentElement as any
     if (!el) return
+    const doc = document as any
     try {
-      if (document.fullscreenElement) document.exitFullscreen()
-      else el.requestFullscreen()
-    } catch { /* noop */ }
+      // Выход из fullscreen
+      if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+        if (doc.exitFullscreen) doc.exitFullscreen()
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen()
+        return
+      }
+      // Вход. iOS Safari исторически не поддерживает Fullscreen API
+      // для div'а, только для <video>. Пробуем оба префикса, при
+      // отказе показываем подсказку.
+      if (el.requestFullscreen) el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+      else alert("Полноэкранный режим не поддерживается этим браузером (попробуй на десктопе).")
+    } catch {
+      /* noop */
+    }
   }
+  const fullscreenSupported = (() => {
+    if (typeof document === "undefined") return true
+    const el = document.createElement("div") as any
+    return Boolean(el.requestFullscreen || el.webkitRequestFullscreen)
+  })()
   const handleEnd=()=>{if(confirm("Завершить урок?")){jitsiApi.current?.executeCommand("hangup");router.push(isTeacher?"/teacher":"/student")}}
 
   return (
@@ -642,9 +673,11 @@ export function LessonRoomClient({
                 <button className={`cb ${sidebarOn?"active":""}`} title="Показать/скрыть чат" onClick={()=>setSidebarOn(v=>!v)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
                 </button>
-                <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-                </button>
+                {fullscreenSupported && (
+                  <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                  </button>
+                )}
                 <button className="cb danger" title="Завершить" onClick={handleEnd}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 </button>
