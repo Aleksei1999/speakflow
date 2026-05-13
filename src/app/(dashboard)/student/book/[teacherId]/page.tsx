@@ -112,16 +112,27 @@ export default function BookTeacherPage() {
           return
         }
 
-        // Fetch availability days
-        const { data: availability, error: availError } = await supabase
-          .from('teacher_availability')
-          .select('day_of_week')
-          .eq('teacher_id', teacherId)
-          .eq('is_available', true)
+        // teacher_availability.teacher_id == teacher_profiles.id (не profiles.id),
+        // достанем его одной запросом. Колонка active называется is_active,
+        // а не is_available (был баг в исходном коде).
+        const { data: tp } = await supabase
+          .from('teacher_profiles')
+          .select('id')
+          .eq('user_id', teacherId)
+          .single()
 
-        if (availError) {
-          setTeacherError('Ошибка загрузки расписания')
-          return
+        let availability: { day_of_week: number }[] | null = null
+        if (tp?.id) {
+          const { data, error: availError } = await supabase
+            .from('teacher_availability')
+            .select('day_of_week')
+            .eq('teacher_id', tp.id)
+            .eq('is_active', true)
+          if (availError) {
+            setTeacherError('Ошибка загрузки расписания')
+            return
+          }
+          availability = data
         }
 
         const availableDays = [
