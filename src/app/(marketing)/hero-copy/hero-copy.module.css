@@ -419,37 +419,12 @@
   transform: translateY(-90px);
 }
 
-.photoStage::before,
-.photoStage::after {
-  content: "";
-  position: absolute;
-  z-index: 5;
-  bottom: -24px;
-  width: 280px;
-  height: 210px;
-  filter: blur(4px);
-  pointer-events: none;
-}
-
-.photoStage::before {
-  left: -30%;
-  background: linear-gradient(90deg, var(--hero-bg) 0%, color-mix(in srgb, var(--hero-bg) 78%, transparent) 44%, transparent 100%);
-}
-
-.photoStage::after {
-  right: -28%;
-  background: linear-gradient(270deg, var(--hero-bg) 0%, color-mix(in srgb, var(--hero-bg) 78%, transparent) 44%, transparent 100%);
-}
-
-.page[data-theme="light"] .photoStage::before,
-.hero[data-theme="light"] .photoStage::before {
-  background: linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
-}
-
-.page[data-theme="light"] .photoStage::after,
-.hero[data-theme="light"] .photoStage::after {
-  background: linear-gradient(270deg, #fff 0%, rgba(255, 255, 255, 0.8) 44%, transparent 100%);
-}
+/* Раньше тут были .photoStage::before и .photoStage::after — два
+   градиента-заглушки, которые должны были «растворять» края фото в
+   фоне. Из-за filter: blur(4px) и чуть-чуть несовпадающего цвета они
+   проявлялись как мутные серые пятна по бокам стола. На самом <img>
+   уже есть mask-image (см. .heroPhoto), который размывает края — этих
+   псевдоэлементов хватало только чтобы наводить пятна. Удалены. */
 
 .heroPhoto {
   width: min(1260px, 92vw);
