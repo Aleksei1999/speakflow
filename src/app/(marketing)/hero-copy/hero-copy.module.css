@@ -162,7 +162,11 @@
 .hero {
   position: relative;
   min-height: calc(100vh - 78px);
-  padding: clamp(30px, 4vw, 56px) clamp(24px, 6vw, 110px) 60px;
+  /* На широких мониторах padding по бокам был clamp(…, 110px) и
+     съедал по 110px с каждой стороны — heroGrid максимум 1320 +
+     ещё 220px паддинга = 1540px полезной ширины. На 1920px-экране
+     по бокам оставались пустые поля. Уменьшил до 60px max. */
+  padding: clamp(30px, 4vw, 56px) clamp(20px, 3vw, 60px) 60px;
 }
 
 /* Когда .hero embed'нут на главной (без обёртки .page) — учитываем,
@@ -255,8 +259,10 @@
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(410px, 1.1fr) minmax(300px, 0.95fr);
   align-items: center;
-  gap: clamp(16px, 2vw, 32px);
-  max-width: 1320px;
+  gap: clamp(16px, 2vw, 48px);
+  /* Было 1320px — на широких мониторах оставались большие поля по
+     сторонам. Подняли до 1600px, plus уменьшили боковой padding hero. */
+  max-width: 1600px;
   min-height: 700px;
   margin: 0 auto;
 }
