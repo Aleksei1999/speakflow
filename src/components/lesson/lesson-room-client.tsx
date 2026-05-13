@@ -667,7 +667,7 @@ export function LessonRoomClient({
                 <div className="label">Длительность</div>
                 <div className="tmr"><span className="dot"/><span>{mm}:{ss}</span></div>
               </div>
-              <div className="value">{durationMinutes}<small>/мин</small></div>
+              <div className="value">{durationMinutes}<small>мин</small></div>
             </div>
             <div className="stat stat-dark">
               <div className="label">Уровень</div>
@@ -681,7 +681,7 @@ export function LessonRoomClient({
               <div className="av">{otherInitials}</div>
               <div className="info">
                 <div className="name">{teacherName}</div>
-                <div className="sub">{isTeacher?"ученик":"teacher"}</div>
+                <div className="sub">{isTeacher?"Ученик":"Преподаватель"}</div>
               </div>
               {teacherRating > 0 && <div className="rating">★ {teacherRating.toFixed(1)}</div>}
             </div>
@@ -746,7 +746,13 @@ export function LessonRoomClient({
                 </div>
                 <div>
                   <div className="title">Материалы урока</div>
-                  <div className="sub">{materials.length} файл(ов)</div>
+                  <div className="sub">{(() => {
+                    const n = materials.length;
+                    const mod10 = n % 10;
+                    const mod100 = n % 100;
+                    const word = mod10 === 1 && mod100 !== 11 ? "файл" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "файла" : "файлов";
+                    return `${n} ${word}`;
+                  })()}</div>
                 </div>
               </div>
               <div className="bb-card dark">

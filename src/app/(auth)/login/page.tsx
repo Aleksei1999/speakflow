@@ -142,7 +142,7 @@ function LoginPageContent() {
             <input
               className="field-input"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Введи пароль"
+              placeholder="Введите пароль"
               autoComplete="current-password"
               aria-invalid={!!errors.password}
               {...register('password')}
