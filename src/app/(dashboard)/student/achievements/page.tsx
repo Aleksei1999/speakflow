@@ -296,16 +296,26 @@ export default function StudentAchievementsPage() {
   }, [])
 
   // Hero stats
+  // FIX HIGH-7: hero раньше считал только claim'нутые (is_earned),
+  // и юзер видел «0/37», хотя карточки ниже уже горят «Забрать награду».
+  // Считаем как разблокированные = is_earned OR is_claimable. «Призов
+  // получено» отдельно — там реально только claimed.
   const stats = useMemo(() => {
     const total = achievements.length || 37
-    const earned = achievements.filter((a) => a.is_earned).length
-    const xpEarned = achievements
-      .filter((a) => a.is_earned)
-      .reduce((sum, a) => sum + (a.xp_reward ?? 0), 0)
+    const unlocked = achievements.filter(
+      (a) => a.is_earned || (a as any).is_claimable
+    )
+    const earned = unlocked.length
+    const xpEarned = unlocked.reduce(
+      (sum, a) => sum + (a.xp_reward ?? 0),
+      0
+    )
     const rewardsEarned = rewards.filter((r) => r.already_claimed).length
-    // Next = not earned, closest to threshold (highest ratio)
+    // Next = ещё не разблокирована, ближайшая по threshold.
     const next = achievements
-      .filter((a) => !a.is_earned && a.threshold > 0)
+      .filter(
+        (a) => !a.is_earned && !(a as any).is_claimable && a.threshold > 0
+      )
       .map((a) => ({ a, pct: Math.min(1, (a.current_value ?? 0) / a.threshold) }))
       .sort((x, y) => y.pct - x.pct)[0]?.a
     const pct = total > 0 ? Math.round((earned / total) * 100) : 0
