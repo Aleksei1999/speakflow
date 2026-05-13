@@ -306,59 +306,72 @@ export function LessonRoomClient({
       }
 
       // Auto-layout при screen-share. Polling каждые 1.5с надёжнее
-      // событий: contentSharingParticipantsChanged не во всех версиях
-      // Jitsi прилетает на remote-клиента, screenSharingStatusChanged
-      // — только локальный. getContentSharingParticipants() работает
-      // на обеих сторонах синхронно.
-      let lastSharers = ""
-      const applyLayout = (active: boolean) => {
-        if (active === screenShareActiveRef.current) return
-        screenShareActiveRef.current = active
+      // событий. КЛЮЧЕВОЕ: используем setLargeVideoParticipant с
+      // videoType='desktop' — pinParticipant закрепляет КАМЕРУ
+      // участника, а нам нужен его DESKTOP-track.
+      let currentSharerId: string | null = null
+
+      const applyLayout = (sharerId: string | null) => {
+        if (sharerId === currentSharerId) return
+        currentSharerId = sharerId
+        screenShareActiveRef.current = sharerId !== null
+        const api = jitsiApi.current
+        if (!api) return
         try {
-          if (active) {
-            // Выходим из tile view. Pin'ить sharer'а НЕ нужно — Jitsi
-            // в не-tile режиме сам делает screen-share dominant video,
-            // а pin на нашей стороне может закрепить камеру вместо экрана.
-            jitsiApi.current?.executeCommand("setTileView", false)
-            jitsiApi.current?.executeCommand("pinParticipant", null)
+          if (sharerId) {
+            api.executeCommand("setTileView", false)
+            api.executeCommand("pinParticipant", null)
+            // Главное видео = desktop-трек шарящего. Видеотип 'desktop'
+            // заставляет Jitsi достать именно screen-share, а не камеру.
+            setTimeout(() => {
+              try { api.executeCommand("setLargeVideoParticipant", sharerId, "desktop") } catch {}
+            }, 200)
+            // Дополнительная попытка через секунду — если первая улетела
+            // до того как screen track появился в pubsub'е.
+            setTimeout(() => {
+              try { api.executeCommand("setLargeVideoParticipant", sharerId, "desktop") } catch {}
+            }, 1200)
           } else {
-            // Назад в равные тайлы.
-            jitsiApi.current?.executeCommand("pinParticipant", null)
-            jitsiApi.current?.executeCommand("setTileView", true)
+            // Возврат: убрать pin'ы и в tile view.
+            try { api.executeCommand("pinParticipant", null) } catch {}
+            try { api.executeCommand("setLargeVideoParticipant", null) } catch {}
+            try { api.executeCommand("setTileView", true) } catch {}
           }
         } catch { /* noop */ }
       }
+
       const pollScreenShare = () => {
-        if (!jitsiApi.current) return
+        const api = jitsiApi.current
+        if (!api) return
         let sharers: string[] = []
         try {
-          // 1) Прямой getter (Jitsi 7+).
-          const fn = jitsiApi.current.getContentSharingParticipants
+          const fn = api.getContentSharingParticipants
           if (typeof fn === "function") {
-            const r = fn.call(jitsiApi.current)
-            // Может вернуть Promise или массив сразу.
+            const r = fn.call(api)
             if (r && typeof (r as any).then === "function") {
               ;(r as Promise<any>).then((v) => {
                 const arr: any[] = v?.participants ?? v ?? []
-                sharers = arr.map((p: any) => p?.id ?? p?.participantId ?? p).filter(Boolean)
-                const key = sharers.sort().join(",")
-                if (key !== lastSharers) { lastSharers = key; applyLayout(sharers.length > 0) }
+                sharers = arr
+                  .map((p: any) => (typeof p === "string" ? p : p?.id ?? p?.participantId))
+                  .filter(Boolean)
+                applyLayout(sharers[0] ?? null)
               }).catch(() => {})
               return
             }
             const arr: any[] = (r as any)?.participants ?? r ?? []
-            sharers = arr.map((p: any) => p?.id ?? p?.participantId ?? p).filter(Boolean)
+            sharers = arr
+              .map((p: any) => (typeof p === "string" ? p : p?.id ?? p?.participantId))
+              .filter(Boolean)
           } else {
-            // 2) Fallback: смотрим participantsInfo, ищем displayName с " (screen)".
-            const info = jitsiApi.current.getParticipantsInfo?.() ?? []
+            // Fallback: ищем фейкового участника с " (screen)" в имени.
+            const info = api.getParticipantsInfo?.() ?? []
             sharers = (info as any[])
-              .filter((p) => /\(screen\)|share/i.test(String(p?.displayName ?? "")))
+              .filter((p) => /\(screen\)|screen/i.test(String(p?.displayName ?? "")))
               .map((p) => p?.participantId ?? p?.id)
               .filter(Boolean)
           }
         } catch { /* noop */ }
-        const key = sharers.sort().join(",")
-        if (key !== lastSharers) { lastSharers = key; applyLayout(sharers.length > 0) }
+        applyLayout(sharers[0] ?? null)
       }
       const screenSharePollIv = setInterval(pollScreenShare, 1500)
       ;(jitsiApi.current as any)._screenSharePollIv = screenSharePollIv
