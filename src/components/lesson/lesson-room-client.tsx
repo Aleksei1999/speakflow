@@ -305,38 +305,63 @@ export function LessonRoomClient({
         try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
 
-      // Кто-то начал шарить экран → выйти из tile view, pin sharer'а
-      // как stage. Участники автоматом улетят в filmstrip.
-      // Когда screen-share выключают — обратно в равные тайлы.
-      const onScreenShare = (data: any) => {
-        const sharers = (data?.data ?? data) as Array<{ id?: string; participantId?: string }>
-        const sharer = Array.isArray(sharers) && sharers.length > 0
-          ? (sharers[0].id ?? sharers[0].participantId ?? null)
-          : null
-        if (sharer) {
-          screenShareActiveRef.current = true
-          try { jitsiApi.current?.executeCommand("setTileView", false) } catch {}
-          // Pin screen-share track → он становится large/stage video.
-          setTimeout(() => {
-            try { jitsiApi.current?.executeCommand("pinParticipant", sharer) } catch {}
-          }, 150)
-        } else {
-          screenShareActiveRef.current = false
-          try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
-          setTimeout(forceTile, 150)
-        }
+      // Auto-layout при screen-share. Polling каждые 1.5с надёжнее
+      // событий: contentSharingParticipantsChanged не во всех версиях
+      // Jitsi прилетает на remote-клиента, screenSharingStatusChanged
+      // — только локальный. getContentSharingParticipants() работает
+      // на обеих сторонах синхронно.
+      let lastSharers = ""
+      const applyLayout = (active: boolean) => {
+        if (active === screenShareActiveRef.current) return
+        screenShareActiveRef.current = active
+        try {
+          if (active) {
+            // Выходим из tile view. Pin'ить sharer'а НЕ нужно — Jitsi
+            // в не-tile режиме сам делает screen-share dominant video,
+            // а pin на нашей стороне может закрепить камеру вместо экрана.
+            jitsiApi.current?.executeCommand("setTileView", false)
+            jitsiApi.current?.executeCommand("pinParticipant", null)
+          } else {
+            // Назад в равные тайлы.
+            jitsiApi.current?.executeCommand("pinParticipant", null)
+            jitsiApi.current?.executeCommand("setTileView", true)
+          }
+        } catch { /* noop */ }
       }
-      jitsiApi.current?.addListener("contentSharingParticipantsChanged", onScreenShare)
-      // Fallback на старые версии external_api.js, где events назывались иначе.
-      jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
-        if (e?.on) {
-          screenShareActiveRef.current = true
-          try { jitsiApi.current?.executeCommand("setTileView", false) } catch {}
-        } else {
-          screenShareActiveRef.current = false
-          setTimeout(forceTile, 150)
-        }
-      })
+      const pollScreenShare = () => {
+        if (!jitsiApi.current) return
+        let sharers: string[] = []
+        try {
+          // 1) Прямой getter (Jitsi 7+).
+          const fn = jitsiApi.current.getContentSharingParticipants
+          if (typeof fn === "function") {
+            const r = fn.call(jitsiApi.current)
+            // Может вернуть Promise или массив сразу.
+            if (r && typeof (r as any).then === "function") {
+              ;(r as Promise<any>).then((v) => {
+                const arr: any[] = v?.participants ?? v ?? []
+                sharers = arr.map((p: any) => p?.id ?? p?.participantId ?? p).filter(Boolean)
+                const key = sharers.sort().join(",")
+                if (key !== lastSharers) { lastSharers = key; applyLayout(sharers.length > 0) }
+              }).catch(() => {})
+              return
+            }
+            const arr: any[] = (r as any)?.participants ?? r ?? []
+            sharers = arr.map((p: any) => p?.id ?? p?.participantId ?? p).filter(Boolean)
+          } else {
+            // 2) Fallback: смотрим participantsInfo, ищем displayName с " (screen)".
+            const info = jitsiApi.current.getParticipantsInfo?.() ?? []
+            sharers = (info as any[])
+              .filter((p) => /\(screen\)|share/i.test(String(p?.displayName ?? "")))
+              .map((p) => p?.participantId ?? p?.id)
+              .filter(Boolean)
+          }
+        } catch { /* noop */ }
+        const key = sharers.sort().join(",")
+        if (key !== lastSharers) { lastSharers = key; applyLayout(sharers.length > 0) }
+      }
+      const screenSharePollIv = setInterval(pollScreenShare, 1500)
+      ;(jitsiApi.current as any)._screenSharePollIv = screenSharePollIv
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTile, 200)
         setConnQuality("good")
@@ -365,7 +390,13 @@ export function LessonRoomClient({
       setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
-    return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
+    return()=>{
+      disposed=true
+      try{ const iv = (jitsiApi.current as any)?._screenSharePollIv; if (iv) clearInterval(iv) }catch{}
+      try{jitsiApi.current?.dispose()}catch{}
+      jitsiApi.current=null
+      setJitsiApiState(null)
+    }
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
 
   // Pre-call hint: на 2G/slow-2G/3G скорее всего будут лаги. Показываем
