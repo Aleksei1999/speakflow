@@ -681,7 +681,7 @@ export function LessonRoomClient({
               <div className="av">{otherInitials}</div>
               <div className="info">
                 <div className="name">{teacherName}</div>
-                <div className="sub">{isTeacher?"ученик":"teacher"}</div>
+                <div className="sub">{isTeacher?"Ученик":"Преподаватель"}</div>
               </div>
               {teacherRating > 0 && <div className="rating">★ {teacherRating.toFixed(1)}</div>}
             </div>
