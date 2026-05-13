@@ -10,23 +10,51 @@ export interface JitsiUser {
   isModerator: boolean
 }
 
+export interface JitsiTokenOptions {
+  /** Время старта урока. Используется для динамического exp. */
+  scheduledAt?: string | Date | null
+  /** Длительность урока в минутах. Используется для exp. */
+  durationMinutes?: number | null
+}
+
+const DEFAULT_EXP_HOURS = 2
+const POST_LESSON_BUFFER_MIN = 30
+
+/**
+ * Динамический exp: max(сейчас + 2ч, scheduledAt + duration + 30мин).
+ * Без буфера длинная waiting-room → expired token к середине урока.
+ */
+function computeExpSeconds(opts?: JitsiTokenOptions): number {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const default2h = nowSec + DEFAULT_EXP_HOURS * 60 * 60
+
+  if (!opts?.scheduledAt || !opts?.durationMinutes) return default2h
+
+  const scheduledMs =
+    opts.scheduledAt instanceof Date
+      ? opts.scheduledAt.getTime()
+      : new Date(opts.scheduledAt).getTime()
+  if (!Number.isFinite(scheduledMs)) return default2h
+
+  const lessonEndSec = Math.floor(
+    (scheduledMs + (opts.durationMinutes + POST_LESSON_BUFFER_MIN) * 60 * 1000) /
+      1000
+  )
+
+  return Math.max(default2h, lessonEndSec)
+}
+
 /**
  * Генерация JWT-токена для Jitsi Meet.
  *
- * Стандартные claims для Jitsi JWT:
- * - iss  -- appId (JITSI_JWT_APP_ID)
- * - sub  -- домен Jitsi
- * - aud  -- "jitsi" (или appId, зависит от конфигурации сервера)
- * - room -- имя комнаты (lesson UUID)
- * - exp  -- время жизни токена (2 часа)
- * - context.user -- информация о пользователе
- *
- * Подписывается алгоритмом HS256.
- * Время жизни: 2 часа (покрывает максимальный урок + буфер).
+ * exp вычисляется динамически от длительности урока, чтобы токен
+ * пережил весь урок даже если юзер открыл вкладку за час до начала.
+ * Минимум 2 часа от момента подписи.
  */
 export async function generateJitsiToken(
   roomName: string,
-  user: JitsiUser
+  user: JitsiUser,
+  opts?: JitsiTokenOptions
 ): Promise<string> {
   validateJitsiConfig()
 
@@ -35,6 +63,7 @@ export async function generateJitsiToken(
   }
 
   const secret = new TextEncoder().encode(JITSI_CONFIG.jwtSecret)
+  const exp = computeExpSeconds(opts)
 
   const token = await new jose.SignJWT({
     context: {
@@ -54,7 +83,7 @@ export async function generateJitsiToken(
     .setSubject(JITSI_CONFIG.domain)
     .setAudience('jitsi')
     .setIssuedAt()
-    .setExpirationTime('2h')
+    .setExpirationTime(exp)
     .sign(secret)
 
   return token
