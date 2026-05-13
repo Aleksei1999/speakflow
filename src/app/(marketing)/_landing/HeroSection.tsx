@@ -90,9 +90,11 @@ export default function HeroSection() {
           .hero на главной, оборачиваем в page-классы через явный wrapper. */}
       <div className={styles.glow} />
 
-      {/* Декоративный «дым» из английских слов на фоне с typing-
-          эффектом (clip-path-from-right). Заполняет пустые поля
-          слева и справа от фото. aria-hidden — это чистая типографика. */}
+      {/* TEMP: фоновые «печатающиеся» английские слова скрыты по запросу.
+          Чтобы вернуть — раскомментируй блок ниже; конфиг floatingWords
+          и стили .fw/.floatingWords остаются в файле, ничего удалять
+          не нужно.
+
       <div className={styles.floatingWords} aria-hidden="true">
         {floatingWords.map((w, i) => (
           <span
@@ -108,8 +110,6 @@ export default function HeroSection() {
               left: w.left,
               right: w.right,
               opacity: w.opacity,
-              // CSS-vars: длительность печати пропорциональна длине
-              // слова, плюс собственный delay каскада.
               ["--rot" as any]: `${w.rotate}deg`,
               ["--type-dur" as any]: `${Math.max(0.5, w.text.length * 0.07)}s`,
               ["--type-delay" as any]: `${w.delay}s`,
@@ -119,6 +119,7 @@ export default function HeroSection() {
           </span>
         ))}
       </div>
+      */}
 
       <div className={styles.heroGrid}>
         <div className={styles.leftPanel}>
