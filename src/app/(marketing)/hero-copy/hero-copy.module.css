@@ -457,6 +457,19 @@
   top: 420px;
 }
 
+.streakCard > div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.streakCard > div b {
+  font-weight: 800;
+}
+.streakCard > div span {
+  font-size: 13px;
+  color: var(--hero-muted, #8a8a86);
+}
+
 .streakBadge {
   width: 44px;
   height: 44px;
