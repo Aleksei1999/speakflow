@@ -19,10 +19,16 @@ export interface JitsiTokenOptions {
 
 const DEFAULT_EXP_HOURS = 2
 const POST_LESSON_BUFFER_MIN = 30
+const MIN_TOKEN_LIFETIME_SEC = 5 * 60 // защитный пол на 5 минут
 
 /**
- * Динамический exp: max(сейчас + 2ч, scheduledAt + duration + 30мин).
- * Без буфера длинная waiting-room → expired token к середине урока.
+ * Динамический exp = МИНИМУМ из (сейчас + 2ч) и (scheduledEnd + 30мин).
+ * Раньше использовался max() — для далеко запланированных уроков токен
+ * жил сутками, leak → модератор на сутки. Теперь cap по концу урока:
+ *   • 50-мин урок в середине → ~45 мин жизни токена
+ *   • Только что вошли → весь урок + 30 мин
+ *   • Долгий 90-мин урок → up to default2h, не больше
+ * Floor MIN_TOKEN_LIFETIME_SEC чтобы не выдавать заведомо мёртвый токен.
  */
 function computeExpSeconds(opts?: JitsiTokenOptions): number {
   const nowSec = Math.floor(Date.now() / 1000)
@@ -41,7 +47,9 @@ function computeExpSeconds(opts?: JitsiTokenOptions): number {
       1000
   )
 
-  return Math.max(default2h, lessonEndSec)
+  // Cap по концу урока, но не меньше MIN_TOKEN_LIFETIME_SEC от сейчас.
+  const capped = Math.min(default2h, lessonEndSec)
+  return Math.max(capped, nowSec + MIN_TOKEN_LIFETIME_SEC)
 }
 
 /**

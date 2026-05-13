@@ -5,6 +5,7 @@
 // не даём перепроходить. Тут же подсвечиваем сколько XP заработал.
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { CheckCircle2, XCircle, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -38,6 +39,7 @@ type Result = {
 }
 
 export function QuizRunner({ quizId, questions, previous }: Props) {
+  const router = useRouter()
   const [chosen, setChosen] = useState<number[]>(() =>
     questions.map((_, i) =>
       previous ? previous.answers[i]?.chosen_index ?? -1 : -1
@@ -87,6 +89,9 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
         xpAwarded: j.xpAwarded ?? 0,
       })
       setSubmitted(true)
+      // После сабмита перезагружаем страницу — server-side подтянет
+      // questions с correct_index/explanation (раньше скрытые, security MED).
+      router.refresh()
     } catch (e: any) {
       setError(e?.message ?? "Ошибка сети")
     } finally {
