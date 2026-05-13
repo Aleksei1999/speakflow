@@ -29,12 +29,33 @@ export default async function StudentSummariesPage() {
   const { data: summaries } = await supabase
     .from("lesson_summaries")
     .select(
-      "id, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve, cefr_level, created_at, lesson_id, lessons!lesson_summaries_lesson_id_fkey(scheduled_at, profiles!lessons_teacher_id_fkey(full_name, avatar_url))"
+      "id, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve, cefr_level, source, created_at, lesson_id, lessons!lesson_summaries_lesson_id_fkey(scheduled_at, profiles!lessons_teacher_id_fkey(full_name, avatar_url))"
     )
     .eq("student_id", user.id)
     .order("created_at", { ascending: false })
 
   const items = (summaries ?? []) as any[]
+
+  // Подтягиваем квизы для всех саммари сразу. RLS на lesson_quizzes
+  // отфильтрует чужие, на attempts — тоже.
+  const summaryIds = items.map((s) => s.id)
+  const [{ data: quizzes }, { data: attempts }] = await Promise.all([
+    summaryIds.length
+      ? supabase
+          .from("lesson_quizzes")
+          .select("id, summary_id, questions, question_count")
+          .in("summary_id", summaryIds)
+      : Promise.resolve({ data: [] as any[] }),
+    supabase
+      .from("lesson_quiz_attempts")
+      .select("quiz_id, score, total, xp_awarded, answers")
+      .eq("student_id", user.id),
+  ])
+
+  const quizBySummary = new Map<string, any>()
+  for (const q of (quizzes ?? []) as any[]) quizBySummary.set(q.summary_id, q)
+  const attemptByQuiz = new Map<string, any>()
+  for (const a of (attempts ?? []) as any[]) attemptByQuiz.set(a.quiz_id, a)
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,6 +86,23 @@ export default async function StudentSummariesPage() {
             const grammarList = Array.isArray(summary.grammar_points)
               ? summary.grammar_points
               : []
+
+            const quizRow = quizBySummary.get(summary.id)
+            const attempt = quizRow ? attemptByQuiz.get(quizRow.id) : null
+            const quizProp = quizRow
+              ? {
+                  id: quizRow.id as string,
+                  questions: (quizRow.questions ?? []) as any[],
+                  previous: attempt
+                    ? {
+                        score: attempt.score,
+                        total: attempt.total,
+                        xpAwarded: attempt.xp_awarded,
+                        answers: attempt.answers ?? [],
+                      }
+                    : null,
+                }
+              : null
 
             return (
               <SummaryExpandable
@@ -116,6 +154,7 @@ export default async function StudentSummariesPage() {
                 homework={summary.homework}
                 strengths={summary.strengths}
                 areasToImprove={summary.areas_to_improve}
+                quiz={quizProp}
               />
             )
           })}
