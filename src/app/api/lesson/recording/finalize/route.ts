@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
+import { requireLessonParticipant } from "@/lib/api/lesson-auth"
 
 const BodySchema = z.object({
   lessonId: z.string().uuid(),
@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
   }
   const { lessonId, recordingId, durationSec, totalBytes, chunksCount } = parsed.data
 
-  const gate = await requireLessonTeacherOrAdmin(lessonId)
+  // Phase 1.2: финализировать может ЛЮБОЙ участник — кто первый
+  // отвалился, тот и закрывает запись. Если запись уже finalized —
+  // отдаём idempotent ok ниже.
+  const gate = await requireLessonParticipant(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { data: rec } = await gate.admin
