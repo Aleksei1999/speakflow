@@ -6,7 +6,11 @@ import Script from "next/script"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { RawLogo } from "@/components/ui/raw-logo"
-import { useUser } from "@/hooks/use-user"
+// useUser() статически НЕ импортируем — он тянет @/lib/supabase/client →
+// весь @supabase/supabase-js (auth + realtime + postgrest, ~225 КБ gzip)
+// в маркетинг-бандл лендинга. Загружаем его lazy внутри useEffect (см. ниже)
+// — для первого paint достаточно куки rwen_authed, которую middleware ставит
+// при логине и читает inline-bootstrap-скрипт из app/layout.tsx.
 // CSS подключаем через <link> в JSX (см. ниже), чтобы Next не пакетировал
 // landing-стили в shared client chunk и не preload'ил их на dashboard-страницах.
 
@@ -90,7 +94,77 @@ export default function LandingClient() {
     setCookieRole(readAuthedCookie())
   }, [])
 
-  const { user, role: hookRole, isLoading } = useUser()
+  // Lazy-load Supabase-зависимый useUser ПОСЛЕ первого рендера — для
+  // initial paint достаточно куки. Подгружается одним dynamic import()
+  // в idle-моменте, чтобы не блокировать LCP. До этого считаем «как
+  // на cookie» (isLoading=true ниже работает идентично прежнему пути).
+  const [hookState, setHookState] = useState<{
+    user: unknown | null
+    role: string | null
+    isLoading: boolean
+  }>({ user: null, role: null, isLoading: true })
+
+  useEffect(() => {
+    let cancelled = false
+    let unsubscribe: (() => void) | undefined
+    const start = () => {
+      if (cancelled) return
+      // Только сюда уходит весь @supabase/supabase-js (~225 КБ) — в
+      // отдельный async-чанк, который грузится после LCP, не блокируя
+      // первый paint лендинга.
+      import("@/lib/supabase/client")
+        .then(({ createClient }) => {
+          if (cancelled) return
+          const supabase = createClient()
+          supabase.auth.getUser().then(({ data }) => {
+            if (cancelled) return
+            const u = data?.user ?? null
+            if (!u) {
+              setHookState({ user: null, role: null, isLoading: false })
+              return
+            }
+            supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", u.id)
+              .maybeSingle()
+              .then(({ data: prof }) => {
+                if (cancelled) return
+                setHookState({
+                  user: u,
+                  role: (prof?.role as string | null) ?? null,
+                  isLoading: false,
+                })
+              })
+          })
+          const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+            if (cancelled) return
+            const u = session?.user ?? null
+            setHookState((s) => ({ ...s, user: u, isLoading: false }))
+          })
+          unsubscribe = () => sub?.subscription?.unsubscribe?.()
+        })
+        .catch(() => {
+          if (!cancelled) setHookState((s) => ({ ...s, isLoading: false }))
+        })
+    }
+    // requestIdleCallback откладывает грузить Supabase до момента, когда
+    // основной thread свободен — после LCP/INP. Fallback: setTimeout 0.
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+    }
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(start, { timeout: 2000 })
+    } else {
+      setTimeout(start, 0)
+    }
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [])
+
+  const { user, role: hookRole, isLoading } = hookState
 
   // Authed if either the cookie OR the resolved hook says so. We trust the
   // hook over the cookie once it has loaded (handles signed-out-elsewhere).
