@@ -49,12 +49,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, picked: null })
   }
 
-  // Отфильтровать те, для которых уже есть транскрипт.
+  // FIX CRIT-4: исключаем только recording'и с успешным транскриптом
+  // (status='ok'). failed-row либо чистится миграцией 062, либо
+  // считается «нужно retry» — её не существует на момент этого SELECT'а.
   const ids = candidates.map((c) => c.id)
   const { data: existing } = await admin
     .from("lesson_transcripts")
     .select("recording_id")
     .in("recording_id", ids)
+    .eq("status", "ok")
   const done = new Set((existing ?? []).map((e: any) => e.recording_id))
   const target = candidates.find((c) => !done.has(c.id))
   if (!target) {
