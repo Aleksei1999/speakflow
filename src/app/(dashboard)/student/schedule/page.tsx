@@ -151,6 +151,14 @@ const SCHEDULE_CSS = `
 @keyframes stuSpin{to{transform:rotate(360deg)}}
 
 @media(max-width:900px){.stu-schedule .stats{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){
+  /* На узких экранах weekly grid не помещается (7 колонок + 54px ширина времени = min-width:700px).
+     Скрываем грид и легенду, оставляем заголовок недели + список ниже. */
+  .stu-schedule .cg-wrap{display:none}
+  .stu-schedule .cal-legend{display:none}
+  .stu-schedule .cal-card{border-bottom-left-radius:20px;border-bottom-right-radius:20px}
+  .stu-schedule .cal-top{border-bottom:none}
+}
 @media(max-width:600px){
   .stu-schedule .hdr{flex-direction:column;align-items:flex-start}
   .stu-schedule .hdr-right{width:100%;justify-content:space-between}
