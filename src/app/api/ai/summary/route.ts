@@ -1,9 +1,8 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { lessonSummaryInputSchema } from '@/lib/validations'
 import { getOpenAI } from '@/lib/openai/client'
+import { requireLessonTeacherOrAdmin } from '@/lib/api/lesson-auth'
 import {
   LESSON_SUMMARY_SYSTEM_PROMPT,
   buildUserPrompt,
@@ -36,42 +35,16 @@ export async function POST(request: NextRequest) {
 
     const { lessonId, teacherInput, vocabulary, grammarPoints, homework } = parsed.data
 
-    // Проверяем авторизацию
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Необходимо авторизоваться' },
-        { status: 401 }
-      )
+    // CRIT-2 fix: раньше тут было `lesson.teacher_id !== user.id`, но
+    // lessons.teacher_id хранит teacher_profiles.id, а не auth.uid().
+    // Реальные преподы всегда получали 403. Используем общий gate,
+    // который правильно резолвит teacher_profiles → user_id.
+    const gate = await requireLessonTeacherOrAdmin(lessonId)
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
-
-    // Получаем урок и проверяем права
-    const adminClient = createAdminClient()
-    const { data: lesson, error: lessonError } = await adminClient
-      .from('lessons')
-      .select('id, student_id, teacher_id, status, scheduled_at, duration_minutes')
-      .eq('id', lessonId)
-      .single()
-
-    if (lessonError || !lesson) {
-      return NextResponse.json(
-        { error: 'Урок не найден' },
-        { status: 404 }
-      )
-    }
-
-    // Только преподаватель урока может создавать отчёт
-    if (lesson.teacher_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Только преподаватель урока может создать отчёт' },
-        { status: 403 }
-      )
-    }
+    const lesson = gate.lesson
+    const adminClient = gate.admin
 
     // Урок должен быть завершён
     if (lesson.status !== 'completed') {
