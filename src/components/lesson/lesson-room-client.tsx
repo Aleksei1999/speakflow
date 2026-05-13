@@ -106,6 +106,26 @@ const CSS = `
 .lr .rec-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--black);color:#fff;border-radius:999px;padding:12px 22px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:200;animation:rec-toast-in .35s ease both}
 .lr .rec-toast .rec-dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.4s infinite}
 @keyframes rec-toast-in{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* Recording status pill в левом слоте шапки. Всегда виден когда
+   запись идёт/паузится/упала — UX-обещание для preподавателя. */
+.lr .rec-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;letter-spacing:.2px;line-height:1;max-width:100%}
+.lr .rec-pill .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.lr .rec-pill.rec .dot{background:var(--red);animation:pulse 1.4s infinite}
+.lr .rec-pill.paused .dot{background:#A0A09A}
+.lr .rec-pill.start .dot{background:var(--lime);animation:pulse 1.4s infinite}
+.lr .rec-pill.off .dot{background:#666}
+.lr .rec-pill.err{background:rgba(230,57,70,.18);border-color:rgba(230,57,70,.5)}
+.lr .rec-pill.err .dot{background:var(--red)}
+.lr .rec-pill .stop{margin-left:2px;background:transparent;color:rgba(255,255,255,.65);border:0;font-size:14px;padding:0 2px;cursor:pointer;line-height:1}
+.lr .rec-pill .stop:hover{color:#fff}
+
+/* Persistent error banner — pinned под header'ом, юзер закрывает крестиком */
+.lr .rec-error{display:flex;align-items:center;gap:10px;background:#FEF2F2;color:#7F1D1D;border-bottom:1px solid #FECACA;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
+.lr .rec-error .icon{flex-shrink:0;font-size:16px}
+.lr .rec-error .msg{flex:1;min-width:0}
+.lr .rec-error .close{background:transparent;color:#7F1D1D;border:0;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;opacity:.7}
+.lr .rec-error .close:hover{opacity:1}
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.lr .lh{padding:12px 14px;grid-template-columns:1fr auto;gap:10px}.lr .lh-left{display:none}.lr .lh-center{justify-content:flex-start}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
@@ -144,6 +164,10 @@ export function LessonRoomClient({
   // триггерят его useEffect, а API становится доступен асинхронно.
   const [jitsiApiState, setJitsiApiState] = useState<any>(null)
   const [recordingToast, setRecordingToast] = useState(false)
+  // Управление авто-записью с UI стороны. Юзер может остановить —
+  // повторно включить мы пока не поддерживаем (см. teardownStartedRef).
+  const [recorderEnabled, setRecorderEnabled] = useState(true)
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -247,10 +271,11 @@ export function LessonRoomClient({
 
   // Авто-запись урока. Hook сам разбирается: teacher → /init, student
   // → polls /active. Никаких кнопок: согласие зафиксировано в оферте.
-  useLessonRecorder({
+  const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
     jitsiApi: jitsiApiState,
+    enabled: recorderEnabled,
     onStarted: () => {
       setRecordingToast(true)
       setTimeout(() => setRecordingToast(false), 3500)
@@ -389,12 +414,58 @@ export function LessonRoomClient({
       <div className="lr">
         {/* Header */}
         <header className="lh">
-          <div className="lh-side lh-left" />
+          <div className="lh-side lh-left">
+            {recorder.status === "recording" && (
+              <span className="rec-pill rec" title="Урок записывается для AI-конспекта">
+                <span className="dot" />
+                <span>Запись</span>
+                <button
+                  className="stop"
+                  title="Остановить запись"
+                  onClick={() => {
+                    if (confirm("Остановить AI-запись урока? Конспект и квиз не будут сгенерированы.")) {
+                      setRecorderEnabled(false)
+                    }
+                  }}
+                >×</button>
+              </span>
+            )}
+            {recorder.status === "paused" && (
+              <span className="rec-pill paused" title="Запись приостановлена — микрофон в Jitsi выключен">
+                <span className="dot" /><span>Запись на паузе</span>
+              </span>
+            )}
+            {(recorder.status === "starting" || recorder.status === "idle") && recorderEnabled && (
+              <span className="rec-pill start" title="Готовим AI-запись урока">
+                <span className="dot" /><span>Запускаем запись…</span>
+              </span>
+            )}
+            {recorder.status === "stopped" && (
+              <span className="rec-pill off" title="Запись остановлена">
+                <span className="dot" /><span>Запись остановлена</span>
+              </span>
+            )}
+            {recorder.status === "error" && (
+              <span className="rec-pill err" title={recorder.error ?? "Запись недоступна"}>
+                <span className="dot" /><span>Микрофон недоступен</span>
+              </span>
+            )}
+          </div>
           <div className="lh-center">
             <span className="title">Урок с <strong>{teacherName}</strong></span>
           </div>
           <div className="lh-side lh-right"><button className="btn-exit" onClick={handleEnd}>Выйти из урока</button></div>
         </header>
+
+        {recorder.status === "error" && recorder.error && !errorDismissed && (
+          <div className="rec-error">
+            <span className="icon">⚠️</span>
+            <span className="msg">
+              AI-конспект урока не записывается. {recorder.error}
+            </span>
+            <button className="close" onClick={() => setErrorDismissed(true)} title="Скрыть">×</button>
+          </div>
+        )}
 
         <div className="lm">
           {/* Stats bar */}
