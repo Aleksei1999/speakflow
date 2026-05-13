@@ -152,7 +152,7 @@ const TEACHERS_CSS = `
 .teachers-page .prof-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--lime));z-index:2}
 
 .teachers-page .prof-top{display:flex;gap:20px;padding:24px;border-bottom:1px solid var(--border);position:relative}
-.teachers-page .prof-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1rem;cursor:pointer;z-index:3;font-family:inherit}
+.teachers-page .prof-close{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.1rem;cursor:pointer;z-index:3;font-family:inherit;line-height:1}
 .teachers-page .prof-close:hover{border-color:var(--red);color:var(--red)}
 
 .teachers-page .prof-avatar{width:100px;height:100px;border-radius:22px;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:var(--border);overflow:hidden}
