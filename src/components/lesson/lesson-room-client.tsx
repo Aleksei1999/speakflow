@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
 
 interface Props {
   lessonId: string
@@ -102,6 +103,9 @@ const CSS = `
 .lr .bb-icon.lime{background:var(--lime);color:var(--black)}.lr .bb-icon.red{background:var(--red);color:#fff}
 .lr .bb-icon svg{width:18px;height:18px}
 .lr .bb-card .title{font-weight:700;font-size:13px}.lr .bb-card .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.lr .rec-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--black);color:#fff;border-radius:999px;padding:12px 22px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:200;animation:rec-toast-in .35s ease both}
+.lr .rec-toast .rec-dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.4s infinite}
+@keyframes rec-toast-in{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.lr .lh{padding:12px 14px;grid-template-columns:1fr auto;gap:10px}.lr .lh-left{display:none}.lr .lh-center{justify-content:flex-start}.lr .lm{padding:10px;gap:10px}.lr .cb{width:44px;height:44px}.lr .cb svg{width:18px;height:18px}}
@@ -136,6 +140,10 @@ export function LessonRoomClient({
   const jitsiRef = useRef<HTMLDivElement>(null)
   const jitsiApi = useRef<any>(null)
   const pollRef = useRef<any>(null)
+  // Stateful копия jitsiApi нужна useLessonRecorder'у — refs не
+  // триггерят его useEffect, а API становится доступен асинхронно.
+  const [jitsiApiState, setJitsiApiState] = useState<any>(null)
+  const [recordingToast, setRecordingToast] = useState(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -164,7 +172,7 @@ export function LessonRoomClient({
         })
       }
       if (disposed||!jitsiRef.current) return
-      jitsiApi.current = new window.JitsiMeetExternalAPI(jitsiDomain, {
+      const api = new window.JitsiMeetExternalAPI(jitsiDomain, {
         roomName: jitsiRoom, parentNode: jitsiRef.current, width:"100%", height:"100%",
         ...(jitsiToken?{jwt:jitsiToken}:{}),
         configOverwrite:{
@@ -207,6 +215,8 @@ export function LessonRoomClient({
         },
         userInfo:{displayName:userName},
       })
+      jitsiApi.current = api
+      setJitsiApiState(api)
 
       // Жёстко форсим tile view — startWithTileView иногда игнорится
       // если кто-то уже в комнате. Через 800мс после init заставим UI.
@@ -232,8 +242,20 @@ export function LessonRoomClient({
       setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
-    return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null}
+    return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
+
+  // Авто-запись урока. Hook сам разбирается: teacher → /init, student
+  // → polls /active. Никаких кнопок: согласие зафиксировано в оферте.
+  useLessonRecorder({
+    lessonId,
+    isTeacher,
+    jitsiApi: jitsiApiState,
+    onStarted: () => {
+      setRecordingToast(true)
+      setTimeout(() => setRecordingToast(false), 3500)
+    },
+  })
 
   // Chat
   const loadMessages = useCallback(async()=>{
@@ -550,6 +572,13 @@ export function LessonRoomClient({
           </div>
         </div>
       </div>
+
+      {recordingToast && (
+        <div className="rec-toast">
+          <span className="rec-dot" />
+          <span>Урок записывается для AI-конспекта</span>
+        </div>
+      )}
 
       {/* Homework panel */}
       {hwOpen && (
