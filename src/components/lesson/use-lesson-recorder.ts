@@ -8,9 +8,15 @@
 // 2. Teacher вызывает POST /api/lesson/recording/init → получает
 //    recordingId. Student опрашивает GET .../active каждые 4 сек
 //    пока teacher не создаст запись.
-// 3. MediaRecorder с timeslice ~20 сек шлёт blob'ы в очередь.
-//    Uploader последовательно: chunk-url → PUT signedUrl.
-// 4. При mute в Jitsi (audioMuteStatusChanged) — pause()/resume().
+// 3. RESTART-PATTERN: каждые ~20 секунд делаем rec.stop(), в onstop
+//    получаем ПОЛНОЦЕННЫЙ webm с EBML-header'ом, кладём в очередь
+//    и сразу создаём новый MediaRecorder на том же stream + start().
+//    Так каждый chunk самодостаточен и OpenAI gpt-4o-transcribe
+//    может его прочитать. Раньше использовали rec.start(timeslice) —
+//    только первый chunk содержал header, остальные шли пустыми.
+// 4. При mute в Jitsi (audioMuteStatusChanged) — стопаем интервал и
+//    текущий recorder (хвост попадёт в очередь), при unmute поднимаем
+//    новый recorder + новый интервал.
 // 5. На unmount / beforeunload — stop(), доуплоадить хвост, POST
 //    /finalize.
 //
@@ -90,6 +96,17 @@ export function useLessonRecorder({
   const recordingIdRef = useRef<string | null>(null)
   const teardownStartedRef = useRef(false)
   const startedFiredRef = useRef(false)
+  // Restart-pattern: интервал, который пинает текущий MediaRecorder
+  // → stop() → onstop поднимает новый recorder и start().
+  const restartIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Флаг «после stop'а сразу создать новый recorder». Сбрасываем при
+  // mute и при teardown, чтобы хвостовой stop был финальным.
+  const autoRestartRef = useRef(false)
+  // Экспонируем pause/resume для второго useEffect (mute-listener).
+  // Внутри основного useEffect лежат closure'ы spawnRecorder etc.,
+  // в этих ref'ах храним стабильные ссылки на них.
+  const pauseRecordingRef = useRef<() => void>(() => {})
+  const resumeRecordingRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!enabled) return
@@ -107,6 +124,11 @@ export function useLessonRecorder({
     seqRef.current = 0
     totalBytesRef.current = 0
     recordingIdRef.current = null
+    autoRestartRef.current = false
+    if (restartIntervalRef.current) {
+      clearInterval(restartIntervalRef.current)
+      restartIntervalRef.current = null
+    }
     setRecordingId(null)
 
     const mime = pickMimeType()
@@ -271,6 +293,26 @@ export function useLessonRecorder({
       recordingIdRef.current = recId
       setRecordingId(recId)
 
+      startedAtRef.current = Date.now()
+      // Стартуем первый recorder + восстановим интервал рестарта.
+      const ok = spawnRecorder(stream, recId)
+      if (!ok) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+      armRestartInterval()
+      setStatus("recording")
+    }
+
+    /**
+     * Создаёт новый MediaRecorder на текущем stream, навешивает
+     * onstop (с restart-логикой) и сразу стартует без timeslice — мы
+     * сами стопаем его по setInterval.
+     *
+     * Возвращает false при системной ошибке (recorder не создаётся —
+     * редкость, но возможно если track отключился).
+     */
+    function spawnRecorder(stream: MediaStream, recId: string): boolean {
       let rec: MediaRecorder
       try {
         rec = new MediaRecorder(stream, { mimeType: mimeRef.current })
@@ -278,8 +320,7 @@ export function useLessonRecorder({
         console.warn("[lesson-recorder] new MediaRecorder failed:", e?.message ?? e)
         setStatus("error")
         setError("Не удалось создать recorder")
-        stream.getTracks().forEach((t) => t.stop())
-        return
+        return false
       }
       recRef.current = rec
 
@@ -292,9 +333,85 @@ export function useLessonRecorder({
       rec.onerror = (ev: any) => {
         console.warn("[lesson-recorder] recorder error:", ev?.error ?? ev)
       }
+      rec.onstop = () => {
+        // После stop()'а MediaRecorder сначала эмитит dataavailable,
+        // потом onstop — на этот момент финальный blob уже в очереди.
+        // Если флаг autoRestart взведён, создаём следующий recorder
+        // на том же stream. Иначе (mute/teardown) — ничего не делаем.
+        if (!autoRestartRef.current) return
+        const s = streamRef.current
+        const rid = recordingIdRef.current
+        if (!s || !rid) return
+        // Если stream закрылся (track ended) — больше не рестартуем.
+        const live = s.getAudioTracks().some((t) => t.readyState === "live")
+        if (!live) return
+        spawnRecorder(s, rid)
+      }
 
-      startedAtRef.current = Date.now()
-      rec.start(TIMESLICE_MS)
+      try {
+        rec.start()
+      } catch (e: any) {
+        console.warn("[lesson-recorder] rec.start failed:", e?.message ?? e)
+        return false
+      }
+      return true
+    }
+
+    /**
+     * Запускает interval, который каждые TIMESLICE_MS дёргает stop()
+     * текущего recorder'а. onstop поднимет новый (autoRestart=true).
+     */
+    function armRestartInterval() {
+      if (restartIntervalRef.current) clearInterval(restartIntervalRef.current)
+      autoRestartRef.current = true
+      restartIntervalRef.current = setInterval(() => {
+        const rec = recRef.current
+        if (!rec || rec.state !== "recording") return
+        try {
+          rec.stop()
+        } catch (e) {
+          console.warn("[lesson-recorder] periodic stop failed:", e)
+        }
+      }, TIMESLICE_MS)
+    }
+
+    function disarmRestartInterval() {
+      autoRestartRef.current = false
+      if (restartIntervalRef.current) {
+        clearInterval(restartIntervalRef.current)
+        restartIntervalRef.current = null
+      }
+    }
+
+    // Экспонируем pause/resume для useEffect, который слушает mute.
+    // На mute: глушим интервал и текущий recorder (хвост попадает
+    // в очередь полноценным webm-файлом). На unmute: новый recorder
+    // на том же stream + новый интервал.
+    pauseRecordingRef.current = () => {
+      const rec = recRef.current
+      disarmRestartInterval()
+      if (rec && rec.state === "recording") {
+        try {
+          rec.stop()
+        } catch (e) {
+          console.warn("[lesson-recorder] pause stop failed:", e)
+        }
+      }
+      setStatus("paused")
+    }
+    resumeRecordingRef.current = () => {
+      const s = streamRef.current
+      const rid = recordingIdRef.current
+      if (!s || !rid || teardownStartedRef.current) return
+      const live = s.getAudioTracks().some((t) => t.readyState === "live")
+      if (!live) return
+      // Если предыдущий recorder ещё не доехал до inactive (редко, но
+      // если mute→unmute щёлкнули быстрее, чем onstop вернулся),
+      // autoRestart=false уже снят — onstop ничего не сделает; мы
+      // безопасно создаём новый поверх него.
+      const ok = spawnRecorder(s, rid)
+      if (!ok) return
+      armRestartInterval()
       setStatus("recording")
     }
 
@@ -303,18 +420,17 @@ export function useLessonRecorder({
       teardownStartedRef.current = true
       setStatus("stopping")
 
+      // Снимаем интервал и autoRestart-флаг ДО stop() — иначе onstop
+      // обратно поднимет recorder и мы окажемся в гонке.
+      disarmRestartInterval()
+
       const rec = recRef.current
       if (rec && rec.state !== "inactive") {
         await new Promise<void>((res) => {
-          const prev = rec.onstop
-          rec.onstop = (ev) => {
-            try {
-              if (typeof prev === "function") (prev as any).call(rec, ev)
-            } catch {
-              /* ignore */
-            }
-            res()
-          }
+          // Перезаписываем onstop — нам нужно дождаться именно
+          // финального stop'а без auto-respawn'а. ondataavailable
+          // (он эмитится первым) положит хвостовой blob в очередь.
+          rec.onstop = () => res()
           try {
             rec.stop()
           } catch {
@@ -380,6 +496,13 @@ export function useLessonRecorder({
       // Если STUDENT — только stop(), без вызова finalize (см. CRIT-5);
       // recording останется в 'recording' пока учитель не выйдет либо
       // sweep_stuck cron не подберёт через 4ч.
+      // ВАЖНО: снимаем autoRestart до stop'а — иначе onstop поднимет
+      // новый recorder, а stream'ы уже dead'ятся.
+      autoRestartRef.current = false
+      if (restartIntervalRef.current) {
+        clearInterval(restartIntervalRef.current)
+        restartIntervalRef.current = null
+      }
       try {
         recRef.current?.stop()
       } catch {
@@ -422,18 +545,21 @@ export function useLessonRecorder({
   // Pause / resume при mute в Jitsi. Без подписки запись бы шла даже
   // когда юзер «выключил микрофон» в UI Jitsi — а это нарушает его
   // expectation.
+  //
+  // Реализация: restart-pattern несовместим с MediaRecorder.pause() —
+  // мы сами стопаем/пересоздаём recorder, поэтому MediaRecorder в
+  // состоянии "paused" не существует. На mute → disarm interval +
+  // stop текущего (хвост → очередь). На unmute → spawn новый recorder
+  // + новый интервал. См. pauseRecordingRef/resumeRecordingRef внутри
+  // основного useEffect.
   useEffect(() => {
     if (!jitsiApi) return
     const onMute = (data: any) => {
-      const rec = recRef.current
-      if (!rec) return
       try {
-        if (data?.muted && rec.state === "recording") {
-          rec.pause()
-          setStatus("paused")
-        } else if (!data?.muted && rec.state === "paused") {
-          rec.resume()
-          setStatus("recording")
+        if (data?.muted) {
+          pauseRecordingRef.current()
+        } else {
+          resumeRecordingRef.current()
         }
       } catch (e) {
         console.warn("[lesson-recorder] pause/resume failed:", e)
