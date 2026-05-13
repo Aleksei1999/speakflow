@@ -212,6 +212,8 @@ export function LessonRoomClient({
   type ConnQuality = "good" | "fair" | "poor" | "lost" | "unknown"
   const [connQuality, setConnQuality] = useState<ConnQuality>("unknown")
   const [slowNetworkHint, setSlowNetworkHint] = useState(false)
+  // Ref, не state — forceTile() читает синхронно из closure'а Jitsi listener'ов.
+  const screenShareActiveRef = useRef(false)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -264,6 +266,13 @@ export function LessonRoomClient({
           // экран, локальное видео скрыто.
           startWithTileView:true,
           disableTileView:false,
+          // Stage filmstrip — когда есть screen-share, участники
+          // показываются полосой над основным видео-стеком.
+          // На Jitsi 8.x это flag для разрешения такого режима.
+          filmstrip:{
+            disableStageFilmstrip:false,
+            stageFilmstripParticipants:2,
+          },
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -288,10 +297,46 @@ export function LessonRoomClient({
 
       // Жёстко форсим tile view — startWithTileView иногда игнорится
       // если кто-то уже в комнате. Через 800мс после init заставим UI.
+      // ВАЖНО: при активном screen-share tile view ломает фокус на
+      // презентации, поэтому проверяем флаг.
       const forceTile = () => {
+        if (screenShareActiveRef.current) return
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
         try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
+
+      // Кто-то начал шарить экран → выйти из tile view, pin sharer'а
+      // как stage. Участники автоматом улетят в filmstrip.
+      // Когда screen-share выключают — обратно в равные тайлы.
+      const onScreenShare = (data: any) => {
+        const sharers = (data?.data ?? data) as Array<{ id?: string; participantId?: string }>
+        const sharer = Array.isArray(sharers) && sharers.length > 0
+          ? (sharers[0].id ?? sharers[0].participantId ?? null)
+          : null
+        if (sharer) {
+          screenShareActiveRef.current = true
+          try { jitsiApi.current?.executeCommand("setTileView", false) } catch {}
+          // Pin screen-share track → он становится large/stage video.
+          setTimeout(() => {
+            try { jitsiApi.current?.executeCommand("pinParticipant", sharer) } catch {}
+          }, 150)
+        } else {
+          screenShareActiveRef.current = false
+          try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
+          setTimeout(forceTile, 150)
+        }
+      }
+      jitsiApi.current?.addListener("contentSharingParticipantsChanged", onScreenShare)
+      // Fallback на старые версии external_api.js, где events назывались иначе.
+      jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
+        if (e?.on) {
+          screenShareActiveRef.current = true
+          try { jitsiApi.current?.executeCommand("setTileView", false) } catch {}
+        } else {
+          screenShareActiveRef.current = false
+          setTimeout(forceTile, 150)
+        }
+      })
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTile, 200)
         setConnQuality("good")
