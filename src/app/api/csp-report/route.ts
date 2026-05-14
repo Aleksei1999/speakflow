@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { enforceRateLimit, getClientIp } from "@/lib/api/rate-limit"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { protectPublic } from "@/lib/api/arcjet"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +19,14 @@ function clip(value: unknown): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  // Arcjet: shield + bot detection. Атакующие любят слать кривые
+  // CSP-репорты, чтобы прощупать схему. Но: если Arcjet вернул Deny
+  // мы НЕ хотим 403 показывать браузеру (он перестанет репортить),
+  // отвечаем 204 — для CSP-механизма это эквивалент "принято".
+  // Сам факт denied всё равно залогирован в protectPublic().
+  const ajDeny = await protectPublic(request)
+  if (ajDeny) return new NextResponse(null, { status: 204 })
+
   const limited = await enforceRateLimit(request, {
     name: "csp:report",
     keyParts: [getClientIp(request)],

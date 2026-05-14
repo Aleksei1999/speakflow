@@ -5,9 +5,16 @@ import { questions } from '@/lib/level-test-questions'
 import { calculateLevel } from '@/lib/level-utils'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { protectPublic, validateEmailField } from '@/lib/api/arcjet'
 
 export async function POST(request: Request) {
   try {
+    // Arcjet FIRST — shield + bot detection. Анонимный публичный
+    // endpoint, лучшая первая линия защиты от автоматизированных
+    // прогонов теста и payload-инъекций в JSON-полях.
+    const ajDeny = await protectPublic(request as any)
+    if (ajDeny) return ajDeny
+
     // Rate-limit: 10 submit/час на IP. fail-closed —
     // публичный endpoint, защита от автоматизированной накрутки.
     const limited = await enforceRateLimitStrict(request as any, {
@@ -29,6 +36,21 @@ export async function POST(request: Request) {
     }
 
     const { answers, email } = parsed.data
+
+    // Email опциональный (тест можно проходить и анонимно), но если он
+    // прислан — отсеиваем disposable, мы потом будем по нему слать письмо.
+    if (email) {
+      const emailCheck = await validateEmailField(email)
+      if (!emailCheck.valid) {
+        const msg =
+          emailCheck.reason === 'disposable'
+            ? 'Укажите личный email, а не одноразовый'
+            : emailCheck.reason === 'no_mx'
+              ? 'Домен этого email не принимает почту'
+              : 'Некорректный email'
+        return NextResponse.json({ error: msg }, { status: 400 })
+      }
+    }
 
     let score = 0
     for (const question of questions) {
