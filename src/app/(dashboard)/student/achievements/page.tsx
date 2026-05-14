@@ -233,11 +233,33 @@ const ACHIEVEMENTS_CSS = `
   .achievements-page .ag{grid-template-columns:1fr 1fr}
   .achievements-page .shop-grid{grid-template-columns:1fr 1fr}
 }
-@media(max-width:600px){
-  .achievements-page .ag{grid-template-columns:1fr}
-  .achievements-page .shop-grid{grid-template-columns:1fr}
+/* Mobile: оставляем 2 колонки до самых узких экранов — иначе страница
+   на iPhone 13 (390px) растягивается на 32 000 px скролла. Карточка при
+   width≈170px остаётся читаемой за счёт компактных paddings/fonts ниже. */
+@media(max-width:640px){
+  .achievements-page .ag{grid-template-columns:repeat(2,1fr);gap:10px}
+  .achievements-page .shop-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .achievements-page .cat-tabs{justify-content:flex-start;overflow-x:auto}
   .achievements-page .hero-stats .hs{min-width:calc(50% - 6px);padding:14px 10px}
+  .achievements-page .ac{padding:14px 12px;border-radius:14px}
+  .achievements-page .ac-icon{font-size:1.6rem;margin-bottom:8px}
+  .achievements-page .ac-name{font-size:.82rem;line-height:1.2}
+  .achievements-page .ac-desc{font-size:.66rem;line-height:1.35;margin-bottom:8px}
+  .achievements-page .ac-xp{font-size:.58rem;padding:2px 8px}
+  .achievements-page .ac-reward{font-size:.52rem;padding:3px 8px}
+  .achievements-page .ac-check{width:20px;height:20px;top:8px;right:8px}
+  .achievements-page .ac-rarity{top:8px;right:8px;font-size:.46rem;padding:2px 6px}
+  .achievements-page .ac-claim-btn{padding:7px 10px;font-size:.66rem;border-radius:8px}
+  .achievements-page .rw{padding:16px 12px}
+  .achievements-page .rw-icon{font-size:1.8rem;margin-bottom:8px}
+  .achievements-page .rw-name{font-size:.82rem}
+  .achievements-page .rw-desc{font-size:.66rem;margin-bottom:10px;min-height:auto}
+}
+/* iPhone SE / very narrow phones — 2 колонки уже неудобно, переходим
+   на single-column. ~340-360px ширина viewport'а. */
+@media(max-width:360px){
+  .achievements-page .ag{grid-template-columns:1fr}
+  .achievements-page .shop-grid{grid-template-columns:1fr}
 }
 `
 
