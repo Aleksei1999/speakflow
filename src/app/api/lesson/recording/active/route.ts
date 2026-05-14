@@ -1,8 +1,8 @@
 // @ts-nocheck
 // GET /api/lesson/recording/active?lessonId=<uuid>
-// Студенту нужен endpoint чтобы после входа в комнату узнать
-// recordingId, который teacher создал через /init. Возвращает row
-// со status='recording' либо null. Любой участник урока.
+// Возвращает активную recording-row урока (status='recording') либо null.
+// Доступно любому участнику урока — студент так узнаёт recordingId,
+// созданный учителем через /init.
 
 import { NextRequest, NextResponse } from "next/server"
 import { requireLessonParticipant } from "@/lib/api/lesson-auth"
