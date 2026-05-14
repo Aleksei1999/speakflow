@@ -424,6 +424,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           />
         ) : null}
         <aside
+          aria-label="Боковая навигация"
           className={`sidebar${mobileOpen ? " mobile-open" : ""}`}
           onClickCapture={(e) => {
             // Close drawer when a navigation <a>/<Link> is clicked (mobile only).
