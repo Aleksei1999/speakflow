@@ -912,7 +912,6 @@ export function LessonRoomClient({
         </div>
       )}
 
-      {/* Глобальный confirm-диалог: заменяет нативные window.confirm() */}
       <ConfirmDialog {...confirmDialogProps} />
     </>
   )
