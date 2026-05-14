@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
 import { useModalA11y } from "@/hooks/use-modal-a11y"
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog"
 
 interface Props {
   lessonId: string
@@ -197,6 +198,9 @@ export function LessonRoomClient({
   const [hwDesc, setHwDesc] = useState("")
   const [hwOpen, setHwOpen] = useState(false)
   const hwModalRef = useModalA11y(hwOpen, () => setHwOpen(false))
+  // Замена нативного window.confirm() — на мобиле он уродский, плюс
+  // ломает брендинг. Все «опасные» действия проходят через этот dialog.
+  const { confirm, dialogProps: confirmDialogProps } = useConfirm()
   const [remaining, setRemaining] = useState(0)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
@@ -579,7 +583,18 @@ export function LessonRoomClient({
     const el = document.createElement("div") as any
     return Boolean(el.requestFullscreen || el.webkitRequestFullscreen)
   })()
-  const handleEnd=()=>{if(confirm("Завершить урок?")){jitsiApi.current?.executeCommand("hangup");router.push(isTeacher?"/teacher":"/student")}}
+  const handleEnd = async () => {
+    const ok = await confirm({
+      title: "Завершить урок?",
+      message: "Вы выйдете из видеосвязи и вернётесь на главную.",
+      confirmLabel: "Завершить",
+      cancelLabel: "Остаться",
+      danger: true,
+    })
+    if (!ok) return
+    try { jitsiApi.current?.executeCommand("hangup") } catch { /* noop */ }
+    router.push(isTeacher ? "/teacher" : "/student")
+  }
 
   return (
     <>
@@ -598,10 +613,15 @@ export function LessonRoomClient({
                 <button
                   className="stop"
                   title="Остановить запись"
-                  onClick={() => {
-                    if (confirm("Остановить AI-запись урока? Конспект и квиз не будут сгенерированы.")) {
-                      setRecorderEnabled(false)
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Остановить AI-запись?",
+                      message: "Конспект и квиз для этого урока не будут сгенерированы.",
+                      confirmLabel: "Остановить",
+                      cancelLabel: "Продолжить запись",
+                      danger: true,
+                    })
+                    if (ok) setRecorderEnabled(false)
                   }}
                 >×</button>
               </span>
@@ -928,6 +948,9 @@ export function LessonRoomClient({
           </div>
         </div>
       )}
+
+      {/* Глобальный confirm-диалог: заменяет нативные window.confirm() */}
+      <ConfirmDialog {...confirmDialogProps} />
     </>
   )
 }
