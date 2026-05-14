@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -23,6 +22,15 @@ const bodySchema = z.object({
     .max(50, "Слишком много за один раз"),
 })
 
+type ClubCapacityRow = {
+  id: string
+  capacity: number | null
+  max_seats: number | null
+  seats_taken: number | null
+  cancelled_at: string | null
+}
+type ExistingRegistrationRow = { user_id: string; status: string }
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,7 +47,7 @@ export async function POST(
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    let body: any
+    let body: unknown
     try {
       body = await request.json()
     } catch {
@@ -61,7 +69,7 @@ export async function POST(
       .from("clubs")
       .select("id, capacity, max_seats, seats_taken, cancelled_at")
       .eq("id", id)
-      .maybeSingle()
+      .maybeSingle<ClubCapacityRow>()
     if (clubErr) {
       console.error("assign: load club error:", clubErr)
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
@@ -81,6 +89,7 @@ export async function POST(
       .select("user_id, status")
       .eq("club_id", id)
       .in("status", ["registered", "pending_payment", "attended", "waitlist"])
+      .returns<ExistingRegistrationRow[]>()
     if (exErr) {
       console.error("assign: load existing error:", exErr)
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
@@ -106,8 +115,8 @@ export async function POST(
         continue
       }
 
-      const { error: insErr } = await admin
-        .from("club_registrations")
+      // FIXME(types): club_registrations не описан в Database — нужен typegen из supabase
+      const { error: insErr } = await (admin.from("club_registrations") as any)
         .insert({
           club_id: id,
           user_id: studentId,

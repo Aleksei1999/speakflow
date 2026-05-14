@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -26,11 +25,20 @@ export async function POST(
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    type ClubRow = {
+      id: string
+      starts_at: string
+      cancelled_at: string | null
+      is_published: boolean
+      max_seats: number
+      seats_taken: number
+      price_kopecks: number
+    }
     const { data: club, error: clubError } = await supabase
       .from('clubs')
       .select('id, starts_at, cancelled_at, is_published, max_seats, seats_taken, price_kopecks')
       .eq('id', id)
-      .maybeSingle()
+      .maybeSingle<ClubRow>()
     if (clubError) {
       console.error('Ошибка загрузки клуба:', clubError)
       return NextResponse.json({ error: 'Ошибка загрузки клуба' }, { status: 500 })
@@ -59,7 +67,7 @@ export async function POST(
       .select('id, status')
       .eq('club_id', id)
       .eq('user_id', user.id)
-      .maybeSingle()
+      .maybeSingle<{ id: string; status: string }>()
     if (existing) {
       return NextResponse.json(
         { error: 'Вы уже зарегистрированы на этот клуб', registration_id: existing.id, status: existing.status },
@@ -70,15 +78,16 @@ export async function POST(
     const isFree = club.price_kopecks === 0
     const initialStatus = isFree ? 'registered' : 'pending_payment'
 
-    const { data: reg, error: insertError } = await supabase
-      .from('club_registrations')
+    // FIXME(types): club_registrations не в Database — нужен typegen
+    type CreatedRegRow = { id: string; status: string; registered_at: string }
+    const { data: reg, error: insertError } = (await (supabase.from('club_registrations') as any)
       .insert({
         club_id: id,
         user_id: user.id,
         status: initialStatus,
       })
       .select('id, status, registered_at')
-      .single()
+      .single()) as { data: CreatedRegRow | null; error: { message: string; code?: string } | null }
     if (insertError) {
       console.error('Ошибка создания регистрации:', insertError)
       if (insertError.code === '23505') {
@@ -91,8 +100,8 @@ export async function POST(
     }
 
     return NextResponse.json({
-      registration_id: reg.id,
-      status: reg.status,
+      registration_id: reg!.id,
+      status: reg!.status,
       is_free: isFree,
       // YooKassa ещё не подключена — платёжный URL появится позже
       payment_url: null,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // POST /api/admin/teacher-applications/[id]/approve
 // Создаёт пользователя-преподавателя из заявки, генерирует пароль,
 // высылает учётные данные на почту через Resend.
@@ -88,11 +87,20 @@ export async function POST(
     const admin = createAdminClient()
 
     // 1. Резолвим заявку.
+    type TeacherApplicationFullRow = {
+      id: string
+      first_name: string | null
+      last_name: string | null
+      email: string | null
+      contact: string | null
+      status: string
+      notes: string | null
+    }
     const { data: app, error: appErr } = await admin
       .from("teacher_applications")
       .select("id, first_name, last_name, email, contact, status, notes")
       .eq("id", id)
-      .maybeSingle()
+      .maybeSingle<TeacherApplicationFullRow>()
     if (appErr) {
       console.error("[approve] application select failed", appErr)
       return NextResponse.json({ error: "Ошибка БД" }, { status: 500 })
@@ -152,7 +160,7 @@ export async function POST(
           .from("profiles")
           .select("id")
           .eq("email", targetEmail)
-          .maybeSingle()
+          .maybeSingle<{ id: string }>()
         if (existingProfile?.id) {
           userId = existingProfile.id
           // Обновим пароль на новый сгенерированный.
@@ -186,8 +194,8 @@ export async function POST(
     // 3. Поднимаем роль до teacher (handle_new_user мог по дефолту student)
     //    и затираем имя на латиницу (на случай, если триггер взял что-то иное
     //    из старого user_metadata при существующем юзере).
-    await admin
-      .from("profiles")
+    // FIXME(types): profiles update — first_name/last_name/full_name_ru ещё не в Database
+    await (admin.from("profiles") as any)
       .update({
         role: "teacher",
         full_name: fullName,
@@ -203,9 +211,10 @@ export async function POST(
       .from("teacher_profiles")
       .select("id")
       .eq("user_id", userId)
-      .maybeSingle()
+      .maybeSingle<{ id: string }>()
     if (!existingTp) {
-      await admin.from("teacher_profiles").insert({
+      // FIXME(types): Database type для teacher_profiles некорректно резолвится (Postgrest требует Relationships)
+      await (admin.from("teacher_profiles") as any).insert({
         user_id: userId,
         bio: null,
         specializations: [],
@@ -221,8 +230,8 @@ export async function POST(
     }
 
     // 5. Помечаем заявку approved.
-    await admin
-      .from("teacher_applications")
+    // FIXME(types): teacher_applications не в Database — нужен typegen
+    await (admin.from("teacher_applications") as any)
       .update({
         status: "approved",
         reviewed_by: gate.user.id,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -27,7 +26,7 @@ export async function GET(request: NextRequest) {
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single()
+    .single<{ role: string }>()
 
   if (!profile || profile.role !== 'admin') {
     return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
@@ -55,6 +54,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'succeeded')
       .gte('paid_at', mStart)
       .lte('paid_at', mEnd)
+      .returns<{ amount: number | null }[]>()
 
     const total = payments?.reduce((sum, p) => sum + (p.amount ?? 0), 0) ?? 0
 
@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
     .from('teacher_earnings')
     .select('teacher_id, net_amount')
     .eq('status', 'available')
+    .returns<{ teacher_id: string; net_amount: number }[]>()
 
   const teacherTotals: Record<string, number> = {}
   for (const row of topTeachersRaw ?? []) {
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('full_name')
       .eq('id', teacherId)
-      .single()
+      .single<{ full_name: string | null }>()
 
     topTeachers.push({
       teacher_id: teacherId,

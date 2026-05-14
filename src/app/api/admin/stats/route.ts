@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -88,7 +87,8 @@ export async function GET(_request: NextRequest) {
         .from("profiles")
         .select("created_at")
         .gte("created_at", sevenDaysAgoStart.toISOString())
-        .limit(5000),
+        .limit(5000)
+        .returns<{ created_at: string }[]>(),
     ])
 
     // Bucket signups into 7 daily counts.

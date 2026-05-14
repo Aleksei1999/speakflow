@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -118,11 +117,12 @@ export async function GET(request: NextRequest) {
 
     // teacherId (from client) is auth user_id — resolve to teacher_profiles.id
     // which is the FK target used in teacher_availability.teacher_id and lessons.teacher_id.
+    type TeacherRateRow = { id: string; hourly_rate: number; trial_rate: number | null }
     const { data: teacherProfile, error: profileError } = await supabase
       .from('teacher_profiles')
       .select('id, hourly_rate, trial_rate')
       .eq('user_id', teacherId)
-      .single()
+      .single<TeacherRateRow>()
 
     if (profileError || !teacherProfile) {
       return NextResponse.json(
@@ -143,6 +143,7 @@ export async function GET(request: NextRequest) {
       .eq('teacher_id', teacherProfileId)
       .eq('day_of_week', dayOfWeek)
       .eq('is_active', true)
+      .returns<{ start_time: string; end_time: string }[]>()
 
     if (availError) {
       console.error('Ошибка загрузки расписания:', availError)
@@ -171,6 +172,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', dayStart)
       .lte('scheduled_at', dayEnd)
       .in('status', ['pending_payment', 'booked', 'in_progress'])
+      .returns<{ scheduled_at: string; duration_minutes: number }[]>()
 
     if (lessonsError) {
       console.error('Ошибка загрузки уроков:', lessonsError)

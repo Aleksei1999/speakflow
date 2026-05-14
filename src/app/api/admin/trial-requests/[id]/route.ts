@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -51,7 +50,7 @@ export async function PATCH(
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    let body: any
+    let body: unknown
     try {
       body = await request.json()
     } catch {
@@ -88,8 +87,8 @@ export async function PATCH(
     }
 
     const admin = createAdminClient()
-    const { data, error } = await admin
-      .from("trial_lesson_requests")
+    // FIXME(types): trial_lesson_requests не в Database — нужен typegen
+    const { data, error } = await (admin.from("trial_lesson_requests") as any)
       .update(update)
       .eq("id", id)
       .select(

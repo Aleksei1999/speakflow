@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { bookingSchema } from '@/lib/validations'
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: string }>()
 
     if (profileError || !profile) {
       return NextResponse.json(
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Pin-флаг: если фронт прислал pin=true, после успешной брони
     // сохраним слот в student_preferred_slots для рекуррентных
     // подсказок «записаться снова» на дашборде.
-    const wantsPin: boolean = Boolean((body as any)?.pin)
+    const wantsPin: boolean = Boolean((body as Record<string, unknown>)?.pin)
 
     // Prevent booking in the past
     const scheduledDate = new Date(scheduledAt)
@@ -90,11 +89,18 @@ export async function POST(request: NextRequest) {
 
     // Verify teacher exists and is active.
     // Client passes auth user_id; resolve to teacher_profiles.id for FK columns.
+    type TeacherProfileLite = {
+      id: string
+      hourly_rate: number
+      trial_rate: number | null
+      is_listed: boolean
+      is_verified: boolean
+    }
     const { data: teacherProfile, error: teacherError } = await supabase
       .from('teacher_profiles')
       .select('id, hourly_rate, trial_rate, is_listed, is_verified')
       .eq('user_id', teacherId)
-      .single()
+      .single<TeacherProfileLite>()
 
     if (teacherError || !teacherProfile) {
       return NextResponse.json(
@@ -125,6 +131,12 @@ export async function POST(request: NextRequest) {
       // потом фильтруем на стороне SQL по дате в Europe/Moscow.
       const minIso = new Date(scheduledDate.getTime() - dayMs).toISOString()
       const maxIso = new Date(scheduledDate.getTime() + dayMs).toISOString()
+      type DayLessonRow = {
+        id: string
+        teacher_id: string | null
+        scheduled_at: string | null
+        status: string
+      }
       const { data: dayLessons } = await supabase
         .from('lessons')
         .select('id, teacher_id, scheduled_at, status')
@@ -132,10 +144,11 @@ export async function POST(request: NextRequest) {
         .gte('scheduled_at', minIso)
         .lte('scheduled_at', maxIso)
         .in('status', ['booked', 'in_progress', 'completed', 'pending_payment'])
+        .returns<DayLessonRow[]>()
 
       const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' })
       const slotDay = fmt.format(scheduledDate)
-      const conflict = (dayLessons ?? []).find((l: any) => {
+      const conflict = (dayLessons ?? []).find((l) => {
         if (!l.teacher_id || !l.scheduled_at) return false
         if (l.teacher_id === teacherProfileId) return false
         const lDay = fmt.format(new Date(l.scheduled_at))
@@ -146,15 +159,15 @@ export async function POST(request: NextRequest) {
         const { data: otherTp } = await supabase
           .from('teacher_profiles')
           .select('user_id')
-          .eq('id', conflict.teacher_id)
-          .maybeSingle()
+          .eq('id', conflict.teacher_id as string)
+          .maybeSingle<{ user_id: string }>()
         let otherName = ''
         if (otherTp?.user_id) {
           const { data: otherProf } = await supabase
             .from('profiles')
             .select('full_name')
             .eq('id', otherTp.user_id)
-            .maybeSingle()
+            .maybeSingle<{ full_name: string | null }>()
           otherName = otherProf?.full_name ?? ''
         }
         const msg = otherName
@@ -166,7 +179,8 @@ export async function POST(request: NextRequest) {
 
     // Call is_slot_available() to prevent double-booking (atomic check).
     // p_teacher_id expects teacher_profiles.id (matches lessons.teacher_id FK).
-    const { data: isAvailable, error: slotError } = await supabase.rpc(
+    // FIXME(types): Postgrest rpc generic не резолвится с минимальной Database (нужны Views/Relationships)
+    const { data: isAvailable, error: slotError } = await (supabase.rpc as any)(
       'is_slot_available',
       {
         p_teacher_id: teacherProfileId,
@@ -219,8 +233,15 @@ export async function POST(request: NextRequest) {
 
     // TEMP: пока нет интеграции Yookassa — создаём урок сразу как booked с price=0.
     // Когда платёжка заработает, вернуть status='pending_payment' и price.
-    const { data: lesson, error: insertError } = await supabase
-      .from('lessons')
+    // FIXME(types): Postgrest InsertBuilder инференсится в never
+    type CreatedLessonRow = {
+      id: string
+      price: number
+      scheduled_at: string
+      duration_minutes: number
+      status: string
+    }
+    const { data: lesson, error: insertError } = (await (supabase.from('lessons') as any)
       .insert({
         student_id: user.id,
         teacher_id: teacherProfileId,
@@ -234,7 +255,7 @@ export async function POST(request: NextRequest) {
         teacher_notes: null,
       })
       .select('id, price, scheduled_at, duration_minutes, status')
-      .single()
+      .single()) as { data: CreatedLessonRow | null; error: { message: string; code?: string } | null }
 
     if (insertError) {
       console.error('[booking/create] lessons INSERT failed', {
@@ -269,13 +290,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Set Jitsi room name using the DB-generated lesson ID
-    const jitsiRoomName = `speakflow-${lesson.id}`
-    await supabase
-      .from('lessons')
+    const jitsiRoomName = `speakflow-${lesson!.id}`
+    // FIXME(types): Postgrest UpdateBuilder инференсится в never
+    await (supabase.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
-      .eq('id', lesson.id)
+      .eq('id', lesson!.id)
 
-    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
+    void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
 
     // Закрепляем слот, если ученик попросил.
     if (wantsPin) {
@@ -293,8 +314,8 @@ export async function POST(request: NextRequest) {
       const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
       const weekday = wd ? wdMap[wd] ?? null : null
       if (weekday !== null && Number.isFinite(hh)) {
-        await supabase
-          .from('student_preferred_slots')
+        // FIXME(types): student_preferred_slots не в Database — нужен typegen
+        await (supabase.from('student_preferred_slots') as any)
           .upsert(
             {
               student_id: user.id,
@@ -311,8 +332,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      lessonId: lesson.id,
-      price: lesson.price,
+      lessonId: lesson!.id,
+      price: lesson!.price,
       redirectUrl: `/student/schedule`,
     })
   } catch (error) {

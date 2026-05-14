@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -18,6 +17,14 @@ export async function GET(
 
     const supabase = await createClient()
 
+    type ClubFullRow = {
+      id: string
+      topic: string
+      max_seats: number
+      seats_taken: number
+      meeting_url: string | null
+      [key: string]: unknown
+    }
     const { data: club, error } = await supabase
       .from('clubs')
       .select(
@@ -33,7 +40,7 @@ export async function GET(
         `
       )
       .eq('id', id)
-      .maybeSingle()
+      .maybeSingle<ClubFullRow>()
 
     if (error) {
       console.error('Ошибка загрузки клуба:', error)
@@ -55,7 +62,7 @@ export async function GET(
         .select('id, status, registered_at, cancelled_at')
         .eq('club_id', id)
         .eq('user_id', user.id)
-        .maybeSingle()
+        .maybeSingle<{ id: string; status: string; registered_at: string; cancelled_at: string | null }>()
       myRegistration = reg
       canSeeMeetingUrl =
         !!reg && ['registered', 'attended'].includes(reg.status)

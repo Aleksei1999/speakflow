@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -148,6 +147,17 @@ export async function GET(request: NextRequest) {
     const clubIds = (data ?? []).map((c: any) => c.id)
     const participantsByClub = new Map<string, any[]>()
     if (clubIds.length) {
+      type RegRow = {
+        club_id: string
+        status: string
+        registered_at: string | null
+        user: {
+          id: string | null
+          full_name: string | null
+          avatar_url: string | null
+          email: string | null
+        } | null
+      }
       const { data: regs, error: regErr } = await admin
         .from("club_registrations")
         .select(
@@ -156,6 +166,7 @@ export async function GET(request: NextRequest) {
         .in("club_id", clubIds)
         .in("status", ["registered", "pending_payment", "attended", "waitlist"])
         .order("registered_at", { ascending: true })
+        .returns<RegRow[]>()
       if (regErr) {
         console.error("admin/clubs GET participants error:", regErr)
       }
@@ -196,7 +207,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    let body: any
+    let body: unknown
     try {
       body = await request.json()
     } catch {
@@ -235,8 +246,8 @@ export async function POST(request: NextRequest) {
       created_by: gate.user.id,
     }
 
-    const { data: club, error } = await admin
-      .from("clubs")
+    // FIXME(types): clubs не в Database — нужен typegen
+    const { data: club, error } = await (admin.from("clubs") as any)
       .insert(insertPayload)
       .select(
         `
@@ -273,13 +284,13 @@ export async function POST(request: NextRequest) {
           .from("teacher_profiles")
           .select("user_id")
           .eq("id", d.host_teacher_id)
-          .maybeSingle()
+          .maybeSingle<{ user_id: string }>()
         if (tpRow?.user_id) resolvedHostId = tpRow.user_id
       }
       d.host_teacher_id = resolvedHostId
 
-      const { error: hostErr } = await admin
-        .from("club_hosts")
+      // FIXME(types): club_hosts не в Database — нужен typegen
+      const { error: hostErr } = await (admin.from("club_hosts") as any)
         .insert({ club_id: club.id, host_id: resolvedHostId, role: "host" })
       if (hostErr) {
         console.error("admin/clubs POST host insert error:", hostErr)
