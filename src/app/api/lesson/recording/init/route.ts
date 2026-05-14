@@ -1,19 +1,10 @@
 // @ts-nocheck
 // POST /api/lesson/recording/init
-// Препод (или admin) инициирует запись урока. ИДЕМПОТЕНТНО:
-//
-//  - status='recording'  → возвращаем existing recordingId + storagePrefix,
-//                          НИЧЕГО не удаляем (защита от случайного второго
-//                          клика, который бы wipe'ал все накопленные чанки).
-//  - status='failed'     → удаляем чанки + row, создаём новую запись.
-//  - status='finalized'  → 409, чтобы UI не пересоздавал поверх готовой
-//                          записи (можно отрефакторить под reuse, но не
-//                          молчком).
-//  - row отсутствует     → создаём свежую row + storage_prefix.
-//
-// SEC(MED) fix: раньше второй клик teacher (или гонка двух вкладок) сразу
-// удалял все чанки активной записи. Теперь destructive cleanup только для
-// явно failed-записей.
+// Препод (или admin) инициирует запись урока. Идемпотентно по статусу:
+//   recording  → возвращаем существующую row, ничего не трогаем;
+//   failed     → удаляем чанки + row и создаём новую;
+//   finalized  → 409, не пересоздаём поверх готовой записи;
+//   нет row    → создаём новую.
 
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
@@ -40,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const admin = gate.admin
 
-  // 1. Существующая запись для этого урока (UNIQUE lesson_id → 0 или 1 row).
+  // UNIQUE lesson_id → 0 или 1 row.
   const { data: existing } = await admin
     .from("lesson_recordings")
     .select("id, storage_prefix, status, started_at")
@@ -49,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   if (existing) {
     if (existing.status === "recording") {
-      // Идемпотентный re-init: возвращаем то же самое, ничего не трогаем.
+      // Идемпотентный re-init: возвращаем то же самое.
       return NextResponse.json({
         recordingId: existing.id,
         storagePrefix: existing.storage_prefix,
@@ -61,8 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (existing.status === "finalized") {
-      // Запись уже закрыта — не даём её пересоздавать (transcribe pipeline
-      // её уже мог подобрать). UI должен показать «запись урока готова».
+      // Запись закрыта — не пересоздаём (transcribe pipeline её уже мог подобрать).
       return NextResponse.json(
         {
           error: "Запись урока уже завершена",
@@ -74,7 +64,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // status === 'failed' — можно безопасно зачистить и пересоздать.
+    // failed — безопасно чистим и пересоздаём.
     try {
       const { data: files } = await admin.storage
         .from("lesson-recordings")
@@ -90,10 +80,10 @@ export async function POST(req: NextRequest) {
       .from("lesson_recordings")
       .delete()
       .eq("id", existing.id)
-      .eq("status", "failed") // double-belt: не трогаем row, если статус сменился между select'ом и delete'ом
+      .eq("status", "failed") // защита от гонки: не трогаем row, если статус сменился между select и delete
   }
 
-  // Создаём свежую row. storage_prefix = lessons/{lesson_id}/{recording_id}/
+  // storage_prefix = lessons/{lesson_id}/{recording_id}/
   const recordingId = crypto.randomUUID()
   const storagePrefix = `lessons/${gate.lesson.id}/${recordingId}/`
 
