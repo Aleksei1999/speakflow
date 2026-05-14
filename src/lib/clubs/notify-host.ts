@@ -1,37 +1,67 @@
-// @ts-nocheck
 // Fire-and-forget Telegram fan-out when admin assigns a teacher as a club host.
 // Notifies the chosen teacher AND every admin (so the action is visible/audited).
 
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 
+/**
+ * Глобальный `Database` (см. `@/types/database`) не описывает таблицу
+ * `clubs` и устаревшие PostgREST v12 generics → клиент кастуем к loose
+ * виду, а row-формы валидируем явными локальными интерфейсами.
+ */
+type LooseAdmin = { from: (table: string) => any }
+
+interface ClubRow {
+  id: string
+  topic: string | null
+  starts_at: string | null
+  duration_min: number | null
+  location: string | null
+  format: string | null
+  level_min: string | null
+  level_max: string | null
+}
+interface HostProfileRow {
+  full_name: string | null
+  email: string | null
+  telegram_chat_id: number | null
+}
+interface AdminProfileRow {
+  id: string
+  telegram_chat_id: number | null
+  full_name: string | null
+}
+
 export async function notifyClubHostAssigned(args: {
   clubId: string
   hostUserId: string
   assignedByUserId?: string | null
 }): Promise<void> {
-  const admin = createAdminClient()
+  const admin = createAdminClient() as unknown as LooseAdmin
 
-  const [{ data: club }, { data: hostProfile }, { data: admins }] =
-    await Promise.all([
-      admin
-        .from("clubs")
-        .select(
-          "id, topic, starts_at, duration_min, location, format, level_min, level_max"
-        )
-        .eq("id", args.clubId)
-        .maybeSingle(),
-      admin
-        .from("profiles")
-        .select("full_name, email, telegram_chat_id")
-        .eq("id", args.hostUserId)
-        .maybeSingle(),
-      admin
-        .from("profiles")
-        .select("id, telegram_chat_id, full_name")
-        .eq("role", "admin")
-        .not("telegram_chat_id", "is", null),
-    ])
+  const [clubRes, hostRes, adminsRes] = await Promise.all([
+    admin
+      .from("clubs")
+      .select(
+        "id, topic, starts_at, duration_min, location, format, level_min, level_max"
+      )
+      .eq("id", args.clubId)
+      .maybeSingle(),
+    admin
+      .from("profiles")
+      .select("full_name, email, telegram_chat_id")
+      .eq("id", args.hostUserId)
+      .maybeSingle(),
+    admin
+      .from("profiles")
+      .select("id, telegram_chat_id, full_name")
+      .eq("role", "admin")
+      .not("telegram_chat_id", "is", null),
+  ])
+
+  const club = clubRes.data as ClubRow | null
+  const hostProfile = hostRes.data as HostProfileRow | null
+  const admins = (adminsRes.data ?? []) as AdminProfileRow[]
 
   if (!club || !hostProfile) return
 
@@ -81,7 +111,7 @@ export async function notifyClubHostAssigned(args: {
   }
 
   // 2) Every admin (audit trail).
-  for (const a of admins ?? []) {
+  for (const a of admins) {
     if (!a?.telegram_chat_id) continue
     const adminText =
       `✅ <b>Speaking Club назначен ведущему</b>\n\n` +
