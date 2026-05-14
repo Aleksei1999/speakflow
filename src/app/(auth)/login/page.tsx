@@ -103,7 +103,12 @@ function LoginPageContent() {
           role="tab"
           aria-selected={role === 'student'}
           className={role === 'student' ? 'active' : ''}
-          onClick={() => setRole('student')}
+          onClick={() => {
+            // Сбрасываем ошибку при переключении таба: предыдущее «Неверный
+            // email или пароль» к новой роли уже не относится и только путает.
+            setServerError(null)
+            setRole('student')
+          }}
         >
           🎓 Ученик
         </button>
@@ -112,7 +117,10 @@ function LoginPageContent() {
           role="tab"
           aria-selected={role === 'teacher'}
           className={role === 'teacher' ? 'active' : ''}
-          onClick={() => setRole('teacher')}
+          onClick={() => {
+            setServerError(null)
+            setRole('teacher')
+          }}
         >
           👨‍🏫 Преподаватель
         </button>
