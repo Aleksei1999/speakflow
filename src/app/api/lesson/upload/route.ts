@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { requireLessonTeacherOrAdmin } from '@/lib/api/lesson-auth'
+import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 const BUCKET = 'lesson-files'
@@ -50,6 +51,11 @@ function sanitizeFilename(raw: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Content-Length check ДО formData() — иначе многомегабайтный
+    // body буферится в память и только потом отказывается.
+    const tooBig = preflightSize(request, { maxBytes: MAX_BYTES })
+    if (tooBig) return tooBig
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const lessonId = formData.get('lessonId') as string | null
@@ -60,28 +66,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не передан файл или lessonId' }, { status: 400 })
     }
 
-    // 1. Auth + lesson ownership gate.
+    // Auth + lesson ownership gate.
     const gate = await requireLessonTeacherOrAdmin(lessonId)
     if (!gate.ok) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
-    const { user, lesson, teacherProfileId, admin } = gate
+    const { lesson, teacherProfileId, admin } = gate
 
-    // 2. Size check (server-side, mandatory).
+    // Backup-проверка размера на случай если Content-Length отсутствовал
+    // или клиент схитрил (например multipart с заниженным заявленным).
     if (typeof file.size === 'number' && file.size > MAX_BYTES) {
       return NextResponse.json({ error: 'Файл больше 50 MB' }, { status: 413 })
     }
+
+    // Magic-bytes: проверяем что first 16 байт соответствуют whitelist'у
+    // и совпадают с заявленным MIME (клиент мог подделать file.type).
+    const verified = await verifyFileType(file)
+    if (verified instanceof NextResponse) return verified
+    const resolvedMime = verified.mimeType
 
     // 3. Safe filename + collision-resistant path.
     const safeName = sanitizeFilename(file.name || 'file.bin')
     const slug = randomUUID().slice(0, 8)
     const path = `lessons/${lessonId}/${Date.now()}-${slug}-${safeName}`
 
-    // 4. Upload. Bucket MUST exist (created via migration).
+    // Upload. Bucket MUST exist (created via migration). MIME ставим
+    // проверенный, а не доверяем file.type.
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
       .upload(path, file, {
-        contentType: file.type || 'application/octet-stream',
+        contentType: resolvedMime,
         upsert: false,
       })
 
@@ -118,7 +132,7 @@ export async function POST(request: NextRequest) {
       description: `${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
       file_url: urlData.publicUrl,
       storage_path: path,
-      mime_type: file.type || null,
+      mime_type: resolvedMime,
       file_size: file.size ?? null,
       is_public: false,
     }
