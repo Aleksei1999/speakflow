@@ -1,14 +1,10 @@
 "use client"
-// WCAG 2.1.2 / 2.4.3: модалка должна ловить Escape и удерживать Tab
-// внутри своих focusable элементов. Без этого SR/keyboard юзер
-// застревает или уходит в фон.
 
 import { useEffect, useRef } from "react"
 
 /**
- * Подключи в модалке: даёт ref для контейнера + слушает Escape и
- * trap'ит Tab/Shift+Tab. При unmount возвращает фокус активному до
- * открытия элементу.
+ * Хук для модалок: ловит Escape, удерживает Tab в фокусной ловушке
+ * и возвращает фокус прежнему элементу при закрытии.
  */
 export function useModalA11y(
   open: boolean,
@@ -21,13 +17,11 @@ export function useModalA11y(
     if (!open) return
     if (typeof window === "undefined") return
 
-    // Запоминаем кто был сфокусирован — вернём фокус после закрытия.
     previousFocusRef.current = document.activeElement as HTMLElement | null
 
     const container = containerRef.current
     if (!container) return
 
-    // При открытии фокус на первый focusable элемент модалки.
     const focusable = container.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
@@ -58,7 +52,6 @@ export function useModalA11y(
     document.addEventListener("keydown", handleKey)
     return () => {
       document.removeEventListener("keydown", handleKey)
-      // Вернуть фокус только если предыдущий элемент ещё в DOM.
       try { previousFocusRef.current?.focus?.() } catch { /* noop */ }
     }
   }, [open, onClose])
