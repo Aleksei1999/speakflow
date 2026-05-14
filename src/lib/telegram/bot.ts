@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Telegram Bot API клиент для Raw English.
  *
@@ -7,6 +6,26 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+
+/**
+ * Глобальный `Database` из `@/types/database` не покрывает PostgREST v12
+ * generics (отсутствуют Views/Enums/Storage блоки), из-за чего Supabase
+ * inferит результаты `from(...)` как `never`. Локально кастуем клиент
+ * к "loose" версии, а row-формы валидируем интерфейсами ниже.
+ */
+type LooseAdmin = {
+  from: (table: string) => any
+}
+
+interface LinkingCodeRow {
+  id: string
+  user_id: string
+  expires_at: string
+  used: boolean
+}
+interface ProfileNameRow {
+  full_name: string | null
+}
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!
 const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`
@@ -60,7 +79,7 @@ export async function sendTelegramMessage({
  * Код действителен 10 минут. При повторном запросе старый код заменяется.
  */
 export async function generateLinkingCode(userId: string): Promise<string> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as unknown as LooseAdmin
 
   // Генерируем 6-значный код
   const code = String(Math.floor(100000 + Math.random() * 900000))
@@ -102,17 +121,18 @@ export async function verifyLinkingCode(
   chatId: number,
   username?: string
 ): Promise<{ userId: string; fullName: string } | null> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as unknown as LooseAdmin
 
   // Ищем валидный код
-  const { data: linkingCode, error: findError } = await supabase
+  const findRes = await supabase
     .from('telegram_linking_codes')
     .select('id, user_id, expires_at, used')
     .eq('code', code.trim())
     .eq('used', false)
     .single()
 
-  if (findError || !linkingCode) {
+  const linkingCode = findRes.data as LinkingCodeRow | null
+  if (findRes.error || !linkingCode) {
     return null
   }
 
@@ -142,11 +162,12 @@ export async function verifyLinkingCode(
   }
 
   // Получаем имя пользователя для приветственного сообщения
-  const { data: profile } = await supabase
+  const profRes = await supabase
     .from('profiles')
     .select('full_name')
     .eq('id', linkingCode.user_id)
     .single()
+  const profile = profRes.data as ProfileNameRow | null
 
   return {
     userId: linkingCode.user_id,
