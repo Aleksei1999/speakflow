@@ -574,7 +574,14 @@ function RegisterPageInner() {
               <span>или</span>
             </div>
 
-            <div className="sso-row">
+            {/*
+              Apple SSO убран: в Supabase он не подключён, кнопка вела
+              только к тосту «скоро» и расходилась с /login (там Google +
+              disabled Telegram). Оставляем один Google — единый список с
+              login. Когда подключим Apple/Telegram реально, добавляем
+              ОБА экрана одновременно.
+            */}
+            <div className="sso-row sso-row--single">
               <button
                 type="button"
                 className="sso-btn"
@@ -600,16 +607,6 @@ function RegisterPageInner() {
                   />
                 </svg>
                 Google
-              </button>
-              <button
-                type="button"
-                className="sso-btn"
-                onClick={() => showToast('Apple SSO — скоро')}
-              >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="white" aria-hidden>
-                  <path d="M12.3 9.5 C12.3 7.3, 14.1 6.4, 14.2 6.3 C13.2 4.9, 11.7 4.7, 11.2 4.7 C10 4.6, 8.8 5.4, 8.2 5.4 C7.6 5.4, 6.6 4.7, 5.6 4.8 C4.3 4.8, 3.1 5.6, 2.5 6.7 C1.1 9.1, 2.1 12.6, 3.4 14.6 C4.1 15.5, 4.9 16.5, 5.9 16.5 C6.9 16.5, 7.2 15.9, 8.4 15.9 C9.6 15.9, 9.9 16.5, 10.9 16.5 C12 16.5, 12.6 15.5, 13.3 14.6 C14.1 13.6, 14.4 12.5, 14.4 12.5 C14.4 12.5, 12.3 11.7, 12.3 9.5 Z M10.4 3.5 C10.9 2.9, 11.2 2, 11.1 1.2 C10.4 1.3, 9.5 1.7, 9 2.3 C8.5 2.9, 8.2 3.7, 8.3 4.5 C9.1 4.6, 9.9 4.1, 10.4 3.5 Z" />
-                </svg>
-                Apple
               </button>
             </div>
           </form>
@@ -827,6 +824,9 @@ function RegisterStyles() {
       .sso-divider span { font-size: 11px; color: var(--rp-muted); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
 
       .sso-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      /* Один Google-провайдер — занимает всю ширину, чтобы не выглядел
+         сиротливой полоской слева. */
+      .sso-row--single { grid-template-columns: 1fr; }
       .sso-btn {
         display: flex; align-items: center; justify-content: center; gap: 8px;
         background: var(--rp-surface); border: 1px solid var(--rp-border);

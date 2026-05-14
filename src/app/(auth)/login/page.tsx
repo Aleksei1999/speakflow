@@ -199,7 +199,13 @@ function LoginPageContent() {
           <span>или</span>
         </div>
 
-        <div className="social-btns">
+        {/*
+          Раньше тут был disabled Telegram-чип — он не подключён в Supabase
+          и расходился с /register, где висел нерабочий Apple. Чистим оба
+          экрана до одного реального провайдера (Google). Когда захотим
+          второй — добавляем сразу на login И register.
+        */}
+        <div className="social-btns social-btns--single">
           <button
             type="button"
             className="social-btn"
@@ -213,12 +219,6 @@ function LoginPageContent() {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
             Google
-          </button>
-          <button type="button" className="social-btn" disabled title="Скоро">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 7.5a1.5 1.5 0 0 0 .108 2.79l4.716 1.572 2.25 6a1.5 1.5 0 0 0 2.529.6l2.407-2.407 4.473 3.315a1.5 1.5 0 0 0 2.341-.924l3-16.5a2.25 2.25 0 0 0-3.302-2.161z" fill="#2AABEE" />
-            </svg>
-            Telegram
           </button>
         </div>
       </form>
