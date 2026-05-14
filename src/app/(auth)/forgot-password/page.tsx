@@ -9,12 +9,14 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
 import { forgotPasswordSchema } from '@/lib/validations'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
 
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const {
     register,
@@ -33,6 +35,7 @@ export default function ForgotPasswordPage() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
       redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+      captchaToken: captchaToken ?? undefined,
     })
 
     if (error) {
@@ -96,6 +99,10 @@ export default function ForgotPasswordPage() {
           {errors.email && (
             <div className="auth-field-error">{errors.email.message}</div>
           )}
+        </div>
+
+        <div style={{ margin: '8px 0' }}>
+          <TurnstileWidget onToken={setCaptchaToken} />
         </div>
 
         <button

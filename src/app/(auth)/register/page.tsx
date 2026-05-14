@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/client'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { type QuizResult } from '@/components/onboarding/level-quiz'
 import { RawLogo } from '@/components/ui/raw-logo'
 import { transliterateRu } from '@/lib/transliterate'
@@ -105,6 +106,7 @@ function RegisterPageInner() {
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [oauthPending, setOauthPending] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [refCode, setRefCode] = useState<string | null>(null)
   const [refBanner, setRefBanner] = useState<{ inviterName: string | null; bonusXp: number } | null>(null)
   const roleParam = (searchParams?.get('role') ?? '').toLowerCase()
@@ -209,6 +211,7 @@ function RegisterPageInner() {
       email: email.trim(),
       password,
       options: {
+        captchaToken: captchaToken ?? undefined,
         data: {
           full_name: fullNameLatin,
           first_name: firstName,
@@ -556,6 +559,10 @@ function RegisterPageInner() {
                 </Link>
               </span>
             </label>
+
+            <div style={{ margin: '6px 0' }}>
+              <TurnstileWidget onToken={setCaptchaToken} />
+            </div>
 
             <button
               type="submit"
