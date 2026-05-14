@@ -1,9 +1,8 @@
 // @ts-nocheck
 // POST /api/internal/cron/summarize-transcripts
-// Pg_cron каждые 5 мин (миграция 059).
-// Берёт один свежий lesson_transcripts со status='ok' без записи в
-// lesson_summaries (source='recording') → GPT-4o → конспект + квиз →
-// записывает lesson_summaries + lesson_quizzes → уведомляет студента.
+// Pg_cron каждые 5 минут. Берёт свежий ok-транскрипт без recording-саммари,
+// прогоняет через GPT-4o (json_schema → структурированный конспект + квиз),
+// пишет в lesson_summaries / lesson_quizzes и уведомляет студента.
 
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -20,7 +19,7 @@ export const runtime = "nodejs"
 export const maxDuration = 300
 export const dynamic = "force-dynamic"
 
-const MODEL = "gpt-4o-2024-08-06" // json_schema strict + хорошее качество ру/англ
+const MODEL = "gpt-4o-2024-08-06" // json_schema strict + русский/английский
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
@@ -31,7 +30,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Кандидаты: ok-транскрипты без recording-саммари.
   const { data: transcripts, error: tErr } = await admin
     .from("lesson_transcripts")
     .select("id, lesson_id, recording_id, full_text, duration_sec, created_at")
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, picked: null })
   }
 
-  // Фильтруем те, у которых уже есть recording-саммари.
+  // Отсекаем уроки, для которых recording-саммари уже создан.
   const lessonIds = transcripts.map((t) => t.lesson_id)
   const { data: existing } = await admin
     .from("lesson_summaries")
@@ -57,7 +55,7 @@ export async function POST(req: NextRequest) {
   const target = transcripts.find((t) => !done.has(t.lesson_id))
   if (!target) return NextResponse.json({ ok: true, picked: null })
 
-  // Подтянуть lesson чтобы заполнить student_id/teacher_id для саммари.
+  // student_id / teacher_id для саммари берём из lessons.
   const { data: lesson, error: lErr } = await admin
     .from("lessons")
     .select("id, student_id, teacher_id, duration_minutes")
@@ -101,7 +99,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: "openai_failed" }, { status: 502 })
   }
 
-  // INSERT lesson_summaries (source='recording')
   const { data: summary, error: sErr } = await admin
     .from("lesson_summaries")
     .insert({
@@ -113,8 +110,7 @@ export async function POST(req: NextRequest) {
       recording_id: target.recording_id,
       transcript_id: target.id,
       summary_text: parsed.summary,
-      // Старая схема lesson_summaries.vocabulary/grammar_points = TEXT[].
-      // Сжимаем vocab "{word} — {translation}: {example}" в одну строку.
+      // Колонка vocabulary — TEXT[]. Сжимаем объект в строку.
       vocabulary: parsed.vocabulary.map(
         (v) => `${v.word} — ${v.translation}: ${v.example}`
       ),
@@ -133,7 +129,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "summary insert failed" }, { status: 500 })
   }
 
-  // INSERT lesson_quizzes
   const { error: qErr } = await admin.from("lesson_quizzes").insert({
     summary_id: summary.id,
     lesson_id: target.lesson_id,
@@ -142,10 +137,10 @@ export async function POST(req: NextRequest) {
   })
   if (qErr) {
     console.error("[cron/summarize] insert quiz failed:", qErr)
-    // саммари оставляем — квиз можно регенерировать вручную позже.
+    // Саммари остаётся, квиз регенерируем вручную при необходимости.
   }
 
-  // Уведомление студенту. Тихо игнорируем ошибки — саммари важнее.
+  // Уведомление студента — ошибки игнорируем, саммари важнее.
   try {
     await sendNotification(lesson.student_id, "lesson_summary_ready", {
       lessonId: target.lesson_id,
