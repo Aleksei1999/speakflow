@@ -96,10 +96,16 @@ export async function POST(req: NextRequest) {
   }
 
   // chunks_count = MAX(next_seq_t, next_seq_s) для UI индикатора.
+  // SEC(MED) defense-in-depth: scope ещё и lesson_id, чтобы случайно/
+  // вредоносно подсунутый recordingId не мог трогать row чужого урока,
+  // даже если бы PK-проверка где-то ослабла. Тут уже всё ок (gate
+  // проверил .eq("lesson_id", gate.lesson.id) выше при select rec),
+  // но второй замок дешёвый и страхует от регрессий.
   await gate.admin
     .from("lesson_recordings")
     .update({ chunks_count: seq + 1 })
     .eq("id", recordingId)
+    .eq("lesson_id", gate.lesson.id)
     .lt("chunks_count", seq + 1)
 
   return NextResponse.json({
