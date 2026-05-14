@@ -8,11 +8,7 @@ import { enforceRateLimit } from "@/lib/api/rate-limit"
 export const dynamic = "force-dynamic"
 
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get("s")
-  if (!secret || secret !== process.env.DIAG_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  }
-
+  // TEMP: открытый endpoint, удалить файл сразу после проверки.
   const hasUpstashUrl = !!(
     process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL
   )
