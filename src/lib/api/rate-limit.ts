@@ -29,6 +29,12 @@ export type RateLimitOptions = {
   max: number
   /** Window length in seconds. */
   windowSeconds: number
+  /**
+   * При отказе rate-limit инфраструктуры:
+   *   'open'   (default) — пропускаем (UX-приоритет).
+   *   'closed' — 503 (для auth / payment / admin / cron).
+   */
+  failMode?: "open" | "closed"
 }
 
 /** Best-effort client IP from common proxy headers. Vercel + nginx + CF all set these. */
@@ -54,6 +60,18 @@ export async function enforceRateLimit(
   _req: NextRequest,
   opts: RateLimitOptions
 ): Promise<NextResponse | null> {
+  const failMode = opts.failMode ?? "open"
+  const onFailure = (reason: string) => {
+    if (failMode === "open") {
+      console.warn(`[rate-limit] ${reason}, failing open (${opts.name})`)
+      return null
+    }
+    console.warn(`[rate-limit] ${reason}, failing closed (${opts.name})`)
+    return NextResponse.json(
+      { error: "Сервис временно недоступен. Попробуй чуть позже." },
+      { status: 503, headers: { "Retry-After": "30" } }
+    )
+  }
   try {
     const key = [opts.name, ...opts.keyParts.filter(Boolean)].join(":")
     const admin = createAdminClient()
@@ -62,10 +80,7 @@ export async function enforceRateLimit(
       p_max_requests: opts.max,
       p_window_seconds: opts.windowSeconds,
     })
-    if (error) {
-      console.warn("[rate-limit] RPC error, failing open:", error.message)
-      return null
-    }
+    if (error) return onFailure(`RPC error: ${error.message}`)
     if (data === false) {
       const retryAfter = Math.ceil(opts.windowSeconds / 2)
       return NextResponse.json(
@@ -84,8 +99,15 @@ export async function enforceRateLimit(
       )
     }
     return null
-  } catch (e) {
-    console.warn("[rate-limit] crashed, failing open:", e)
-    return null
+  } catch (e: any) {
+    return onFailure(`crashed: ${e?.message ?? e}`)
   }
+}
+
+/** Для security-critical (auth/payment/admin/cron) — fail-closed. */
+export function enforceRateLimitStrict(
+  req: NextRequest,
+  opts: Omit<RateLimitOptions, "failMode">
+): Promise<NextResponse | null> {
+  return enforceRateLimit(req, { ...opts, failMode: "closed" })
 }
