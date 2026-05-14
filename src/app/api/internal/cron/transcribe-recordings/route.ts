@@ -1,14 +1,9 @@
 // @ts-nocheck
 // POST /api/internal/cron/transcribe-recordings
-// Запускается pg_cron'ом каждые 5 минут (миграция 058).
-// Берёт ОДНУ свежую finalized запись без транскрипта, скачивает
-// чанки teacher + student, прогоняет каждый через OpenAI
-// gpt-4o-transcribe, склеивает в диалог и сохраняет в
-// lesson_transcripts.
-//
-// Один-в-тик нарочно: 50-мин урок = до ~3 мин на gpt-4o-transcribe.
-// На Vercel maxDuration=300с — комфортный запас. Если уроков много,
-// они обработаются за несколько тиков (5 мин × N).
+// Pg_cron каждые 5 минут. Берёт одну finalized-запись без транскрипта,
+// прогоняет чанки teacher+student через gpt-4o-transcribe и склеивает
+// в диалог в lesson_transcripts. По одной за тик: 50-мин урок ~3 мин
+// на модели, очередь обрабатывается за несколько тиков.
 
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -23,6 +18,7 @@ export const maxDuration = 300
 export const dynamic = "force-dynamic"
 
 const MODEL = "gpt-4o-transcribe"
+const MAX_ATTEMPTS = 5
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
@@ -33,7 +29,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Берём одну запись без транскрипта.
   const { data: candidates, error: candErr } = await admin
     .from("lesson_recordings")
     .select("id, lesson_id, storage_prefix, duration_sec, finalized_at")
@@ -49,11 +44,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, picked: null })
   }
 
-  // CRIT-4: исключаем recording'и с успешным транскриптом (status='ok').
-  // HIGH-cap: также исключаем те, для которых уже ≥5 failed-попыток —
-  // дальше дёргать OpenAI бессмысленно, токсично по quota.
+  // Исключаем recording'и с ok-транскриптом или превысившие MAX_ATTEMPTS.
   const ids = candidates.map((c) => c.id)
-  const MAX_ATTEMPTS = 5
   const { data: existing } = await admin
     .from("lesson_transcripts")
     .select("recording_id, status")
@@ -102,15 +94,13 @@ export async function POST(req: NextRequest) {
   }
 
   const openai = getOpenAI()
-  // FIX CRIT-3: каждый chunk транскрибируем ОТДЕЛЬНО. Раньше всё
-  // склеивалось в один blob → невалидный EBML → пустые ответы.
+  // Каждый chunk транскрибируется отдельно: побайтная склейка webm
+  // даёт невалидный EBML, и OpenAI возвращает пусто.
   const segments: { role: "teacher" | "student"; text: string }[] = []
   const textsByRole: Record<"T" | "S", string[]> = { T: [], S: [] }
   let chunksTranscribed = 0
   let chunksFailed = 0
-  // Реальные ошибки от OpenAI — раньше уходили в console.warn и
-  // терялись в логах. Сохраним 3 первых в error_message, чтобы было
-  // что отлаживать.
+  // Первые 3 ошибки сохраним в error_message — иначе теряются в логах.
   const errorSamples: string[] = []
 
   for (const chunk of chunks) {
@@ -160,7 +150,6 @@ export async function POST(req: NextRequest) {
   console.log(`[cron/transcribe] chunks ok=${chunksTranscribed} fail=${chunksFailed} of ${chunks.length}`)
 
   if (segments.length === 0) {
-    // Считаем сколько раз уже пытались для этого recording (cap = 5).
     const { count: prevAttempts } = await admin
       .from("lesson_transcripts")
       .select("id", { count: "exact", head: true })
@@ -179,8 +168,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: "transcribe_empty", attempts: attemptsSoFar })
   }
 
-  // Простой merge: один блок на роль. На MVP этого достаточно — GPT
-  // отдельно сможет разнести по микро-репликам по контексту.
+  // Простой merge: один блок на роль. GPT саммаризатор разнесёт по репликам.
   const fullText = segments
     .map((s) => `${s.role === "teacher" ? "Teacher" : "Student"}: ${s.text}`)
     .join("\n\n")
