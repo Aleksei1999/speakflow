@@ -256,56 +256,57 @@ export default function StudentSchedulePage() {
       const list = (rawLessons ?? []) as LessonRow[]
       setLessons(list)
 
-      // Помечаем уроки, созданные через trial-flow.
+      // После того как у нас есть список уроков, параллельно запускаем:
+      //   (a) trial_lesson_requests — пометить trial-flow строки;
+      //   (b) teacher_profiles → profiles — резолв имени/аватара препода.
+      // Раньше (a) и (b) шли последовательно после lessons, плюс (b) сама
+      // ждала свой второй round-trip к profiles. Теперь (a) и (b) гонятся
+      // одновременно, а внутри (b) выкручиваем оба уровня одним PostgREST
+      // embed-запросом (teacher_profiles → profiles по teacher_profiles_user_id_fkey).
       const lessonIds = list.map((l) => l.id)
-      if (lessonIds.length > 0) {
-        const { data: trials } = await (supabase as any)
-          .from("trial_lesson_requests")
-          .select("assigned_lesson_id")
-          .eq("user_id", user.id)
-          .in("assigned_lesson_id", lessonIds)
-        const tset = new Set<string>()
-        for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
-          if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
-        }
-        setTrialIds(tset)
-      } else {
-        setTrialIds(new Set())
-      }
-
-      // Преподаватели уроков — теперь с avatar_url (раньше fallback мог
-      // оставлять только инициалы у строк с актуальным фото).
       const teacherIds = Array.from(new Set(list.map((l) => l.teacher_id).filter(Boolean))) as string[]
-      if (teacherIds.length > 0) {
-        const { data: teachersRaw } = await (supabase as any)
-          .from("teacher_profiles")
-          .select("id, user_id")
-          .in("id", teacherIds)
-        const teachers = (teachersRaw ?? []) as Array<{ id: string; user_id: string }>
-        const userIds = teachers.map((t) => t.user_id).filter(Boolean)
-        if (userIds.length > 0) {
-          const { data: profilesRaw } = await (supabase as any)
-            .from("profiles")
-            .select("id, full_name, avatar_url")
-            .in("id", userIds)
-          const pMap = Object.fromEntries(
-            ((profilesRaw ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null }>)
-              .map((p) => [p.id, p])
-          )
-          const nextMap: Record<string, TeacherMapEntry> = {}
-          for (const t of teachers) {
-            const p = pMap[t.user_id]
-            const fullName = p?.full_name ?? null
-            nextMap[t.id] = {
-              full_name: fullName,
-              initials: getInitials(fullName),
-              avatar_url: p?.avatar_url ?? null,
-            }
+
+      const trialsPromise = lessonIds.length > 0
+        ? (supabase as any)
+            .from("trial_lesson_requests")
+            .select("assigned_lesson_id")
+            .eq("user_id", user.id)
+            .in("assigned_lesson_id", lessonIds)
+        : Promise.resolve({ data: [] as Array<{ assigned_lesson_id: string | null }> })
+
+      const teachersPromise = teacherIds.length > 0
+        ? (supabase as any)
+            .from("teacher_profiles")
+            .select(
+              "id, user_id, user:profiles!teacher_profiles_user_id_fkey(full_name, avatar_url)"
+            )
+            .in("id", teacherIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; user_id: string; user: any }> })
+
+      const [{ data: trials }, { data: teachersRaw }] = await Promise.all([
+        trialsPromise,
+        teachersPromise,
+      ])
+
+      const tset = new Set<string>()
+      for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+        if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+      }
+      setTrialIds(tset)
+
+      if ((teachersRaw ?? []).length > 0) {
+        const teachers = (teachersRaw ?? []) as Array<{ id: string; user_id: string; user: any }>
+        const nextMap: Record<string, TeacherMapEntry> = {}
+        for (const t of teachers) {
+          const p = Array.isArray(t.user) ? t.user[0] : t.user
+          const fullName = (p?.full_name ?? null) as string | null
+          nextMap[t.id] = {
+            full_name: fullName,
+            initials: getInitials(fullName),
+            avatar_url: (p?.avatar_url ?? null) as string | null,
           }
-          setTeacherMap(nextMap)
-        } else {
-          setTeacherMap({})
         }
+        setTeacherMap(nextMap)
       } else {
         setTeacherMap({})
       }
