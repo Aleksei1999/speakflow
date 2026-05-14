@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -97,4 +98,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry обёртка: ставит source-maps, расширяет webpack, прокси
+// /monitoring → ingest sentry (обходит ad-blockers). Активируется
+// только если SENTRY_AUTH_TOKEN задан — иначе билд проходит без
+// загрузки maps.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG ?? "raw-english",
+  project: process.env.SENTRY_PROJECT ?? "raw-english-web",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  reactComponentAnnotation: { enabled: true },
+  tunnelRoute: "/monitoring",
+  sourcemaps: { disable: false, deleteSourcemapsAfterUpload: true },
+  disableLogger: true,
+  automaticVercelMonitors: true,
+});
