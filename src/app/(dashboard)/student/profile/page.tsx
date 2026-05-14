@@ -340,7 +340,10 @@ export default function StudentProfilePage() {
             <div className="prof-badges">
               <span className="prof-badge pb--level">🔥 {progress.level_name}{progress.english_level ? ` · ${progress.english_level}` : ""}</span>
               {progress.current_streak > 0 && (
-                <span className="prof-badge pb--streak">⚡ {progress.current_streak}-day streak</span>
+                // Подпись «текущий» отделяет это число от соседнего «N дней
+                // на платформе» в карточке статистики — иначе пользователи
+                // путают streak и общее время в проекте.
+                <span className="prof-badge pb--streak">⚡ {progress.current_streak}-day streak (текущий)</span>
               )}
               {isPro && <span className="prof-badge pb--sub">👑 Pro Member</span>}
             </div>
@@ -356,7 +359,8 @@ export default function StudentProfilePage() {
             <div className="ps-icon">📅</div>
             <div>
               <div className="ps-val">{stats.platform_days} {plural(stats.platform_days, ["день", "дня", "дней"])}</div>
-              <div className="ps-label">На платформе</div>
+              {/* Уточняем что это не streak — пользователи путают эти два числа. */}
+              <div className="ps-label">Дней на платформе</div>
             </div>
           </div>
           <div className="ps">
