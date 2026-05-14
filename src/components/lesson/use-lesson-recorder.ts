@@ -1,27 +1,8 @@
 "use client"
-// Phase 1.2 — авто-запись урока в браузере.
-//
-// Что делает:
-// 1. Получает getUserMedia({audio:true}) для текущей роли (teacher
-//    или student). Браузер кеширует разрешение для origin, поэтому
-//    prompt появляется максимум один раз на устройство.
-// 2. Teacher вызывает POST /api/lesson/recording/init → получает
-//    recordingId. Student опрашивает GET .../active каждые 4 сек
-//    пока teacher не создаст запись.
-// 3. RESTART-PATTERN: каждые ~20 секунд делаем rec.stop(), в onstop
-//    получаем ПОЛНОЦЕННЫЙ webm с EBML-header'ом, кладём в очередь
-//    и сразу создаём новый MediaRecorder на том же stream + start().
-//    Так каждый chunk самодостаточен и OpenAI gpt-4o-transcribe
-//    может его прочитать. Раньше использовали rec.start(timeslice) —
-//    только первый chunk содержал header, остальные шли пустыми.
-// 4. При mute в Jitsi (audioMuteStatusChanged) — стопаем интервал и
-//    текущий recorder (хвост попадёт в очередь), при unmute поднимаем
-//    новый recorder + новый интервал.
-// 5. На unmount / beforeunload — stop(), доуплоадить хвост, POST
-//    /finalize.
-//
-// Hook никогда не падает в UI: все ошибки уходят в state.error и в
-// console.warn — урок важнее саммари.
+
+// Запись аудио урока. Каждые ~20с делаем stop+start нового MediaRecorder
+// чтобы каждый chunk был полноценным webm с заголовком — иначе Whisper
+// читает только первый кусок.
 
 import { useEffect, useRef, useState } from "react"
 
@@ -30,17 +11,10 @@ type Status = "idle" | "starting" | "recording" | "paused" | "stopping" | "stopp
 interface UseLessonRecorderArgs {
   lessonId: string
   isTeacher: boolean
-  /** Jitsi External API инстанс — нужен только для подписки на mute */
   jitsiApi: any
-  /** Можно полностью выключить (например в Storybook / preview) */
   enabled?: boolean
-  /** Колбэк когда запись фактически стартовала (для toast'а) */
   onStarted?: () => void
-  /**
-   * Любое изменение этого значения форсит перезапуск hook'а
-   * (новый getUserMedia, новый MediaRecorder). Используется когда
-   * мы хотим повторить попытку получить mic после отказа.
-   */
+  /** Меняй значение, чтобы перезапустить запись (retry после отказа в mic). */
   retryToken?: number
 }
 
@@ -50,9 +24,9 @@ interface UseLessonRecorderReturn {
   recordingId: string | null
 }
 
-const TIMESLICE_MS = 20_000 // 20-сек куски — компромисс между латентностью upload'а и количеством запросов
+const CHUNK_DURATION_MS = 20_000
 const STUDENT_POLL_INTERVAL_MS = 4_000
-const STUDENT_POLL_TIMEOUT_MS = 5 * 60_000 // ждём teacher'а до 5 минут — он может задержаться
+const STUDENT_POLL_TIMEOUT_MS = 5 * 60_000
 const SUPPORTED_MIME = [
   "audio/webm;codecs=opus",
   "audio/webm",
@@ -180,7 +154,7 @@ export function useLessonRecorder({
     }
 
     async function uploadOne(blob: Blob, recId: string): Promise<number> {
-      // 1. signed URL. seq назначает сервер атомарно (HIGH-9 fix).
+      // seq назначает сервер.
       const urlRes = await fetch("/api/lesson/recording/chunk-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -222,8 +196,6 @@ export function useLessonRecorder({
         while (queueRef.current.length > 0) {
           const blob = queueRef.current.shift()!
           try {
-            // seq назначает сервер (HIGH-9). Локальный seqRef держим
-            // как «максимально дошедший» для finalize.chunks_count.
             const seq = await uploadOne(blob, recId)
             if (seq + 1 > seqRef.current) seqRef.current = seq + 1
             if (!startedFiredRef.current) {
@@ -357,10 +329,6 @@ export function useLessonRecorder({
       return true
     }
 
-    /**
-     * Запускает interval, который каждые TIMESLICE_MS дёргает stop()
-     * текущего recorder'а. onstop поднимет новый (autoRestart=true).
-     */
     function armRestartInterval() {
       if (restartIntervalRef.current) clearInterval(restartIntervalRef.current)
       autoRestartRef.current = true
@@ -372,7 +340,7 @@ export function useLessonRecorder({
         } catch (e) {
           console.warn("[lesson-recorder] periodic stop failed:", e)
         }
-      }, TIMESLICE_MS)
+      }, CHUNK_DURATION_MS)
     }
 
     function disarmRestartInterval() {
@@ -456,11 +424,8 @@ export function useLessonRecorder({
           /* ignore */
         }
 
-        // FIX CRIT-5: finalize теперь teacher-only. Студент мог
-        // на /finalize обвалить запись препода (chunk-url отдаёт 409,
-        // recorder препода молча умирает). Если препод тоже выходит —
-        // сам отдаст finalize. Если оба ушли грязно — sweep_stuck
-        // cron закроет recording через 4ч.
+        // Финализирует только teacher; иначе студент закрыл бы чужую
+        // запись. Если препод тоже ушёл грязно — sweep cron подберёт.
         if (isTeacher) {
           const durationSec = Math.max(
             1,
@@ -490,14 +455,8 @@ export function useLessonRecorder({
     void start()
 
     const onBeforeUnload = () => {
-      // Sync-friendly teardown — браузер не подождёт async, но stop()
-      // даст MediaRecorder'у выдать последний dataavailable и закрыть
-      // tracks. Если это TEACHER — шлём sendBeacon на /finalize.
-      // Если STUDENT — только stop(), без вызова finalize (см. CRIT-5);
-      // recording останется в 'recording' пока учитель не выйдет либо
-      // sweep_stuck cron не подберёт через 4ч.
-      // ВАЖНО: снимаем autoRestart до stop'а — иначе onstop поднимет
-      // новый recorder, а stream'ы уже dead'ятся.
+      // Браузер не дождётся async — снимаем autoRestart и стопаем
+      // recorder. Teacher дополнительно шлёт sendBeacon на /finalize.
       autoRestartRef.current = false
       if (restartIntervalRef.current) {
         clearInterval(restartIntervalRef.current)
