@@ -21,15 +21,24 @@ CREATE TABLE IF NOT EXISTS public.csp_violations (
 CREATE INDEX IF NOT EXISTS csp_violations_directive_created_idx
   ON public.csp_violations (directive, created_at DESC);
 
--- Чтобы один и тот же фейл (одна страница, одна директива, один blocked-uri)
--- не плодил сотни записей за минуту — храним только первое попадание в
--- 5-минутном окне. Daily cleanup-job в миграции 070+ опустит до 30 дней.
+-- Дедуп: одна и та же связка (directive, blocked, doc) хранится один раз
+-- в час. date_trunc нельзя — он не IMMUTABLE (зависит от timezone).
+-- Поэтому immutable wrapper над epoch/3600.
+CREATE OR REPLACE FUNCTION public.csp_hour_bucket(ts timestamptz)
+RETURNS bigint
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+  SELECT (EXTRACT(EPOCH FROM ts)::bigint / 3600)
+$$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS csp_violations_dedup_idx
   ON public.csp_violations (
     directive,
     blocked,
     coalesce(document_uri, ''),
-    (date_trunc('hour', created_at))
+    public.csp_hour_bucket(created_at)
   );
 
 -- RLS: только service_role может писать; admin может читать через свои API.
