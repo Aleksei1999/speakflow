@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # npm-зависимости — проверка каждый понедельник в 06:00 MSK.
+  # Группируем minor+patch чтобы не плодить PR'ы; major идут отдельно.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - dependabot
+    groups:
+      # Безопасные апдейты — minor/patch одним PR на экосистему.
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # security-обновления выходят отдельным PR немедленно (не привязаны
+    # к расписанию выше) — это поведение Dependabot по умолчанию.
+
+  # GitHub Actions — проверка каждый понедельник.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    labels:
+      - dependencies
+      - github-actions
