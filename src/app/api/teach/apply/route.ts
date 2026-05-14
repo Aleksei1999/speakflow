@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 import { transliterateRu } from "@/lib/transliterate"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
+import { protectPublic, validateEmailField } from "@/lib/api/arcjet"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +19,13 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Arcjet FIRST — shield (SQLi/XSS/path-traversal) + bot detection.
+    // Дешевле, чем дёргать Postgres rate-limit, и срабатывает до
+    // того, как мы тронем БД / Telegram. Fail-open если ARCJET_KEY
+    // не задан (см. arcjet.ts).
+    const ajDeny = await protectPublic(request)
+    if (ajDeny) return ajDeny
+
     // Public endpoint, поэтому жёсткий IP-лимит: 3 заявки в час.
     // fail-closed: открытая форма + Telegram fan-out, лучше резать.
     const limited = await enforceRateLimitStrict(request, {
@@ -43,6 +51,20 @@ export async function POST(request: NextRequest) {
       )
     }
     const d = parsed.data
+
+    // Arcjet email-валидация: disposable (mailinator/tempmail/etc),
+    // невалидный синтаксис, отсутствие MX-записей. Без чёткой причины
+    // снаружи (защита от пробинга классификатора).
+    const emailCheck = await validateEmailField(d.email)
+    if (!emailCheck.valid) {
+      const msg =
+        emailCheck.reason === "disposable"
+          ? "Укажите корпоративный или личный email, а не одноразовый"
+          : emailCheck.reason === "no_mx"
+            ? "Домен этого email не принимает почту"
+            : "Некорректный email"
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
 
     // Доп. лимит по email — 1 заявка в 10 минут (нормальный человек повторно не подаёт).
     const emailLimited = await enforceRateLimitStrict(request, {

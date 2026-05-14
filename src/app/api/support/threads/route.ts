@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { verifyTurnstile } from "@/lib/api/turnstile"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
+import { protectPublic } from "@/lib/api/arcjet"
 
 // ---------------------------------------------------------------
 // GET  /api/support/threads
@@ -165,6 +166,12 @@ export async function GET(request: NextRequest) {
 // ---------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
+    // Arcjet FIRST — shield (XSS/SQLi в subject/body) + bot detection.
+    // Endpoint требует auth, но cookie мог быть украден → отсеиваем
+    // headless/scrapy раньше, чем коснёмся Supabase или Telegram fan-out.
+    const ajDeny = await protectPublic(request)
+    if (ajDeny) return ajDeny
+
     const supabase = await createClient()
     const {
       data: { user },

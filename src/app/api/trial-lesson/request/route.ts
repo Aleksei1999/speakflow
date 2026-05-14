@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { verifyTurnstile } from '@/lib/api/turnstile'
+import { protectPublic, validateEmailField } from '@/lib/api/arcjet'
 
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
@@ -21,9 +22,16 @@ const bodySchema = z.object({
     .optional(),
   teacherProfileId: z.string().uuid().optional(),
   turnstileToken: z.string().nullable().optional(),
+  // Опциональный email — если фронт хочет, чтобы мы проверили адрес
+  // отдельно (например, гостевая запись на пробный в будущем).
+  email: z.string().trim().email().max(254).optional(),
 })
 
 export async function POST(request: Request) {
+  // Arcjet FIRST — shield + bot detection до Supabase round-trip.
+  const ajDeny = await protectPublic(request as any)
+  if (ajDeny) return ajDeny
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -61,6 +69,20 @@ export async function POST(request: Request) {
   const cap = await verifyTurnstile(parsed.data.turnstileToken, getClientIp(request as any))
   if (!cap.ok) {
     return NextResponse.json({ error: 'Проверка не пройдена' }, { status: 400 })
+  }
+
+  // Email-валидация (если фронт прислал поле email).
+  if (parsed.data.email) {
+    const emailCheck = await validateEmailField(parsed.data.email)
+    if (!emailCheck.valid) {
+      const msg =
+        emailCheck.reason === 'disposable'
+          ? 'Укажите личный email, а не одноразовый'
+          : emailCheck.reason === 'no_mx'
+            ? 'Домен этого email не принимает почту'
+            : 'Некорректный email'
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
   }
 
   const result = await autoAssignTrial({
