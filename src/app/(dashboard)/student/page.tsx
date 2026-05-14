@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { cookies, headers } from "next/headers"
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
@@ -333,28 +332,25 @@ export default async function StudentDashboardPage() {
   const completedTodayCount = todayLessons.filter((l) => l.status === "completed").length
   const remainingTodayCount = todayLessons.filter((l) => ["booked", "in_progress"].includes(l.status)).length
 
-  // Referral stats — graceful fallback, если /api/referrals/me ещё не существует
-  // (backend-агент мигрирует БД параллельно).
+  // Referral stats — раньше шёл HTTP self-call к /api/referrals/me внутри
+  // той же Lambda (+200-500ms на отдельный round-trip и парс cookie).
+  // Дашборду нужно ровно 2 цифры (activated count + cap_remaining),
+  // которые можно вытащить одним select-count к referrals: RLS таблицы
+  // ограничивает выдачу до inviter_id = auth.uid(), так что отдельная
+  // авторизация не нужна. LIFETIME_CAP (10) — то же значение, что в
+  // /api/referrals/me/route.ts. Граcefully падаем на дефолт, если
+  // таблица referrals ещё не мигрирована.
+  const LIFETIME_REFERRAL_CAP = 10
   let referralActivated = 0
-  let referralCapRemaining = 10
+  let referralCapRemaining = LIFETIME_REFERRAL_CAP
   try {
-    const hdrs = await headers()
-    const host = hdrs.get("host") ?? ""
-    const proto = hdrs.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https")
-    const cookieStore = await cookies()
-    const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join("; ")
-    const refRes = await fetch(`${proto}://${host}/api/referrals/me`, {
-      headers: { cookie: cookieHeader },
-      cache: "no-store",
-    })
-    if (refRes.ok) {
-      const refJson = await refRes.json()
-      if (refJson?.stats && typeof refJson.stats.activated === "number") {
-        referralActivated = refJson.stats.activated
-      }
-      if (typeof refJson?.cap_remaining === "number") {
-        referralCapRemaining = refJson.cap_remaining
-      }
+    const { count } = await (supabase as any)
+      .from("referrals")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "activated")
+    if (typeof count === "number") {
+      referralActivated = count
+      referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - count)
     }
   } catch {
     // API ещё не готов — используем дефолт
