@@ -25,17 +25,24 @@ export default async function TeacherLessonPage({
     .single()
   if (!tp) redirect('/teacher')
 
+  // Один embed-запрос вместо двух последовательных:
+  //   lessons → profiles (student)
+  // Используем lessons_student_id_fkey: lessons.student_id → profiles.id.
   const { data: lesson } = await supabase
     .from('lessons')
-    .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id, jitsi_room_name')
+    .select(
+      'id, scheduled_at, duration_minutes, status, student_id, teacher_id, jitsi_room_name,' +
+      ' student:profiles!lessons_student_id_fkey(full_name)'
+    )
     .eq('id', lessonId)
     .single()
 
   if (!lesson || lesson.teacher_id !== tp.id) redirect('/teacher/schedule')
 
-  // Student display name — нужен для всех экранов (ожидание/отмена/live)
-  const { data: studentProfile } = await supabase
-    .from('profiles').select('full_name').eq('id', lesson.student_id).single()
+  const studentEmbed: any = Array.isArray((lesson as any).student)
+    ? (lesson as any).student[0]
+    : (lesson as any).student
+  const studentProfile = studentEmbed ? { full_name: studentEmbed.full_name as string | null } : null
 
   // Серверный гейт: проверяем окно доступа ДО генерации JWT
   const access = computeLessonAccess({
