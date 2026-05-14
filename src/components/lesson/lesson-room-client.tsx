@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
+import { useModalA11y } from "@/hooks/use-modal-a11y"
 
 interface Props {
   lessonId: string
@@ -195,6 +196,7 @@ export function LessonRoomClient({
   const [hwTitle, setHwTitle] = useState("")
   const [hwDesc, setHwDesc] = useState("")
   const [hwOpen, setHwOpen] = useState(false)
+  const hwModalRef = useModalA11y(hwOpen, () => setHwOpen(false))
   const [remaining, setRemaining] = useState(0)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
@@ -886,8 +888,8 @@ export function LessonRoomClient({
 
       {/* Homework panel */}
       {hwOpen && (
-        <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.4)"}} onClick={()=>setHwOpen(false)}>
-          <div style={{background:"var(--surface)",borderRadius:20,padding:32,width:"100%",maxWidth:480,maxHeight:"80vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.4)"}} onClick={()=>setHwOpen(false)} role="presentation">
+          <div ref={hwModalRef} role="dialog" aria-modal="true" aria-label="Домашнее задание" style={{background:"var(--surface)",borderRadius:20,padding:32,width:"100%",maxWidth:480,maxHeight:"80vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
             <h3 style={{fontSize:20,fontWeight:800,marginBottom:20}}>Домашнее задание</h3>
             {homework.length > 0 && (
               <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>

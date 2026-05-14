@@ -179,6 +179,45 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-content { animation: none; }
-  .skeleton-block { animation: none; }
+  /* WCAG 2.3.3: расширили чтобы покрыть все анимации, не только 2 селектора */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* WCAG 2.4.1 skip-link: визуально скрыт пока не сфокусирован */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 0;
+  z-index: 9999;
+  padding: 12px 18px;
+  background: #0A0A0A;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 0 0 8px 0;
+  text-decoration: none;
+  font-size: 14px;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid #D8F26A;
+  outline-offset: -3px;
+}
+
+/* WCAG 1.3.1: visually-hidden utility для screen-reader-only текста */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

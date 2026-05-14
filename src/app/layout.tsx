@@ -47,8 +47,13 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: authBootstrapScript }} />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* WCAG 2.4.1 Bypass Blocks: skip-link для клавиатуры/SR.
+            Виден только когда сфокусирован (через :focus в globals.css). */}
+        <a href="#main" className="skip-link">Перейти к основному содержимому</a>
         <Preloader />
-        {children}
+        <main id="main" className="flex-1 flex flex-col">
+          {children}
+        </main>
       </body>
     </html>
   );
