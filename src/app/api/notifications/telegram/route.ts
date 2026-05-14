@@ -32,11 +32,12 @@ interface TelegramUpdate {
 }
 
 export async function POST(request: NextRequest) {
-  // Верификация webhook-секрета
+  // Fail-closed: без TELEGRAM_WEBHOOK_SECRET не пускаем — иначе можно
+  // слать поддельные update'ы и через verifyLinkingCode привязать чужой
+  // telegram_chat_id к произвольному юзеру.
   const secretHeader = request.headers.get('x-telegram-bot-api-secret-token')
   const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET
-
-  if (expectedSecret && secretHeader !== expectedSecret) {
+  if (!expectedSecret || secretHeader !== expectedSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
