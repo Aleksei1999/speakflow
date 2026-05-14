@@ -1,13 +1,8 @@
 // @ts-nocheck
 // POST /api/lesson/recording/chunk-url
-// Выдаёт signed upload URL для очередного chunk'а. seq назначает
-// СЕРВЕР атомарным UPDATE по next_seq_{t,s} на lesson_recordings —
-// клиент seq больше не передаёт. upsert:false → повторный PUT
-// на тот же путь не сможет перезаписать существующий chunk.
-//
-// Чанки разводятся по дорожкам по роли (CRIT-5 + HIGH-9):
-//   chunk-T-NNNNN.webm — teacher / admin
-//   chunk-S-NNNNN.webm — student
+// Выдаёт signed upload URL для очередного chunk'а. seq назначает сервер
+// атомарным RPC по next_seq_{t,s}; upsert:false исключает перезапись.
+// Файлы разводятся по роли: chunk-T-NNNNN.* (teacher/admin) / chunk-S-NNNNN.* (student).
 
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
@@ -28,7 +23,7 @@ const ALLOWED_MIME = new Set([
   "audio/mpeg",
 ])
 
-const MAX_SEQ = 50_000 // защита от runaway
+const MAX_SEQ = 50_000
 
 export async function POST(req: NextRequest) {
   let body: any = {}
@@ -64,8 +59,7 @@ export async function POST(req: NextRequest) {
 
   const roleTag = gate.role === "student" ? "S" : "T"
 
-  // Атомарный SQL UPDATE с RETURNING через SECURITY DEFINER RPC —
-  // защищает от race condition между конкурентными запросами клиента.
+  // Атомарное выделение seq через SECURITY DEFINER RPC — без гонок.
   const { data: assigned, error: rpcErr } = await gate.admin.rpc(
     "lesson_recordings_next_seq",
     { p_recording_id: recordingId, p_role: roleTag }
@@ -83,9 +77,7 @@ export async function POST(req: NextRequest) {
   const fileName = `chunk-${roleTag}-${String(seq).padStart(5, "0")}.${ext}`
   const path = `${rec.storage_prefix}${fileName}`
 
-  // upsert:false — write-once. Повторный PUT на тот же signed URL
-  // упадёт; если клиент потерял ответ и retry'ит /chunk-url, он
-  // получит НОВЫЙ seq и новый path, ничего чужого не затрёт.
+  // upsert:false — write-once. Retry даёт новый seq, не затирает чужое.
   const { data: signed, error } = await gate.admin.storage
     .from("lesson-recordings")
     .createSignedUploadUrl(path, { upsert: false })
@@ -96,11 +88,7 @@ export async function POST(req: NextRequest) {
   }
 
   // chunks_count = MAX(next_seq_t, next_seq_s) для UI индикатора.
-  // SEC(MED) defense-in-depth: scope ещё и lesson_id, чтобы случайно/
-  // вредоносно подсунутый recordingId не мог трогать row чужого урока,
-  // даже если бы PK-проверка где-то ослабла. Тут уже всё ок (gate
-  // проверил .eq("lesson_id", gate.lesson.id) выше при select rec),
-  // но второй замок дешёвый и страхует от регрессий.
+  // Доп. фильтр lesson_id — defense-in-depth, страхует от регрессий.
   await gate.admin
     .from("lesson_recordings")
     .update({ chunks_count: seq + 1 })
