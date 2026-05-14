@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
 import { useModalA11y } from "@/hooks/use-modal-a11y"
+import { useLessonChat } from "@/hooks/use-lesson-chat"
 
 interface Props {
   lessonId: string
@@ -24,7 +25,6 @@ interface Props {
   studentId?: string
 }
 
-interface ChatMsg { id: string; sender_id: string; message: string; created_at: string }
 interface Material { id: string; title: string; content: string; file_url: string | null; created_at: string }
 
 declare global { interface Window { JitsiMeetExternalAPI: any } }
@@ -183,7 +183,6 @@ export function LessonRoomClient({
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<"chat"|"materials"|"notes">("chat")
-  const [messages, setMessages] = useState<ChatMsg[]>([])
   const [newMsg, setNewMsg] = useState("")
   const [notesList, setNotesList] = useState<{id:string;content:string;created_at:string}[]>([])
   const [noteInput, setNoteInput] = useState("")
@@ -205,7 +204,6 @@ export function LessonRoomClient({
   const msgsEndRef = useRef<HTMLDivElement>(null)
   const jitsiRef = useRef<HTMLDivElement>(null)
   const jitsiApi = useRef<any>(null)
-  const pollRef = useRef<any>(null)
   // Stateful копия jitsiApi нужна useLessonRecorder'у — refs не
   // триггерят его useEffect, а API становится доступен асинхронно.
   const [jitsiApiState, setJitsiApiState] = useState<any>(null)
@@ -437,11 +435,9 @@ export function LessonRoomClient({
     }
   }, [jitsiApiState, recorder.status])
 
-  // Chat
-  const loadMessages = useCallback(async()=>{
-    try{const r=await fetch(`/api/lesson/messages?lessonId=${lessonId}`);if(r.ok)setMessages(await r.json())}catch{}
-  },[lessonId])
-  useEffect(()=>{loadMessages();pollRef.current=setInterval(loadMessages,3000);return()=>clearInterval(pollRef.current)},[loadMessages])
+  // Chat — Supabase Realtime (postgres_changes на lesson_messages) вместо
+  // 3-сек polling. См. src/hooks/use-lesson-chat.ts.
+  const { messages, sendMessage } = useLessonChat({ lessonId, userId, optimistic: true })
   useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages])
 
   // Notes — load as list
@@ -458,9 +454,10 @@ export function LessonRoomClient({
 
   const sendMsg = useCallback(async()=>{
     if(!newMsg.trim())return;const t=newMsg.trim();setNewMsg("")
-    setMessages(p=>[...p,{id:Date.now().toString(),sender_id:userId,message:t,created_at:new Date().toISOString()}])
-    await fetch("/api/lesson/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lessonId,userId,message:t})})
-  },[newMsg,lessonId,userId])
+    // Хук сам делает optimistic UI и POST в /api/lesson/messages,
+    // realtime-broadcast потом заменит плейсхолдер серверным объектом.
+    await sendMessage(t)
+  },[newMsg,sendMessage])
 
   const sendNote = useCallback(async()=>{
     if(!noteInput.trim())return;const t=noteInput.trim();setNoteInput("")
