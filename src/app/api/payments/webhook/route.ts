@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { YooKassaClient } from '@/lib/yookassa/client'
 import type { YooKassaWebhookNotification, YooKassaPayment, YooKassaRefund } from '@/lib/yookassa/types'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 
 /**
  * Допустимые IP-адреса YooKassa для вебхуков.
@@ -75,6 +75,18 @@ function isRefundObject(obj: unknown): obj is YooKassaRefund {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate-limit: защита от webhook-flood. 60 уведомлений/мин на IP
+  // (фактический YooKassa в норме шлёт 1-2 уведомления/мин).
+  // fail-open — НЕ блокируем платёжного провайдера при отказе RPC.
+  const limited = await enforceRateLimit(request, {
+    name: 'payments:webhook',
+    keyParts: [getClientIp(request)],
+    max: 60,
+    windowSeconds: 60,
+    failMode: 'open',
+  })
+  if (limited) return limited
+
   // --- 1. Проверка IP отправителя ---
   const forwardedFor = request.headers.get('x-forwarded-for')
   const realIp = request.headers.get('x-real-ip')
@@ -149,7 +161,7 @@ async function handlePaymentSucceeded(
     .from('payments')
     .select('id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
-    .maybeSingle()
+    .maybeSingle<{ id: string; status: string }>()
   if (existingPayment?.status === 'succeeded') return
 
   // НЕ доверяем телу webhook'а полностью (IP можно подделать через
@@ -184,7 +196,7 @@ async function handlePaymentSucceeded(
     .from('lessons')
     .select('teacher_id, student_id, status, price')
     .eq('id', lessonId)
-    .single()
+    .single<{ teacher_id: string; student_id: string; status: string; price: number }>()
 
   if (!lesson) {
     console.error('[webhook] lesson не найден:', lessonId, yookassaPaymentId)
@@ -217,8 +229,8 @@ async function handlePaymentSucceeded(
   }
 
   // Только сейчас — записываем payment + переключаем lesson + earnings.
-  const { data: paymentRecord, error: paymentError } = await supabase
-    .from('payments')
+  // FIXME(types): Postgrest UpsertBuilder инференсится в never
+  const { data: paymentRecord, error: paymentError } = (await (supabase.from('payments') as any)
     .upsert(
       {
         lesson_id: lessonId,
@@ -237,15 +249,15 @@ async function handlePaymentSucceeded(
       { onConflict: 'lesson_id' }
     )
     .select('id')
-    .single()
+    .single()) as { data: { id: string } | null; error: { message: string } | null }
 
   if (paymentError) {
     console.error('[webhook] Ошибка записи платежа:', paymentError)
     throw paymentError
   }
 
-  await supabase
-    .from('lessons')
+  // FIXME(types): Postgrest UpdateBuilder инференсится в never
+  await (supabase.from('lessons') as any)
     .update({ status: 'booked', jitsi_room_name: lessonId })
     .eq('id', lessonId)
     .eq('status', 'pending_payment') // защита от гонки с конкурентной транзакцией
@@ -253,8 +265,8 @@ async function handlePaymentSucceeded(
   if (lesson.teacher_id && paymentRecord?.id) {
     const platformFee = Math.round(paymentAmountKopecks * PLATFORM_FEE_RATE)
     const netAmount = paymentAmountKopecks - platformFee
-    await supabase
-      .from('teacher_earnings')
+    // FIXME(types): Postgrest UpsertBuilder инференсится в never
+    await (supabase.from('teacher_earnings') as any)
       .upsert(
         {
           teacher_id: lesson.teacher_id,
@@ -283,7 +295,7 @@ async function handlePaymentCanceled(
     .from('payments')
     .select('id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
-    .maybeSingle()
+    .maybeSingle<{ id: string; status: string }>()
   if (existingPayment?.status === 'cancelled') return
 
   // Подтверждаем cancellation через API — не верим телу webhook'а.
@@ -306,8 +318,8 @@ async function handlePaymentCanceled(
     return
   }
 
-  await supabase
-    .from('payments')
+  // FIXME(types): Postgrest UpdateBuilder инференсится в never
+  await (supabase.from('payments') as any)
     .update({
       status: 'cancelled' as const,
       metadata: {
@@ -317,8 +329,8 @@ async function handlePaymentCanceled(
     })
     .eq('yookassa_payment_id', yookassaPaymentId)
 
-  await supabase
-    .from('lessons')
+  // FIXME(types): Postgrest UpdateBuilder инференсится в never
+  await (supabase.from('lessons') as any)
     .update({ status: 'cancelled' })
     .eq('id', lessonId)
     .eq('status', 'pending_payment')
@@ -335,7 +347,7 @@ async function handleRefundSucceeded(
     .from('payments')
     .select('id, lesson_id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
-    .maybeSingle()
+    .maybeSingle<{ id: string; lesson_id: string; status: string }>()
 
   if (!paymentRecord) {
     console.error('[webhook] refund.succeeded: платёж не найден:', yookassaPaymentId)
@@ -348,8 +360,8 @@ async function handleRefundSucceeded(
   }
 
   // --- Обновление статуса платежа ---
-  await supabase
-    .from('payments')
+  // FIXME(types): Postgrest UpdateBuilder инференсится в never
+  await (supabase.from('payments') as any)
     .update({
       status: 'refunded' as const,
       refunded_at: refund.created_at ?? new Date().toISOString(),
@@ -358,8 +370,8 @@ async function handleRefundSucceeded(
 
   // --- Обновление записи о доходе преподавателя ---
   if (paymentRecord.lesson_id) {
-    await supabase
-      .from('teacher_earnings')
+    // FIXME(types): Postgrest UpdateBuilder инференсится в never
+    await (supabase.from('teacher_earnings') as any)
       .update({ status: 'cancelled' as const })
       .eq('lesson_id', paymentRecord.lesson_id)
   }

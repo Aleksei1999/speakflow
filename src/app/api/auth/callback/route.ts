@@ -1,12 +1,23 @@
-// @ts-nocheck
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next')
+
+  // Rate-limit: защита OAuth callback от brute-force / flood.
+  // 10 попыток в минуту на IP, fail-closed (это auth-периметр).
+  // NextRequest нужен только для headers — оборачиваем Request.
+  const limited = await enforceRateLimitStrict(request as any, {
+    name: 'auth:callback',
+    keyParts: [getClientIp(request as any)],
+    max: 10,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
 
   // Validate redirect target to prevent open redirect attacks.
   // Only allow relative paths starting with "/" and reject protocol-relative URLs.
@@ -41,7 +52,7 @@ export async function GET(request: Request) {
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .single()
+        .single<{ role: string }>()
 
       redirectPath =
         profile?.role === 'admin'

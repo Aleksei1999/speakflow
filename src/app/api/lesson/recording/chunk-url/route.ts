@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { requireLessonParticipant } from "@/lib/api/lesson-auth"
+import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
 const BodySchema = z.object({
   lessonId: z.string().uuid(),
@@ -44,6 +45,16 @@ export async function POST(req: NextRequest) {
 
   const gate = await requireLessonParticipant(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  // Rate-limit: 200 chunks/min — chunks идут пачкой (несколько штук в
+  // минуту от каждого участника). fail-closed: storage upload — расход.
+  const limited = await enforceRateLimitStrict(req, {
+    name: "lesson:recording:chunk-url",
+    keyParts: [gate.user.id, getClientIp(req)],
+    max: 200,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
 
   const { data: rec } = await gate.admin
     .from("lesson_recordings")

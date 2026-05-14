@@ -21,8 +21,10 @@ export async function POST(request: NextRequest) {
   const limited = await enforceRateLimit(request, {
     name: "csp:report",
     keyParts: [getClientIp(request)],
-    max: 60,
+    max: 100,
     windowSeconds: 60,
+    // fail-open: нельзя ломать CSP-репортинг браузерам при отказе RPC.
+    failMode: "open",
   })
   if (limited) return new NextResponse(null, { status: 429 })
 

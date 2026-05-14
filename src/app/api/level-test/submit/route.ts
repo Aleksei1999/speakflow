@@ -4,9 +4,20 @@ import { levelTestSubmitSchema } from '@/lib/validations'
 import { questions } from '@/lib/level-test-questions'
 import { calculateLevel } from '@/lib/level-utils'
 import { createClient } from '@/lib/supabase/server'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    // Rate-limit: 10 submit/час на IP. fail-closed —
+    // публичный endpoint, защита от автоматизированной накрутки.
+    const limited = await enforceRateLimitStrict(request as any, {
+      name: 'level-test:submit',
+      keyParts: [getClientIp(request as any)],
+      max: 10,
+      windowSeconds: 60 * 60,
+    })
+    if (limited) return limited
+
     const body = await request.json()
 
     const parsed = levelTestSubmitSchema.safeParse(body)
