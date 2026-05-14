@@ -91,7 +91,10 @@ function buildMonthDays(view: Date): (Date | null)[] {
   return cells
 }
 
+import { useModalA11y } from "@/hooks/use-modal-a11y"
+
 export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }: Props) {
+  const modalRef = useModalA11y(open, () => onOpenChange(false))
   const [step, setStep] = useState<"teacher" | "calendar">("teacher")
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
   const [teachersLoading, setTeachersLoading] = useState(false)
@@ -400,7 +403,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
   return (
     <>
       <div className={`cal-overlay ${open ? "open visible" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false) }}>
-        <div className={step === "teacher" ? "tch-modal" : "cal-modal"} role="dialog" aria-modal="true">
+        <div ref={modalRef} className={step === "teacher" ? "tch-modal" : "cal-modal"} role="dialog" aria-modal="true" aria-label="Бронирование урока">
           {step === "teacher" ? (
             <>
               <div className="tch-header">
