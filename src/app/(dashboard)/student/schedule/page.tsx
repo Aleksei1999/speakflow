@@ -199,6 +199,11 @@ export default function StudentSchedulePage() {
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [isLoading, setIsLoading] = useState(true)
   const [bookingOpen, setBookingOpen] = useState(false)
+  // Контекст брони из клика по ячейке weekly-grid: дата+время передаются
+  // в LessonBookingModal через initialDate/initialTime, чтобы модалка
+  // открылась сразу с предвыбранным слотом (без шага «выбор времени»).
+  // null = открыта через кнопку «Записаться» (без контекста).
+  const [bookingPreset, setBookingPreset] = useState<{ date: Date; time: string } | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [now, setNow] = useState<Date>(() => new Date())
   const [cancellingId, setCancellingId] = useState<string | null>(null)
@@ -465,7 +470,13 @@ export default function StudentSchedulePage() {
       <div className="hdr">
         <h1>Моё <span className="gl">schedule</span></h1>
         <div className="hdr-right">
-          <button className="btn btn-dark" onClick={() => setBookingOpen(true)}>
+          <button
+            className="btn btn-dark"
+            onClick={() => {
+              setBookingPreset(null)
+              setBookingOpen(true)
+            }}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Записаться
           </button>
@@ -537,7 +548,13 @@ export default function StudentSchedulePage() {
                 weekDays={weekDays}
                 lessons={lessons}
                 now={now}
-                onCellClick={() => setBookingOpen(true)}
+                onCellClick={(cellDate, cellTime) => {
+                  // Предзаполняем дату+время из ячейки grid — модалка
+                  // подхватит initialDate/initialTime и автоматически
+                  // выберет слот, если он свободен у выбранного препода.
+                  setBookingPreset({ date: cellDate, time: cellTime })
+                  setBookingOpen(true)
+                }}
                 isHappeningNow={isHappeningNow}
                 teacherMap={teacherMap}
                 trialIds={trialIds}
@@ -644,6 +661,8 @@ export default function StudentSchedulePage() {
       <LessonBookingModal
         open={bookingOpen}
         onOpenChange={setBookingOpen}
+        initialDate={bookingPreset?.date}
+        initialTime={bookingPreset?.time}
         onBooked={(scheduledAt) => {
           // Прыгаем на неделю урока, чтобы свежая бронь сразу была видна.
           const dt = new Date(scheduledAt)
@@ -670,7 +689,11 @@ function RowFragment({
   weekDays: Date[]
   lessons: LessonRow[]
   now: Date
-  onCellClick: () => void
+  // Передаём родителю дату ячейки и время в формате "HH:mm" — модалка
+  // ожидает initialTime по Europe/Moscow, тут локальный час совпадает
+  // у MSK-аудитории; в других TZ предзаполнение времени просто молча
+  // не сматчится, а дата всё равно подсветится.
+  onCellClick: (date: Date, time: string) => void
   isHappeningNow: (l: LessonRow) => boolean
   teacherMap: Record<string, TeacherMapEntry>
   trialIds: Set<string>
@@ -686,7 +709,11 @@ function RowFragment({
         })
         const first = lessonsInCell[0]
         return (
-          <div key={`${day.toISOString()}-${hour}`} className="cg-c" onClick={first ? undefined : onCellClick}>
+          <div
+            key={`${day.toISOString()}-${hour}`}
+            className="cg-c"
+            onClick={first ? undefined : () => onCellClick(day, label)}
+          >
             {first ? (
               <EventChip lesson={first} now={now} isHappeningNow={isHappeningNow} teacherName={first.teacher_id ? teacherMap[first.teacher_id]?.full_name ?? null : null} isTrial={trialIds.has(first.id)} />
             ) : null}
