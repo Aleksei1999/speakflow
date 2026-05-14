@@ -75,8 +75,13 @@ let _redis: Redis | null = null
 function getRedis(): Redis | null {
   if (_redisChecked) return _redis
   _redisChecked = true
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  // Vercel Marketplace integration ставит KV_REST_API_URL/_TOKEN.
+  // Прямая установка Upstash CLI/Dashboard — UPSTASH_REDIS_REST_URL/_TOKEN.
+  // Поддерживаем оба формата.
+  const url =
+    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN
   if (!url || !token) {
     _redis = null
     return null
