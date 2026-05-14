@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { TurnstileWidget } from "@/components/auth/turnstile-widget"
 
 const TIMES = [10, 13, 16, 19] as const
 const DAY_LABELS = ["Сегодня", "Завтра", "Послезавтра"] as const
@@ -76,6 +77,7 @@ export function TrialBookingCard({ firstName }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(slots[0]?.iso ?? null)
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [teachersLoading, setTeachersLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [done, setDone] = useState<{ slotIso: string; assigned: boolean } | null>(null)
@@ -127,9 +129,8 @@ export function TrialBookingCard({ firstName }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           preferredSlot: selectedSlot,
-          // Если преподавателей не было — оставим null (autoAssignTrial всё
-          // равно создаст pending-заявку и оповестит куратора).
           teacherProfileId: selectedTeacher ?? undefined,
+          turnstileToken,
         }),
       })
       const json = await res.json().catch(() => ({}))
@@ -299,6 +300,9 @@ export function TrialBookingCard({ firstName }: Props) {
                   </button>
                 )
               })}
+            </div>
+            <div style={{ margin: "8px 0" }}>
+              <TurnstileWidget onToken={setTurnstileToken} />
             </div>
             <button
               type="button"

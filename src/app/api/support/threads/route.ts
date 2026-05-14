@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { verifyTurnstile } from "@/lib/api/turnstile"
+import { getClientIp } from "@/lib/api/rate-limit"
 
 // ---------------------------------------------------------------
 // GET  /api/support/threads
@@ -22,6 +24,7 @@ const listQuerySchema = z.object({
 const createSchema = z.object({
   subject: z.string().trim().min(1, "Введите тему").max(200, "Максимум 200 символов"),
   body: z.string().trim().min(1, "Сообщение не может быть пустым").max(8000),
+  turnstileToken: z.string().nullable().optional(),
 })
 
 async function getCallerRole(supabase: any, userId: string): Promise<string | null> {
@@ -184,7 +187,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { subject, body: messageBody } = parsed.data
+    const { subject, body: messageBody, turnstileToken } = parsed.data
+
+    const cap = await verifyTurnstile(turnstileToken, getClientIp(request))
+    if (!cap.ok) {
+      return NextResponse.json({ error: "Проверка не пройдена" }, { status: 400 })
+    }
 
     const role = (await getCallerRole(supabase, user.id)) ?? "student"
     const senderRole: "student" | "teacher" | "admin" =
