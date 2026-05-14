@@ -16,9 +16,8 @@ interface UseLessonChatOptions {
   userId: string
   /**
    * Когда true — sendMessage сразу добавляет сообщение в state с временным
-   * id `optimistic:<rand>`, чтобы UI не ждал ответа сервера. Когда из realtime
-   * прилетает реальный INSERT с тем же текстом от того же sender_id —
-   * оптимистичный плейсхолдер заменяется на серверный объект.
+   * id `optimistic:<rand>`. После прихода реального INSERT через realtime
+   * плейсхолдер заменяется на серверный объект.
    */
   optimistic?: boolean
 }
@@ -29,20 +28,9 @@ interface UseLessonChatResult {
 }
 
 /**
- * Hook: чат урока с Supabase Realtime вместо polling.
- *
- * - Initial fetch: один запрос GET /api/lesson/messages?lessonId=...
- *   (через защищённый API endpoint — auth + participant check).
- * - Live updates: подписка на `postgres_changes` INSERT по таблице
- *   public.lesson_messages с фильтром `lesson_id=eq.<lessonId>`.
- *   RLS у таблицы корректно отфильтрует — broadcast получат только
- *   участники урока (см. миграция 20260510120000_lesson_chat_rls_fix).
- * - sendMessage: POST /api/lesson/messages с optimistic UI; realtime
- *   broadcast по своему же INSERT заменяет временный объект на серверный.
- *
- * Раньше vehicle (3 сек polling) генерировал ~1200 fetch'ей за 60-минутный
- * урок и тянул весь чат целиком на каждый ответ. Realtime даёт O(1)
- * сообщение на событие.
+ * Чат урока с Supabase Realtime. Initial fetch через защищённый API,
+ * live updates по postgres_changes INSERT на lesson_messages,
+ * sendMessage с optimistic UI.
  */
 export function useLessonChat({
   lessonId,
@@ -50,11 +38,9 @@ export function useLessonChat({
   optimistic = true,
 }: UseLessonChatOptions): UseLessonChatResult {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  // Идентификаторы наших оптимистичных сообщений, ждущих server-confirm.
-  // Используем ref, чтобы не триггерить лишние ре-рендеры подписки.
-  const pendingRef = useRef<Map<string, string>>(new Map()) // text -> optimistic id
+  // text -> optimistic id; в ref чтобы подписка не ре-рендерилась.
+  const pendingRef = useRef<Map<string, string>>(new Map())
 
-  // Initial load + Realtime subscription.
   useEffect(() => {
     if (!lessonId) return
     let cancelled = false
@@ -89,10 +75,9 @@ export function useLessonChat({
         (payload) => {
           const incoming = payload.new as ChatMessage
           setMessages((prev) => {
-            // Дедуп по id (на случай гонки initial-load vs realtime).
+            // Дедуп по id (гонка initial-load vs realtime).
             if (prev.some((m) => m.id === incoming.id)) return prev
-            // Если это наш собственный INSERT — заменим оптимистичный
-            // плейсхолдер вместо добавления второго пузыря.
+            // Наш собственный INSERT — заменяем оптимистичный плейсхолдер.
             if (incoming.sender_id === userId) {
               const optimisticId = pendingRef.current.get(incoming.message)
               if (optimisticId) {
@@ -139,14 +124,14 @@ export function useLessonChat({
           body: JSON.stringify({ lessonId, message: trimmed }),
         })
         if (!res.ok) {
-          // Откатим оптимистичный плейсхолдер при ошибке.
+          // Откатываем оптимистичный плейсхолдер при ошибке.
           if (optimisticId) {
             pendingRef.current.delete(trimmed)
             const failedId = optimisticId
             setMessages((prev) => prev.filter((m) => m.id !== failedId))
           }
         }
-        // Успех: ничего не делаем. Realtime-broadcast заменит плейсхолдер.
+        // На успехе ничего не делаем: realtime сам заменит плейсхолдер.
       } catch {
         if (optimisticId) {
           pendingRef.current.delete(trimmed)
