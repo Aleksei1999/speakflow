@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -32,6 +31,12 @@ export async function GET(_request: NextRequest) {
       .select("id, last_user_message_at, admin_last_seen_at, status")
       .not("last_user_message_at", "is", null)
       .not("status", "in", "(resolved,closed)")
+      .returns<{
+        id: string
+        last_user_message_at: string | null
+        admin_last_seen_at: string | null
+        status: string
+      }[]>()
     if (error) {
       console.error("unread-count error:", error)
       return NextResponse.json({ count: 0 })

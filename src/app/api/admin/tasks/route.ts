@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -28,6 +27,51 @@ type Task = {
   ts: string | null
 }
 
+type TeacherApplicationRow = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  contact: string | null
+  status: string
+  created_at: string
+}
+type SupportThreadRow = {
+  id: string
+  subject: string | null
+  last_user_message_at: string | null
+  admin_last_seen_at: string | null
+  priority: string | null
+  student_id: string
+}
+type TrialRequestRow = {
+  id: string
+  user_id: string
+  level: string | null
+  goal: string | null
+  preferred_slot: string | null
+  assigned_lesson_id: string | null
+  created_at: string
+}
+type ClubRow = {
+  id: string
+  topic: string
+  starts_at: string
+  seats_taken: number | null
+  max_seats: number | null
+  capacity: number | null
+  is_published: boolean
+  cancelled_at: string | null
+}
+type PendingLessonRow = {
+  id: string
+  scheduled_at: string
+  status: string
+  created_at: string
+  student_id: string
+}
+type StudentLookupRow = { id: string; full_name: string | null; email: string | null }
+
 function fullName(p: { first_name?: string | null; last_name?: string | null; email?: string | null; contact?: string | null }): string {
   const fn = (p.first_name ?? "").trim()
   const ln = (p.last_name ?? "").trim()
@@ -56,14 +100,16 @@ export async function GET(_req: NextRequest) {
         .select("id, first_name, last_name, email, contact, status, created_at")
         .eq("status", "new")
         .order("created_at", { ascending: true })
-        .limit(20),
+        .limit(20)
+        .returns<TeacherApplicationRow[]>(),
       // 2) Support threads с непрочитанным
       admin
         .from("support_threads")
         .select("id, subject, last_user_message_at, admin_last_seen_at, priority, student_id")
         .in("status", ["open", "pending"])
         .order("last_user_message_at", { ascending: false })
-        .limit(50),
+        .limit(50)
+        .returns<SupportThreadRow[]>(),
       // 3) Зависшие пробники без preподавателя
       admin
         .from("trial_lesson_requests")
@@ -71,7 +117,8 @@ export async function GET(_req: NextRequest) {
         .is("assigned_lesson_id", null)
         .lt("created_at", before30min)
         .order("created_at", { ascending: true })
-        .limit(20),
+        .limit(20)
+        .returns<TrialRequestRow[]>(),
       // 4) Полупустые клубы в ближайшие сутки
       admin
         .from("clubs")
@@ -81,7 +128,8 @@ export async function GET(_req: NextRequest) {
         .gt("starts_at", now.toISOString())
         .lt("starts_at", in24h)
         .order("starts_at", { ascending: true })
-        .limit(20),
+        .limit(20)
+        .returns<ClubRow[]>(),
       // 5) Зависшие оплаты
       admin
         .from("lessons")
@@ -89,7 +137,8 @@ export async function GET(_req: NextRequest) {
         .eq("status", "pending_payment")
         .lt("created_at", before24h)
         .order("created_at", { ascending: true })
-        .limit(20),
+        .limit(20)
+        .returns<PendingLessonRow[]>(),
     ])
 
     const tasks: Task[] = []
@@ -105,6 +154,7 @@ export async function GET(_req: NextRequest) {
         .from("profiles")
         .select("id, full_name, email")
         .in("id", Array.from(studentIds))
+        .returns<StudentLookupRow[]>()
       for (const s of studs ?? []) {
         studentNameById[s.id] = (s.full_name ?? s.email ?? "—") as string
       }

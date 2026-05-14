@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { clubsListQuerySchema } from '@/lib/validations'
@@ -38,6 +37,24 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
+    type HostProfile = { id: string; full_name: string | null; avatar_url: string | null }
+    type HostRow = {
+      role: string | null
+      sort_order: number | null
+      profiles: HostProfile | null
+    }
+    type ClubRow = {
+      id: string
+      topic: string | null
+      starts_at: string
+      duration_min: number | null
+      max_seats: number
+      seats_taken: number
+      level_min: string | null
+      level_max: string | null
+      club_hosts: HostRow[] | HostRow | null
+      [key: string]: unknown
+    }
     let query = supabase
       .from('clubs')
       .select(
@@ -70,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (category) query = query.eq('category', category)
     if (format) query = query.eq('format', format)
 
-    const { data: clubs, error } = await query
+    const { data: clubs, error } = (await query) as { data: ClubRow[] | null; error: { message: string } | null }
     if (error) {
       console.error('Ошибка загрузки клубов:', error)
       return NextResponse.json(
@@ -80,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Level filter applied in-memory: include clubs whose [level_min..level_max] range contains the requested level
-    let filtered = clubs ?? []
+    let filtered: ClubRow[] = clubs ?? []
 
     // Trim past clubs precisely: a club is "still upcoming/in-progress" while
     // (starts_at + duration_min) > now. Without this, a club at 12:00 with
@@ -96,8 +113,8 @@ export async function GET(request: NextRequest) {
     if (level) {
       const target = ROAST_LEVELS.indexOf(level)
       filtered = filtered.filter((c) => {
-        const min = c.level_min ? ROAST_LEVELS.indexOf(c.level_min) : 0
-        const max = c.level_max ? ROAST_LEVELS.indexOf(c.level_max) : ROAST_LEVELS.length - 1
+        const min = c.level_min ? ROAST_LEVELS.indexOf(c.level_min as typeof ROAST_LEVELS[number]) : 0
+        const max = c.level_max ? ROAST_LEVELS.indexOf(c.level_max as typeof ROAST_LEVELS[number]) : ROAST_LEVELS.length - 1
         return target >= min && target <= max
       })
     }
@@ -115,6 +132,7 @@ export async function GET(request: NextRequest) {
         .select('club_id, status')
         .eq('user_id', user.id)
         .in('club_id', ids)
+        .returns<{ club_id: string; status: string }[]>()
       if (regs) {
         myRegs = Object.fromEntries(regs.map((r) => [r.club_id, r.status]))
       }

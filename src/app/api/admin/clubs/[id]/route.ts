@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -74,7 +73,7 @@ export async function PATCH(
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    let body: any
+    let body: unknown
     try {
       body = await request.json()
     } catch {
@@ -97,7 +96,7 @@ export async function PATCH(
         .from("clubs")
         .select("starts_at")
         .eq("id", id)
-        .maybeSingle()
+        .maybeSingle<{ starts_at: string }>()
       if (!existing) {
         return NextResponse.json({ error: "Клаб не найден" }, { status: 404 })
       }
@@ -151,6 +150,7 @@ export async function PATCH(
         .select("host_id")
         .eq("club_id", id)
         .order("sort_order", { ascending: true })
+        .returns<{ host_id: string }[]>()
       const currentHostId = existingHosts?.[0]?.host_id ?? null
 
       if (d.host_teacher_id === null) {
@@ -171,13 +171,14 @@ export async function PATCH(
             .from("teacher_profiles")
             .select("user_id")
             .eq("id", d.host_teacher_id)
-            .maybeSingle()
+            .maybeSingle<{ user_id: string }>()
           if (tpRow?.user_id) resolvedHostId = tpRow.user_id
         }
 
         if (resolvedHostId !== currentHostId) {
           await admin.from("club_hosts").delete().eq("club_id", id)
-          const { error: hErr } = await admin.from("club_hosts").insert({
+          // FIXME(types): club_hosts не в Database — нужен typegen
+          const { error: hErr } = await (admin.from("club_hosts") as any).insert({
             club_id: id,
             host_id: resolvedHostId,
             role: "host",
@@ -191,8 +192,8 @@ export async function PATCH(
       }
     }
 
-    const { data, error } = await admin
-      .from("clubs")
+    // FIXME(types): clubs не в Database — нужен typegen
+    const { data, error } = await (admin.from("clubs") as any)
       .update(update)
       .eq("id", id)
       .select(

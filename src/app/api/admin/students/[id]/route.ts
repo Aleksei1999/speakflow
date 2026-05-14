@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -13,6 +12,48 @@ import { requireAdmin } from "@/lib/admin-guard"
 export const dynamic = "force-dynamic"
 
 const idSchema = z.string().uuid()
+
+type StudentProgressRow = {
+  total_xp: number | null
+  current_level: number | null
+  lessons_completed: number | null
+  current_streak: number | null
+  english_level: string | null
+  longest_streak: number | null
+  updated_at: string | null
+}
+
+type StudentRow = {
+  id: string
+  full_name: string | null
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  avatar_url: string | null
+  phone: string | null
+  english_goal: string | null
+  city: string | null
+  occupation: string | null
+  role: string | null
+  created_at: string
+  balance_rub: number | null
+  subscription_tier: string | null
+  subscription_until: string | null
+  user_progress: StudentProgressRow | StudentProgressRow[] | null
+}
+
+type LessonTeacherUser = { id: string; full_name: string | null; avatar_url: string | null }
+type LessonTeacher = {
+  id: string
+  user: LessonTeacherUser | LessonTeacherUser[] | null
+}
+type LastLessonRow = {
+  id: string
+  scheduled_at: string
+  duration_minutes: number
+  status: string
+  teacher: LessonTeacher | LessonTeacher[] | null
+}
 
 export async function GET(
   _request: NextRequest,
@@ -49,7 +90,7 @@ export async function GET(
       )
       .eq("id", id)
       .eq("role", "student")
-      .maybeSingle()
+      .maybeSingle<StudentRow>()
 
     if (profileErr) {
       console.error("admin/students/[id] profile error:", profileErr)
@@ -76,6 +117,7 @@ export async function GET(
       .eq("student_id", id)
       .order("scheduled_at", { ascending: false })
       .limit(1)
+      .returns<LastLessonRow[]>()
 
     const lastLessonRow = Array.isArray(lessons) && lessons.length ? lessons[0] : null
     const teacher = lastLessonRow?.teacher

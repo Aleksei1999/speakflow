@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -26,12 +25,17 @@ export async function POST(
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    type RegWithClub = {
+      id: string
+      status: string
+      club: { starts_at: string }
+    }
     const { data: reg, error: regError } = await supabase
       .from('club_registrations')
       .select('id, status, club:clubs!inner ( starts_at )')
       .eq('club_id', id)
       .eq('user_id', user.id)
-      .maybeSingle()
+      .maybeSingle<RegWithClub>()
     if (regError) {
       console.error('Ошибка загрузки регистрации:', regError)
       return NextResponse.json({ error: 'Ошибка загрузки регистрации' }, { status: 500 })
@@ -52,8 +56,8 @@ export async function POST(
       )
     }
 
-    const { error: updateError } = await supabase
-      .from('club_registrations')
+    // FIXME(types): club_registrations не в Database — нужен typegen
+    const { error: updateError } = await (supabase.from('club_registrations') as any)
       .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
       .eq('id', reg.id)
     if (updateError) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { teacherBookingSchema } from '@/lib/validations'
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: string }>()
 
     if (profileError || !currentProfile) {
       return NextResponse.json(
@@ -63,11 +62,12 @@ export async function POST(request: NextRequest) {
     }
 
     // teacher_profiles для текущего учителя (auth user_id -> teacher_profiles.id)
+    type TeacherRateRow = { id: string; hourly_rate: number; trial_rate: number | null }
     const { data: teacherProfile, error: teacherError } = await supabase
       .from('teacher_profiles')
       .select('id, hourly_rate, trial_rate')
       .eq('user_id', user.id)
-      .single()
+      .single<TeacherRateRow>()
 
     if (teacherError || !teacherProfile) {
       return NextResponse.json(
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('id, role')
       .eq('id', studentId)
-      .single()
+      .single<{ id: string; role: string }>()
 
     if (studentError || !studentProfile) {
       return NextResponse.json(
@@ -139,7 +139,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка доступности слота (p_teacher_id = teacher_profiles.id)
-    const { data: isAvailable, error: slotError } = await supabase.rpc(
+    // FIXME(types): rpc generic не резолвится с минимальной Database
+    const { data: isAvailable, error: slotError } = await (supabase.rpc as any)(
       'is_slot_available',
       {
         p_teacher_id: teacherProfileId,
@@ -185,8 +186,15 @@ export async function POST(request: NextRequest) {
     }
 
     // TEMP: пока нет Yookassa — создаём урок сразу как booked с price=0.
-    const { data: lesson, error: insertError } = await supabase
-      .from('lessons')
+    // FIXME(types): Postgrest InsertBuilder инференсится в never
+    type CreatedLessonRow = {
+      id: string
+      price: number
+      scheduled_at: string
+      duration_minutes: number
+      status: string
+    }
+    const { data: lesson, error: insertError } = (await (supabase.from('lessons') as any)
       .insert({
         student_id: studentId,
         teacher_id: teacherProfileId,
@@ -200,7 +208,7 @@ export async function POST(request: NextRequest) {
         teacher_notes: null,
       })
       .select('id, price, scheduled_at, duration_minutes, status')
-      .single()
+      .single()) as { data: CreatedLessonRow | null; error: { message: string; code?: string } | null }
 
     if (insertError) {
       console.error('Ошибка создания урока:', insertError)
@@ -218,17 +226,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Имя комнаты Jitsi по DB-сгенерированному id
-    const jitsiRoomName = `speakflow-${lesson.id}`
-    await supabase
-      .from('lessons')
+    const jitsiRoomName = `speakflow-${lesson!.id}`
+    // FIXME(types): Postgrest UpdateBuilder инференсится в never
+    await (supabase.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
-      .eq('id', lesson.id)
+      .eq('id', lesson!.id)
 
-    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
+    void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
 
     return NextResponse.json({
-      lessonId: lesson.id,
-      price: lesson.price,
+      lessonId: lesson!.id,
+      price: lesson!.price,
     })
   } catch (error) {
     console.error('Непредвиденная ошибка в teacher-create API:', error)

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
@@ -42,11 +41,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the lesson
+    type LessonRow = {
+      id: string
+      student_id: string
+      teacher_id: string
+      scheduled_at: string
+      duration_minutes: number
+      status: string
+      price: number
+    }
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
       .select('id, student_id, teacher_id, scheduled_at, duration_minutes, status, price')
       .eq('id', lessonId)
-      .single()
+      .single<LessonRow>()
 
     if (lessonError || !lesson) {
       return NextResponse.json(
@@ -84,8 +92,8 @@ export async function POST(request: NextRequest) {
     const refundEligible = hoursUntilLesson >= CANCELLATION_POLICY_HOURS
 
     // Update lesson status to cancelled
-    const { error: updateError } = await supabase
-      .from('lessons')
+    // FIXME(types): Postgrest UpdateBuilder инференсится в never из-за неполной Database (без Views/Relationships)
+    const { error: updateError } = await (supabase.from('lessons') as any)
       .update({
         status: 'cancelled',
         cancelled_by: user.id,
@@ -108,11 +116,11 @@ export async function POST(request: NextRequest) {
         .select('id, status')
         .eq('lesson_id', lessonId)
         .eq('status', 'succeeded')
-        .single()
+        .single<{ id: string; status: string }>()
 
       if (payment) {
-        await supabase
-          .from('payments')
+        // FIXME(types): Postgrest UpdateBuilder инференсится в never
+        await (supabase.from('payments') as any)
           .update({ status: 'refunded', refunded_at: new Date().toISOString() })
           .eq('id', payment.id)
       }

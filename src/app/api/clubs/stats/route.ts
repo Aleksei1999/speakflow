@@ -1,4 +1,3 @@
-// @ts-nocheck
 // GET /api/clubs/stats
 // Aggregated stats for the /student/clubs page header cards:
 //   1. weekCount         — published, non-cancelled clubs in the current ISO
@@ -75,7 +74,8 @@ export async function GET() {
         .eq('is_published', true)
         .is('cancelled_at', null)
         .gte('starts_at', week.start.toISOString())
-        .lt('starts_at', week.end.toISOString()),
+        .lt('starts_at', week.end.toISOString())
+        .returns<{ id: string; starts_at: string | null; duration_min: number | null }[]>(),
 
       // 2. Distinct clubs user attended this month.
       //    Trust-worthy signal: registration.status = 'attended' OR the club
@@ -86,7 +86,13 @@ export async function GET() {
         .select('club_id, status, attended_at, club:clubs!inner(starts_at, duration_min)')
         .eq('user_id', user.id)
         .gte('registered_at', month.start.toISOString())
-        .lt('registered_at', month.end.toISOString()),
+        .lt('registered_at', month.end.toISOString())
+        .returns<{
+          club_id: string
+          status: string
+          attended_at: string | null
+          club: { starts_at: string | null; duration_min: number | null } | null
+        }[]>(),
 
       // 3. User's next upcoming active registration
       supabase
@@ -96,7 +102,19 @@ export async function GET() {
         .in('status', ACTIVE_REG_STATUSES as unknown as string[])
         .gt('club.starts_at', nowIso)
         .order('club(starts_at)', { ascending: true })
-        .limit(1),
+        .limit(1)
+        .returns<{
+          id: string
+          status: string
+          club: {
+            id: string
+            starts_at: string | null
+            category: string | null
+            topic: string | null
+            duration_min: number | null
+            cover_emoji: string | null
+          } | null
+        }[]>(),
 
       // 4. Sum of club-related XP events this month
       supabase
@@ -105,7 +123,8 @@ export async function GET() {
         .eq('user_id', user.id)
         .in('source_type', CLUB_XP_SOURCES as unknown as string[])
         .gte('created_at', month.start.toISOString())
-        .lt('created_at', month.end.toISOString()),
+        .lt('created_at', month.end.toISOString())
+        .returns<{ amount: number | null }[]>(),
     ])
 
     if (weekClubsRes.error) {

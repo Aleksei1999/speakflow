@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -39,6 +38,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    type HostProfile = { id: string; full_name: string | null; avatar_url: string | null }
+    type HostRow = {
+      role: string | null
+      sort_order: number | null
+      profiles: HostProfile | null
+    }
+    type ClubInner = {
+      id: string
+      topic: string
+      max_seats: number
+      seats_taken: number
+      meeting_url: string | null
+      club_hosts: HostRow[] | HostRow | null
+      [key: string]: unknown
+    }
+    type RegRow = {
+      id: string
+      status: string
+      registered_at: string
+      attended_at: string | null
+      cancelled_at: string | null
+      club: ClubInner | null
+    }
     let query = supabase
       .from('club_registrations')
       .select(
@@ -66,7 +88,7 @@ export async function GET(request: NextRequest) {
     if (scope === 'upcoming') query = query.gte('club.starts_at', nowIso)
     if (scope === 'past') query = query.lt('club.starts_at', nowIso)
 
-    const { data: regs, error } = await query
+    const { data: regs, error } = (await query) as { data: RegRow[] | null; error: { message: string } | null }
     if (error) {
       console.error('Ошибка загрузки регистраций:', error)
       return NextResponse.json({ error: 'Не удалось загрузить регистрации' }, { status: 500 })

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ---------------------------------------------------------------
 // Admin role gate for API routes.
 //
@@ -9,10 +8,15 @@
 //   const adminUser = gate.user
 // ---------------------------------------------------------------
 
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+
 type AdminGateOk = { ok: true; user: { id: string; email?: string | null } }
 type AdminGateFail = { ok: false; status: 401 | 403; error: string }
 
-export async function requireAdmin(supabase: any): Promise<AdminGateOk | AdminGateFail> {
+export async function requireAdmin(
+  supabase: SupabaseClient<Database>
+): Promise<AdminGateOk | AdminGateFail> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -25,7 +29,7 @@ export async function requireAdmin(supabase: any): Promise<AdminGateOk | AdminGa
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle()
+    .maybeSingle<{ role: string }>()
 
   if (!profile || profile.role !== "admin") {
     return { ok: false, status: 403, error: "Доступ только для админов" }
