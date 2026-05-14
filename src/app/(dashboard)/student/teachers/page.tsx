@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 import { toast } from "sonner"
 import { useUser } from "@/hooks/use-user"
 
@@ -726,12 +727,13 @@ export default function StudentTeachersPage() {
         </div>
       ) : (
         <div className="teachers-grid">
-          {teachers.map((t) => (
+          {teachers.map((t, i) => (
             <TeacherCard
               key={t.id}
               teacher={t}
               onOpen={() => openProfile(t)}
               readOnly={readOnly}
+              eager={i < 6}
             />
           ))}
         </div>
@@ -760,10 +762,13 @@ export default function StudentTeachersPage() {
               </button>
               <div className="prof-avatar">
                 {modalTeacher.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={modalTeacher.avatar_url}
                     alt={modalTeacher.full_name}
+                    width={100}
+                    height={100}
+                    sizes="100px"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 22 }}
                   />
                 ) : (
                   modalTeacher.initials || "?"
@@ -1019,10 +1024,14 @@ export default function StudentTeachersPage() {
                         <div className="prof-review-top">
                           <div className="prof-review-avatar">
                             {r.student.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
+                              <Image
                                 src={r.student.avatar_url}
                                 alt={r.student.full_name}
+                                width={28}
+                                height={28}
+                                sizes="28px"
+                                loading="lazy"
+                                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }}
                               />
                             ) : (
                               r.student.initials ||
@@ -1100,10 +1109,12 @@ function TeacherCard({
   teacher,
   onOpen,
   readOnly,
+  eager,
 }: {
   teacher: Teacher
   onOpen: () => void
   readOnly?: boolean
+  eager?: boolean
 }) {
   const specLabel = shortSpecs(teacher.specializations).toUpperCase()
   const tags = teacher.specializations.slice(0, 3)
@@ -1124,8 +1135,16 @@ function TeacherCard({
     >
       <div className="t-photo">
         {teacher.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={teacher.avatar_url} alt={teacher.full_name} />
+          <Image
+            src={teacher.avatar_url}
+            alt={teacher.full_name}
+            fill
+            // 3 колонки до 900px (33vw), 2 — до 600px (50vw), 1 — на мобиле.
+            sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 360px"
+            // first-fold cards грузим eagerly (LCP candidate), остальное — lazy.
+            {...(eager ? { priority: true } : { loading: "lazy" })}
+            style={{ objectFit: "cover" }}
+          />
         ) : (
           <div className="t-photo-placeholder">
             {teacher.initials || "?"}
