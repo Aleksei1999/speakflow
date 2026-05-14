@@ -67,6 +67,7 @@ export function DashboardSidebar({
 
   return (
     <aside
+      aria-label="Боковая навигация"
       className={cn(
         "flex h-full flex-col bg-[#1E1E1E] text-white transition-[width] duration-200",
         collapsed ? "w-16" : "w-64"
