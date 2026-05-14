@@ -19,16 +19,12 @@ export interface JitsiTokenOptions {
 
 const DEFAULT_EXP_HOURS = 2
 const POST_LESSON_BUFFER_MIN = 30
-const MIN_TOKEN_LIFETIME_SEC = 5 * 60 // защитный пол на 5 минут
+const MIN_TOKEN_LIFETIME_SEC = 5 * 60
 
 /**
- * Динамический exp = МИНИМУМ из (сейчас + 2ч) и (scheduledEnd + 30мин).
- * Раньше использовался max() — для далеко запланированных уроков токен
- * жил сутками, leak → модератор на сутки. Теперь cap по концу урока:
- *   • 50-мин урок в середине → ~45 мин жизни токена
- *   • Только что вошли → весь урок + 30 мин
- *   • Долгий 90-мин урок → up to default2h, не больше
- * Floor MIN_TOKEN_LIFETIME_SEC чтобы не выдавать заведомо мёртвый токен.
+ * Динамический exp = min(now + 2ч, scheduledEnd + 30мин). Если урок
+ * короткий и в середине — токен живёт ровно до конца. Минимум — 5 минут
+ * от сейчас, чтобы не выдавать заведомо мёртвый токен.
  */
 function computeExpSeconds(opts?: JitsiTokenOptions): number {
   const nowSec = Math.floor(Date.now() / 1000)
@@ -47,18 +43,11 @@ function computeExpSeconds(opts?: JitsiTokenOptions): number {
       1000
   )
 
-  // Cap по концу урока, но не меньше MIN_TOKEN_LIFETIME_SEC от сейчас.
   const capped = Math.min(default2h, lessonEndSec)
   return Math.max(capped, nowSec + MIN_TOKEN_LIFETIME_SEC)
 }
 
-/**
- * Генерация JWT-токена для Jitsi Meet.
- *
- * exp вычисляется динамически от длительности урока, чтобы токен
- * пережил весь урок даже если юзер открыл вкладку за час до начала.
- * Минимум 2 часа от момента подписи.
- */
+/** Генерирует JWT для Jitsi Meet с динамическим exp по длительности урока. */
 export async function generateJitsiToken(
   roomName: string,
   user: JitsiUser,
