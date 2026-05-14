@@ -6,6 +6,7 @@ import { format, formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { TurnstileWidget } from "@/components/auth/turnstile-widget"
 
 const CSS = `
 .sup-page{max-width:1280px;margin:0 auto}
@@ -158,6 +159,7 @@ export default function SupportClient({
   const [subject, setSubject] = useState("")
   const [firstBody, setFirstBody] = useState("")
   const [creating, setCreating] = useState(false)
+  const [createTurnstileToken, setCreateTurnstileToken] = useState<string | null>(null)
 
   const bodyRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -308,7 +310,7 @@ export default function SupportClient({
       const res = await fetch("/api/support/threads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: s, body: b }),
+        body: JSON.stringify({ subject: s, body: b, turnstileToken: createTurnstileToken }),
       })
       if (!res.ok) throw new Error("failed")
       const json = await res.json()
@@ -623,6 +625,10 @@ export default function SupportClient({
               onChange={(e) => setFirstBody(e.target.value)}
               disabled={creating}
             />
+
+            <div style={{ padding: "12px 18px 0" }}>
+              <TurnstileWidget onToken={setCreateTurnstileToken} />
+            </div>
 
             <div className="m-foot">
               <button

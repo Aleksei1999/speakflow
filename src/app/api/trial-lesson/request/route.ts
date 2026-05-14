@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { verifyTurnstile } from '@/lib/api/turnstile'
 
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
@@ -19,6 +20,7 @@ const bodySchema = z.object({
     .datetime({ message: 'preferredSlot must be ISO datetime' })
     .optional(),
   teacherProfileId: z.string().uuid().optional(),
+  turnstileToken: z.string().nullable().optional(),
 })
 
 export async function POST(request: Request) {
@@ -51,6 +53,12 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Некорректные данные' }, { status: 400 })
+  }
+
+  // CAPTCHA: пропускаем если TURNSTILE_SECRET_KEY не задан.
+  const cap = await verifyTurnstile(parsed.data.turnstileToken, getClientIp(request as any))
+  if (!cap.ok) {
+    return NextResponse.json({ error: 'Проверка не пройдена' }, { status: 400 })
   }
 
   const result = await autoAssignTrial({

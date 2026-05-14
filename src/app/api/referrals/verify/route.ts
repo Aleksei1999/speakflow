@@ -1,43 +1,16 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { verifyTurnstile } from '@/lib/api/turnstile'
 
-// ---------------------------------------------------------------------------
-// GET /api/referrals/verify?code=XXX
-// PUBLIC — used by /register to preview "+50 XP bonus" if the code is valid.
-// Never reveals PII: returns only a display name (first name or fallback).
-//
-// Rate limiting: naive in-memory token bucket keyed by IP. 10 req/min/IP.
-// For a multi-instance deploy this should be migrated to Upstash/Redis — good
-// enough for the MVP single-region Vercel setup.
-// ---------------------------------------------------------------------------
+// GET /api/referrals/verify?code=XXX&t=TURNSTILE_TOKEN (token опционален)
+// Публичный — /register показывает "+50 XP" если код валидный.
+// Если turnstile-token есть, проверяем его и пропускаем без RL.
+// Без токена — DB rate-limit 10/мин по IP (через postgres, работает
+// между всеми Vercel-инстансами).
 
 const BONUS_XP = 50
-const WINDOW_MS = 60_000
-const MAX_PER_WINDOW = 10
-
-type Bucket = { count: number; resetAt: number }
-const buckets = new Map<string, Bucket>()
-
-function hitRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const b = buckets.get(ip)
-  if (!b || b.resetAt <= now) {
-    buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-  b.count += 1
-  if (b.count > MAX_PER_WINDOW) return true
-  return false
-}
-
-function getClientIp(req: NextRequest): string {
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) return fwd.split(',')[0]?.trim() || 'unknown'
-  const real = req.headers.get('x-real-ip')
-  if (real) return real.trim()
-  return 'unknown'
-}
 
 function isValidCodeShape(code: string): boolean {
   // 8 chars, base32 alphabet used by generate_invite_code(): no 0/1/I/L/O/U.
@@ -54,16 +27,22 @@ function firstNonEmpty(...vals: Array<string | null | undefined>): string | null
 
 export async function GET(request: NextRequest) {
   try {
-    const ip = getClientIp(request)
-    if (hitRateLimit(ip)) {
-      return NextResponse.json(
-        { valid: false, error: 'Слишком много запросов, попробуйте через минуту' },
-        { status: 429 }
-      )
-    }
-
     const url = new URL(request.url)
     const raw = (url.searchParams.get('code') ?? '').trim().toUpperCase()
+    const turnstileToken = url.searchParams.get('t')
+
+    // Если есть turnstile-token и он валиден — пропускаем без RL.
+    // Иначе — обычный 10/мин per IP.
+    const cap = await verifyTurnstile(turnstileToken, getClientIp(request))
+    if (!cap.ok) {
+      const limited = await enforceRateLimit(request, {
+        name: 'referrals:verify',
+        keyParts: [getClientIp(request)],
+        max: 10,
+        windowSeconds: 60,
+      })
+      if (limited) return limited
+    }
 
     if (!raw) {
       return NextResponse.json(
