@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { YooKassaClient } from '@/lib/yookassa/client'
 import type { YooKassaWebhookNotification, YooKassaPayment, YooKassaRefund } from '@/lib/yookassa/types'
 
 /**
@@ -135,32 +136,87 @@ export async function POST(request: NextRequest) {
 
 async function handlePaymentSucceeded(
   supabase: ReturnType<typeof createAdminClient>,
-  payment: YooKassaPayment
+  webhookPayment: YooKassaPayment
 ) {
-  const yookassaPaymentId = payment.id
-  const lessonId = payment.metadata?.lesson_id
-  const studentId = payment.metadata?.student_id
-
-  if (!lessonId || !studentId) {
-    console.error('[webhook] payment.succeeded без metadata lesson_id/student_id:', yookassaPaymentId)
+  const yookassaPaymentId = webhookPayment.id
+  if (!yookassaPaymentId) {
+    console.error('[webhook] payment.succeeded без id')
     return
   }
 
-  // --- Идемпотентность: проверяем, не обработан ли уже ---
+  // Идемпотентность: уже обработан → выходим.
   const { data: existingPayment } = await supabase
     .from('payments')
     .select('id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
     .maybeSingle()
+  if (existingPayment?.status === 'succeeded') return
 
-  if (existingPayment?.status === 'succeeded') {
-    // Уже обработано -- пропускаем
+  // НЕ доверяем телу webhook'а полностью (IP можно подделать через
+  // misconfig proxy). Тянем тот же payment напрямую из YooKassa API
+  // с нашим shopId+secret — это authoritative source.
+  let payment: YooKassaPayment
+  try {
+    const client = new YooKassaClient()
+    payment = await client.getPayment(yookassaPaymentId)
+  } catch (e) {
+    console.error('[webhook] YooKassa getPayment failed:', yookassaPaymentId, e)
+    throw e
+  }
+
+  if (payment.status !== 'succeeded' || !payment.paid) {
+    console.warn(
+      `[webhook] payment.succeeded webhook, но API status=${payment.status} paid=${payment.paid}: ${yookassaPaymentId}`
+    )
     return
   }
 
-  // --- Обновление/создание записи о платеже ---
-  const paymentAmountKopecks = Math.round(parseFloat(payment.amount.value) * 100)
+  const lessonId = payment.metadata?.lesson_id
+  const studentId = payment.metadata?.student_id
+  if (!lessonId || !studentId) {
+    console.error('[webhook] payment без metadata lesson_id/student_id:', yookassaPaymentId)
+    return
+  }
 
+  // Тянем урок отдельно, сверяем что он реально pending_payment и что
+  // сумма платежа совпадает с lesson.price.
+  const { data: lesson } = await supabase
+    .from('lessons')
+    .select('teacher_id, student_id, status, price')
+    .eq('id', lessonId)
+    .single()
+
+  if (!lesson) {
+    console.error('[webhook] lesson не найден:', lessonId, yookassaPaymentId)
+    return
+  }
+  if (lesson.student_id !== studentId) {
+    console.error(
+      `[webhook] student_id mismatch: lesson.student_id=${lesson.student_id} payment.metadata.student_id=${studentId}`,
+      yookassaPaymentId
+    )
+    return
+  }
+  if (lesson.status !== 'pending_payment') {
+    console.warn(
+      `[webhook] lesson не в pending_payment (status=${lesson.status}): ${lessonId}`
+    )
+    return
+  }
+
+  const paymentAmountKopecks = Math.round(parseFloat(payment.amount.value) * 100)
+  if (payment.amount.currency !== 'RUB') {
+    console.error(`[webhook] unsupported currency ${payment.amount.currency}:`, yookassaPaymentId)
+    return
+  }
+  if (typeof lesson.price === 'number' && paymentAmountKopecks !== lesson.price) {
+    console.error(
+      `[webhook] amount mismatch: paid=${paymentAmountKopecks} expected=${lesson.price} payment=${yookassaPaymentId}`
+    )
+    return
+  }
+
+  // Только сейчас — записываем payment + переключаем lesson + earnings.
   const { data: paymentRecord, error: paymentError } = await supabase
     .from('payments')
     .upsert(
@@ -184,30 +240,19 @@ async function handlePaymentSucceeded(
     .single()
 
   if (paymentError) {
-    console.error('[webhook] Ошибка обновления платежа:', paymentError)
+    console.error('[webhook] Ошибка записи платежа:', paymentError)
     throw paymentError
   }
 
-  // --- Обновление статуса урока на 'booked' ---
-  const { data: lesson } = await supabase
+  await supabase
     .from('lessons')
-    .select('teacher_id, status')
+    .update({ status: 'booked', jitsi_room_name: lessonId })
     .eq('id', lessonId)
-    .single()
+    .eq('status', 'pending_payment') // защита от гонки с конкурентной транзакцией
 
-  if (lesson && lesson.status === 'pending_payment') {
-    // Генерируем имя комнаты Jitsi как UUID урока
-    await supabase
-      .from('lessons')
-      .update({ status: 'booked', jitsi_room_name: lessonId })
-      .eq('id', lessonId)
-  }
-
-  // --- Создание записи о доходе преподавателя ---
-  if (lesson?.teacher_id && paymentRecord?.id) {
+  if (lesson.teacher_id && paymentRecord?.id) {
     const platformFee = Math.round(paymentAmountKopecks * PLATFORM_FEE_RATE)
     const netAmount = paymentAmountKopecks - platformFee
-
     await supabase
       .from('teacher_earnings')
       .upsert(
@@ -228,28 +273,39 @@ async function handlePaymentSucceeded(
 
 async function handlePaymentCanceled(
   supabase: ReturnType<typeof createAdminClient>,
-  payment: YooKassaPayment
+  webhookPayment: YooKassaPayment
 ) {
-  const yookassaPaymentId = payment.id
-  const lessonId = payment.metadata?.lesson_id
+  const yookassaPaymentId = webhookPayment.id
+  if (!yookassaPaymentId) return
 
-  if (!lessonId) {
-    console.error('[webhook] payment.canceled без metadata lesson_id:', yookassaPaymentId)
-    return
-  }
-
-  // --- Идемпотентность ---
+  // Идемпотентность.
   const { data: existingPayment } = await supabase
     .from('payments')
     .select('id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
     .maybeSingle()
+  if (existingPayment?.status === 'cancelled') return
 
-  if (existingPayment?.status === 'cancelled') {
+  // Подтверждаем cancellation через API — не верим телу webhook'а.
+  let payment: YooKassaPayment
+  try {
+    const client = new YooKassaClient()
+    payment = await client.getPayment(yookassaPaymentId)
+  } catch (e) {
+    console.error('[webhook] YooKassa getPayment failed (cancel):', yookassaPaymentId, e)
+    throw e
+  }
+  if (payment.status !== 'canceled') {
+    console.warn(`[webhook] cancel webhook, но API status=${payment.status}: ${yookassaPaymentId}`)
     return
   }
 
-  // --- Обновление платежа ---
+  const lessonId = payment.metadata?.lesson_id
+  if (!lessonId) {
+    console.error('[webhook] payment.canceled без metadata lesson_id:', yookassaPaymentId)
+    return
+  }
+
   await supabase
     .from('payments')
     .update({
@@ -261,7 +317,6 @@ async function handlePaymentCanceled(
     })
     .eq('yookassa_payment_id', yookassaPaymentId)
 
-  // --- Отмена урока ---
   await supabase
     .from('lessons')
     .update({ status: 'cancelled' })
