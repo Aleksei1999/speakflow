@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
+import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
 const BodySchema = z
   .object({
@@ -37,6 +38,16 @@ export async function POST(req: NextRequest) {
   // Только teacher/admin: студент не может закрыть чужую запись.
   const gate = await requireLessonTeacherOrAdmin(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  // Rate-limit: 10 finalize/min на пользователя. fail-closed —
+  // финализация триггерит cron-pipeline (OpenAI транскрипт = деньги).
+  const limited = await enforceRateLimitStrict(req, {
+    name: "lesson:recording:finalize",
+    keyParts: [gate.user.id, getClientIp(req)],
+    max: 10,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
 
   const { data: rec } = await gate.admin
     .from("lesson_recordings")

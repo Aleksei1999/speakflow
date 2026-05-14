@@ -4,7 +4,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { verifyTurnstile } from "@/lib/api/turnstile"
-import { getClientIp } from "@/lib/api/rate-limit"
+import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
 // ---------------------------------------------------------------
 // GET  /api/support/threads
@@ -172,6 +172,16 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 })
     }
+
+    // Rate-limit: 10 новых тикетов в час на пользователя. fail-closed:
+    // тикеты дёргают админов Telegram-уведомлениями.
+    const limited = await enforceRateLimitStrict(request, {
+      name: "support:threads:create",
+      keyParts: [user.id, getClientIp(request)],
+      max: 10,
+      windowSeconds: 60 * 60,
+    })
+    if (limited) return limited
 
     let body: any
     try {

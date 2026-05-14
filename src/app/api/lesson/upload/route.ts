@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { requireLessonTeacherOrAdmin } from '@/lib/api/lesson-auth'
 import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 const BUCKET = 'lesson-files'
@@ -72,6 +73,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
     const { lesson, teacherProfileId, admin } = gate
+
+    // Rate-limit: 20 upload/min на пользователя. fail-closed —
+    // upload занимает storage и обходит CDN-лимит (4.5 MB).
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'lesson:upload',
+      keyParts: [gate.user.id, getClientIp(request)],
+      max: 20,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // Backup-проверка размера на случай если Content-Length отсутствовал
     // или клиент схитрил (например multipart с заниженным заявленным).

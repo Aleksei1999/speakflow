@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
+import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
 const BodySchema = z.object({
   lessonId: z.string().uuid(),
@@ -28,6 +29,16 @@ export async function POST(req: NextRequest) {
 
   const gate = await requireLessonTeacherOrAdmin(parsed.data.lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  // Rate-limit: 20 init/min на пользователя. fail-closed — recording —
+  // дорогая операция (создаёт storage prefix + row).
+  const limited = await enforceRateLimitStrict(req, {
+    name: "lesson:recording:init",
+    keyParts: [gate.user.id, getClientIp(req)],
+    max: 20,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
 
   const admin = gate.admin
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -6,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { LESSON_JOIN_WINDOW, LESSON_POST_WINDOW } from '@/lib/constants'
-import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 const tokenRequestSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -26,8 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 60 токенов в минуту — комната переподключается, но это потолок
-    // здравой передeлки JWT для одного юзера.
-    const limited = await enforceRateLimit(request, {
+    // здравой передeлки JWT для одного юзера. fail-closed:
+    // токен выдаёт доступ к видеокомнате, лучше отказать.
+    const limited = await enforceRateLimitStrict(request, {
       name: 'jitsi:token',
       keyParts: [user.id, getClientIp(request)],
       max: 60,
@@ -57,11 +57,20 @@ export async function POST(request: NextRequest) {
     const { lessonId } = parsed.data
 
     // --- 3. Получение урока и проверка участия ---
+    type LessonRow = {
+      id: string
+      student_id: string
+      teacher_id: string
+      scheduled_at: string
+      duration_minutes: number
+      status: string
+      jitsi_room_name: string | null
+    }
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
       .select('id, student_id, teacher_id, scheduled_at, duration_minutes, status, jitsi_room_name')
       .eq('id', lessonId)
-      .single()
+      .single<LessonRow>()
 
     if (lessonError || !lesson) {
       return NextResponse.json(
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
         .from('teacher_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle()
+        .maybeSingle<{ id: string }>()
       if (tp?.id && lesson.teacher_id === tp.id) {
         isTeacher = true
       }
@@ -94,7 +103,7 @@ export async function POST(request: NextRequest) {
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .maybeSingle()
+        .maybeSingle<{ role: string }>()
       if (prof?.role === 'admin') isAdmin = true
     }
 
@@ -145,8 +154,8 @@ export async function POST(request: NextRequest) {
     // --- 6. Обновление статуса на in_progress при первом подключении ---
     if (lesson.status === 'booked') {
       const adminSupabase = createAdminClient()
-      await adminSupabase
-        .from('lessons')
+      // FIXME(types): Postgrest UpdateBuilder инференсится в never
+      await (adminSupabase.from('lessons') as any)
         .update({ status: 'in_progress' })
         .eq('id', lessonId)
         .eq('status', 'booked')
@@ -157,7 +166,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('full_name, email, avatar_url')
       .eq('id', user.id)
-      .single()
+      .single<{ full_name: string | null; email: string | null; avatar_url: string | null }>()
 
     // --- 8. Генерация JWT ---
     const roomName = lesson.jitsi_room_name ?? lessonId

@@ -9,7 +9,7 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
-import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { verifyTurnstile } from '@/lib/api/turnstile'
 
 const bodySchema = z.object({
@@ -33,12 +33,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
   }
 
-  // Студент не должен спамить trial-запросами: 5 запросов в час.
+  // Студент не должен спамить trial-запросами: 3 запроса в час
+  // (auto-assign триггерит Telegram + поиск преподавателя — дорогая
+  // операция). fail-closed: trial-воронка важна, но flood недопустим.
   // NextRequest нужен только для headers — оборачиваем Request.
-  const limited = await enforceRateLimit(request as any, {
+  const limited = await enforceRateLimitStrict(request as any, {
     name: 'trial-lesson:request',
     keyParts: [user.id, getClientIp(request as any)],
-    max: 5,
+    max: 3,
     windowSeconds: 60 * 60,
   })
   if (limited) return limited

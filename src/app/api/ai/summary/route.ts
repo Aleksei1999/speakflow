@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { lessonSummaryInputSchema } from '@/lib/validations'
 import { getOpenAI } from '@/lib/openai/client'
 import { requireLessonTeacherOrAdmin } from '@/lib/api/lesson-auth'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import {
   LESSON_SUMMARY_SYSTEM_PROMPT,
   buildUserPrompt,
@@ -46,6 +46,16 @@ export async function POST(request: NextRequest) {
     const lesson = gate.lesson
     const adminClient = gate.admin
 
+    // Rate-limit: 5 summary/час на пользователя. fail-closed —
+    // OpenAI gpt-4o-mini стоит денег, retry в коде ниже × 2 запроса.
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'ai:summary',
+      keyParts: [gate.user.id, getClientIp(request)],
+      max: 5,
+      windowSeconds: 60 * 60,
+    })
+    if (limited) return limited
+
     // Урок должен быть завершён
     if (lesson.status !== 'completed') {
       return NextResponse.json(
@@ -59,7 +69,7 @@ export async function POST(request: NextRequest) {
       .from('lesson_summaries')
       .select('id')
       .eq('lesson_id', lessonId)
-      .maybeSingle()
+      .maybeSingle<{ id: string }>()
 
     if (existingSummary) {
       return NextResponse.json(
@@ -121,8 +131,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Сохраняем в БД
-    const { data: savedSummary, error: saveError } = await adminClient
-      .from('lesson_summaries')
+    // FIXME(types): lesson_summaries Insert тип содержит student_id/teacher_id: string, а из gate они приходят string|null
+    const { data: savedSummary, error: saveError } = (await (adminClient.from('lesson_summaries') as any)
       .insert({
         lesson_id: lessonId,
         student_id: lesson.student_id,
@@ -130,7 +140,7 @@ export async function POST(request: NextRequest) {
         ...summaryData,
       })
       .select('id')
-      .single()
+      .single()) as { data: { id: string } | null; error: { message: string } | null }
 
     if (saveError) {
       console.error('[ai/summary] Ошибка сохранения отчёта:', saveError)
@@ -141,20 +151,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Отправляем уведомление студенту
-    const scheduledDate = new Date(lesson.scheduled_at)
+    // lesson fields are non-null in practice — gate validates lesson exists and is participant's.
+    const scheduledDate = new Date(lesson.scheduled_at as string)
     const dateStr = format(scheduledDate, 'd MMMM yyyy', { locale: ru })
 
     const { data: teacherProfile } = await adminClient
       .from('profiles')
       .select('full_name')
-      .eq('id', lesson.teacher_id)
-      .single()
+      .eq('id', lesson.teacher_id as string)
+      .single<{ full_name: string | null }>()
 
     // Уведомление отправляем асинхронно, не блокируя ответ
-    sendNotification(lesson.student_id, 'lesson_summary_ready', {
+    sendNotification(lesson.student_id as string, 'lesson_summary_ready', {
       teacherName: teacherProfile?.full_name || 'Преподаватель',
       date: dateStr,
-      summaryUrl: `${process.env.NEXT_PUBLIC_APP_URL}/student/summaries/${savedSummary.id}`,
+      summaryUrl: `${process.env.NEXT_PUBLIC_APP_URL}/student/summaries/${savedSummary!.id}`,
     }).catch((err) => {
       console.error('[ai/summary] Ошибка отправки уведомления:', err)
     })
@@ -165,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      summaryId: savedSummary.id,
+      summaryId: savedSummary!.id,
       summary: summaryData,
       tokensUsed,
     })

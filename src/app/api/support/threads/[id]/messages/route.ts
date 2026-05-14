@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
 // ---------------------------------------------------------------
 // POST /api/support/threads/[id]/messages
@@ -40,6 +41,16 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 })
     }
+
+    // Rate-limit: 30 сообщений/мин — нормальный темп даже агрессивного
+    // чата. fail-closed: каждое сообщение пишет в БД + триггер обновления.
+    const limited = await enforceRateLimitStrict(request, {
+      name: "support:messages:post",
+      keyParts: [user.id, getClientIp(request)],
+      max: 30,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     let raw: any
     try {

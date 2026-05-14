@@ -1,9 +1,9 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getYooKassaClient } from '@/lib/yookassa/client'
 import { YooKassaError } from '@/lib/yookassa/types'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 const createPaymentSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -21,6 +21,16 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Rate-limit: 5 попыток создать платёж в минуту на пользователя.
+    // fail-closed — финансовая операция, лучше отказать чем спам YooKassa-у.
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'payments:create',
+      keyParts: [user.id, getClientIp(request)],
+      max: 5,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // --- 2. Валидация входных данных ---
     let body: unknown
@@ -44,11 +54,19 @@ export async function POST(request: NextRequest) {
     const { lessonId } = parsed.data
 
     // --- 3. Проверка урока ---
+    type LessonRow = {
+      id: string
+      student_id: string
+      teacher_id: string
+      status: string
+      price: number
+      duration_minutes: number
+    }
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
       .select('id, student_id, teacher_id, status, price, duration_minutes')
       .eq('id', lessonId)
-      .single()
+      .single<LessonRow>()
 
     if (lessonError || !lesson) {
       return NextResponse.json(
@@ -87,7 +105,7 @@ export async function POST(request: NextRequest) {
       .select('id, yookassa_payment_id, status')
       .eq('lesson_id', lessonId)
       .eq('status', 'pending')
-      .maybeSingle()
+      .maybeSingle<{ id: string; yookassa_payment_id: string | null; status: string }>()
 
     if (existingPayment?.yookassa_payment_id) {
       // Уже есть pending-платеж -- проверим его статус в YooKassa
@@ -131,8 +149,8 @@ export async function POST(request: NextRequest) {
     }
 
     // --- 6. Сохранение записи о платеже ---
-    const { error: insertError } = await supabase
-      .from('payments')
+    // FIXME(types): Postgrest UpsertBuilder инференсится в never
+    const { error: insertError } = await (supabase.from('payments') as any)
       .upsert(
         {
           lesson_id: lessonId,
