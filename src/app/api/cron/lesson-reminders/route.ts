@@ -17,15 +17,12 @@ import { ru } from 'date-fns/locale'
  */
 
 export async function GET(request: NextRequest) {
-  // Проверяем CRON_SECRET для защиты от несанкционированных вызовов
+  // Fail-closed: если CRON_SECRET не задан — закрываем endpoint,
+  // иначе одна забытая env-переменная открывает массовый email-рассыл.
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createAdminClient()
