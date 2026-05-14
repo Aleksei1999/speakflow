@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, isBefore, startOfDay } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
@@ -42,6 +43,19 @@ interface Props {
    * и сделать refetch без полного reload.
    */
   initialDate?: Date
+  /**
+   * Время в формате "HH:mm" (Europe/Moscow), которое нужно
+   * предвыбрать. Используется в weekly grid: тап по ячейке
+   * «Пт 13:00» открывает модалку с уже выбранным слотом.
+   * Если в загруженных слотах нет точного совпадения — игнорируем.
+   */
+  initialTime?: string
+  /**
+   * Если задано — модалка пропустит шаг «выбор преподавателя» и
+   * сразу откроет календарь для этого teacher_profiles.id (или
+   * userId — клиент сам решит чем заполнить).
+   */
+  initialTeacherProfileId?: string
   onBooked?: (scheduledAt: string) => void
 }
 
@@ -91,7 +105,8 @@ function buildMonthDays(view: Date): (Date | null)[] {
   return cells
 }
 
-export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }: Props) {
+export function LessonBookingModal({ open, onOpenChange, initialDate, initialTime, initialTeacherProfileId, onBooked }: Props) {
+  const router = useRouter()
   const [step, setStep] = useState<"teacher" | "calendar">("teacher")
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
   const [teachersLoading, setTeachersLoading] = useState(false)
@@ -234,6 +249,22 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
           }
         })
         setTeachers(list)
+
+        // Если родитель указал initialTeacherProfileId и пользователь
+        // ещё не выбирал препода — авто-перепрыгиваем на шаг
+        // календаря с предвыбранным учителем (контекст брони сохранён).
+        if (
+          initialTeacherProfileId &&
+          !selectedTeacher &&
+          list.length > 0
+        ) {
+          const pre = list.find((t) => t.teacherProfileId === initialTeacherProfileId)
+          if (pre) {
+            setSelectedTeacher(pre)
+            setStep("calendar")
+            if (!selectedDate) setSelectedDate(initialDate ?? startOfDay(new Date()))
+          }
+        }
       } catch (e) {
         if (!cancelled) {
           console.error("[booking] teachers fetch crashed:", e)
@@ -245,7 +276,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
       }
     })()
     return () => { cancelled = true }
-  }, [open, step])
+  }, [open, step, initialTeacherProfileId, initialDate])
 
   const loadSlots = useCallback(async (teacherUserId: string, date: Date, dur: Duration, teacherProfileId?: string | null) => {
     setSlotsLoading(true)
@@ -265,6 +296,27 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
       const list = Array.isArray(payload.slots) ? payload.slots : (payload.slots?.[dur] ?? [])
       setSlots(list)
       setTeacherRate(payload.teacherRate ?? 0)
+
+      // Если родитель указал initialTime (например, ячейка weekly-grid),
+      // ищем точное совпадение HH:mm по Europe/Moscow среди свободных
+      // слотов и пресекаем автоподбор «обычного времени» — пользователь
+      // уже явно показал, какой слот ему нужен.
+      if (initialTime) {
+        const fmt = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Europe/Moscow",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+        const match = list.find((s) => {
+          if (!s.available) return false
+          return fmt.format(new Date(s.startTime)) === initialTime
+        })
+        if (match) {
+          setSelectedSlot(match.startTime)
+          return
+        }
+      }
 
       // Автоподбор «обычного времени»: ищем preferredSlot с weekday=date.MSK
       // и среди свободных слотов находим тот же час+минуту по МСК.
@@ -310,7 +362,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
     } finally {
       setSlotsLoading(false)
     }
-  }, [preferredSlots])
+  }, [preferredSlots, initialTime])
 
   useEffect(() => {
     if (step !== "calendar" || !selectedTeacher || !selectedDate) return
@@ -365,21 +417,49 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, onBooked }
         setBookingLoading(false)
         return
       }
-      // Сначала сообщаем родителю (он может дёрнуть refetch без reload),
-      // потом всё равно делаем hard-redirect на /student/schedule —
-      // безопасный фолбэк, гарантирующий что новые брони увидят и в
-      // случае рассинхрона client-state.
+      // Показываем success-toast ДО navigation — Sonner живёт в layout
+      // и переживает router.push (но не window.location.href).
+      toast.success("Ты записан на урок!", {
+        description: format(
+          new Date(selectedSlot),
+          "d MMMM в HH:mm",
+          { locale: ru }
+        ),
+        duration: 4000,
+      })
+
+      // Сначала сообщаем родителю — он может дёрнуть refetch без reload,
+      // и тогда мы просто закроем модалку без redirect-а.
+      let handled = false
       try {
-        onBooked?.(selectedSlot)
+        if (onBooked) {
+          onBooked(selectedSlot)
+          handled = true
+        }
       } catch {
         // не блокируем navigation
       }
-      if (data?.redirectUrl) {
-        window.location.href = data.redirectUrl
-      } else {
+
+      if (handled) {
         onOpenChange(false)
         setBookingLoading(false)
+        return
       }
+
+      // Soft navigation через router.push — toast переживёт. Раньше
+      // здесь был window.location.href, из-за чего страница
+      // перезагружалась и Sonner-toast не успевал отрисоваться.
+      if (data?.redirectUrl) {
+        onOpenChange(false)
+        // Маленькая задержка, чтобы toast успел появиться даже на
+        // slow-rendering layout (Sonner анимирует .25s).
+        await new Promise((r) => setTimeout(r, 150))
+        router.push(data.redirectUrl)
+        router.refresh()
+      } else {
+        onOpenChange(false)
+      }
+      setBookingLoading(false)
     } catch {
       toast.error("Ошибка соединения с сервером")
       setBookingLoading(false)
