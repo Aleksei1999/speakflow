@@ -1,3 +1,4 @@
+import '@/lib/sentry/server-init'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 

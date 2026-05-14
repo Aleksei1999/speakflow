@@ -1,3 +1,7 @@
+// Side-effect import: гарантирует Sentry.init на cold-start Vercel
+// функции до первого DB запроса. instrumentation.ts.register() на
+// serverless не успевает.
+import '@/lib/sentry/server-init'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
