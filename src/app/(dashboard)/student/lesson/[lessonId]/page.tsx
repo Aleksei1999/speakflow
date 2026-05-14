@@ -18,9 +18,20 @@ export default async function StudentLessonPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Один embed-запрос вместо трёх последовательных:
+  //   lessons → teacher_profiles → profiles
+  // PostgREST поднимает teacher_profiles по lessons_teacher_id_fkey, а
+  // дальше profiles по teacher_profiles_user_id_fkey. На стороне Postgres
+  // это один план, без HTTP round-trip между уровнями.
   const { data: lesson } = await supabase
     .from('lessons')
-    .select('id, scheduled_at, duration_minutes, status, student_id, teacher_id, jitsi_room_name')
+    .select(
+      'id, scheduled_at, duration_minutes, status, student_id, teacher_id, jitsi_room_name,' +
+      ' teacher:teacher_profiles!lessons_teacher_id_fkey(' +
+        'rating, total_reviews,' +
+        ' user:profiles!teacher_profiles_user_id_fkey(full_name)' +
+      ')'
+    )
     .eq('id', lessonId)
     .single()
 
@@ -28,24 +39,16 @@ export default async function StudentLessonPage({
     redirect('/student/schedule')
   }
 
-  // Teacher display name — нужен для всех экранов (ожидание/отмена/live)
-  const { data: teacherProfile } = await supabase
-    .from('teacher_profiles')
-    .select('user_id, rating, total_reviews')
-    .eq('id', lesson.teacher_id)
-    .single()
-
-  let teacherName = 'Преподаватель'
-  let teacherRating = 0
-  if (teacherProfile) {
-    const { data: tp } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', teacherProfile.user_id)
-      .single()
-    teacherName = tp?.full_name ?? 'Преподаватель'
-    teacherRating = teacherProfile.rating ?? 0
-  }
+  // PostgREST возвращает embed-объекты массивом/объектом в зависимости от
+  // shape FK; tolerant unwrap покрывает оба варианта.
+  const teacherEmbed: any = Array.isArray((lesson as any).teacher)
+    ? (lesson as any).teacher[0]
+    : (lesson as any).teacher
+  const teacherUserEmbed: any = teacherEmbed
+    ? Array.isArray(teacherEmbed.user) ? teacherEmbed.user[0] : teacherEmbed.user
+    : null
+  const teacherName = teacherUserEmbed?.full_name ?? 'Преподаватель'
+  const teacherRating = teacherEmbed?.rating ?? 0
 
   // Серверный гейт: проверяем окно доступа ДО генерации JWT
   const access = computeLessonAccess({
