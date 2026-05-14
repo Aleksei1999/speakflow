@@ -1,9 +1,6 @@
-// Промпт + Zod-схема для второго GPT-вызова в pipeline'е:
-// transcript → структурированный конспект урока + мини-тест.
-//
-// Используется в /api/internal/cron/summarize-transcripts. Через
-// response_format: { type: 'json_schema' } гарантируется валидный
-// JSON, парсер не нужен.
+// Промпт + JSON-схема + Zod-схема для GPT-вызова transcript → конспект + квиз.
+// Используется в cron summarize-transcripts; response_format json_schema даёт
+// валидный JSON без ручного парсинга, Zod — второй барьер на случай косяков.
 
 import { z } from "zod"
 
@@ -29,8 +26,7 @@ export function buildTranscriptUserPrompt(transcript: string, durationMin: numbe
 ${transcript}`
 }
 
-// JSON Schema для response_format: json_schema. Поля те же что в
-// lesson_summaries + новый quiz блок.
+// JSON Schema для response_format. Поля = lesson_summaries + quiz блок.
 export const SUMMARY_RESPONSE_JSON_SCHEMA = {
   name: "lesson_summary_with_quiz",
   strict: true,
@@ -109,8 +105,7 @@ export const SUMMARY_RESPONSE_JSON_SCHEMA = {
   },
 } as const
 
-// Zod-схема для второго барьера: даже если OpenAI вернул что-то не то,
-// мы поймаем это на парсинге, а не свалимся при INSERT.
+// Zod-валидация: ловим кривой ответ OpenAI до INSERT в БД.
 export const summaryResponseSchema = z.object({
   summary: z.string().min(1),
   vocabulary: z
