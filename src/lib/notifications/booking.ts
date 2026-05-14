@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Fan-out notifications when a lesson is booked or cancelled.
 // Both student and teacher get the message via their preferred channel(s)
 // (email + telegram). All calls are fire-and-forget — never throw out of
@@ -6,6 +5,33 @@
 
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendNotification } from "@/lib/notifications/service"
+import type { Database } from "@/types/database"
+
+/**
+ * Глобальный `Database` сейчас не покрывает PostgREST v12 generics, поэтому
+ * клиент кастуем к "loose" виду, а row-формы валидируем явно через
+ * вытащенные из Database row-типы.
+ */
+type LooseAdmin = { from: (table: string) => any }
+
+type LessonRow = Database["public"]["Tables"]["lessons"]["Row"]
+type LessonRecord = Pick<
+  LessonRow,
+  | "id"
+  | "student_id"
+  | "teacher_id"
+  | "scheduled_at"
+  | "duration_minutes"
+> & {
+  cancelled_by?: string | null
+  cancellation_reason?: string | null
+}
+
+type TeacherProfileRow = Database["public"]["Tables"]["teacher_profiles"]["Row"]
+type TeacherProfileLink = Pick<TeacherProfileRow, "user_id">
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"]
+type ProfileName = Pick<ProfileRow, "id" | "full_name">
 
 function moscow(iso: string) {
   try {
@@ -31,28 +57,31 @@ function moscow(iso: string) {
 export async function notifyLessonBooked(args: {
   lessonId: string
 }): Promise<void> {
-  const admin = createAdminClient()
-  const { data: lesson } = await admin
+  const admin = createAdminClient() as unknown as LooseAdmin
+  const lessonRes = await admin
     .from("lessons")
     .select("id, student_id, teacher_id, scheduled_at, duration_minutes")
     .eq("id", args.lessonId)
     .maybeSingle()
+  const lesson = lessonRes.data as LessonRecord | null
   if (!lesson) return
 
   // teacher_id on lessons points to teacher_profiles.id; resolve to user_id.
-  const { data: tp } = await admin
+  const tpRes = await admin
     .from("teacher_profiles")
     .select("user_id")
     .eq("id", lesson.teacher_id)
     .maybeSingle()
+  const tp = tpRes.data as TeacherProfileLink | null
   const teacherUserId = tp?.user_id ?? null
 
   const ids = [lesson.student_id, teacherUserId].filter(Boolean) as string[]
-  const { data: profiles } = await admin
+  const profilesRes = await admin
     .from("profiles")
     .select("id, full_name")
     .in("id", ids)
-  const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+  const profiles = (profilesRes.data ?? []) as ProfileName[]
+  const byId = new Map<string, ProfileName>(profiles.map((p) => [p.id, p]))
   const studentName = byId.get(lesson.student_id)?.full_name || "Ученик"
   const teacherName = teacherUserId
     ? byId.get(teacherUserId)?.full_name || "Преподаватель"
@@ -85,21 +114,23 @@ export async function notifyLessonCancelled(args: {
   cancelledByUserId: string
   reason?: string | null
 }): Promise<void> {
-  const admin = createAdminClient()
-  const { data: lesson } = await admin
+  const admin = createAdminClient() as unknown as LooseAdmin
+  const lessonRes = await admin
     .from("lessons")
     .select(
       "id, student_id, teacher_id, scheduled_at, duration_minutes, cancelled_by, cancellation_reason"
     )
     .eq("id", args.lessonId)
     .maybeSingle()
+  const lesson = lessonRes.data as LessonRecord | null
   if (!lesson) return
 
-  const { data: tp } = await admin
+  const tpRes = await admin
     .from("teacher_profiles")
     .select("user_id")
     .eq("id", lesson.teacher_id)
     .maybeSingle()
+  const tp = tpRes.data as TeacherProfileLink | null
   const teacherUserId = tp?.user_id ?? null
 
   const ids = [
@@ -107,11 +138,12 @@ export async function notifyLessonCancelled(args: {
     teacherUserId,
     args.cancelledByUserId,
   ].filter(Boolean) as string[]
-  const { data: profiles } = await admin
+  const profilesRes = await admin
     .from("profiles")
     .select("id, full_name")
     .in("id", ids)
-  const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+  const profiles = (profilesRes.data ?? []) as ProfileName[]
+  const byId = new Map<string, ProfileName>(profiles.map((p) => [p.id, p]))
   const cancelledByName =
     byId.get(args.cancelledByUserId)?.full_name || "Собеседник"
   const studentName = byId.get(lesson.student_id)?.full_name || "Ученик"
