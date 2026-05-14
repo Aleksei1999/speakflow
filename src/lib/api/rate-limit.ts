@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ---------------------------------------------------------------
 // Server-side rate limiter built on Postgres RPC `check_rate_limit`.
 //
