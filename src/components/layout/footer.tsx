@@ -1,6 +1,12 @@
 import Link from "next/link"
 
-const footerLinks = [
+// `disabled: true` помечает ссылки, для которых пока нет страницы —
+// они остаются на href="#" но с aria-label="скоро будет" и без hover-
+// эффекта, чтобы юзер не натыкался на «битый» переход.
+const footerLinks: Array<{
+  title: string
+  links: Array<{ href: string; label: string; disabled?: boolean }>
+}> = [
   {
     title: "Платформа",
     links: [
@@ -14,16 +20,16 @@ const footerLinks = [
     title: "Поддержка",
     links: [
       { href: "/#faq", label: "FAQ" },
-      { href: "#", label: "Контакты" },
-      { href: "#", label: "Помощь" },
+      { href: "mailto:hello@raw-english.com", label: "Контакты" },
+      { href: "#", label: "Помощь", disabled: true },
     ],
   },
   {
     title: "Документы",
     links: [
-      { href: "#", label: "Оферта" },
-      { href: "#", label: "Политика конфиденциальности" },
-      { href: "#", label: "Правила платформы" },
+      { href: "/oferta", label: "Оферта" },
+      { href: "/privacy", label: "Политика конфиденциальности" },
+      { href: "#", label: "Правила платформы", disabled: true },
     ],
   },
 ]
@@ -54,12 +60,22 @@ export function MarketingFooter() {
               <ul className="flex flex-col gap-2">
                 {group.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-white/60 transition-colors hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.disabled ? (
+                      <span
+                        className="text-sm text-white/40 cursor-not-allowed"
+                        aria-label={`${link.label} — скоро будет`}
+                        title="Скоро будет"
+                      >
+                        {link.label}
+                      </span>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-white/60 transition-colors hover:text-white"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
