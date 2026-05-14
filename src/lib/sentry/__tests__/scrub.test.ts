@@ -16,7 +16,8 @@ import assert from "node:assert/strict"
 // "TS5097: import path can only end with .ts when allowImportingTsExtensions is enabled" —
 // либо запускайте `tsc --noEmit --allowImportingTsExtensions`, либо игнорируйте: тестовый файл
 // не попадает в продакшн-бандл (Next.js игнорирует `__tests__` по соглашению).
-// @ts-expect-error — см. комментарий выше. Импорт с `.ts` нужен только в Node strip-types runtime.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — см. комментарий выше. Импорт с `.ts` нужен только в Node strip-types runtime.
 import {
   scrubSentryEvent,
   scrubSentryBreadcrumb,
