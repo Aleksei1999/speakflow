@@ -119,8 +119,7 @@ const CSS = `
 .lr .rec-toast .rec-dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1.4s infinite}
 @keyframes rec-toast-in{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
 
-/* Recording status pill в левом слоте шапки. Всегда виден когда
-   запись идёт/паузится/упала — UX-обещание для preподавателя. */
+/* Recording status pill в левом слоте шапки. */
 .lr .rec-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;letter-spacing:.2px;line-height:1;max-width:100%}
 .lr .rec-pill .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .lr .rec-pill.rec .dot{background:var(--red);animation:pulse 1.4s infinite}
@@ -132,7 +131,7 @@ const CSS = `
 .lr .rec-pill .stop{margin-left:2px;background:transparent;color:rgba(255,255,255,.65);border:0;font-size:14px;padding:0 2px;cursor:pointer;line-height:1}
 .lr .rec-pill .stop:hover{color:#fff}
 
-/* Duplicate-tab блокировка: full-screen затемнение с одним сообщением */
+/* Duplicate-tab блокировка */
 .lr .dup-tab{position:fixed;inset:0;background:rgba(10,10,10,.85);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
 .lr .dup-tab .box{background:var(--surface);border-radius:20px;padding:32px;max-width:420px;text-align:center;display:flex;flex-direction:column;gap:14px}
 .lr .dup-tab h3{font-size:18px;font-weight:800;letter-spacing:-.3px}
@@ -142,14 +141,14 @@ const CSS = `
 .lr .dup-tab .actions .btn:hover{background:var(--red)}
 .lr .dup-tab .actions .btn.sec{background:var(--bg);color:var(--text)}
 
-/* Slow network hint — мягкий yellow баннер, dismiss'абельный */
+/* Slow network hint — жёлтый баннер с крестиком */
 .lr .net-hint{display:flex;align-items:center;gap:10px;background:#FFFBEB;color:#78350F;border-bottom:1px solid #FDE68A;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
 .lr .net-hint .icon{flex-shrink:0;font-size:16px}
 .lr .net-hint .msg{flex:1}
 .lr .net-hint .close{background:transparent;color:#78350F;border:0;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;opacity:.7}
 .lr .net-hint .close:hover{opacity:1}
 
-/* Persistent error banner — pinned под header'ом, юзер закрывает крестиком */
+/* Persistent error banner под header'ом */
 .lr .rec-error{display:flex;align-items:center;gap:10px;background:#FEF2F2;color:#7F1D1D;border-bottom:1px solid #FECACA;padding:10px 24px;font-size:13px;font-weight:500;flex-shrink:0}
 .lr .rec-error .icon{flex-shrink:0;font-size:16px}
 .lr .rec-error .msg{flex:1;min-width:0}
@@ -158,21 +157,19 @@ const CSS = `
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){
-  /* На мобиле негативные margin'ы пробивают за dashboard padding и
-     дают ширину > viewport. Сбрасываем — пусть lesson-room держится
-     внутри padding'а layout'а, а не вылезает за него. */
+  /* Сбрасываем негативные margin'ы — иначе ширина > viewport. */
   .lr{margin:0;width:100%;max-width:100%}
   .lr .lh{padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-left)) 12px max(14px,env(safe-area-inset-right));grid-template-columns:auto 1fr;gap:10px}
   .lr .lh-center{display:none}
   .lr .lh-left{display:flex;align-items:center}
-  /* Компактный pill: только dot, скрываем текстовые spans */
+  /* Компактный pill: только dot. */
   .lr .rec-pill{padding:6px 9px}
   .lr .rec-pill > span:not(.dot){display:none}
   .lr .rec-pill .stop{display:none}
   .lr .lm{padding:10px;gap:10px}
   .lr .cb{width:44px;height:44px}
   .lr .cb svg{width:18px;height:18px}
-  /* toast перенести вниз, чтобы не перекрывал кнопку «Выйти» */
+  /* toast вниз — иначе перекрывает «Выйти» */
   .lr .rec-toast{top:auto;bottom:calc(24px + env(safe-area-inset-bottom));font-size:12px;padding:10px 16px}
 }
 `
@@ -197,8 +194,7 @@ export function LessonRoomClient({
   const [hwDesc, setHwDesc] = useState("")
   const [hwOpen, setHwOpen] = useState(false)
   const hwModalRef = useModalA11y(hwOpen, () => setHwOpen(false))
-  // Замена нативного window.confirm() — на мобиле он уродский, плюс
-  // ломает брендинг. Все «опасные» действия проходят через этот dialog.
+  // Брендированный confirm-диалог вместо нативного window.confirm().
   const { confirm, dialogProps: confirmDialogProps } = useConfirm()
   const [remaining, setRemaining] = useState(0)
   const [micOn, setMicOn] = useState(true)
@@ -208,12 +204,10 @@ export function LessonRoomClient({
   const msgsEndRef = useRef<HTMLDivElement>(null)
   const jitsiRef = useRef<HTMLDivElement>(null)
   const jitsiApi = useRef<any>(null)
-  // Stateful копия jitsiApi нужна useLessonRecorder'у — refs не
-  // триггерят его useEffect, а API становится доступен асинхронно.
+  // Stateful копия для useLessonRecorder — ref не триггерит его useEffect.
   const [jitsiApiState, setJitsiApiState] = useState<any>(null)
   const [recordingToast, setRecordingToast] = useState(false)
-  // Управление авто-записью с UI стороны. Юзер может остановить —
-  // повторно включить мы пока не поддерживаем (см. teardownStartedRef).
+  // Пользовательский тогл записи. Повторный запуск не поддержан.
   const [recorderEnabled, setRecorderEnabled] = useState(true)
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [duplicateTab, setDuplicateTab] = useState(false)
@@ -257,20 +251,14 @@ export function LessonRoomClient({
           disableDeepLinking:true,
           hideConferenceSubject:true,
           disableInviteFunctions:true,
-          // Empty toolbar removes the native bar entirely; we drive everything
-          // via executeCommand from our own bottom bar.
+          // Пустой toolbar — управляем через executeCommand из своего bottom bar.
           toolbarButtons:[],
           notifications:[],
           disableThirdPartyRequests:true,
           hideConferenceTimer:true,
           hideParticipantsStats:true,
-          // filmstrip stays on — self-view thumbnail and remote screen-share
-          // tracks live in it; disabling hides them.
-          // Connection-quality "Wi-Fi" badges per tile.
           connectionIndicators:{autoHide:true,disabled:true},
-          // Tile view: всегда показываем равные тайлы для всех участников
-          // включая себя. Без этого — при 1 remote'e только он на весь
-          // экран, локальное видео скрыто.
+          // Tile view: одинаковые тайлы для всех включая себя.
           startWithTileView:true,
           disableTileView:false,
         },
@@ -295,9 +283,7 @@ export function LessonRoomClient({
       jitsiApi.current = api
       setJitsiApiState(api)
 
-      // a11y: проставляем title для iframe, чтобы screen reader'ы
-      // объявляли его как «Видеоконференция урока», а не безымянный
-      // «frame». Jitsi external_api сам создаёт iframe без title.
+      // a11y: title для iframe — Jitsi сам создаёт его без названия.
       const setIframeTitle = () => {
         const iframe = jitsiRef.current?.querySelector("iframe")
         if (iframe && !iframe.hasAttribute("title")) {
@@ -307,8 +293,8 @@ export function LessonRoomClient({
       setTimeout(setIframeTitle, 100)
       setTimeout(setIframeTitle, 800)
 
-      // Жёстко форсим tile view — startWithTileView иногда игнорится
-      // если кто-то уже в комнате. Через 800мс после init заставим UI.
+      // Форсим tile view: startWithTileView иногда игнорируется,
+      // если кто-то уже в комнате.
       const forceTile = () => {
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
         try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
@@ -317,7 +303,6 @@ export function LessonRoomClient({
         setTimeout(forceTile, 200)
         setConnQuality("good")
       })
-      // Реальные события качества связи — заменяют хардкоженный «Wi-Fi» бейдж.
       jitsiApi.current?.addListener("participantConnectionStatusChanged", (e: any) => {
         const st = String(e?.connectionStatus ?? "").toLowerCase()
         if (st === "active") setConnQuality((q) => (q === "lost" ? "fair" : "good"))
@@ -337,17 +322,14 @@ export function LessonRoomClient({
       jitsiApi.current?.addListener("dominantSpeakerChanged", () => {
         setTimeout(forceTile, 100)
       })
-      // safety: на случай если listeners не сработали
+      // safety на случай если listeners не сработали
       setTimeout(forceTile, 1500)
     }
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
   }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
 
-  // Pre-call hint: на 2G/slow-2G/3G скорее всего будут лаги. Показываем
-  // ненавязчивый бейдж — пусть юзер либо переключается на Wi-Fi, либо
-  // готов к плохой картинке. navigator.connection — non-standard, но
-  // поддерживается Chromium-семьёй (Android/Win/macOS Chrome, Edge).
+  // Pre-call hint про слабую сеть. navigator.connection — Chromium-only.
   useEffect(() => {
     if (typeof navigator === "undefined") return
     const conn = (navigator as any).connection
@@ -356,9 +338,8 @@ export function LessonRoomClient({
     if (t === "slow-2g" || t === "2g" || t === "3g") setSlowNetworkHint(true)
   }, [])
 
-  // Two-tab guard: если у этого юзера уже открыт этот урок в другой
-  // вкладке, две конференции на один user_id ломают чат, два MediaRecorder
-  // дерутся за signed URL. Heartbeat в localStorage решает: claim-and-watch.
+  // Two-tab guard через localStorage heartbeat: claim-and-watch.
+  // Иначе чат и MediaRecorder ломаются от двух конференций на один user_id.
   useEffect(() => {
     if (typeof window === "undefined") return
     const KEY = `lesson:${lessonId}:tab`
@@ -399,7 +380,7 @@ export function LessonRoomClient({
     return () => {
       clearInterval(iv)
       window.removeEventListener("storage", onStorage)
-      // Освобождаем slot только если это всё ещё мы.
+      // Освобождаем slot только если он всё ещё наш.
       const cur = read()
       if (cur?.tabId === tabId) {
         try { localStorage.removeItem(KEY) } catch {}
@@ -407,10 +388,9 @@ export function LessonRoomClient({
     }
   }, [lessonId])
 
-  // Авто-запись урока. Hook сам разбирается: teacher → /init, student
-  // → polls /active. Никаких кнопок: согласие зафиксировано в оферте.
-  // ВАЖНО: если duplicateTab — выключаем запись, чтобы не было гонки
-  // двух браузеров на одинаковые chunk-NNNNN.
+  // Авто-запись урока. Hook сам разбирается: teacher → /init,
+  // student → polls /active. При duplicateTab выключаем — иначе
+  // два браузера конкурируют за один chunk-NNNNN.
   const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
@@ -423,9 +403,7 @@ export function LessonRoomClient({
     },
   })
 
-  // Если recorder в error (mic denied), и юзер потом разрешил mic в
-  // Jitsi (mute=false), то у нашего origin'а в большинстве браузеров
-  // тоже появилось разрешение → retry имеет шанс сработать.
+  // Recorder в error (mic denied) + юзер разрешил mic в Jitsi → retry.
   useEffect(() => {
     if (!jitsiApiState) return
     const onMute = (data: any) => {
@@ -439,8 +417,7 @@ export function LessonRoomClient({
     }
   }, [jitsiApiState, recorder.status])
 
-  // Chat — Supabase Realtime (postgres_changes на lesson_messages) вместо
-  // 3-сек polling. См. src/hooks/use-lesson-chat.ts.
+  // Чат: Supabase Realtime postgres_changes. См. use-lesson-chat.ts.
   const { messages, sendMessage } = useLessonChat({ lessonId, userId, optimistic: true })
   useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages])
 
@@ -458,8 +435,6 @@ export function LessonRoomClient({
 
   const sendMsg = useCallback(async()=>{
     if(!newMsg.trim())return;const t=newMsg.trim();setNewMsg("")
-    // Хук сам делает optimistic UI и POST в /api/lesson/messages,
-    // realtime-broadcast потом заменит плейсхолдер серверным объектом.
     await sendMessage(t)
   },[newMsg,sendMessage])
 
@@ -488,25 +463,22 @@ export function LessonRoomClient({
     setHwTitle("");setHwDesc("");setHwOpen(false);loadHw()
   },[hwTitle,hwDesc,lessonId,userId,studentId,loadHw])
 
-  // File upload — direct-to-storage чтобы обойти Vercel 4.5MB лимит,
-  // потом записать строку в lesson_materials через /api/lesson/materials.
+  // Direct-to-Storage upload в обход Vercel 4.5MB cap'а; затем
+  // регистрируем строку через /api/lesson/materials.
   const uploadFile = useCallback(async(file:File)=>{
     setUploading(true)
     try {
-      // Жёсткий лимит на материалы урока — 50 MB.
       if (file.size > 50 * 1024 * 1024) {
         alert(`Файл «${file.name}» больше 50 МБ. Загрузи поменьше.`)
         return
       }
 
       const supabase = createClient()
-      // Supabase Storage не принимает кириллицу в key — оставляем только
-      // ASCII-safe символы. Полное имя файла сохраняется в title колонке.
+      // Storage key — только ASCII; полное имя кладём в title колонку.
       const ext = (file.name.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "bin"
       const rand = Math.random().toString(36).slice(2, 10)
       const path = `lessons/${lessonId}/${Date.now()}-${rand}.${ext}`
 
-      // 1. Заливаем напрямую в Storage (минуем Vercel-роут с 4.5MB кэпом).
       const up = await supabase.storage
         .from("lesson-files")
         .upload(path, file, { contentType: file.type, upsert: false })
@@ -518,9 +490,8 @@ export function LessonRoomClient({
 
       const { data: urlData } = supabase.storage.from("lesson-files").getPublicUrl(path)
 
-      // 2. Регистрируем материал в общей таблице `materials` — RLS
-      // открывает её студенту через lesson.student_id = auth.uid(),
-      // поэтому файл сразу появится в /student/materials.
+      // Регистрируем строку в materials — RLS открывает её студенту
+      // через lesson.student_id = auth.uid(), файл появится в /student/materials.
       const res = await fetch("/api/lesson/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -559,15 +530,12 @@ export function LessonRoomClient({
     if (!el) return
     const doc = document as any
     try {
-      // Выход из fullscreen
       if (doc.fullscreenElement || doc.webkitFullscreenElement) {
         if (doc.exitFullscreen) doc.exitFullscreen()
         else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen()
         return
       }
-      // Вход. iOS Safari исторически не поддерживает Fullscreen API
-      // для div'а, только для <video>. Пробуем оба префикса, при
-      // отказе показываем подсказку.
+      // iOS Safari исторически не поддерживает Fullscreen API для div.
       if (el.requestFullscreen) el.requestFullscreen()
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
       else alert("Полноэкранный режим не поддерживается этим браузером (попробуй на десктопе).")
@@ -600,9 +568,7 @@ export function LessonRoomClient({
         {/* Header */}
         <header className="lh">
           <div className="lh-side lh-left">
-            {/* Pill виден только преподавателю — это его инструмент управления
-                AI-конспектом. Студенту он не нужен (мы пишем фоном, согласие
-                в оферте). */}
+            {/* Pill только у преподавателя — это его контрол AI-конспекта. */}
             {isTeacher && recorder.status === "recording" && (
               <span className="rec-pill rec" title="Урок записывается для AI-конспекта">
                 <span className="dot" />
