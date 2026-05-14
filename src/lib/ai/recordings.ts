@@ -1,13 +1,5 @@
-// Helpers для Phase 1.3/1.4 cron-pipeline'ов.
-//
-// listRecordingChunks → найти все chunk-{role}-NNNNN.* в Storage
-//   под префиксом lesson_recordings.storage_prefix.
-// downloadRecordingForRole → склеить чанки одной роли (T или S) в
-//   единый Buffer для передачи в OpenAI audio.transcriptions.
-//
-// Все вызовы идут от service_role клиента — RLS на storage.objects
-// открыт только участникам урока через signed URL, наш cron ходит
-// напрямую.
+// Helpers для cron-pipeline'ов: список chunk-файлов и скачивание одного
+// чанка из bucket lesson-recordings. Все вызовы через service_role.
 
 import type { createAdminClient } from "@/lib/supabase/admin"
 
@@ -59,17 +51,10 @@ export async function listRecordingChunks(
 }
 
 /**
- * Скачивает ОДИН чанк по пути в Storage. Возвращает Blob c корректным
- * MIME для OpenAI (whisper / gpt-4o-transcribe умеют webm/ogg/mp4/mp3).
- *
- * FIX (CRIT): раньше тут был downloadRecordingForRole, который ПОБАЙТНО
- * склеивал webm-чанки в один файл. Это давало невалидный EBML — каждый
- * MediaRecorder chunk при start(timeslice) — самостоятельный контейнер
- * с собственным header'ом. OpenAI читал только первый ~20-сек кусок
- * и возвращал пусто. Транскрипция падала на каждом уроке.
- *
- * Новый flow: cron сам обходит chunks по очереди, делает N вызовов
- * openai.audio.transcriptions.create() и склеивает тексты.
+ * Скачивает один chunk и отдаёт Blob с корректным MIME для OpenAI.
+ * Каждый chunk транскрибируется отдельно: побайтная склейка webm
+ * даёт невалидный EBML, потому что MediaRecorder с timeslice пишет
+ * самостоятельные контейнеры с собственным header'ом.
  */
 export async function downloadChunk(
   admin: Admin,
