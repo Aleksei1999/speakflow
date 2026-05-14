@@ -11,6 +11,7 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema } from '@/lib/validations'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 type LoginValues = z.infer<typeof loginSchema>
 
@@ -23,6 +24,7 @@ function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [oauthPending, setOauthPending] = useState(false)
   const [role, setRole] = useState<'student' | 'teacher'>(initialRole)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const {
     register,
@@ -43,6 +45,7 @@ function LoginPageContent() {
     const { error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
+      options: captchaToken ? { captchaToken } : undefined,
     })
 
     if (error) {
@@ -183,6 +186,10 @@ function LoginPageContent() {
         <Link href="/forgot-password" className="forgot-link">
           Забыли пароль?
         </Link>
+
+        <div style={{ margin: '8px 0' }}>
+          <TurnstileWidget onToken={setCaptchaToken} />
+        </div>
 
         <button
           type="submit"
