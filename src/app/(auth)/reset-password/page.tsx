@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -114,7 +113,7 @@ export default function ResetPasswordPage() {
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .single()
+        .single<{ role: 'student' | 'teacher' | 'admin' | null }>()
       if (profile?.role === 'teacher') {
         target = '/teacher'
       }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useEffect, useMemo, useState, createElement } from "react"
@@ -127,8 +126,8 @@ export default function LandingClient() {
               .from("profiles")
               .select("role")
               .eq("id", u.id)
-              .maybeSingle()
-              .then(({ data: prof }) => {
+              .maybeSingle<{ role: string | null }>()
+              .then(({ data: prof }: { data: { role: string | null } | null }) => {
                 if (cancelled) return
                 setHookState({
                   user: u,

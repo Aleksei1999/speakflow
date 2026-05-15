@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ---------------------------------------------------------------
 // Lesson participant gate for API routes.
 //
@@ -46,7 +45,7 @@ export type LessonGateOk = {
 }
 export type LessonGateFail = {
   ok: false
-  status: 400 | 401 | 403 | 404
+  status: 400 | 401 | 403 | 404 | 500
   error: string
 }
 
@@ -72,7 +71,7 @@ export async function requireLessonParticipant(
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle()
+    .maybeSingle<{ role: Role | null }>()
   const profileRole = (profile?.role as Role | undefined) ?? "student"
 
   // 2. Lesson lookup. Use admin client — we'll authorise manually below.
@@ -80,9 +79,9 @@ export async function requireLessonParticipant(
     .from("lessons")
     .select("id, student_id, teacher_id, status, scheduled_at, duration_minutes")
     .eq("id", lessonId)
-    .maybeSingle()
+    .maybeSingle<LessonRow>()
   if (lessonErr) {
-    return { ok: false, status: 500 as any, error: "Lesson lookup failed" }
+    return { ok: false, status: 500, error: "Lesson lookup failed" }
   }
   if (!lesson) {
     return { ok: false, status: 404, error: "Урок не найден" }
@@ -97,8 +96,8 @@ export async function requireLessonParticipant(
       .from("teacher_profiles")
       .select("id")
       .eq("user_id", user.id)
-      .maybeSingle()
-    teacherProfileId = (tp?.id as string | undefined) ?? null
+      .maybeSingle<{ id: string }>()
+    teacherProfileId = tp?.id ?? null
   }
 
   // 4. Resolve relationship to THIS lesson.

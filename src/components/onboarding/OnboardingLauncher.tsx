@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useEffect, useState } from "react"
@@ -37,7 +36,7 @@ export default function OnboardingLauncher({ role }: Props) {
         .from("profiles")
         .select("onboarding_step, role")
         .eq("id", user.id)
-        .maybeSingle()
+        .maybeSingle<{ onboarding_step: string | null; role: Props["role"] | null }>()
 
       if (cancelled) return
       const actualRole = data?.role || role
