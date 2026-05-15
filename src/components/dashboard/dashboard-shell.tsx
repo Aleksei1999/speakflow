@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -257,27 +257,37 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
     }
   }, [pathname])
 
+  // ВАЖНО: router НЕ в deps. В Next.js App Router useRouter() обычно
+  // возвращает stable instance, но при работе с TanStack Query / Suspense /
+  // refresh иногда identity меняется на пере-renders, что вызывало throttling
+  // через router.replace в бесконечном цикле. role + pathname достаточно.
   useEffect(() => {
-    if (role) {
-      if (
-        (pathname.startsWith("/student") && role !== "student") ||
-        (pathname.startsWith("/teacher") && role !== "teacher") ||
-        (pathname.startsWith("/admin") && role !== "admin")
-      ) {
-        const roleHome = role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/student"
-        router.replace(roleHome)
-      }
+    if (!role) return
+    if (
+      (pathname.startsWith("/student") && role !== "student") ||
+      (pathname.startsWith("/teacher") && role !== "teacher") ||
+      (pathname.startsWith("/admin") && role !== "admin")
+    ) {
+      const roleHome = role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/student"
+      router.replace(roleHome)
     }
-  }, [role, pathname, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, pathname])
 
   // Soft-prefetch топ-5 наиболее вероятных следующих вкладок при mount шелла.
   // Дополняет `<Link prefetch>` на самих ссылках — pre-warms RSC payload + loading.tsx
   // ДО того как пользователь успеет навести курсор. Откладываем на idle, чтобы не
   // конкурировать с initial render и критичными запросами текущей страницы.
   // Лимит 5 — иначе сжигаем bandwidth и упираемся в edge function quotas.
+  // ВАЖНО: ref-guard чтобы prefetch вызывался ровно один раз навсегда. Без него
+  // useEffect мог пере-fire'иться при изменении identity `router` (см. role-guard
+  // комментарий выше) и triggered Chrome navigation throttling.
+  const prefetchedRef = useRef(false)
   useEffect(() => {
     if (!role) return
     if (typeof window === "undefined") return
+    if (prefetchedRef.current) return
+    prefetchedRef.current = true
 
     const tabs =
       role === "admin"
