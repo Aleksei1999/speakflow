@@ -78,6 +78,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         fullName={profile?.full_name ?? ""}
         avatarUrl={profile?.avatar_url ?? null}
         role={role}
+        emailVerified={!!profile?.email_verified}
         gamification={gamification}
         teacherStats={teacherStats}
       >
