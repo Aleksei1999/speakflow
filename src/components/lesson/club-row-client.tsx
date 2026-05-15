@@ -20,7 +20,8 @@ import { computeLessonAccess } from "@/lib/lesson-access"
 import { LiveLessonCTA } from "./live-lesson-cta"
 import { formatLessonTime } from "@/lib/time"
 
-const TICK_MS = 5000
+// 30s tick — см. lesson-row-client/live-lesson-cta.
+const TICK_MS = 30000
 const SOON_WINDOW_SEC = 600
 
 export interface ClubRowClientProps {

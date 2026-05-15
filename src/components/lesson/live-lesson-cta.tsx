@@ -29,11 +29,12 @@ import { computeLessonAccess } from "@/lib/lesson-access"
 const SOON_WINDOW_SEC = 600
 
 /**
- * Tick interval — 5 сек. Меньше нет смысла: пользователь не видит
- * разницу между «через 1 мин» и «через 55 сек», а Math.ceil/60
- * округляет в минутах. Слишком частый setInterval = лишний re-render.
+ * Tick interval — 30 сек. Countdown показывается в минутах
+ * («через 3 мин»), 30 сек достаточно для smooth обновления.
+ * 5 сек давало 5+ независимых tick'ов в секунду на странице с
+ * множеством строк — визуально «страница обновляется сама».
  */
-const TICK_MS = 5000
+const TICK_MS = 30000
 
 export type LiveLessonCTARole = "student" | "teacher"
 
