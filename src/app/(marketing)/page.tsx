@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Metadata } from "next"
 import LandingClient from "./_landing/LandingClient"
 

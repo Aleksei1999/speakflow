@@ -1,4 +1,7 @@
-// @ts-nocheck
+// @ts-nocheck — TODO(types): trial_lesson_requests/lessons inserts/updates
+// require regenerating src/types/database.ts (currently missing trial_*
+// tables and several columns on `lessons`). Once schema types are refreshed,
+// drop this directive and add `.returns<T>()` to selects.
 // Auto-assigns a trial lesson to a free teacher when a student finishes
 // signup. Idempotent: safe to call multiple times.
 //

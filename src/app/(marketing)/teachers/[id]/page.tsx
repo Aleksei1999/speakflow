@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
@@ -31,6 +30,9 @@ async function getTeacherData(userId: string) {
   const supabase = await createClient()
 
   // Fetch teacher profile joined with profile
+  type TeacherDataRow = TeacherProfile & {
+    profiles: Pick<Profile, "id" | "full_name" | "avatar_url" | "email"> | null
+  }
   const { data: teacherData, error: teacherError } = await supabase
     .from("teacher_profiles")
     .select(
@@ -46,7 +48,7 @@ async function getTeacherData(userId: string) {
     )
     .eq("user_id", userId)
     .eq("is_listed", true)
-    .single()
+    .single<TeacherDataRow>()
 
   if (teacherError || !teacherData) return null
 
@@ -91,11 +93,18 @@ async function getTeacherReviews(
 async function getTeacherAvailability(teacherId: string) {
   const supabase = await createClient()
 
+  type AvailabilityRow = {
+    day_of_week: number
+    start_time: string
+    end_time: string
+    is_available: boolean
+  }
   const { data, error } = await supabase
     .from("teacher_availability")
     .select("day_of_week, start_time, end_time, is_available")
     .eq("teacher_id", teacherId)
     .eq("is_available", true)
+    .returns<AvailabilityRow[]>()
 
   if (error || !data) return []
 

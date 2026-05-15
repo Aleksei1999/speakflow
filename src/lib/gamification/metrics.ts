@@ -1,6 +1,10 @@
-// @ts-nocheck
 // Compute all metrics used by achievement thresholds and reward claim_criteria.
 // Kept together so achievements and rewards see the same numbers.
+
+// FIXME(types): supabase client typed as any — gamification helpers are called
+// from both server-rendered routes and API routes using two different client
+// flavours (cookie-bound vs admin). Tighten when we have a unified type alias.
+type AnySupabase = any
 
 export type UserMetrics = {
   current_streak: number
@@ -20,7 +24,7 @@ export type UserMetrics = {
 }
 
 export async function computeUserMetrics(
-  supabase: any,
+  supabase: AnySupabase,
   userId: string
 ): Promise<UserMetrics> {
   const [

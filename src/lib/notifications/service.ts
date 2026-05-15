@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Унифицированный сервис уведомлений Raw English.
  *
@@ -187,11 +186,17 @@ export async function sendNotification(
   const supabase = createAdminClient()
 
   // Получаем профиль + prefs
+  type ProfileRow = {
+    email: string
+    full_name: string
+    telegram_chat_id: string | null
+    notification_prefs: NotificationPrefs | null
+  }
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('email, full_name, telegram_chat_id, notification_prefs')
     .eq('id', userId)
-    .single()
+    .single<ProfileRow>()
 
   if (profileError || !profile) {
     console.error(`[notifications] Профиль не найден для userId=${userId}:`, profileError)
@@ -674,6 +679,9 @@ async function logNotification(
   }
 ): Promise<void> {
   try {
+    // FIXME(types): generated Database type for `notifications` is stale —
+    // real table has `data`/`status`/`error_message` (added by later migrations).
+    // Runtime payload is correct; regenerate types to drop this cast.
     await supabase.from('notifications').insert({
       user_id: params.userId,
       type: params.type,
@@ -681,7 +689,7 @@ async function logNotification(
       data: params.data as unknown as import('@/types/database').Json,
       status: params.status,
       error_message: params.errorMessage,
-    })
+    } as never)
   } catch (err) {
     // Логирование не должно ломать основной флоу.
     console.error('[notifications] Ошибка записи лога уведомления:', err)

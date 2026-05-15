@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 
 import { useState, Suspense } from 'react'
@@ -65,7 +64,7 @@ function LoginPageContent() {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single<{ role: 'student' | 'teacher' | 'admin' | null }>()
 
     if (redirectTo && redirectTo.startsWith('/')) {
       router.push(redirectTo)

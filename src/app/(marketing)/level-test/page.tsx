@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Metadata } from "next"
 import LevelTestClient from "./_client"
 
