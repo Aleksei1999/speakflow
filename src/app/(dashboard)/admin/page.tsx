@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedProfile } from "@/lib/cache/dashboard"
 import AdminHomeClient from "./AdminHomeClient"
 
 export const dynamic = "force-dynamic"
@@ -68,6 +69,14 @@ const EMPTY_STATS: AdminStats = {
   conversion_paid: 0,
 }
 
+// FIXME(perf): эта функция делает HTTP-self-fetch к 4 собственным API из
+// той же serverless-функции (/api/admin/stats, /api/admin/teacher-applications,
+// /api/support/threads, /api/admin/students). Каждый round-trip = +cookie
+// parse, +network hop, +new auth.getUser() в каждом route. Должно быть
+// заменено на прямой вызов экспортированной бизнес-логики из этих route.ts
+// (e.g. вынести `loadAdminStats(adminUserId)` в lib/admin/stats.ts и
+// импортировать здесь напрямую). Отложено: 4 endpoint'а × 2 файла каждый
+// = > 2 связанных файла на правку, не помещается в текущий PR.
 async function safeFetch(url: string, cookie: string): Promise<any | null> {
   try {
     const res = await fetch(url, { headers: { cookie }, cache: "no-store" })
@@ -129,12 +138,10 @@ export default async function AdminDashboardPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any)
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .single()
-
+  // Reuse the per-request cached profile (already loaded by
+  // (dashboard)/layout.tsx via the same `unstable_cache` entry —
+  // this call is a free in-memory dedupe within the RSC render).
+  const profile = await getCachedProfile(user.id)
   if (!profile) redirect("/login")
   if (profile.role === "student") redirect("/student")
   if (profile.role === "teacher") redirect("/teacher")

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedRole } from "@/lib/auth/get-role"
 import StudentMaterialsClient from "./StudentMaterialsClient"
 
 type InitialSnapshot = {
@@ -22,10 +23,13 @@ export default async function StudentMaterialsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any).from("profiles").select("role").eq("id", user.id).single()
-  if (!profile || profile.role !== "student") {
-    if (profile?.role === "teacher") redirect("/teacher")
-    if (profile?.role === "admin") redirect("/admin")
+  // Use the per-request cached role (already loaded by (dashboard)/layout.tsx
+  // via getCachedProfile → unstable_cache). Reading from `profiles` here
+  // again would be a redundant Supabase round-trip on every render.
+  const role = await getCachedRole(user.id)
+  if (role !== "student") {
+    if (role === "teacher") redirect("/teacher")
+    if (role === "admin") redirect("/admin")
     redirect("/login")
   }
 

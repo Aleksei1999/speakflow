@@ -155,6 +155,13 @@ const EMPTY_SNAPSHOT: InitialSnapshot = {
   stats: { total: 0, active_today: 0, avg_progress: 0, needs_attention: 0 },
 }
 
+// FIXME(perf): HTTP-self-fetch к собственному /api/teacher/students в той же
+// serverless-функции — лишний cookie parse, network hop, второй auth.getUser().
+// План: вынести логику из src/app/api/teacher/students/route.ts в
+// src/lib/teacher/students.ts (signature: `getStudentsForTeacher(teacherUserId,
+// { level, q }) → InitialSnapshot`), импортировать здесь напрямую, а route.ts
+// сделать тонким wrapper'ом. Отложено: route.ts ~300 строк бизнес-логики +
+// нужно пересмотреть filtering (level/q), это > 2 файлов рефакторинга.
 async function loadInitialSnapshot(): Promise<InitialSnapshot> {
   try {
     const hdrs = await headers()

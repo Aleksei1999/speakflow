@@ -369,24 +369,52 @@ export default function StudentAchievementsPage() {
   const ringCirc = 2 * Math.PI * 70 // r=70
   const ringOffset = ringCirc * (1 - stats.pct / 100)
 
-  // Claim achievement reward
+  // Claim achievement reward (OPTIMISTIC):
+  // On success we just flip the local card to is_earned=true, is_claimable=false
+  // — no full refetch of /api/achievements. Server is source of truth on next
+  // navigation. We refetch ONLY on failure to roll back any UI drift.
   const onClaimAchievement = async (slug: string) => {
     if (claiming.has(slug)) return
     setClaiming((s) => new Set(s).add(slug))
+
+    // Snapshot for rollback
+    const prevAchievements = achievements
+
+    // Optimistic flip
+    setAchievements((list) =>
+      list.map((a) =>
+        a.slug === slug
+          ? {
+              ...a,
+              is_earned: true,
+              is_claimable: false,
+              earned_at: a.earned_at ?? new Date().toISOString(),
+            }
+          : a
+      )
+    )
+
     try {
       const res = await fetch(`/api/achievements/${slug}/claim`, { method: "POST" })
-      if (res.ok) {
-        // Refetch achievements after claim
-        const aRes = await fetch("/api/achievements", { cache: "no-store" })
-        if (aRes.ok) {
-          const aJson = await aRes.json()
-          setAchievements(aJson.achievements ?? [])
-        }
-      } else {
+      if (!res.ok) {
+        // Rollback + show error
+        setAchievements(prevAchievements)
         const err = await res.json().catch(() => ({}))
         // eslint-disable-next-line no-alert
         alert(err?.error ?? "Не удалось получить ачивку")
+        // Authoritative refetch in background so any side-effects
+        // (XP-bumped streaks, chained ачивки) sync without waiting.
+        try {
+          const aRes = await fetch("/api/achievements", { cache: "no-store" })
+          if (aRes.ok) {
+            const aJson = await aRes.json()
+            setAchievements(aJson.achievements ?? prevAchievements)
+          }
+        } catch {}
       }
+    } catch {
+      // Network error — rollback
+      setAchievements(prevAchievements)
     } finally {
       setClaiming((s) => {
         const n = new Set(s)
@@ -397,6 +425,7 @@ export default function StudentAchievementsPage() {
   }
 
   // Claim reward (digital only — physical needs delivery modal, not in scope here)
+  // OPTIMISTIC: flip already_claimed=true locally, rollback on failure.
   const onClaimReward = async (reward: Reward) => {
     if (reward.reward_type === "physical") {
       // eslint-disable-next-line no-alert
@@ -407,19 +436,33 @@ export default function StudentAchievementsPage() {
     }
     if (claiming.has(reward.slug)) return
     setClaiming((s) => new Set(s).add(reward.slug))
+
+    const prevRewards = rewards
+    setRewards((list) =>
+      list.map((r) =>
+        r.slug === reward.slug
+          ? { ...r, already_claimed: true, claimed_status: "claimed" }
+          : r
+      )
+    )
+
     try {
       const res = await fetch(`/api/rewards/${reward.slug}/claim`, { method: "POST" })
-      if (res.ok) {
-        const rRes = await fetch("/api/rewards", { cache: "no-store" })
-        if (rRes.ok) {
-          const rJson = await rRes.json()
-          setRewards(rJson.rewards ?? [])
-        }
-      } else {
+      if (!res.ok) {
+        setRewards(prevRewards)
         const err = await res.json().catch(() => ({}))
         // eslint-disable-next-line no-alert
         alert(err?.error ?? "Не удалось получить награду")
+        try {
+          const rRes = await fetch("/api/rewards", { cache: "no-store" })
+          if (rRes.ok) {
+            const rJson = await rRes.json()
+            setRewards(rJson.rewards ?? prevRewards)
+          }
+        } catch {}
       }
+    } catch {
+      setRewards(prevRewards)
     } finally {
       setClaiming((s) => {
         const n = new Set(s)
