@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
+import { logAuditEvent } from "@/lib/audit/log"
 
 // ---------------------------------------------------------------
 // POST /api/support/threads/[id]/messages
@@ -110,6 +111,20 @@ export async function POST(
         { status: 500 }
       )
     }
+
+    // Audit: сообщение в тикет. Сам body НЕ логируем (это поддержка → PII);
+    // фиксируем только факт + длину + наличие вложений.
+    await logAuditEvent(request, {
+      category: "data",
+      action: "support_message_sent",
+      target_type: "support_threads",
+      target_id: id,
+      payload: {
+        sender_role: senderRole,
+        body_length: parsed.data.body.length,
+        attachments_count: parsed.data.attachments?.length ?? 0,
+      },
+    })
 
     return NextResponse.json({ message }, { status: 201 })
   } catch (err) {

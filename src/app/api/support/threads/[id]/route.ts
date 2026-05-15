@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { logAuditEvent } from "@/lib/audit/log"
 
 // ---------------------------------------------------------------
 // GET   /api/support/threads/[id]
@@ -162,6 +163,16 @@ export async function PATCH(
     }
 
     const adminClient = createAdminClient()
+
+    // Снимаем «до» — нужно для audit-payload from→to. Best-effort:
+    // если не получили (например, тикета уже нет) — UPDATE ниже всё равно
+    // вернёт null и эндпоинт ответит 404 как раньше.
+    const { data: previous } = await adminClient
+      .from("support_threads")
+      .select("status, priority")
+      .eq("id", id)
+      .maybeSingle()
+
     const { data, error } = await adminClient
       .from("support_threads")
       .update(update)
@@ -177,6 +188,37 @@ export async function PATCH(
     }
     if (!data) {
       return NextResponse.json({ error: "Тикет не найден" }, { status: 404 })
+    }
+
+    // Audit: смена статуса/приоритета админом. Логируем только если что-то
+    // реально поменялось — а не сам факт PATCH (PATCH мог придти с тем же
+    // значением, что и текущее, — это шум).
+    const statusChanged =
+      update.status !== undefined &&
+      previous?.status !== undefined &&
+      previous.status !== update.status
+    const priorityChanged =
+      update.priority !== undefined &&
+      previous?.priority !== undefined &&
+      previous.priority !== update.priority
+
+    if (statusChanged) {
+      await logAuditEvent(request, {
+        category: "admin",
+        action: "support_thread_status_changed",
+        target_type: "support_threads",
+        target_id: id,
+        payload: { from: previous?.status, to: update.status },
+      })
+    }
+    if (priorityChanged) {
+      await logAuditEvent(request, {
+        category: "admin",
+        action: "support_thread_priority_changed",
+        target_type: "support_threads",
+        target_id: id,
+        payload: { from: previous?.priority, to: update.priority },
+      })
     }
 
     return NextResponse.json({ thread: data })

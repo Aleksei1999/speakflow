@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
+import { logAuditEvent } from "@/lib/audit/log"
 
 const BodySchema = z
   .object({
@@ -114,6 +115,21 @@ export async function POST(req: NextRequest) {
     console.error("[recording/finalize] update failed:", error)
     return NextResponse.json({ error: "Не удалось финализировать запись" }, { status: 500 })
   }
+
+  // Audit: финализация сессии. total_bytes тоже кладём — будет видно
+  // «насколько большая запись» без обращения к Storage.
+  await logAuditEvent(req, {
+    category: "data",
+    action: "recording_finalized",
+    target_type: "lesson_recordings",
+    target_id: recordingId,
+    payload: {
+      lesson_id: gate.lesson.id,
+      chunks_count: chunksCount,
+      duration_seconds: durationSec,
+      total_bytes: totalBytes,
+    },
+  })
 
   return NextResponse.json({
     ok: true,

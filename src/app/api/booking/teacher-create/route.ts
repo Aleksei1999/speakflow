@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { teacherBookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
+import { logAuditEvent } from '@/lib/audit/log'
 
 /**
  * POST /api/booking/teacher-create
@@ -233,6 +234,22 @@ export async function POST(request: NextRequest) {
       .eq('id', lesson!.id)
 
     void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+
+    // Business-level audit: учитель назначил урок ученику.
+    await logAuditEvent(request, {
+      category: 'data',
+      action: 'lesson_created_by_teacher',
+      target_type: 'lessons',
+      target_id: lesson!.id,
+      payload: {
+        teacher_id: teacherProfileId,
+        teacher_user_id: user.id,
+        student_id: studentId,
+        scheduled_at: lesson!.scheduled_at,
+        duration_minutes: lesson!.duration_minutes,
+        price_kopecks: lesson!.price,
+      },
+    })
 
     return NextResponse.json({
       lessonId: lesson!.id,

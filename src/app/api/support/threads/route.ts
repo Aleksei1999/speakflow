@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { verifyTurnstile } from "@/lib/api/turnstile"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 import { protectPublic } from "@/lib/api/arcjet"
+import { logAuditEvent } from "@/lib/audit/log"
 
 // ---------------------------------------------------------------
 // GET  /api/support/threads
@@ -259,6 +260,21 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Audit: создан тикет поддержки. Тема — первые 80 chars (subject уже
+    // обрезан до 200 zod-схемой, но в audit-log это всё равно PII-чувствительно
+    // — кладём только превью для контекста).
+    await logAuditEvent(request, {
+      category: "data",
+      action: "support_thread_created",
+      target_type: "support_threads",
+      target_id: thread.id,
+      payload: {
+        subject_first_chars: subject.slice(0, 80),
+        sender_role: senderRole,
+        has_attachments: false,
+      },
+    })
 
     return NextResponse.json(
       { thread, message: firstMsg },

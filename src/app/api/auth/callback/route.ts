@@ -47,18 +47,24 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Резолвим роль один раз — нужна и для redirect, и для отдельной
+  // admin_signin записи в audit log.
+  let resolvedRole: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single<{ role: string }>()
+    resolvedRole = profile?.role ?? null
+  }
+
   if (!redirectPath) {
     if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single<{ role: string }>()
-
       redirectPath =
-        profile?.role === 'admin'
+        resolvedRole === 'admin'
           ? '/admin'
-          : profile?.role === 'teacher'
+          : resolvedRole === 'teacher'
             ? '/teacher'
             : '/student'
     } else {
@@ -76,8 +82,23 @@ export async function GET(request: Request) {
       payload: {
         provider: user.app_metadata?.provider ?? null,
         next: safeNext,
+        role: resolvedRole,
       },
     })
+
+    // Отдельная запись для admin audit trail — облегчает фильтр по
+    // category='admin' без необходимости джойнить profiles.
+    if (resolvedRole === 'admin') {
+      await logAuditEvent(request as any, {
+        category: 'admin',
+        action: 'admin_signin',
+        target_type: 'auth.users',
+        target_id: user.id,
+        payload: {
+          provider: user.app_metadata?.provider ?? null,
+        },
+      })
+    }
   }
 
   // Trial-lesson auto-assignment runs once per signup, on the first time

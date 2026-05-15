@@ -272,6 +272,22 @@ export async function POST(
       },
     })
 
+    // Отдельная запись для бизнес-вопроса «когда кому подняли роль».
+    // generic data-триггер на profiles тоже ловит, но там нужно парсить
+    // diff jsonb — здесь сразу from/to в payload.
+    await logAuditEvent(request, {
+      category: 'admin',
+      action: 'role_changed',
+      target_type: 'profiles',
+      target_id: userId,
+      payload: {
+        from: userExisted ? 'student' : null,
+        to: 'teacher',
+        reason: 'teacher_application_approved',
+        application_id: id,
+      },
+    })
+
     return NextResponse.json({
       ok: true,
       userId,
