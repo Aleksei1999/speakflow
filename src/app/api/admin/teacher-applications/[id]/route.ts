@@ -3,6 +3,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
+import { logAuditEvent } from "@/lib/audit/log"
 
 export const dynamic = "force-dynamic"
 
@@ -73,6 +74,22 @@ export async function PATCH(
     if (!data) {
       return NextResponse.json({ error: "Заявка не найдена" }, { status: 404 })
     }
+
+    // Audit: ручное изменение статуса/заметок заявки. status_changed
+    // отдельная action — чтобы фильтровать reject/archive отдельно от
+    // generic update.
+    await logAuditEvent(request, {
+      category: 'admin',
+      action: parsed.data.status
+        ? `teacher_application_status_${parsed.data.status}`
+        : 'teacher_application_updated',
+      target_type: 'teacher_applications',
+      target_id: id,
+      payload: {
+        status: parsed.data.status ?? null,
+        notes_changed: parsed.data.notes !== undefined,
+      },
+    })
 
     return NextResponse.json({ application: data })
   } catch (err) {

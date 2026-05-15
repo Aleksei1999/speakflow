@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { YooKassaClient } from '@/lib/yookassa/client'
 import type { YooKassaWebhookNotification, YooKassaPayment, YooKassaRefund } from '@/lib/yookassa/types'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { logAuditEvent } from '@/lib/audit/log'
 
 /**
  * Допустимые IP-адреса YooKassa для вебхуков.
@@ -110,6 +111,22 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient()
+
+  // Audit: каждое полученное от YooKassa событие. Идемпотентность ниже —
+  // нам важно зафиксировать сам факт прихода вебхука.
+  const webhookObjectId =
+    (notification.object as any)?.id ?? null
+  await logAuditEvent(request, {
+    category: 'payment',
+    action: `webhook_${notification.event.replace('.', '_')}`,
+    target_type: 'yookassa.event',
+    target_id: webhookObjectId,
+    payload: {
+      event: notification.event,
+      object_id: webhookObjectId,
+      source_ip: clientIp,
+    },
+  })
 
   try {
     switch (notification.event) {
