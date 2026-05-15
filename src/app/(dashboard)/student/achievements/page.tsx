@@ -85,9 +85,9 @@ const RARITY_LABEL: Record<Rarity, string> = {
 function pluralizeAchievements(count: number): string {
   const mod10 = count % 10
   const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return "ачивка"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "ачивки"
-  return "ачивок"
+  if (mod10 === 1 && mod100 !== 11) return "достижение"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "достижения"
+  return "достижений"
 }
 
 function fmtNum(n: number): string {
@@ -216,9 +216,9 @@ export default function StudentAchievementsPage() {
         setAchievements(prevAchievements)
         const err = await res.json().catch(() => ({}))
         // eslint-disable-next-line no-alert
-        alert(err?.error ?? "Не удалось получить ачивку")
+        alert(err?.error ?? "Не удалось получить достижение")
         // Authoritative refetch in background so any side-effects
-        // (XP-bumped streaks, chained ачивки) sync without waiting.
+        // (XP-bumped streaks, chained достижения) sync without waiting.
         try {
           const aRes = await fetch("/api/achievements", { cache: "no-store" })
           if (aRes.ok) {
@@ -296,7 +296,7 @@ export default function StudentAchievementsPage() {
           Мои <span className="gl">achievements</span>
         </h1>
         <div className="ach-hdr-sub">
-          Зарабатывай XP, открывай ачивки, получай реальные призы
+          Зарабатывай XP, открывай достижения, получай реальные призы
         </div>
       </div>
 
@@ -318,7 +318,7 @@ export default function StudentAchievementsPage() {
           </svg>
           <div className="xp-ring-center">
             <div className="xp-ring-pct">{stats.pct}%</div>
-            <div className="xp-ring-label">Ачивок открыто</div>
+            <div className="xp-ring-label">Достижений открыто</div>
             <div className="xp-ring-sub">
               {stats.earned} / {stats.total}
             </div>
@@ -332,11 +332,11 @@ export default function StudentAchievementsPage() {
           <div className="hs-val">
             {stats.earned} / {stats.total}
           </div>
-          <div className="hs-label">Ачивок</div>
+          <div className="hs-label">Достижений</div>
         </div>
         <div className="hs">
           <div className="hs-val">+{fmtNum(stats.xpEarned)}</div>
-          <div className="hs-label">XP за ачивки</div>
+          <div className="hs-label">XP за достижения</div>
         </div>
         <div className="hs hs--lime">
           <div className="hs-val">{stats.rewardsEarned}</div>
@@ -346,7 +346,7 @@ export default function StudentAchievementsPage() {
           <div className="hs-val">
             <span className="gl">{stats.next?.title ?? "—"}</span>
           </div>
-          <div className="hs-label">Следующая ачивка</div>
+          <div className="hs-label">Следующая достижение</div>
         </div>
       </div>
 
@@ -383,7 +383,7 @@ export default function StudentAchievementsPage() {
           ))}
         </div>
       ) : visibleAchievements.length === 0 ? (
-        <div className="ach-empty">Ачивки скоро появятся</div>
+        <div className="ach-empty">Достижения скоро появятся</div>
       ) : (
         CATEGORY_ORDER.map((cat) => {
           const items = grouped.get(cat) ?? []

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -42,7 +41,8 @@ export async function GET(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // FIXME(types): teacher_profiles join with profiles missing in Database type
+    const { data, error } = (await supabase
       .from('teacher_profiles')
       .select(
         `
@@ -70,7 +70,7 @@ export async function GET(
       )
       .eq('id', id)
       .eq('is_listed', true)
-      .maybeSingle()
+      .maybeSingle()) as { data: Record<string, any> | null; error: any }
 
     if (error) {
       console.error('Ошибка загрузки профиля преподавателя:', error)

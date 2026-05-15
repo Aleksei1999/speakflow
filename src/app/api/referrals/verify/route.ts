@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
@@ -56,13 +55,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, bonus_xp: BONUS_XP })
     }
 
+    // FIXME(types): profiles Row in Database type lacks first_name/last_name/invite_code
     // Service role — the public user can't SELECT other profiles via RLS.
     const admin = createAdminClient()
-    const { data: inviter, error } = await admin
+    const { data: inviter, error } = (await (admin as any)
       .from('profiles')
       .select('id, first_name, last_name, full_name')
       .eq('invite_code', raw)
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; first_name: string | null; last_name: string | null; full_name: string | null } | null; error: any }
 
     if (error) {
       console.error('referrals/verify lookup error:', error)

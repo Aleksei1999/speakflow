@@ -130,7 +130,7 @@ export default function PricingSection() {
       {/* Subscription */}
       <h3 className="pricing-sub-h">Подписка на платформу</h3>
       <p className="pricing-sub-d">
-        Подписка открывает Speaking Clubs, геймификацию, ачивки, лидерборд и AI-план. Уроки оплачиваются отдельно — с баланса.
+        Подписка открывает Speaking Clubs, геймификацию, достижения, лидерборд и AI-план. Уроки оплачиваются отдельно — с баланса.
       </p>
 
       <div className="sub-grid">
@@ -184,7 +184,7 @@ export default function PricingSection() {
       <div className="pricing-foot">
         <div className="pricing-foot-icon">💡</div>
         <div className="pricing-foot-text">
-          <b>Без подписки</b> ты можешь только записываться на уроки 1-on-1. Speaking Clubs, геймификация, ачивки, лидерборд, AI-план и коммьюнити доступны только с <b>Raw Pro</b>. Подписка не включает стоимость уроков.
+          <b>Без подписки</b> ты можешь только записываться на уроки 1-on-1. Speaking Clubs, геймификация, достижения, лидерборд, AI-план и коммьюнити доступны только с <b>Raw Pro</b>. Подписка не включает стоимость уроков.
         </div>
       </div>
     </section>

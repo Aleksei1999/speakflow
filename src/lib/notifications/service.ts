@@ -461,7 +461,7 @@ function buildEmailContent(
     case 'achievement_unlocked':
       return achievementUnlockedEmail(
         name,
-        data.title || 'Новая ачивка',
+        data.title || 'Новая достижение',
         data.description || '',
         data.icon || '🏆',
         data.xpReward || 0,
@@ -608,7 +608,7 @@ function buildTelegramText(
     case 'achievement_unlocked':
       return formatTelegramAchievementUnlocked(
         name,
-        data.title || 'Новая ачивка',
+        data.title || 'Новая достижение',
         data.description || '',
         data.icon || '🏆',
         data.xpReward || 0,

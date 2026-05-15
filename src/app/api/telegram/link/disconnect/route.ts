@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -15,8 +14,8 @@ export async function POST(_request: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 })
     }
     const admin = createAdminClient()
-    const { error } = await admin
-      .from("profiles")
+    // FIXME(types): supabase-js infers Update params as 'never' on minimal Database type
+    const { error } = await (admin.from("profiles") as any)
       .update({ telegram_chat_id: null, telegram_username: null })
       .eq("id", user.id)
     if (error) {

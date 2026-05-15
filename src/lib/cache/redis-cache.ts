@@ -122,7 +122,7 @@ export async function invalidateStatic(key: string): Promise<void> {
 /**
  * Invalidate all keys matching prefix wildcard. Используется редко —
  * KEYS на больших Redis блокирующая, поэтому только для admin-операций
- * (пересборка схемы ачивок и т.п.).
+ * (пересборка схемы достижений и т.п.).
  */
 export async function invalidateStaticPrefix(prefix: string): Promise<void> {
   const r = getRedis()

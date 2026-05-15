@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — TODO(types): heavy course-progress flow; needs 'courses'/'course_lessons'/'course_lesson_progress'/'course_enrollments'/'xp_events' tables added to Database type
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'

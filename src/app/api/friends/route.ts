@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -34,8 +33,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    // FIXME(types): 'user_friends' table missing in Database type
+    type ProfileLite = { id: string; full_name: string | null; avatar_url: string | null } | null
+    type FriendRow = {
+      user_id: string
+      friend_id: string
+      status: 'pending' | 'accepted' | 'blocked'
+      created_at: string
+      responded_at: string | null
+      requester: ProfileLite
+      recipient: ProfileLite
+    }
     // RLS already restricts rows to ones involving me, so OR-filter is just ergonomic.
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = (await (supabase as any)
       .from('user_friends')
       .select(
         `
@@ -46,7 +56,7 @@ export async function GET(request: NextRequest) {
       )
       .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
-      .limit(limit)
+      .limit(limit)) as { data: FriendRow[] | null; error: any }
     if (error) {
       console.error('Ошибка загрузки друзей:', error)
       return NextResponse.json({ error: 'Не удалось загрузить друзей' }, { status: 500 })

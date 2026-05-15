@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -48,13 +47,25 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // FIXME(types): profiles Row in Database type lacks extended columns (first_name/notification_prefs/etc.)
+    type SettingsRow = {
+      id: string; email: string | null
+      first_name: string | null; last_name: string | null; full_name: string | null
+      avatar_url: string | null; phone: string | null; timezone: string | null
+      city: string | null; language: string | null
+      notification_prefs: Record<string, any> | null
+      ui_prefs: Record<string, any> | null
+      profile_visibility: Record<string, any> | null
+      subscription_tier: string | null; subscription_until: string | null
+      telegram_chat_id: number | null; telegram_username: string | null
+    }
+    const { data, error } = (await supabase
       .from('profiles')
       .select(
         'id, email, first_name, last_name, full_name, avatar_url, phone, timezone, city, language, notification_prefs, ui_prefs, profile_visibility, subscription_tier, subscription_until, telegram_chat_id, telegram_username'
       )
       .eq('id', user.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: SettingsRow | null; error: any }
 
     if (error || !data) {
       console.error('Ошибка загрузки настроек:', error)
@@ -178,13 +189,20 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { data: current, error: readErr } = await supabase
+    // FIXME(types): profiles Row in Database type lacks extended columns
+    type CurrentRow = {
+      first_name: string | null; last_name: string | null
+      notification_prefs: Record<string, any> | null
+      ui_prefs: Record<string, any> | null
+      profile_visibility: Record<string, any> | null
+    }
+    const { data: current, error: readErr } = (await supabase
       .from('profiles')
       .select(
         'first_name, last_name, notification_prefs, ui_prefs, profile_visibility'
       )
       .eq('id', user.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: CurrentRow | null; error: any }
     if (readErr || !current) {
       return NextResponse.json({ error: 'Профиль не найден' }, { status: 404 })
     }
@@ -234,7 +252,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ ok: true, updated: 0 })
     }
 
-    const { error: updErr } = await supabase.from('profiles').update(patch).eq('id', user.id)
+    // FIXME(types): supabase-js infers Update params as 'never' on minimal Database type
+    const { error: updErr } = await (supabase.from('profiles') as any).update(patch).eq('id', user.id)
     if (updErr) {
       console.error('Ошибка обновления настроек:', updErr)
       return NextResponse.json({ error: 'Не удалось сохранить настройки' }, { status: 500 })

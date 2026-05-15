@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -47,11 +46,16 @@ export async function POST(
     })
     if (limited) return limited
 
-    const { data: def, error: defError } = await supabase
+    // FIXME(types): 'reward_definitions' table missing in Database type
+    type RewardDef = {
+      id: string; slug: string; title: string; reward_type: string
+      claim_criteria: any; is_active: boolean
+    }
+    const { data: def, error: defError } = (await (supabase as any)
       .from('reward_definitions')
       .select('id, slug, title, reward_type, claim_criteria, is_active')
       .eq('slug', slug)
-      .maybeSingle()
+      .maybeSingle()) as { data: RewardDef | null; error: any }
     if (defError) {
       console.error('Ошибка загрузки награды:', defError)
       return NextResponse.json({ error: 'Ошибка загрузки награды' }, { status: 500 })
@@ -60,12 +64,13 @@ export async function POST(
       return NextResponse.json({ error: 'Награда не найдена' }, { status: 404 })
     }
 
-    const { data: existing } = await supabase
+    // FIXME(types): 'user_rewards' table missing in Database type
+    const { data: existing } = (await (supabase as any)
       .from('user_rewards')
       .select('id, status')
       .eq('user_id', user.id)
       .eq('reward_id', def.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; status: string } | null }
     if (existing) {
       return NextResponse.json(
         { error: 'Вы уже получили эту награду', status: existing.status },
@@ -104,9 +109,10 @@ export async function POST(
       delivery_json = parsed.data
     }
 
+    // FIXME(types): 'user_rewards' table missing in Database type
     // user_rewards RLS allows only admin writes; criteria was verified above.
     const admin = createAdminClient()
-    const { data: inserted, error: insertError } = await admin
+    const { data: inserted, error: insertError } = (await (admin as any)
       .from('user_rewards')
       .insert({
         user_id: user.id,
@@ -115,7 +121,7 @@ export async function POST(
         delivery_json,
       })
       .select('id, status, awarded_at')
-      .single()
+      .single()) as { data: { id: string; status: string; awarded_at: string } | null; error: any }
     if (insertError) {
       console.error('Ошибка получения награды:', insertError)
       if (insertError.code === '23505') {
@@ -125,12 +131,12 @@ export async function POST(
     }
 
     return NextResponse.json({
-      user_reward_id: inserted.id,
+      user_reward_id: inserted!.id,
       slug: def.slug,
       title: def.title,
       reward_type: def.reward_type,
-      status: inserted.status,
-      awarded_at: inserted.awarded_at,
+      status: inserted!.status,
+      awarded_at: inserted!.awarded_at,
     })
   } catch (error) {
     console.error('Непредвиденная ошибка в /api/rewards/[slug]/claim:', error)

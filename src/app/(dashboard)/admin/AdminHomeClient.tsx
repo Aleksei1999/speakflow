@@ -205,7 +205,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
       const parts = [day.charAt(0).toUpperCase() + day.slice(1)]
       if (stats.teacher_applications_new > 0)
         parts.push(`${stats.teacher_applications_new} заявок преподавателей`)
-      if (stats.open_tickets > 0) parts.push(`${stats.open_tickets} тикетов`)
+      if (stats.open_tickets > 0) parts.push(`${stats.open_tickets} обращений`)
       return parts.join(" · ")
     } catch {
       return "Админ-панель"
@@ -304,7 +304,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
           </div>
         </div>
         <div className="stat-card dark">
-          <div className="label">Открытых тикетов</div>
+          <div className="label">Открытых обращений</div>
           <div className="value">
             {stats.open_tickets} <small>/ день</small>
           </div>
@@ -392,7 +392,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </div>
-                  Ответить в тикете
+                  Ответить в обращении
                 </Link>
                 <Link href="/admin/reports">
                   <div className="ico">
@@ -422,7 +422,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
               {tasksLoading ? (
                 <div className="empty">Загружаем задачи…</div>
               ) : tasks.length === 0 ? (
-                <div className="empty">🎉 На сегодня всё чисто. Новых заявок, тикетов и подвисших оплат нет.</div>
+                <div className="empty">🎉 На сегодня всё чисто. Новых заявок, обращений и подвисших оплат нет.</div>
               ) : tasks.map((t) => (
                 <div
                   key={t.id}
@@ -467,14 +467,14 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
 
         <div className="card">
           <div className="card-header">
-            <h3>Тикеты поддержки</h3>
+            <h3>Обращения поддержки</h3>
             <Link href="/admin/support" className="btn btn-sm btn-secondary">
               Все ({stats.open_tickets})
             </Link>
           </div>
           <div className="card-body">
             {initial.tickets.length === 0 ? (
-              <div className="empty">Нет открытых тикетов</div>
+              <div className="empty">Нет открытых обращений</div>
             ) : (
               <div className="ticket-list">
                 {initial.tickets.slice(0, 5).map((t, i) => (

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from 'next/server'
 import { levelTestSubmitSchema } from '@/lib/validations'
 import { questions } from '@/lib/level-test-questions'
@@ -69,7 +68,8 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { error: insertError } = await supabase.from('level_tests').insert({
+    // FIXME(types): level_tests Insert in Database type lacks total_questions column
+    const { error: insertError } = await (supabase.from('level_tests') as any).insert({
       score,
       level,
       total_questions: totalQuestions,

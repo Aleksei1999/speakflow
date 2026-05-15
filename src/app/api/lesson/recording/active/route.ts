@@ -1,4 +1,3 @@
-// @ts-nocheck
 // GET /api/lesson/recording/active?lessonId=<uuid>
 // Возвращает активную recording-row урока (status='recording') либо null.
 // Доступно любому участнику урока — студент так узнаёт recordingId,
@@ -13,12 +12,13 @@ export async function GET(req: NextRequest) {
   const gate = await requireLessonParticipant(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const { data: rec } = await gate.admin
+  // FIXME(types): 'lesson_recordings' table missing in Database type
+  const { data: rec } = (await (gate.admin as any)
     .from("lesson_recordings")
     .select("id, storage_prefix, status, started_at")
     .eq("lesson_id", gate.lesson.id)
     .eq("status", "recording")
-    .maybeSingle()
+    .maybeSingle()) as { data: { id: string; storage_prefix: string; status: string; started_at: string } | null }
 
   if (!rec) {
     return NextResponse.json({ active: false })

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -34,7 +33,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
-    let query = supabase
+    // FIXME(types): 'course_enrollments' / 'courses' tables missing in Database type
+    type EnrollmentRow = {
+      id: string; status: string; started_at: string | null; completed_at: string | null
+      current_lesson_id: string | null; created_at: string
+      course: { id: string; slug: string; title: string; description: string | null; level: string | null; goal_tag: string | null; duration_hours: number | null; lesson_count: number | null; cover_variant: string | null; cover_word: string | null; price_kopecks: number | null; xp_reward: number | null } | null
+    }
+    let query: any = (supabase as any)
       .from('course_enrollments')
       .select(
         `
@@ -52,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     if (status) query = query.eq('status', status)
 
-    const { data: enrollments, error } = await query
+    const { data: enrollments, error } = (await query) as { data: EnrollmentRow[] | null; error: any }
     if (error) {
       console.error('Ошибка загрузки записей на курсы:', error)
       return NextResponse.json({ error: 'Не удалось загрузить курсы' }, { status: 500 })
@@ -64,11 +69,12 @@ export async function GET(request: NextRequest) {
 
     let progressByCourse: Record<string, number> = {}
     if (courseIds.length > 0) {
-      const { data: progress } = await supabase
+      // FIXME(types): 'course_lesson_progress' table missing in Database type
+      const { data: progress } = (await (supabase as any)
         .from('course_lesson_progress')
         .select('course_id')
         .eq('user_id', user.id)
-        .in('course_id', courseIds)
+        .in('course_id', courseIds)) as { data: Array<{ course_id: string }> | null }
       for (const row of progress ?? []) {
         progressByCourse[row.course_id] = (progressByCourse[row.course_id] ?? 0) + 1
       }

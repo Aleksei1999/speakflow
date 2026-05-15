@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { format } from 'date-fns'
@@ -66,11 +65,11 @@ export async function GET(
     const { days, limit } = parsed.data
 
     // Verify teacher exists and is listed.
-    const { data: teacher, error: teacherErr } = await supabase
+    const { data: teacher, error: teacherErr } = (await supabase
       .from('teacher_profiles')
       .select('id, is_listed')
       .eq('id', teacherProfileId)
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; is_listed: boolean } | null; error: any }
 
     if (teacherErr) {
       console.error('Ошибка загрузки преподавателя:', teacherErr)
@@ -87,11 +86,11 @@ export async function GET(
     }
 
     // Fetch weekly availability (all days).
-    const { data: availability, error: availErr } = await supabase
+    const { data: availability, error: availErr } = (await supabase
       .from('teacher_availability')
       .select('day_of_week, start_time, end_time')
       .eq('teacher_id', teacherProfileId)
-      .eq('is_active', true)
+      .eq('is_active', true)) as { data: Array<{ day_of_week: number; start_time: string; end_time: string }> | null; error: any }
 
     if (availErr || !availability || availability.length === 0) {
       // Any failure or empty availability -> return empty slots (spec).
@@ -116,13 +115,13 @@ export async function GET(
     const rangeEnd = new Date(rangeStart.getTime() + days * 24 * 60 * 60 * 1000)
 
     // Fetch all booked / in_progress lessons in the range.
-    const { data: lessons, error: lessonsErr } = await supabase
+    const { data: lessons, error: lessonsErr } = (await supabase
       .from('lessons')
       .select('scheduled_at, duration_minutes')
       .eq('teacher_id', teacherProfileId)
       .gte('scheduled_at', rangeStart.toISOString())
       .lt('scheduled_at', rangeEnd.toISOString())
-      .in('status', ['pending_payment', 'booked', 'in_progress'])
+      .in('status', ['pending_payment', 'booked', 'in_progress'])) as { data: Array<{ scheduled_at: string; duration_minutes: number }> | null; error: any }
 
     if (lessonsErr) {
       console.error('Ошибка загрузки уроков:', lessonsErr)

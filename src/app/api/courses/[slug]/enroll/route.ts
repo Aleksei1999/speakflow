@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -26,11 +25,13 @@ export async function POST(
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
-    const { data: course, error: courseError } = await supabase
+    // FIXME(types): 'courses' table missing in Database type
+    type CourseRow = { id: string; is_published: boolean; price_kopecks: number; required_level: string | null }
+    const { data: course, error: courseError } = (await (supabase as any)
       .from('courses')
       .select('id, is_published, price_kopecks, required_level')
       .eq('slug', slug)
-      .maybeSingle()
+      .maybeSingle()) as { data: CourseRow | null; error: any }
     if (courseError) {
       console.error('Ошибка загрузки курса:', courseError)
       return NextResponse.json({ error: 'Ошибка загрузки курса' }, { status: 500 })
@@ -41,14 +42,14 @@ export async function POST(
 
     // Level gate (optional): compare user_progress.english_level to course.required_level
     if (course.required_level) {
-      const { data: progress } = await supabase
+      const { data: progress } = (await supabase
         .from('user_progress')
         .select('english_level')
         .eq('user_id', user.id)
-        .maybeSingle()
-      const needed = ROAST_LEVELS.indexOf(course.required_level)
+        .maybeSingle()) as { data: { english_level: string | null } | null }
+      const needed = ROAST_LEVELS.indexOf(course.required_level as typeof ROAST_LEVELS[number])
       const have = progress?.english_level
-        ? ROAST_LEVELS.indexOf(progress.english_level)
+        ? ROAST_LEVELS.indexOf(progress.english_level as typeof ROAST_LEVELS[number])
         : -1
       if (have < needed) {
         return NextResponse.json(
@@ -58,12 +59,13 @@ export async function POST(
       }
     }
 
-    const { data: existing } = await supabase
+    // FIXME(types): 'course_enrollments' table missing in Database type
+    const { data: existing } = (await (supabase as any)
       .from('course_enrollments')
       .select('id, status')
       .eq('course_id', course.id)
       .eq('user_id', user.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; status: string } | null }
     if (existing) {
       return NextResponse.json(
         { error: 'Вы уже записаны на этот курс', enrollment_id: existing.id, status: existing.status },
@@ -74,7 +76,8 @@ export async function POST(
     const isFree = course.price_kopecks === 0
     const initialStatus = isFree ? 'active' : 'pending_payment'
 
-    const { data: enr, error: insertError } = await supabase
+    // FIXME(types): 'course_enrollments' table missing in Database type
+    const { data: enr, error: insertError } = (await (supabase as any)
       .from('course_enrollments')
       .insert({
         course_id: course.id,
@@ -83,7 +86,7 @@ export async function POST(
         started_at: isFree ? new Date().toISOString() : null,
       })
       .select('id, status, started_at')
-      .single()
+      .single()) as { data: { id: string; status: string; started_at: string | null } | null; error: any }
     if (insertError) {
       console.error('Ошибка создания записи на курс:', insertError)
       if (insertError.code === '23505') {
@@ -96,8 +99,8 @@ export async function POST(
     }
 
     return NextResponse.json({
-      enrollment_id: enr.id,
-      status: enr.status,
+      enrollment_id: enr!.id,
+      status: enr!.status,
       is_free: isFree,
       payment_url: null, // YooKassa ещё не подключена
     })

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { coursesListQuerySchema } from '@/lib/validations'
@@ -21,7 +20,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    let query = supabase
+    // FIXME(types): 'courses' table missing in Database type
+    let query: any = (supabase as any)
       .from('courses')
       .select(
         `
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     if (goal) query = query.eq('goal_tag', goal)
     if (level) query = query.eq('level', level)
 
-    const { data: courses, error } = await query
+    const { data: courses, error } = (await query) as { data: Array<Record<string, any>> | null; error: any }
     if (error) {
       console.error('Ошибка загрузки курсов:', error)
       return NextResponse.json({ error: 'Не удалось загрузить курсы' }, { status: 500 })
@@ -51,12 +51,13 @@ export async function GET(request: NextRequest) {
 
     let myEnrollments: Record<string, string> = {}
     if (user && (courses?.length ?? 0) > 0) {
-      const ids = courses!.map((c) => c.id)
-      const { data: enrolls } = await supabase
+      const ids = courses!.map((c) => c.id as string)
+      // FIXME(types): 'course_enrollments' table missing in Database type
+      const { data: enrolls } = (await (supabase as any)
         .from('course_enrollments')
         .select('course_id, status')
         .eq('user_id', user.id)
-        .in('course_id', ids)
+        .in('course_id', ids)) as { data: Array<{ course_id: string; status: string }> | null }
       if (enrolls) {
         myEnrollments = Object.fromEntries(enrolls.map((e) => [e.course_id, e.status]))
       }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Save a pre-computed quiz result (from the landing-page popup) to level_tests,
 // linking it to the freshly-signed-up user.
 
@@ -53,8 +52,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Неизвестный уровень' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
-    .from('level_tests')
+  // FIXME(types): level_tests Insert in Database type lacks total_questions/xp columns
+  const { data, error } = (await (supabase.from('level_tests') as any)
     .insert({
       user_id: user?.id ?? null,
       score: parsed.data.correctCount,
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
       answers: parsed.data.answers ?? {},
     })
     .select('id')
-    .single()
+    .single()) as { data: { id: string } | null; error: any }
 
   if (error) {
     console.error('[level-test] insert failed:', error)
@@ -73,8 +72,8 @@ export async function POST(request: Request) {
 
   // Sync english_level onto user_progress for students
   if (user?.id) {
-    const { error: progressError } = await supabase
-      .from('user_progress')
+    // FIXME(types): supabase-js infers Update params as 'never' on minimal Database type
+    const { error: progressError } = await (supabase.from('user_progress') as any)
       .update({ english_level: levelDb })
       .eq('user_id', user.id)
 
@@ -85,5 +84,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ id: data.id, level: levelDb })
+  return NextResponse.json({ id: data?.id, level: levelDb })
 }

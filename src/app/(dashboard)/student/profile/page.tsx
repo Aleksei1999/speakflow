@@ -395,7 +395,7 @@ export default function StudentProfilePage() {
             <div className="ps-icon">🏆</div>
             <div>
               <div className="ps-val">{stats.achievements_earned}</div>
-              <div className="ps-label">Ачивок</div>
+              <div className="ps-label">Достижений</div>
             </div>
           </div>
         </div>

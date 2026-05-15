@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -12,7 +11,8 @@ import { cacheStatic, REDIS_KEYS } from '@/lib/cache/redis-cache'
 // фильтрованные / per-user варианты обходят кеш.
 async function loadDefaultLeaderboardRows(fetchLimit: number): Promise<any[]> {
   const admin = createAdminClient()
-  const { data, error } = await admin.rpc('get_leaderboard', {
+  // FIXME(types): RPC 'get_leaderboard' missing in Database type
+  const { data, error } = await (admin.rpc as any)('get_leaderboard', {
     p_period: 'weekly',
     p_level: null,
     p_friends_only: false,
@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
         rpcError = e
       }
     } else {
-      const res = await supabase.rpc('get_leaderboard', {
+      // FIXME(types): RPC 'get_leaderboard' missing in Database type
+      const res = await (supabase.rpc as any)('get_leaderboard', {
         p_period: period,
         p_level: level ?? null,
         p_friends_only: friends_only,
@@ -134,7 +135,8 @@ export async function GET(request: NextRequest) {
       if (inTop) {
         me = inTop
       } else {
-        const { data: meData } = await supabase.rpc('get_leaderboard', {
+        // FIXME(types): RPC 'get_leaderboard' missing in Database type
+        const { data: meData } = await (supabase.rpc as any)('get_leaderboard', {
           p_period: period,
           p_level: null,
           p_friends_only: false,

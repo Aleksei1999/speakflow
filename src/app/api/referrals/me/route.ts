@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -41,11 +40,15 @@ export async function GET(_req: NextRequest) {
     // Invite code lives on profiles. If missing for any reason (old user that
     // predates 033) — allocate one on the fly via the SECURITY DEFINER RPC so
     // the dashboard never sees a NULL code.
-    let { data: profile, error: profileErr } = await supabase
+    // FIXME(types): profiles.invite_code missing in Database type
+    let { data: profile, error: profileErr } = (await supabase
       .from('profiles')
       .select('invite_code, first_name, last_name, full_name')
       .eq('id', user.id)
-      .maybeSingle()
+      .maybeSingle()) as {
+      data: { invite_code: string | null; first_name: string | null; last_name: string | null; full_name: string | null } | null
+      error: any
+    }
 
     if (profileErr) {
       console.error('referrals/me profile error:', profileErr)
@@ -55,22 +58,36 @@ export async function GET(_req: NextRequest) {
     if (profile && !profile.invite_code) {
       // Self-heal: allocate a fresh code via RPC (service_role only) — fall
       // back to a friendly message if the RPC is blocked for the caller.
-      const { data: fresh } = await supabase.rpc('generate_invite_code')
+      // FIXME(types): RPC 'generate_invite_code' missing in Database type
+      const { data: fresh } = await (supabase.rpc as any)('generate_invite_code')
       if (fresh) {
-        await supabase.from('profiles').update({ invite_code: fresh }).eq('id', user.id)
-        profile = { ...profile, invite_code: fresh }
+        // FIXME(types): profiles.invite_code missing in Database type
+        await (supabase.from('profiles') as any).update({ invite_code: fresh }).eq('id', user.id)
+        profile = { ...profile, invite_code: fresh as string }
       }
     }
 
     const code = profile?.invite_code ?? null
 
+    // FIXME(types): 'referrals' table missing in Database type
+    type ReferralRow = {
+      id: string
+      status: 'sent' | 'registered' | 'activated' | 'expired'
+      invited_email: string | null
+      registered_user_id: string | null
+      xp_awarded: number | null
+      created_at: string
+      registered_at: string | null
+      activated_at: string | null
+      expires_at: string | null
+    }
     // Pull the user's referrals ledger. Filtered by RLS (inviter_id = auth.uid()).
-    const { data: referrals, error: refsErr } = await supabase
+    const { data: referrals, error: refsErr } = (await (supabase as any)
       .from('referrals')
       .select(
         'id, status, invited_email, registered_user_id, xp_awarded, created_at, registered_at, activated_at, expires_at'
       )
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false })) as { data: ReferralRow[] | null; error: any }
 
     if (refsErr) {
       console.error('referrals/me referrals error:', refsErr)
@@ -95,10 +112,10 @@ export async function GET(_req: NextRequest) {
 
     const emailMap = new Map<string, string>()
     if (inviteeIds.length > 0) {
-      const { data: inviteeProfiles } = await supabase
+      const { data: inviteeProfiles } = (await supabase
         .from('profiles')
         .select('id, email, first_name, last_name, full_name')
-        .in('id', inviteeIds)
+        .in('id', inviteeIds)) as { data: Array<{ id: string; email: string | null }> | null }
       for (const p of inviteeProfiles ?? []) {
         if (p?.email) emailMap.set(p.id, p.email)
       }

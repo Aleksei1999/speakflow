@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -26,6 +25,7 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    // FIXME(types): many extended profile columns + 'club_registrations'/'xp_events' tables + RPC missing in Database type
     const [
       profileRes,
       progressRes,
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest) {
       favTeacherRes,
       paymentsRes,
       bonusesRes,
-    ] = await Promise.all([
+    ] = (await Promise.all([
       supabase
         .from('profiles')
         .select(
@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest) {
         )
         .eq('user_id', user.id)
         .maybeSingle(),
-      supabase
+      (supabase as any)
         .from('club_registrations')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest) {
         .select('achievement_id', { count: 'exact', head: true })
         .eq('user_id', user.id),
       // Favorite teacher — most completed lessons
-      supabase.rpc('get_favorite_teacher', { p_student: user.id }).maybeSingle(),
+      (supabase.rpc as any)('get_favorite_teacher', { p_student: user.id }).maybeSingle(),
       // Payment history (own lessons)
       supabase
         .from('payments')
@@ -76,14 +76,14 @@ export async function GET(_req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(20),
       // XP bonuses shown in history
-      supabase
+      (supabase as any)
         .from('xp_events')
         .select('id, amount, source_type, source_id, description, created_at')
         .eq('user_id', user.id)
         .eq('source_type', 'achievement')
         .order('created_at', { ascending: false })
         .limit(10),
-    ])
+    ])) as any[]
 
     if (profileRes.error || !profileRes.data) {
       console.error('Ошибка загрузки профиля:', profileRes.error)
@@ -112,8 +112,8 @@ export async function GET(_req: NextRequest) {
     const clubs_attended = clubsRes?.count ?? 0
     const lessonsData = lessonsRes.data ?? []
     const lessons_completed = lessonsData.length || progress.lessons_completed || 0
-    const minutes_total = lessonsData.reduce(
-      (acc, l: any) => acc + (l.duration_minutes ?? 0),
+    const minutes_total = (lessonsData as any[]).reduce(
+      (acc: number, l: any) => acc + (l.duration_minutes ?? 0),
       0
     )
     const hours_total = Math.round((minutes_total / 60) * 10) / 10
@@ -220,17 +220,19 @@ export async function GET(_req: NextRequest) {
       }
       if (counts.size > 0) {
         const [topId, topCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]!
-        const { data: t } = await supabase
+        // FIXME(types): profiles Row in Database type lacks first_name/last_name
+        const { data: t } = (await supabase
           .from('profiles')
           .select('id, full_name, first_name, last_name, avatar_url')
           .eq('id', topId)
-          .maybeSingle()
+          .maybeSingle()) as { data: { id: string; full_name: string | null; first_name: string | null; last_name: string | null; avatar_url: string | null } | null }
         if (t) {
-          const { data: tp } = await supabase
+          // FIXME(types): teacher_profiles Row in Database type lacks specialization/native_language/country
+          const { data: tp } = (await supabase
             .from('teacher_profiles')
             .select('specialization, native_language, country')
             .eq('id', topId)
-            .maybeSingle()
+            .maybeSingle()) as { data: { specialization: string | null; native_language: string | null; country: string | null } | null }
           favorite_teacher = {
             id: t.id,
             full_name: t.full_name ?? `${t.first_name ?? ''} ${t.last_name ?? ''}`.trim(),
@@ -393,17 +395,19 @@ export async function PATCH(request: NextRequest) {
 
     // Recompute full_name when name parts change so sidebar stays in sync.
     if (d.first_name !== undefined || d.last_name !== undefined) {
-      const { data: current } = await supabase
+      // FIXME(types): profiles Row in Database type lacks first_name/last_name
+      const { data: current } = (await supabase
         .from('profiles')
         .select('first_name, last_name')
         .eq('id', user.id)
-        .maybeSingle()
+        .maybeSingle()) as { data: { first_name: string | null; last_name: string | null } | null }
       const fn = d.first_name ?? current?.first_name ?? ''
       const ln = (d.last_name !== undefined ? d.last_name : current?.last_name) ?? ''
       patch.full_name = [fn, ln].filter(Boolean).join(' ').trim() || null
     }
 
-    const { error } = await supabase.from('profiles').update(patch).eq('id', user.id)
+    // FIXME(types): supabase-js infers Update params as 'never' on minimal Database type
+    const { error } = await (supabase.from('profiles') as any).update(patch).eq('id', user.id)
     if (error) {
       console.error('Ошибка обновления профиля:', error)
       return NextResponse.json({ error: 'Не удалось обновить профиль' }, { status: 500 })

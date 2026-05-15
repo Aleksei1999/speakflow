@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -25,13 +24,19 @@ export async function POST(
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
 
+    // FIXME(types): 'user_friends' table missing in Database type
+    type FriendshipRow = {
+      user_id: string
+      friend_id: string
+      status: 'pending' | 'accepted' | 'blocked'
+    }
     // Incoming request: they are user_id, I am friend_id, status=pending
-    const { data: existing } = await supabase
+    const { data: existing } = (await (supabase as any)
       .from('user_friends')
       .select('user_id, friend_id, status')
       .eq('user_id', userId)
       .eq('friend_id', user.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: FriendshipRow | null }
     if (!existing) {
       return NextResponse.json({ error: 'Заявка не найдена' }, { status: 404 })
     }
@@ -45,7 +50,8 @@ export async function POST(
       return NextResponse.json({ error: 'Связь заблокирована' }, { status: 409 })
     }
 
-    const { data: updated, error: updateError } = await supabase
+    // FIXME(types): 'user_friends' table missing in Database type
+    const { data: updated, error: updateError } = await (supabase as any)
       .from('user_friends')
       .update({ status: 'accepted', responded_at: new Date().toISOString() })
       .eq('user_id', userId)
