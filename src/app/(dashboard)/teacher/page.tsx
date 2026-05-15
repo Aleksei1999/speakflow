@@ -801,10 +801,8 @@ export default async function TeacherDashboardPage() {
                       </div>
                     </td>
                     <td>
-                      {/* FIXME: route /teacher/students/[id] не существует. Пока ведём на общий список с подсветкой. */}
                       <Link
-                        href={`/teacher/students?focus=${r.id}`}
-                        prefetch={false}
+                        href={`/teacher/students/${r.id}`}
                         className="btn btn-sm btn-secondary"
                       >
                         Профиль
