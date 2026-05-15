@@ -1,5 +1,7 @@
 "use client"
 
+import "@/styles/dashboard/student-achievements.css"
+
 import { useEffect, useMemo, useState } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,193 +77,6 @@ const RARITY_LABEL: Record<Rarity, string> = {
 // --muted, --text, --red, --lime, --shadow. Dark theme is handled by
 // [data-theme="dark"] overrides at shell level — no duplicate palette here.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ACHIEVEMENTS_CSS = `
-.achievements-page{max-width:1100px;margin:0 auto;--gold:#C8A200;--purple:#9333EA;--cyan:#0891B2}
-[data-theme="dark"] .achievements-page{--gold:#FFD700;--purple:#A855F7;--cyan:#22D3EE}
-
-/* Header */
-.achievements-page .ach-hdr{text-align:center;margin-bottom:28px;position:relative}
-.achievements-page .ach-hdr::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(230,57,70,.08),transparent 70%);pointer-events:none}
-.achievements-page .ach-hdr h1{font-size:2rem;font-weight:800;letter-spacing:-.8px;position:relative;color:var(--text)}
-.achievements-page .ach-hdr h1 .gl{font-family:'Gluten',cursive;color:var(--red);font-weight:600}
-.achievements-page .ach-hdr-sub{font-size:.85rem;color:var(--muted);margin-top:4px;position:relative}
-
-/* XP ring */
-.achievements-page .xp-ring-wrap{display:flex;justify-content:center;margin-bottom:28px}
-.achievements-page .xp-ring{position:relative;width:160px;height:160px}
-.achievements-page .xp-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.achievements-page .xp-ring-bg{fill:none;stroke:var(--border);stroke-width:8}
-.achievements-page .xp-ring-fill{fill:none;stroke:var(--red);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1)}
-.achievements-page .xp-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.achievements-page .xp-ring-pct{font-size:2rem;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
-.achievements-page .xp-ring-label{font-size:.6rem;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
-.achievements-page .xp-ring-sub{font-size:.65rem;color:var(--red);font-weight:700;margin-top:4px}
-
-/* Hero stats */
-.achievements-page .hero-stats{display:flex;gap:12px;justify-content:center;margin-bottom:28px;flex-wrap:wrap}
-.achievements-page .hs{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 24px;text-align:center;min-width:140px;transition:all .2s}
-.achievements-page .hs:hover{transform:translateY(-3px);box-shadow:0 8px 24px var(--shadow)}
-.achievements-page .hs-val{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;line-height:1;color:var(--text)}
-.achievements-page .hs-val .gl{font-family:'Gluten',cursive}
-.achievements-page .hs-label{font-size:.6rem;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-.achievements-page .hs--red .hs-val{color:var(--red)}
-.achievements-page .hs--lime{background:var(--lime);border-color:var(--lime)}
-.achievements-page .hs--lime .hs-val{color:#0A0A0A}
-.achievements-page .hs--lime .hs-label{color:rgba(0,0,0,.55)}
-.achievements-page .hs--gold .hs-val{color:var(--gold)}
-
-/* Category tabs */
-.achievements-page .cat-tabs{display:flex;gap:6px;margin-bottom:24px;padding-bottom:4px;-webkit-overflow-scrolling:touch;justify-content:center;flex-wrap:wrap}
-.achievements-page .ct{padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:var(--surface);font-size:.72rem;font-weight:600;color:var(--muted);transition:all .15s;white-space:nowrap;cursor:pointer;font-family:inherit}
-.achievements-page .ct:hover{border-color:var(--text);color:var(--text)}
-.achievements-page .ct.active{background:var(--red);color:#fff;border-color:var(--red)}
-
-/* Category */
-.achievements-page .cat{margin-bottom:36px}
-.achievements-page .cat-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.achievements-page .cat-emoji{font-size:1.3rem}
-.achievements-page .cat-name{font-size:1rem;font-weight:800;color:var(--text)}
-.achievements-page .cat-count{font-size:.62rem;color:var(--muted);font-weight:600;margin-left:auto}
-.achievements-page .cat-bar{flex:1;max-width:200px;height:4px;background:var(--border);border-radius:100px;overflow:hidden;margin-left:8px}
-.achievements-page .cat-bar-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--red),var(--lime));transition:width .8s ease}
-
-/* Achievement grid */
-.achievements-page .ag{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-
-/* Achievement card */
-.achievements-page .ac{
-  background:var(--surface);border:1px solid var(--border);border-radius:18px;
-  padding:20px;position:relative;overflow:hidden;transition:all .3s cubic-bezier(.16,1,.3,1);
-}
-.achievements-page .ac:hover{transform:translateY(-4px);box-shadow:0 12px 30px var(--shadow)}
-
-/* Rarity */
-.achievements-page .ac--common{border-color:var(--border)}
-.achievements-page .ac--rare{border-color:color-mix(in srgb, var(--cyan) 25%, var(--border))}
-.achievements-page .ac--rare:hover{box-shadow:0 0 20px color-mix(in srgb, var(--cyan) 15%, transparent),0 12px 30px var(--shadow)}
-.achievements-page .ac--epic{border-color:color-mix(in srgb, var(--purple) 25%, var(--border))}
-.achievements-page .ac--epic:hover{box-shadow:0 0 20px color-mix(in srgb, var(--purple) 15%, transparent),0 12px 30px var(--shadow)}
-.achievements-page .ac--legendary{border-color:color-mix(in srgb, var(--gold) 30%, var(--border));background:linear-gradient(135deg,var(--surface),color-mix(in srgb, var(--gold) 4%, transparent))}
-.achievements-page .ac--legendary:hover{box-shadow:0 0 25px color-mix(in srgb, var(--gold) 18%, transparent),0 12px 30px var(--shadow)}
-
-/* Locked */
-.achievements-page .ac--locked{opacity:.45}
-.achievements-page .ac--locked:hover{opacity:.6;transform:none}
-.achievements-page .ac--locked .ac-icon{filter:grayscale(1) brightness(.7)}
-[data-theme="dark"] .achievements-page .ac--locked{opacity:.3}
-[data-theme="dark"] .achievements-page .ac--locked:hover{opacity:.45}
-[data-theme="dark"] .achievements-page .ac--locked .ac-icon{filter:grayscale(1) brightness(.5)}
-
-/* Earned */
-.achievements-page .ac--earned::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--lime))}
-.achievements-page .ac--earned .ac-check{display:flex}
-
-.achievements-page .ac-check{display:none;position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:var(--lime);align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#0A0A0A;box-shadow:0 2px 8px rgba(216,242,106,.3)}
-
-.achievements-page .ac-rarity{position:absolute;top:12px;right:12px;font-size:.5rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px}
-.achievements-page .ac-rarity--common{background:var(--surface-2);color:var(--muted)}
-.achievements-page .ac-rarity--rare{background:color-mix(in srgb, var(--cyan) 15%, transparent);color:var(--cyan)}
-.achievements-page .ac-rarity--epic{background:color-mix(in srgb, var(--purple) 15%, transparent);color:var(--purple)}
-.achievements-page .ac-rarity--legendary{background:color-mix(in srgb, var(--gold) 15%, transparent);color:var(--gold)}
-.achievements-page .ac--earned .ac-rarity{display:none}
-
-.achievements-page .ac-icon{font-size:2rem;margin-bottom:12px;display:block;transition:transform .3s}
-.achievements-page .ac:hover .ac-icon{transform:scale(1.15) rotate(-5deg)}
-
-.achievements-page .ac-name{font-size:.88rem;font-weight:800;margin-bottom:3px;color:var(--text)}
-.achievements-page .ac-desc{font-size:.7rem;color:var(--muted);line-height:1.4;margin-bottom:10px}
-
-.achievements-page .ac-xp{display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:6px;font-size:.62rem;font-weight:700;background:color-mix(in srgb, var(--red) 10%, transparent);color:var(--red)}
-
-/* Progress */
-.achievements-page .ac-prog{margin-top:10px}
-.achievements-page .ac-prog-row{display:flex;justify-content:space-between;font-size:.55rem;color:var(--muted);font-weight:600;margin-bottom:3px}
-.achievements-page .ac-bar{height:4px;background:var(--border);border-radius:100px;overflow:hidden}
-.achievements-page .ac-bar-fill{height:100%;border-radius:100px;background:var(--red);transition:width 1s ease}
-
-/* Reward tag */
-.achievements-page .ac-reward{margin-top:8px;padding:4px 10px;border-radius:6px;font-size:.55rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
-.achievements-page .ac-reward--physical{background:color-mix(in srgb, var(--gold) 10%, transparent);color:var(--gold)}
-.achievements-page .ac-reward--digital{background:color-mix(in srgb, var(--lime) 20%, transparent);color:var(--lime-dark)}
-[data-theme="dark"] .achievements-page .ac-reward--digital{background:color-mix(in srgb, var(--lime) 10%, transparent);color:var(--lime)}
-
-/* Claimable highlight */
-.achievements-page .ac--claimable{border-color:var(--lime)}
-.achievements-page .ac-claim-btn{margin-top:10px;padding:8px 14px;border:none;border-radius:10px;background:var(--lime);color:#0A0A0A;font-size:.72rem;font-weight:800;cursor:pointer;font-family:inherit;width:100%;transition:all .15s}
-.achievements-page .ac-claim-btn:hover:not(:disabled){filter:brightness(.95);transform:translateY(-1px)}
-.achievements-page .ac-claim-btn:disabled{opacity:.6;cursor:not-allowed}
-
-/* ===== REWARD SHOP ===== */
-.achievements-page .shop-title{font-size:1.3rem;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;margin-top:24px;text-align:center;color:var(--text)}
-.achievements-page .shop-sub{font-size:.82rem;color:var(--muted);margin-bottom:20px;text-align:center}
-.achievements-page .shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
-
-.achievements-page .rw{
-  background:var(--surface);border:1px solid var(--border);border-radius:18px;
-  padding:22px;text-align:center;position:relative;overflow:hidden;transition:all .3s;
-}
-.achievements-page .rw:hover{transform:translateY(-4px);box-shadow:0 12px 30px var(--shadow)}
-.achievements-page .rw--earned{border-color:var(--lime)}
-.achievements-page .rw--earned::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--lime)}
-.achievements-page .rw--locked{opacity:.5}
-.achievements-page .rw--locked:hover{opacity:.6;transform:none}
-[data-theme="dark"] .achievements-page .rw--locked{opacity:.3}
-[data-theme="dark"] .achievements-page .rw--locked:hover{opacity:.4}
-.achievements-page .rw--next{border-color:color-mix(in srgb, var(--red) 30%, var(--border));animation:achNextPulse 3s ease-in-out infinite}
-@keyframes achNextPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,0)}50%{box-shadow:0 0 0 6px rgba(230,57,70,.06)}}
-
-.achievements-page .rw-icon{font-size:2.2rem;margin-bottom:10px;display:block}
-.achievements-page .rw--locked .rw-icon{filter:grayscale(1) brightness(.7)}
-[data-theme="dark"] .achievements-page .rw--locked .rw-icon{filter:grayscale(1) brightness(.4)}
-.achievements-page .rw-name{font-size:.9rem;font-weight:800;margin-bottom:4px;color:var(--text)}
-.achievements-page .rw-desc{font-size:.7rem;color:var(--muted);line-height:1.4;margin-bottom:12px;min-height:2.4em}
-
-.achievements-page .rw-status{padding:6px 14px;border-radius:8px;font-size:.65rem;font-weight:700;display:inline-block;border:none;font-family:inherit;cursor:default}
-.achievements-page .rw-status--earned{background:var(--lime);color:#0A0A0A}
-.achievements-page .rw-status--claimable{background:var(--red);color:#fff;cursor:pointer;transition:all .15s}
-.achievements-page .rw-status--claimable:hover:not(:disabled){filter:brightness(.95);transform:translateY(-1px)}
-.achievements-page .rw-status--locked{background:var(--surface-2);color:var(--muted)}
-
-/* Empty/loading */
-.achievements-page .ach-empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:.9rem;background:var(--surface);border:1px dashed var(--border);border-radius:16px;margin-top:14px}
-.achievements-page .skel{background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:achShimmer 1.4s ease infinite;border-radius:18px;height:170px}
-@keyframes achShimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
-
-/* Responsive */
-@media(max-width:900px){
-  .achievements-page .ag{grid-template-columns:1fr 1fr}
-  .achievements-page .shop-grid{grid-template-columns:1fr 1fr}
-}
-/* Mobile: оставляем 2 колонки до самых узких экранов — иначе страница
-   на iPhone 13 (390px) растягивается на 32 000 px скролла. Карточка при
-   width≈170px остаётся читаемой за счёт компактных paddings/fonts ниже. */
-@media(max-width:640px){
-  .achievements-page .ag{grid-template-columns:repeat(2,1fr);gap:10px}
-  .achievements-page .shop-grid{grid-template-columns:repeat(2,1fr);gap:10px}
-  .achievements-page .cat-tabs{justify-content:flex-start;overflow-x:auto}
-  .achievements-page .hero-stats .hs{min-width:calc(50% - 6px);padding:14px 10px}
-  .achievements-page .ac{padding:14px 12px;border-radius:14px}
-  .achievements-page .ac-icon{font-size:1.6rem;margin-bottom:8px}
-  .achievements-page .ac-name{font-size:.82rem;line-height:1.2}
-  .achievements-page .ac-desc{font-size:.66rem;line-height:1.35;margin-bottom:8px}
-  .achievements-page .ac-xp{font-size:.58rem;padding:2px 8px}
-  .achievements-page .ac-reward{font-size:.52rem;padding:3px 8px}
-  .achievements-page .ac-check{width:20px;height:20px;top:8px;right:8px}
-  .achievements-page .ac-rarity{top:8px;right:8px;font-size:.46rem;padding:2px 6px}
-  .achievements-page .ac-claim-btn{padding:7px 10px;font-size:.66rem;border-radius:8px}
-  .achievements-page .rw{padding:16px 12px}
-  .achievements-page .rw-icon{font-size:1.8rem;margin-bottom:8px}
-  .achievements-page .rw-name{font-size:.82rem}
-  .achievements-page .rw-desc{font-size:.66rem;margin-bottom:10px;min-height:auto}
-}
-/* iPhone SE / very narrow phones — 2 колонки уже неудобно, переходим
-   на single-column. ~340-360px ширина viewport'а. */
-@media(max-width:360px){
-  .achievements-page .ag{grid-template-columns:1fr}
-  .achievements-page .shop-grid{grid-template-columns:1fr}
-}
-`
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -474,7 +289,6 @@ export default function StudentAchievementsPage() {
 
   return (
     <div className="achievements-page">
-      <style dangerouslySetInnerHTML={{ __html: ACHIEVEMENTS_CSS }} />
 
       {/* Header */}
       <div className="ach-hdr">

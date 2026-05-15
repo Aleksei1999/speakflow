@@ -1,163 +1,12 @@
 // @ts-nocheck
 "use client"
 
+import "@/styles/dashboard/admin-home.css"
+
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
-
-const CSS = `
-.adm-home{max-width:1400px;margin:0 auto}
-
-.adm-home .dashboard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
-.adm-home .dashboard-header h1{font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:var(--text)}
-.adm-home .dashboard-header .sub{font-size:14px;color:var(--muted);margin-top:4px}
-.adm-home .user-menu{display:flex;align-items:center;gap:10px}
-.adm-home .icon-btn{width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s ease;color:var(--text)}
-.adm-home .icon-btn:hover{border-color:var(--text)}
-.adm-home .icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.adm-home .icon-btn.notifications{position:relative}
-.adm-home .icon-btn .badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--surface)}
-.adm-home .user-avatar{width:40px;height:40px;background:var(--accent-dark);color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-[data-theme="dark"] .adm-home .user-avatar{background:var(--red)}
-
-.adm-home .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
-.adm-home .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;transition:all .15s ease}
-.adm-home .stat-card:hover{border-color:var(--text)}
-.adm-home .stat-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-.adm-home .stat-card .value{font-size:32px;font-weight:800;margin-top:10px;letter-spacing:-1px;line-height:1;color:var(--text)}
-.adm-home .stat-card .value small{font-size:14px;color:var(--muted);font-weight:500;margin-left:4px}
-.adm-home .stat-card .change{font-size:12px;margin-top:10px;color:var(--muted);display:flex;align-items:center;gap:4px}
-.adm-home .stat-card .change.positive{color:#22c55e;font-weight:600}
-.adm-home .stat-card .change.warning{color:#F59E0B;font-weight:600}
-.adm-home .stat-card.accent{background:var(--lime);border-color:var(--lime);color:#0A0A0A}
-.adm-home .stat-card.accent .label{color:#0A0A0A;opacity:.7}
-.adm-home .stat-card.accent .value{color:#0A0A0A}
-.adm-home .stat-card.accent .value small{color:rgba(10,10,10,.6)}
-.adm-home .stat-card.accent .change.positive{color:#0A0A0A}
-.adm-home .stat-card.dark{background:#0A0A0A;color:#fff;border-color:#0A0A0A}
-.adm-home .stat-card.dark .label{color:#A0A09A}
-.adm-home .stat-card.dark .value{color:#fff}
-.adm-home .stat-card.dark .value small{color:#A0A09A}
-[data-theme="dark"] .adm-home .stat-card.dark{background:var(--red);border-color:var(--red)}
-[data-theme="dark"] .adm-home .stat-card.dark .label{color:rgba(255,255,255,.7)}
-
-.adm-home .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:background .2s ease,border-color .2s ease}
-.adm-home .card-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
-.adm-home .card-header h3{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--text)}
-.adm-home .card-body{padding:8px 22px 20px}
-
-.adm-home .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;transition:all .15s ease;cursor:pointer;border:none;text-decoration:none}
-.adm-home .btn:active{transform:scale(.97)}
-.adm-home .btn-sm{padding:6px 14px;font-size:12px}
-.adm-home .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text)}
-.adm-home .btn-secondary:hover{border-color:var(--text)}
-.adm-home .btn-primary{background:var(--accent-dark);color:#fff}
-.adm-home .btn-primary:hover{background:var(--red)}
-.adm-home .btn-red{background:var(--red);color:#fff}
-.adm-home .btn-red:hover{filter:brightness(.9)}
-
-.adm-home .dashboard-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:22px}
-.adm-home .dashboard-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
-
-.adm-home .apps-list{display:flex;flex-direction:column}
-.adm-home .app-item{display:flex;align-items:center;gap:14px;padding:12px 10px;border-bottom:1px solid var(--border);border-radius:12px;transition:background .15s ease}
-.adm-home .app-item:last-child{border-bottom:none}
-.adm-home .app-item:hover{background:var(--surface-2)}
-.adm-home .app-item.hot{background:rgba(230,57,70,.04)}
-[data-theme="dark"] .adm-home .app-item.hot{background:rgba(230,57,70,.08)}
-.adm-home .app-avatar{width:40px;height:40px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;color:var(--text)}
-.adm-home .app-avatar.red{background:var(--red);color:#fff}
-.adm-home .app-avatar.lime{background:var(--lime);color:#0A0A0A}
-.adm-home .app-avatar.dark{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-home .app-avatar.dark{background:var(--red)}
-.adm-home .app-info{flex:1;min-width:0}
-.adm-home .app-info h4{font-size:14px;font-weight:700;margin-bottom:2px;color:var(--text)}
-.adm-home .app-info p{font-size:12px;color:var(--muted)}
-.adm-home .app-status{padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
-.adm-home .app-status-new{background:var(--red);color:#fff}
-.adm-home .app-status-pending{background:var(--bg);color:var(--muted)}
-.adm-home .app-status-done{background:rgba(34,197,94,.1);color:#22c55e}
-[data-theme="dark"] .adm-home .app-status-done{background:rgba(34,197,94,.15)}
-.adm-home .app-meta{font-size:11px;color:var(--muted);white-space:nowrap}
-
-.adm-home .task-list{display:flex;flex-direction:column;gap:10px}
-.adm-home .task-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;transition:all .15s ease;cursor:pointer}
-.adm-home .task-item:hover{border-color:var(--text)}
-.adm-home .task-item.urgent{border-color:var(--red);background:rgba(230,57,70,.03)}
-[data-theme="dark"] .adm-home .task-item.urgent{background:rgba(230,57,70,.06)}
-.adm-home .task-check{width:18px;height:18px;border:2px solid var(--border);border-radius:6px;flex-shrink:0;margin-top:1px;position:relative}
-.adm-home .task-item.done .task-check{background:var(--accent-dark);border-color:var(--accent-dark)}
-[data-theme="dark"] .adm-home .task-item.done .task-check{background:var(--red);border-color:var(--red)}
-.adm-home .task-item.done .task-check::after{content:'';position:absolute;left:4px;top:1px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
-.adm-home .task-item.done .task-title{text-decoration:line-through;color:var(--muted)}
-.adm-home .task-body{flex:1;min-width:0}
-.adm-home .task-title{font-size:13px;font-weight:700;line-height:1.3;color:var(--text)}
-.adm-home .task-meta{font-size:11px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}
-.adm-home .task-meta .tag{background:var(--bg);padding:2px 8px;border-radius:6px;font-weight:600}
-.adm-home .task-meta .tag.urgent{background:var(--red);color:#fff}
-
-.adm-home .users-table{width:100%;border-collapse:collapse}
-.adm-home .users-table th{text-align:left;padding:10px 14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;border-bottom:1px solid var(--border)}
-.adm-home .users-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
-.adm-home .users-table tr:last-child td{border-bottom:none}
-.adm-home .users-table tr:hover td{background:var(--surface-2)}
-.adm-home .user-cell{display:flex;align-items:center;gap:10px}
-.adm-home .user-mini-av{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:var(--text)}
-.adm-home .user-mini-av.red{background:var(--red);color:#fff}
-.adm-home .user-mini-av.lime{background:var(--lime);color:#0A0A0A}
-.adm-home .user-mini-av.dark{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-home .user-mini-av.dark{background:var(--red)}
-.adm-home .level-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bg);color:var(--text)}
-.adm-home .level-pill.rare{background:rgba(230,57,70,.1);color:var(--red)}
-.adm-home .level-pill.mrare{background:rgba(216,242,106,.25);color:#5A7A00}
-[data-theme="dark"] .adm-home .level-pill.mrare{background:rgba(216,242,106,.15);color:var(--lime)}
-.adm-home .level-pill.medium{background:rgba(245,185,66,.15);color:#B8860B}
-.adm-home .level-pill.welldone{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-home .level-pill.welldone{background:var(--red)}
-
-.adm-home .mini-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding:10px 0}
-.adm-home .mini-bar{flex:1;background:var(--bg);border-radius:4px 4px 0 0;position:relative;min-height:8px;transition:background .15s}
-.adm-home .mini-bar.lime{background:var(--lime)}
-.adm-home .mini-bar.red{background:var(--red)}
-.adm-home .mini-bar.dark{background:var(--accent-dark)}
-.adm-home .mini-bar:hover{opacity:.85}
-.adm-home .chart-labels{display:flex;gap:4px;margin-top:6px}
-.adm-home .chart-labels span{flex:1;font-size:9px;color:var(--muted);text-align:center;font-weight:600}
-
-.adm-home .ticket-list{display:flex;flex-direction:column;gap:8px}
-.adm-home .ticket{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:10px;transition:all .15s ease;cursor:pointer;text-decoration:none;color:inherit}
-.adm-home .ticket:hover{border-color:var(--text)}
-.adm-home .ticket.priority-high{border-left:3px solid var(--red)}
-.adm-home .ticket.priority-med{border-left:3px solid #F59E0B}
-.adm-home .ticket.priority-low{border-left:3px solid #22c55e}
-.adm-home .ticket-body{flex:1;min-width:0}
-.adm-home .ticket-title{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:2px;color:var(--text)}
-.adm-home .ticket-meta{font-size:11px;color:var(--muted)}
-.adm-home .ticket-time{font-size:11px;color:var(--muted);white-space:nowrap}
-
-.adm-home .quick-actions{display:flex;flex-direction:column;gap:8px}
-.adm-home .quick-actions a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);font-size:13px;font-weight:600;transition:all .15s ease;text-decoration:none;color:var(--text)}
-.adm-home .quick-actions a:hover{border-color:var(--text)}
-.adm-home .quick-actions a.primary{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark)}
-.adm-home .quick-actions a.primary:hover{background:var(--red);border-color:var(--red)}
-.adm-home .quick-actions .ico{width:30px;height:30px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.adm-home .quick-actions a.primary .ico{background:var(--red)}
-.adm-home .quick-actions .ico svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.adm-home .quick-actions a.primary .ico svg{stroke:#fff}
-
-.adm-home .empty{padding:30px 12px;text-align:center;color:var(--muted);font-size:13px}
-
-@media (max-width:1100px){
-  .adm-home .stats-grid{grid-template-columns:repeat(2,1fr)}
-  .adm-home .dashboard-grid,.adm-home .dashboard-grid-2{grid-template-columns:1fr}
-}
-@media (max-width:640px){
-  .adm-home .dashboard-header h1{font-size:26px}
-  .adm-home .stats-grid{grid-template-columns:1fr 1fr}
-  .adm-home .users-table th:nth-child(4),.adm-home .users-table td:nth-child(4){display:none}
-}
-`
 
 type AdminStats = {
   students_active: number
@@ -394,7 +243,6 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
 
   return (
     <div className="adm-home">
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       <div className="dashboard-header">
         <div>

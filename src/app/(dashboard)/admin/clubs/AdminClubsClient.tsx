@@ -1,84 +1,13 @@
 // @ts-nocheck
 "use client"
 
+import "@/styles/dashboard/admin-clubs.css"
+
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
-
-const CSS = `
-.adm-clubs{max-width:1200px;margin:0 auto}
-
-.adm-clubs .page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
-.adm-clubs .page-hdr h1{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:var(--text)}
-.adm-clubs .page-hdr .sub{font-size:13px;color:var(--muted);margin-top:4px}
-
-.adm-clubs .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;transition:all .15s ease;cursor:pointer;border:none;text-decoration:none}
-.adm-clubs .btn:disabled{opacity:.55;cursor:not-allowed}
-.adm-clubs .btn-sm{padding:6px 14px;font-size:12px}
-.adm-clubs .btn-primary{background:var(--accent-dark);color:#fff}
-.adm-clubs .btn-primary:hover{background:var(--red)}
-.adm-clubs .btn-red{background:var(--red);color:#fff}
-.adm-clubs .btn-lime{background:var(--lime);color:#0A0A0A}
-.adm-clubs .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text)}
-.adm-clubs .btn-secondary:hover{border-color:var(--text)}
-
-.adm-clubs .clubs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
-.adm-clubs .club-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s}
-.adm-clubs .club-card:hover{border-color:var(--text)}
-.adm-clubs .club-card .title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px;line-height:1.3}
-.adm-clubs .club-card .desc{font-size:12px;color:var(--muted);line-height:1.45;min-height:34px}
-.adm-clubs .club-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-weight:600;margin-top:auto;padding-top:10px;border-top:1px solid var(--border)}
-.adm-clubs .club-meta b{color:var(--text);font-weight:700}
-
-.adm-clubs .club-status{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
-.adm-clubs .club-status.published{background:rgba(34,197,94,.1);color:#22c55e}
-[data-theme="dark"] .adm-clubs .club-status.published{background:rgba(34,197,94,.15)}
-.adm-clubs .club-status.draft{background:var(--bg);color:var(--muted)}
-.adm-clubs .club-status.cancelled{background:rgba(230,57,70,.1);color:var(--red)}
-.adm-clubs .club-status.completed{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-clubs .club-status.completed{background:var(--red)}
-
-.adm-clubs .capacity-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:4px}
-.adm-clubs .capacity-bar .fill{height:100%;background:var(--lime);transition:width .2s}
-.adm-clubs .capacity-bar .fill.hot{background:var(--red)}
-
-.adm-clubs .club-actions{display:flex;gap:8px;flex-wrap:wrap}
-
-.adm-clubs .empty{padding:60px 16px;text-align:center;color:var(--muted);font-size:14px;background:var(--surface);border:1px dashed var(--border);border-radius:16px}
-.adm-clubs .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
-
-.adm-clubs .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;animation:clFade .15s ease}
-@keyframes clFade{from{opacity:0}to{opacity:1}}
-.adm-clubs .modal-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:24px;color:var(--text);position:relative}
-.adm-clubs .modal-card h2{font-size:22px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px}
-.adm-clubs .modal-card .modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
-.adm-clubs .modal-card .close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--bg);border:none;cursor:pointer;color:var(--muted);font-size:18px}
-
-.adm-clubs .field{margin-bottom:14px}
-.adm-clubs .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.adm-clubs .field input,.adm-clubs .field select,.adm-clubs .field textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:inherit;transition:border-color .15s}
-.adm-clubs .field input:focus,.adm-clubs .field select:focus,.adm-clubs .field textarea:focus{outline:none;border-color:var(--text)}
-.adm-clubs .field textarea{resize:vertical;min-height:100px}
-.adm-clubs .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-.adm-clubs .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
-.adm-clubs .modal-actions .left{margin-right:auto}
-
-.adm-clubs .hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
-
-.adm-clubs .parts{margin-top:6px;display:flex;flex-direction:column;gap:6px}
-.adm-clubs .parts-toggle{background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;text-align:left;padding:0;letter-spacing:.3px;text-transform:uppercase}
-.adm-clubs .parts-toggle:hover{color:var(--text)}
-.adm-clubs .parts-list{display:flex;flex-direction:column;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-.adm-clubs .parts-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);min-width:0}
-.adm-clubs .parts-row .pa-av{width:22px;height:22px;border-radius:50%;background:var(--accent-dark);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.adm-clubs .parts-row .pa-av img{width:100%;height:100%;object-fit:cover}
-.adm-clubs .parts-row .pa-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
-.adm-clubs .parts-row .pa-st{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
-.adm-clubs .parts-empty{font-size:11px;color:var(--muted);font-style:italic;padding:6px 0}
-`
 
 type Participant = {
   id: string | null
@@ -338,7 +267,6 @@ export default function AdminClubsClient({
 
   return (
     <div className="adm-clubs">
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       <div className="page-hdr">
         <div>
