@@ -5,8 +5,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { format, formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
-import CreateHomeworkModal from "./CreateHomeworkModal"
-import ReviewHomeworkModal from "./ReviewHomeworkModal"
+import dynamic from "next/dynamic"
+
+// Модалки открываются по клику — для initial render списка ДЗ не нужны.
+// ssr:false: чисто клиентские с useState/file inputs.
+const CreateHomeworkModal = dynamic(() => import("./CreateHomeworkModal"), {
+  ssr: false,
+  loading: () => null,
+})
+const ReviewHomeworkModal = dynamic(() => import("./ReviewHomeworkModal"), {
+  ssr: false,
+  loading: () => null,
+})
 
 type Attachment = {
   name: string
