@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { teacherBookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
-import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
+import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
 
 /**
  * POST /api/booking/teacher-create
@@ -240,6 +240,10 @@ export async function POST(request: NextRequest) {
     // user.id is the teacher's auth user_id (we resolved teacher_profiles via
     // .eq('user_id', user.id) at the top).
     invalidateTeacherStudents(user.id)
+    // Student dashboard snapshot включает stats + upcoming_lessons.
+    invalidateStudentDashboard(studentId)
+    // Teacher dashboard RPC snapshot: today/upcoming/week/month counters.
+    invalidateTeacherDashboard(user.id)
 
     // Business-level audit: учитель назначил урок ученику.
     await logAuditEvent(request, {

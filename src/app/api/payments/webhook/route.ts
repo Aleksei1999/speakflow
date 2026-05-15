@@ -4,6 +4,7 @@ import { YooKassaClient } from '@/lib/yookassa/client'
 import type { YooKassaWebhookNotification, YooKassaPayment, YooKassaRefund } from '@/lib/yookassa/types'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
+import { invalidateStudentDashboard } from '@/lib/cache/invalidate'
 
 /**
  * Допустимые IP-адреса YooKassa для вебхуков.
@@ -298,6 +299,10 @@ async function handlePaymentSucceeded(
         { onConflict: 'lesson_id' }
       )
   }
+
+  // Dashboard snapshot включает stats + upcoming_lessons (status поменялся
+  // pending_payment → booked). Триггерим инвалидацию.
+  invalidateStudentDashboard(studentId)
 }
 
 async function handlePaymentCanceled(
@@ -351,6 +356,16 @@ async function handlePaymentCanceled(
     .update({ status: 'cancelled' })
     .eq('id', lessonId)
     .eq('status', 'pending_payment')
+
+  // Найдём student_id урока для инвалидации dashboard snapshot.
+  const { data: cancelledLesson } = await supabase
+    .from('lessons')
+    .select('student_id')
+    .eq('id', lessonId)
+    .maybeSingle<{ student_id: string }>()
+  if (cancelledLesson?.student_id) {
+    invalidateStudentDashboard(cancelledLesson.student_id)
+  }
 }
 
 async function handleRefundSucceeded(

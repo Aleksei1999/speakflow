@@ -12,6 +12,7 @@ import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { verifyTurnstile } from '@/lib/api/turnstile'
 import { protectPublic, validateEmailField } from '@/lib/api/arcjet'
+import { invalidateStudentDashboard } from '@/lib/cache/invalidate'
 
 const bodySchema = z.object({
   levelTestId: z.string().uuid().nullable().optional(),
@@ -96,6 +97,10 @@ export async function POST(request: Request) {
   if (!result) {
     return NextResponse.json({ error: 'Не удалось создать заявку' }, { status: 500 })
   }
+
+  // Dashboard snapshot включает trial_request — заявка должна сразу
+  // появиться у пользователя (TrialBookingCard + кнопка «Записан»).
+  invalidateStudentDashboard(user.id)
 
   return NextResponse.json({
     id: result.requestId,

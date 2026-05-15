@@ -6,7 +6,7 @@ import {
   computeUserMetrics,
   evaluateAchievementProgress,
 } from '@/lib/gamification/metrics'
-import { invalidateUserProgress } from '@/lib/cache/invalidate'
+import { invalidateUserProgress, invalidateStudentDashboard } from '@/lib/cache/invalidate'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 export async function POST(
@@ -100,6 +100,8 @@ export async function POST(
 
     // total_xp / english_level / current_streak get bumped by award_xp trigger.
     invalidateUserProgress(user.id)
+    // Dashboard snapshot включает achievements_earned + recent_xp_events + progress.
+    invalidateStudentDashboard(user.id)
 
     return NextResponse.json({
       achievement_id: def.id,

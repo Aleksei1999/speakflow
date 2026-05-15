@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin-guard"
 import {
   invalidateAdminClubs,
   invalidateTeacherClubs,
+  invalidateTeacherDashboard,
 } from "@/lib/cache/invalidate"
 
 // ---------------------------------------------------------------
@@ -159,7 +160,12 @@ export async function POST(
         .eq("club_id", id)
         .returns<{ host_id: string }[]>()
       for (const h of hosts ?? []) {
-        if (h.host_id) invalidateTeacherClubs(h.host_id)
+        if (h.host_id) {
+          invalidateTeacherClubs(h.host_id)
+          // /teacher dashboard snapshot включает today_clubs (seats_taken).
+          // Заодно: если клаб сегодня — обновится строка в шапке.
+          invalidateTeacherDashboard(h.host_id)
+        }
       }
     }
 
