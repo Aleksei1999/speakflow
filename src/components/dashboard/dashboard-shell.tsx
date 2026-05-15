@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { Toaster } from "@/components/ui/sonner"
 import { useStudentDashboard } from "@/hooks/use-student-dashboard"
+import { useAdminSupportUnread } from "@/hooks/use-admin-support-unread"
+import { useTeacherClubsUnread } from "@/hooks/use-teacher-clubs-unread"
 import { LEVEL_XP_THRESHOLDS, xpToRoastLevel } from "@/lib/level-utils"
 
 const SHELL_CSS = `
@@ -349,89 +351,76 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   }, [pathname])
 
   const currentRole = role ?? "student"
-  const [supportUnread, setSupportUnread] = useState(0)
-  const [teacherClubsUnread, setTeacherClubsUnread] = useState(0)
 
+  // ---------------------------------------------------------------
+  // Unread badges (admin/support + teacher/clubs)
+  // ---------------------------------------------------------------
+  // До TanStack: оба счётчика дёргались синхронным fetch в useEffect
+  // при mount шелла + setInterval(60s). Это блочило first paint
+  // критичными HTTP-запросами на каждом переходе между разделами.
+  //
+  // Сейчас оба useEffect-блока заменены на hooks (см.
+  // useAdminSupportUnread / useTeacherClubsUnread):
+  //   • deferred initial fetch — стартуем после requestIdleCallback
+  //   • staleTime 60s / refetchInterval 120s (вдвое реже старого)
+  //   • refetchOnWindowFocus — возвращение на вкладку обновит badge
+  //
+  // Совместимость с custom events ('support-unread-changed' и
+  // 'teacher-clubs-seen-changed') сохранена ниже — слушатель
+  // дёргает refetch() так же, как старый код дёргал fetchCount().
+  // ---------------------------------------------------------------
+  const isAdmin = currentRole === "admin"
+  const isTeacher = currentRole === "teacher"
+  const adminSupportQ = useAdminSupportUnread({ enabled: isAdmin })
+  const teacherClubsQ = useTeacherClubsUnread({ enabled: isTeacher })
+  const supportUnread = adminSupportQ.data ?? 0
+  const teacherClubsUnread = teacherClubsQ.data ?? 0
+
+  // Совместимость с custom events: AdminSupportClient.tsx эмитит
+  // 'support-unread-changed' после mark-read, чтобы шелл сразу
+  // обнулил счётчик без ожидания следующего интервала. Делаем
+  // ровно то же, но через refetch() вместо ручного fetch.
+  const adminRefetch = adminSupportQ.refetch
   useEffect(() => {
-    if (currentRole !== "admin") return
-    let cancelled = false
-    let timer: ReturnType<typeof setInterval> | null = null
-
-    const fetchCount = async () => {
-      try {
-        const res = await fetch("/api/admin/support/unread-count", {
-          cache: "no-store",
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        if (!cancelled && typeof json?.count === "number") {
-          setSupportUnread(json.count)
-        }
-      } catch {}
-    }
-
-    fetchCount()
-    timer = setInterval(fetchCount, 60_000)
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") fetchCount()
-    }
-    document.addEventListener("visibilitychange", onVisible)
-    const onChanged = () => fetchCount()
+    if (!isAdmin) return
+    const onChanged = () => { adminRefetch() }
     window.addEventListener("support-unread-changed", onChanged as EventListener)
-
     return () => {
-      cancelled = true
-      if (timer) clearInterval(timer)
-      document.removeEventListener("visibilitychange", onVisible)
       window.removeEventListener(
         "support-unread-changed",
         onChanged as EventListener
       )
     }
-  }, [currentRole])
+  }, [isAdmin, adminRefetch])
 
+  const teacherRefetch = teacherClubsQ.refetch
   useEffect(() => {
-    if (currentRole !== "teacher") return
-    let cancelled = false
-    let timer: ReturnType<typeof setInterval> | null = null
-
-    const fetchCount = async () => {
-      try {
-        const res = await fetch("/api/teacher/clubs/unread-count", {
-          cache: "no-store",
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        if (!cancelled && typeof json?.count === "number") {
-          setTeacherClubsUnread(json.count)
-        }
-      } catch {}
-    }
-
-    fetchCount()
-    timer = setInterval(fetchCount, 60_000)
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") fetchCount()
-    }
-    document.addEventListener("visibilitychange", onVisible)
-    const onChanged = () => fetchCount()
+    if (!isTeacher) return
+    const onChanged = () => { teacherRefetch() }
     window.addEventListener(
       "teacher-clubs-seen-changed",
       onChanged as EventListener
     )
-
     return () => {
-      cancelled = true
-      if (timer) clearInterval(timer)
-      document.removeEventListener("visibilitychange", onVisible)
       window.removeEventListener(
         "teacher-clubs-seen-changed",
         onChanged as EventListener
       )
     }
-  }, [currentRole])
+  }, [isTeacher, teacherRefetch])
+
+  // FIXME(supabase-realtime): admin/support unread можно было бы
+  // подписать на UPDATE support_threads.unread_admin_count через
+  // useLessonsRealtime-style channel вместо 2-минутного поллинга.
+  // Пропущено, потому что требует:
+  //   1. `ALTER PUBLICATION supabase_realtime ADD TABLE
+  //      public.support_threads;` (миграция + RLS-аудит — мы
+  //      палим админам метаданные всех тикетов)
+  //   2. Аккуратной агрегации (счётчик считается RPC'шкой, не
+  //      одной колонкой), а на клиенте надо либо invalidate'ить
+  //      query, либо инкрементить optimistic.
+  // refetchOnWindowFocus + custom-event invalidation покрывают
+  // 95% UX-кейсов — оставляем real-time на отдельный тикет.
 
   const baseNav =
     currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
