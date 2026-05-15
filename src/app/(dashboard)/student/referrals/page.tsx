@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server"
 import { ReferralsClient, type ReferralsData } from "./_components/referrals-client"
 
 // Реферальная страница SSR: тянет /api/referrals/me с cookie и передаёт в клиент.
-export const dynamic = "force-dynamic"
+// List-страница без countdown'ов: revalidate=60 (cookies()/headers() всё равно
+// опт-аутят рендер из кэша — это per-userId).
+export const revalidate = 60
 
 export default async function ReferralsPage() {
   const supabase = await createClient()

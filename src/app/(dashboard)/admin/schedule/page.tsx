@@ -3,7 +3,9 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 
-export const dynamic = "force-dynamic"
+// Stub "Скоро" — без force-dynamic. cookies() через createClient всё
+// равно сделает страницу динамической для role-check, но статический
+// HTML кэшируется фреймворком как обычно.
 
 const CSS = `
 .adm-stub{max-width:900px;margin:0 auto;padding:20px 0}
