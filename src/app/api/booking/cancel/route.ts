@@ -74,11 +74,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify user owns this lesson (student or teacher)
+    // Verify user owns this lesson. lesson.student_id = auth.uid(),
+    // lesson.teacher_id = teacher_profiles.id (НЕ auth.uid()!) — нужен
+    // lookup. Admin тоже разрешён (отмена через бэк-офис).
     const isStudent = lesson.student_id === user.id
-    const isTeacher = lesson.teacher_id === user.id
 
-    if (!isStudent && !isTeacher) {
+    const [{ data: tp }, { data: prof }] = await Promise.all([
+      supabase
+        .from('teacher_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string }>(),
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle<{ role: string }>(),
+    ])
+    const isTeacher = !!(tp?.id && lesson.teacher_id === tp.id)
+    const isAdmin = prof?.role === 'admin'
+
+    if (!isStudent && !isTeacher && !isAdmin) {
       return NextResponse.json(
         { error: 'У вас нет прав на отмену этого урока' },
         { status: 403 }
