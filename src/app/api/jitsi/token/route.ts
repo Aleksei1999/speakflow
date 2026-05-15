@@ -83,30 +83,25 @@ export async function POST(request: NextRequest) {
     // Проверяем, что пользователь -- участник урока.
     // student_id хранит auth.uid(), teacher_id — teacher_profiles.id,
     // поэтому учителя приходится резолвить через teacher_profiles.
+    // Три признака считаем НЕЗАВИСИМО. Раньше teacher/admin lookup
+    // пропускался если isStudent — это давало некорректный isAdmin=false
+    // для админа-участника. Сейчас admin всегда admin.
     const isStudent = lesson.student_id === user.id
 
-    let isTeacher = false
-    if (!isStudent) {
-      const { data: tp } = await supabase
+    const [{ data: tp }, { data: prof }] = await Promise.all([
+      supabase
         .from('teacher_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle<{ id: string }>()
-      if (tp?.id && lesson.teacher_id === tp.id) {
-        isTeacher = true
-      }
-    }
-
-    // Админ тоже может зайти (например для модерации)
-    let isAdmin = false
-    if (!isStudent && !isTeacher) {
-      const { data: prof } = await supabase
+        .maybeSingle<{ id: string }>(),
+      supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .maybeSingle<{ role: string }>()
-      if (prof?.role === 'admin') isAdmin = true
-    }
+        .maybeSingle<{ role: string }>(),
+    ])
+    const isTeacher = !!(tp?.id && lesson.teacher_id === tp.id)
+    const isAdmin = prof?.role === 'admin'
 
     if (!isStudent && !isTeacher && !isAdmin) {
       return NextResponse.json(
