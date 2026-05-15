@@ -266,12 +266,16 @@ export default async function TeacherProfilePage({
 function ReviewItem({ review }: { review: ReviewWithStudent }) {
   const studentName =
     review.profiles?.full_name || "Студент"
+  // timeZone обязателен в Server Components: без него Node (UTC) и
+  // браузер (Moscow) рендерят разные дни для near-midnight created_at —
+  // hydration mismatch (#418).
   const date = new Date(review.created_at)
-  const formattedDate = date.toLocaleDateString("ru-RU", {
+  const formattedDate = new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
     year: "numeric",
     month: "long",
     day: "numeric",
-  })
+  }).format(date)
 
   return (
     <div className="rounded-lg border p-4">
