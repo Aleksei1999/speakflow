@@ -75,5 +75,8 @@ export async function updateSession(request: NextRequest) {
     })
   }
 
-  return { user, role, supabaseResponse }
+  // Return the supabase client too so callers (e.g. middleware.ts MFA
+  // enforcement gate) can issue additional authenticated RPCs without
+  // re-creating the client and re-doing cookie plumbing.
+  return { user, role, supabase, supabaseResponse }
 }

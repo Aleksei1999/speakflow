@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
             <input
               className="field-input"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Минимум 8 символов"
+              placeholder="Минимум 10 символов, буквы + цифра"
               autoComplete="new-password"
               aria-invalid={!!errors.password}
               {...register('password')}

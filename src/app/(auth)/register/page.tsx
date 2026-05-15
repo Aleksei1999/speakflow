@@ -9,6 +9,7 @@ import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { type QuizResult } from '@/components/onboarding/level-quiz'
 import { RawLogo } from '@/components/ui/raw-logo'
 import { transliterateRu } from '@/lib/transliterate'
+import { PASSWORD_MIN, validatePasswordStrength } from '@/lib/validations'
 
 type Mood = 'happy' | 'neutral' | 'worried' | 'wow' | 'cool' | 'dead'
 
@@ -102,6 +103,7 @@ function RegisterPageInner() {
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(true)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -180,7 +182,17 @@ function RegisterPageInner() {
     const e: Record<string, boolean> = {}
     if (!name.trim()) e.name = true
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = true
-    if (password.length < 6) e.password = true
+    // Enforce the same strong-password policy we configure in Supabase:
+    // ≥10 chars, lowercase + uppercase + digit. The exact failing rule is
+    // surfaced via setPasswordError so users see WHY their password was
+    // rejected (instead of just a red outline).
+    const pwdErr = validatePasswordStrength(password)
+    if (pwdErr) {
+      e.password = true
+      setPasswordError(pwdErr)
+    } else {
+      setPasswordError(null)
+    }
     if (!phone.trim()) e.phone = true
     setErrors(e)
     if (!consent) {
@@ -509,11 +521,16 @@ function RegisterPageInner() {
                 <input
                   id="r-password"
                   type={showPwd ? 'text' : 'password'}
-                  placeholder="Минимум 6 символов"
+                  placeholder={`Минимум ${PASSWORD_MIN} символов, буквы + цифра`}
                   autoComplete="new-password"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={passwordError ? 'r-password-error' : undefined}
                   className={errors.password ? 'err' : ''}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (passwordError) setPasswordError(null)
+                  }}
                 />
                 <button
                   type="button"
@@ -527,6 +544,18 @@ function RegisterPageInner() {
                   </svg>
                 </button>
               </div>
+              {passwordError && (
+                <div
+                  id="r-password-error"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--rp-red-soft, #FF8A7A)',
+                    marginTop: 6,
+                  }}
+                >
+                  {passwordError}
+                </div>
+              )}
             </div>
 
             <div className="field">
