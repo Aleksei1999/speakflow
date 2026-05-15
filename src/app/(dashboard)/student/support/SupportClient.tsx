@@ -315,7 +315,7 @@ export default function SupportClient({
       if (!res.ok) throw new Error("failed")
       const json = await res.json()
       const t = json?.thread as Thread | undefined
-      toast.success("Обращение создан")
+      toast.success("Обращение создано")
       setModalOpen(false)
       setSubject("")
       setFirstBody("")

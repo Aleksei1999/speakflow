@@ -206,12 +206,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { subject, body: messageBody, turnstileToken } = parsed.data
+    const { subject, body: messageBody } = parsed.data
 
-    const cap = await verifyTurnstile(turnstileToken, getClientIp(request))
-    if (!cap.ok) {
-      return NextResponse.json({ error: "Проверка не пройдена" }, { status: 400 })
-    }
+    // Turnstile сняли: пользователь уже аутентифицирован, Arcjet shield+
+    // bot detect стоит первым, rate-limit 10/час. CF challenge тут только
+    // создавал flaky failures когда widget не успевал загрузиться.
 
     const role = (await getCallerRole(supabase, user.id)) ?? "student"
     const senderRole: "student" | "teacher" | "admin" =
