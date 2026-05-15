@@ -1,4 +1,4 @@
-.stu-schedule{max-width:1100px;margin:0 auto}
+.stu-schedule,.dash .stu-schedule{max-width:1100px;margin:0 auto}
 .stu-schedule .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
 .stu-schedule .hdr h1{font-size:1.6rem;font-weight:800;letter-spacing:-.6px}
 .stu-schedule .hdr h1 .gl{font-family:'Gluten',cursive;color:var(--red);font-weight:600}
