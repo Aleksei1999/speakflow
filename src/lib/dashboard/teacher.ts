@@ -181,6 +181,6 @@ export function getCachedTeacherDashboard(
   return unstable_cache(
     async (uid: string) => loadTeacherDashboard(uid),
     ['teacher-dashboard', userId],
-    { tags: [teacherDashboardTag(userId)], revalidate: 30 },
+    { tags: [teacherDashboardTag(userId)], revalidate: 120 },
   )(userId)
 }
