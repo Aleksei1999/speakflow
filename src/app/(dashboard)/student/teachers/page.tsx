@@ -419,7 +419,7 @@ export default function StudentTeachersPage() {
   const headerCount = applied.search.trim() ? teachers.length : total
 
   const bookBtnLabel = useMemo(() => {
-    if (bookingSuccess) return "✓ Записано!"
+    if (bookingSuccess) return "Записано!"
     if (booking) return "…"
     if (selectedSlot) return `Записаться на ${selectedSlot.time_label}`
     return "Записаться на урок"
@@ -680,6 +680,54 @@ export default function StudentTeachersPage() {
                 </div>
               ) : null}
 
+              {modalTeacher.languages.length > 0 ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Языки</div>
+                  <div className="prof-tags">
+                    {modalTeacher.languages.map((l) => (
+                      <span key={l} className="prof-tag">
+                        {l.toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {modalTeacher.education ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Образование</div>
+                  <div className="prof-bio">{modalTeacher.education}</div>
+                </div>
+              ) : null}
+
+              {modalTeacher.certificates.length > 0 ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Сертификаты</div>
+                  <div className="prof-tags">
+                    {modalTeacher.certificates.map((c) => (
+                      <span key={c} className="prof-tag">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {modalTeacher.video_intro_url ? (
+                <div className="prof-section">
+                  <div className="prof-section-title">Видео-визитка</div>
+                  <a
+                    href={modalTeacher.video_intro_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="prof-video-link"
+                  >
+                    Посмотреть видео
+                    <span aria-hidden style={{ marginLeft: 6 }}>↗</span>
+                  </a>
+                </div>
+              ) : null}
+
               {!readOnly && (
                 <div className="prof-section">
                   <div className="prof-section-title">Ближайшие слоты</div>
@@ -737,7 +785,7 @@ export default function StudentTeachersPage() {
                         boxShadow: "0 2px 0 rgba(180,30,45,.3)",
                       }}
                     >
-                      ✍️ Оставить отзыв
+                      Оставить отзыв
                     </button>
                   )}
                 </div>
