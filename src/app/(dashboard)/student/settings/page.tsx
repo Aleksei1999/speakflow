@@ -771,27 +771,18 @@ function NotificationsSection({
   onPatch: (u: Partial<Settings["notifications"]>) => void
   isTeacher?: boolean
 }) {
-  // STUDENT_ONLY toggles — student-side XP/gamification (Daily Challenge,
-  // streak, achievements, leaderboard). У преподов их нет, поэтому
-  // фильтруем для teacher-варианта страницы. Бэк-значения остаются как
-  // есть (PATCH /api/settings/me ничего не теряет), мы просто скрываем UI.
-  const STUDENT_ONLY: ReadonlySet<keyof Settings["notifications"]> = new Set([
-    "daily_challenge",
-    "streak_warning",
-    "achievements",
-    "leaderboard",
-  ])
-  const allRows: Array<[keyof Settings["notifications"], string, string]> = [
+  // Показываем только те toggle'ы, которые реально работают на бэке.
+  // Скрытые типы уведомлений не имеют активного cron'а или emitter'а:
+  //   - daily_challenge / streak_warning / weekly_digest — endpoint'ы
+  //     есть, но cron-job не запланирован в БД
+  //   - new_clubs / achievements / leaderboard / marketing — emitter
+  //     отсутствует вообще
+  // Бэк-значения в profiles.notification_prefs сохраняются (PATCH
+  // ничего не теряет), мы просто прячем UI до момента когда фичу
+  // реально доделают.
+  const rows: Array<[keyof Settings["notifications"], string, string]> = [
     ["lesson_reminders", "Напоминание об уроке", "За 30 мин до начала урока или клуба"],
-    ["daily_challenge", "Daily Challenge", "Ежедневное напоминание выполнить задание"],
-    ["streak_warning", "Streak на грани", "Предупреждение если стрик может прерваться"],
-    ["new_clubs", "Новые Speaking Clubs", "Когда появляются новые клубы на интересные темы"],
-    ["achievements", "Достижения и XP", "Уведомления о новых достижениях и level up"],
-    ["leaderboard", "Лидерборд", "Когда кто-то обгоняет тебя в рейтинге"],
-    ["email_digest", "Email-рассылка", "Еженедельные итоги прогресса и рекомендации"],
-    ["marketing", "Маркетинговые уведомления", "Акции, скидки и новые функции"],
   ]
-  const rows = isTeacher ? allRows.filter(([k]) => !STUDENT_ONLY.has(k)) : allRows
   return (
     <div className="s-card" id="sec-notifications">
       <div className="s-card-head">
@@ -821,10 +812,11 @@ function NotificationsSection({
             value={value.channel}
             onChange={(e) => onPatch({ channel: e.target.value as any })}
           >
+            {/* Только реально работающие каналы. Push (Web Push API +
+                Service Worker) и SMS (через Twilio/etc) пока не
+                реализованы — скрываем чтобы не обманывать пользователя. */}
             <option value="telegram">Telegram бот</option>
             <option value="email">Email</option>
-            <option value="push">Push в браузере</option>
-            <option value="sms">SMS</option>
           </select>
         </div>
       </div>
