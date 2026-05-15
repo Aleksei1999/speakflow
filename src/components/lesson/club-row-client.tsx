@@ -41,9 +41,12 @@ export function ClubRowClient({
   seatsTaken,
   capacity,
 }: ClubRowClientProps): React.ReactNode {
-  const [now, setNow] = useState<number>(() => Date.now())
+  // Hydration-safe: 0 на SSR → стабильный fallback. После mount —
+  // реальный Date.now() + tick. Защищает от React #418.
+  const [now, setNow] = useState<number>(0)
 
   useEffect(() => {
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), TICK_MS)
     return () => clearInterval(id)
   }, [])

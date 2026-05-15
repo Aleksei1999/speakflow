@@ -109,17 +109,24 @@ export function LiveLessonCTA({
   inProgressLabel = "● Идёт сейчас",
   notStartedFallback = null,
 }: LiveLessonCTAProps): React.ReactNode {
-  // SSR-safe init: до первого tick'а используем Date.now() прямо в
-  // useState initializer (тот же ход, что в lesson-gate.tsx). На
-  // hydration момент сервер и клиент дадут разный «now» — но Next
-  // отрисует только тег `<span>` или `<Link>` с одинаковой версткой,
-  // mismatch не страшен (это countdown, его легитимно ре-рендерить).
-  const [now, setNow] = useState<number>(() => Date.now())
+  // Hydration-safe init: на SSR и initial client render используем
+  // 0 → computeLessonAccess отдаёт стабильный «нет CTA». После mount
+  // useEffect выставляет реальный Date.now() и запускает tick.
+  // Так избегаем React #418 (text mismatch) когда server-render и
+  // client-hydrate попадают на boundary live↔waiting↔expired.
+  const [now, setNow] = useState<number>(0)
 
   useEffect(() => {
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), TICK_MS)
     return () => clearInterval(id)
   }, [])
+
+  // До mount — рендерим notStartedFallback. Server и client дадут
+  // одинаковую разметку (фоллбэк null или span), hydration пройдёт чисто.
+  if (now === 0) {
+    return notStartedFallback as React.ReactNode
+  }
 
   // Полностью завершённые уроки CTA не показывает — родительская строка
   // отрисует свой «✓ завершён» лейбл.
