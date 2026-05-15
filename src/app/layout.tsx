@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Gluten } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { Preloader } from "@/components/layout/preloader";
 import "./globals.css";
 
@@ -54,6 +56,13 @@ export default function RootLayout({
         <main id="main" className="flex-1 flex flex-col">
           {children}
         </main>
+        {/* Vercel Speed Insights — Core Web Vitals (LCP/INP/CLS/FCP/TTFB).
+            Дашборд: vercel.com/<team>/<project>/speed-insights. Sample
+            rate 100% по дефолту, минимальный overhead (~3 KB gzipped). */}
+        <SpeedInsights />
+        {/* Vercel Web Analytics — page views, custom events. Без cookies,
+            GDPR-safe. Dashboard: vercel.com/<team>/<project>/analytics. */}
+        <Analytics />
       </body>
     </html>
   );
