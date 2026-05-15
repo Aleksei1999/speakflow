@@ -11,6 +11,7 @@ import { TrialBookingCard } from "./_components/trial-booking-card"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime } from "@/lib/time"
 import { computeLessonAccess } from "@/lib/lesson-access"
+import { LiveLessonCTA } from "@/components/lesson/live-lesson-cta"
 
 // Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
 export const dynamic = "force-dynamic"
@@ -504,27 +505,36 @@ export default async function StudentDashboardPage() {
                 const isActive = isLive // подсветка ячейки только когда реально «идёт»
                 const lessonHref = `/student/lesson/${l.id}`
 
-                // CTA в правом углу строки
+                // CTA в правом углу строки.
+                // Для completed / "будет позже > 10 мин" → server (статичные лейблы).
+                // Live / waiting / expired / cancelled / no_show — отдаём в client
+                // <LiveLessonCTA>, чтобы секунды до openAt тикали без force-dynamic.
+                // server-side computeLessonAccess выше всё ещё нужен, потому что от
+                // него зависит clickable / isActive (подсветка строки), а это не CTA.
                 let cta: any
                 if (l.status === "completed") {
                   cta = <span className="sch-status sch-status--done">✓ завершён</span>
-                } else if (l.status === "no_show" || access.status === "no_show") {
-                  cta = <span className="stu-today-join stu-today-join--missed">Пропущен</span>
-                } else if (l.status === "cancelled" || access.status === "cancelled") {
-                  cta = <span className="stu-today-join stu-today-join--cancelled">Отменён</span>
-                } else if (isLive && l.status === "in_progress") {
-                  cta = <span className="stu-today-join stu-today-join--live">● Идёт сейчас</span>
-                } else if (isLive) {
-                  cta = <span className="stu-today-join">Начать</span>
-                } else if (isSoon) {
+                } else if (
+                  l.status === "no_show" ||
+                  access.status === "no_show" ||
+                  l.status === "cancelled" ||
+                  access.status === "cancelled" ||
+                  isLive ||
+                  isSoon ||
+                  access.status === "expired"
+                ) {
                   cta = (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                      <span className="stu-today-join stu-today-join--waiting">Скоро откроется</span>
-                      <span className="stu-today-hint">через {minutesUntilOpen} мин</span>
-                    </div>
+                    <LiveLessonCTA
+                      lessonId={l.id}
+                      scheduledAt={l.scheduled_at}
+                      durationMinutes={l.duration_minutes ?? 50}
+                      role="student"
+                      lessonStatus={l.status}
+                      classPrefix="stu-today-join"
+                      hintClassName="stu-today-hint"
+                      liveLabel="Начать"
+                    />
                   )
-                } else if (access.status === "expired") {
-                  cta = <span className="stu-today-join stu-today-join--expired">Урок завершён</span>
                 } else {
                   cta = <span className="sch-status sch-status--pending">{formatLessonTime(dt)}</span>
                 }

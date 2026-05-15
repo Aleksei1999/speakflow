@@ -4,7 +4,11 @@ import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import AdminClubsClient from "./AdminClubsClient"
 
-export const dynamic = "force-dynamic"
+// List-страница без live-countdown'ов. cookies()/headers() всё равно делают
+// рендер per-request (de-facto dynamic), но явный force-dynamic убран —
+// revalidate=60 фиксирует намерение «60 сек кеш норм». Когда мигрируем
+// чтение на unstable_cache per-userId — реальный кеш и включится.
+export const revalidate = 60
 
 type Club = {
   id: string

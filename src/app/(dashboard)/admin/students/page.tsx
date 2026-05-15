@@ -4,7 +4,10 @@ import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import AdminStudentsClient from "./AdminStudentsClient"
 
-export const dynamic = "force-dynamic"
+// List-страница без countdown'ов: явный force-dynamic заменён на revalidate=60
+// (де-факто cookies()/headers() всё равно опт-аутят из кэша; намерение — переход
+// на unstable_cache per-userId позже).
+export const revalidate = 60
 
 type Student = {
   id: string

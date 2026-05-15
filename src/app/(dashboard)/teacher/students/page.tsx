@@ -4,9 +4,10 @@ import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import TeacherStudentsClient from "./TeacherStudentsClient"
 
-// Не кешируем — список учеников / avatar_url должны быть свежими (миграция 048
-// бэкфилит OAuth-аватары, а старый snapshot мог содержать NULL).
-export const dynamic = "force-dynamic"
+// List-страница: явный force-dynamic заменён на revalidate=60.
+// cookies()/headers() всё равно опт-аутят рендер из кэша (per-userId) —
+// avatar_url из миграции 048 успевает попадать в свежий snapshot.
+export const revalidate = 60
 
 const CSS = `
 .tch-std{max-width:1200px;margin:0 auto}
