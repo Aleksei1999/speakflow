@@ -2,8 +2,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { MfaTotpSection } from "@/components/auth/mfa-totp-section"
 
 // ---------------------------------------------------------------------------
 // Settings page — ported from settings-page.html prototype, fully DB-driven
@@ -129,6 +131,7 @@ const NAV = [
   { id: "account", label: "Аккаунт", icon: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
   { id: "notifications", label: "Уведомления", icon: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></> },
   { id: "privacy", label: "Безопасность", icon: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
+  { id: "mfa", label: "2FA", icon: <><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="12" y1="17" x2="12.01" y2="17"/></> },
   { id: "connected", label: "Подключения", icon: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></> },
   { id: "subscription", label: "Подписка", icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
 ]
@@ -221,6 +224,11 @@ function dateRu(iso: string | null) {
 }
 
 export default function StudentSettingsPage() {
+  // Middleware sets ?mfa=required after a soft-redirect for admins without
+  // a verified TOTP factor. We use it (a) to scroll the user to the MFA
+  // card on mount and (b) to show a red "обязательно" banner inside it.
+  const searchParams = useSearchParams()
+  const mfaRequired = searchParams?.get("mfa") === "required"
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -254,6 +262,28 @@ export default function StudentSettingsPage() {
   useEffect(() => {
     load()
   }, [])
+
+  // When middleware redirects us here with ?mfa=required (admin without a
+  // verified TOTP factor), jump straight to the MFA card on the first
+  // render. We give the layout one tick to settle, then scroll.
+  useEffect(() => {
+    if (!mfaRequired || loading) return
+    const el = document.getElementById("sec-mfa")
+    if (!el) return
+    const container = document.querySelector(
+      ".dash .main-content",
+    ) as HTMLElement | null
+    if (container) {
+      const top =
+        el.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        16
+      container.scrollTo({ top, behavior: "smooth" })
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [mfaRequired, loading])
 
   // While the Telegram link modal is open, poll status every 3s. As soon as
   // the bot writes telegram_chat_id we close the modal and refresh settings.
@@ -573,6 +603,14 @@ export default function StudentSettingsPage() {
                 onManageSessions={stub("Управление сессиями")}
                 onPatch={(u) => patch("visibility", u)}
               />
+
+              {/*
+                TOTP MFA — opt-in for students/teachers, soft-enforced for
+                admins via middleware + env flag ENABLE_ADMIN_MFA_ENFORCE.
+                When middleware redirects an admin here with ?mfa=required,
+                we surface a red banner inside the section.
+              */}
+              <MfaTotpSection required={mfaRequired} />
 
               <ConnectedSection
                 connected={data.connected}

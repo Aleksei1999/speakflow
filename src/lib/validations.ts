@@ -1,5 +1,33 @@
 import { z } from 'zod'
 
+// Strong-password policy mirrors the Supabase Dashboard config:
+//   Authentication → Auth Providers → Email → Minimum length 10, require
+//   letters + digits, require uppercase + lowercase.
+// Client-side check is a UX layer — Supabase still re-validates server-side,
+// and "Prevent use of leaked passwords" rejects HIBP matches before we
+// ever see them. Mirroring the rules here means the user sees a clear
+// Russian-language error instead of Supabase's generic English message.
+export const PASSWORD_MIN = 10
+export const PASSWORD_MAX = 72 // bcrypt hard cap; do NOT raise.
+
+export const strongPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN, `Минимум ${PASSWORD_MIN} символов`)
+  .max(PASSWORD_MAX, `Максимум ${PASSWORD_MAX} символов`)
+  .refine((v) => /[a-z]/.test(v), 'Нужна строчная латинская буква')
+  .refine((v) => /[A-Z]/.test(v), 'Нужна заглавная латинская буква')
+  .refine((v) => /[0-9]/.test(v), 'Нужна хотя бы одна цифра')
+
+/**
+ * Lightweight runtime check for non-zod call-sites (plain useState forms).
+ * Returns the first failing rule, or null on success.
+ */
+export function validatePasswordStrength(password: string): string | null {
+  const result = strongPasswordSchema.safeParse(password)
+  if (result.success) return null
+  return result.error.issues[0]?.message ?? 'Слабый пароль'
+}
+
 export const registerSchema = z.object({
   firstName: z.string().min(1, 'Введите имя').max(50, 'Максимум 50 символов'),
   lastName: z.string().max(50, 'Максимум 50 символов').optional().or(z.literal('')),
@@ -8,13 +36,16 @@ export const registerSchema = z.object({
     .string()
     .min(1, 'Укажите телефон или Telegram')
     .max(80, 'Слишком длинное значение'),
-  password: z.string().min(6, 'Минимум 6 символов').max(72, 'Максимум 72 символа'),
+  password: strongPasswordSchema,
   role: z.enum(['student', 'teacher']).default('student'),
   termsAccepted: z.literal(true, { message: 'Необходимо принять условия' }),
 })
 
 export const loginSchema = z.object({
   email: z.string().email('Введите корректный email'),
+  // Login still accepts ANY non-empty string — legacy passwords created
+  // before the policy tightening must remain usable. Strength is enforced
+  // only when a new password is *set* (register / reset).
   password: z.string().min(1, 'Введите пароль'),
 })
 
@@ -24,7 +55,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(8, 'Минимум 8 символов').max(72, 'Максимум 72 символа'),
+    password: strongPasswordSchema,
     confirmPassword: z.string(),
   })
   .refine((d) => d.password === d.confirmPassword, {
