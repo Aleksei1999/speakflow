@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { format, differenceInCalendarDays } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { createSignedUrl } from "@/lib/supabase/signed-url"
 
 const CSS = `
 .stu-hw{max-width:1200px;margin:0 auto}
@@ -740,7 +741,9 @@ function HwCard({
 
 const HOMEWORK_BUCKET = "homework-submissions"
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
-const SIGNED_URL_TTL = 60 * 60 * 24 * 7 // 7 days — enough for review cycle
+// TTL signed URL'а — 1 час (см. createSignedUrl helper). Раньше тут было
+// 7 дней — это утечка: ссылка валидна и после revoke share. UI получает
+// ссылку только при открытии файла, так что часа более чем хватает.
 
 const ALLOWED_DOC_MIMES = new Set<string>([
   "application/pdf",
@@ -854,10 +857,12 @@ function SubmitModal({
       return null
     }
 
-    const { data: signed, error: signErr } = await supabase.storage
-      .from(HOMEWORK_BUCKET)
-      .createSignedUrl(storagePath, SIGNED_URL_TTL)
-    if (signErr || !signed?.signedUrl) {
+    const { signedUrl, error: signErr } = await createSignedUrl(
+      supabase,
+      HOMEWORK_BUCKET,
+      storagePath,
+    )
+    if (signErr || !signedUrl) {
       // Best-effort cleanup
       await supabase.storage.from(HOMEWORK_BUCKET).remove([storagePath])
       toast.error("Не удалось получить ссылку на файл")
@@ -866,7 +871,7 @@ function SubmitModal({
 
     return {
       name: file.name,
-      url: signed.signedUrl,
+      url: signedUrl,
       size: file.size,
       mime,
     }

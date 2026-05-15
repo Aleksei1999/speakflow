@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createSignedUrl, createSignedUrlMap } from '@/lib/supabase/signed-url'
 
 const BUCKET = 'teacher-materials'
-const SIGNED_URL_TTL = 3600 // 1 hour
 const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024 // 10 GB
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -220,19 +220,8 @@ export async function GET(request: NextRequest) {
     const paths = sectionRows
       .map((r) => r.storage_path)
       .filter((p): p is string => !!p)
-    const signedMap: Record<string, string> = {}
-    if (paths.length > 0) {
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(paths, SIGNED_URL_TTL)
-      if (signed) {
-        for (const item of signed) {
-          if (item?.path && item.signedUrl) {
-            signedMap[item.path] = item.signedUrl
-          }
-        }
-      }
-    }
+    // Signed URLs via helper: TTL clamped to [60, 3600] (default 3600s).
+    const signedMap = await createSignedUrlMap(supabase, BUCKET, paths)
 
     const materials = sectionRows.map((r) => ({
       id: r.id,
@@ -375,11 +364,9 @@ export async function POST(request: NextRequest) {
 
     const ext = fileTypeFromName(file_name)
 
-    // Signed URL for immediate client use
-    const { data: signed } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(storage_path, SIGNED_URL_TTL)
-    const fileUrl = signed?.signedUrl || ''
+    // Signed URL for immediate client use (helper enforces TTL ≤ 1h).
+    const { signedUrl } = await createSignedUrl(supabase, BUCKET, storage_path)
+    const fileUrl = signedUrl || ''
 
     const { data: inserted, error: insErr } = await supabase
       .from('materials')

@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createSignedUrlMap } from '@/lib/supabase/signed-url'
 
 const BUCKET = 'teacher-materials'
-const SIGNED_URL_TTL = 3600 // 1 hour
 
 const TYPE_ENUM = ['all', 'pdf', 'ppt', 'doc', 'video', 'audio', 'img', 'link'] as const
 const LEVEL_ENUM = ['all', 'A1-A2', 'B1', 'B2', 'C1+'] as const
@@ -159,19 +159,8 @@ export async function GET(request: NextRequest) {
       .map((r) => r.storage_path)
       .filter((p): p is string => !!p)
 
-    const signedMap: Record<string, string> = {}
-    if (paths.length > 0) {
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(paths, SIGNED_URL_TTL)
-      if (signed) {
-        for (const item of signed) {
-          if (item?.path && item.signedUrl) {
-            signedMap[item.path] = item.signedUrl
-          }
-        }
-      }
-    }
+    // Signed URLs via helper: TTL clamped to [60, 3600] (default 3600s).
+    const signedMap = await createSignedUrlMap(supabase, BUCKET, paths)
 
     const materials = sliced.map((r) => ({
       id: r.id,
