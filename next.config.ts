@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: blob: https://*.supabase.co https://sb.raw-english.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://t.me",
       "connect-src 'self' https://sb.raw-english.com wss://sb.raw-english.com https://*.supabase.co wss://*.supabase.co https://meet.raw-english.com wss://meet.raw-english.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
       "media-src 'self' blob: https://*.supabase.co https://sb.raw-english.com",
-      "frame-src 'self' https://meet.raw-english.com https://accounts.google.com",
+      "frame-src 'self' https://meet.raw-english.com https://accounts.google.com https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self' https://yoomoney.ru https://yookassa.ru",
@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
     const scriptSrcEnforce =
       "script-src 'self' 'unsafe-inline' " +
       (isProd ? "" : "'unsafe-eval' ") +
-      "https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com"
+      "https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com"
 
     const enforceDirectives = [
       ...commonDirectives,
@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
           ? "style-src 'self' https://fonts.googleapis.com"
           : d
       ),
-      "script-src 'self' https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com",
+      "script-src 'self' https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com",
     ].join("; ")
 
     return [
