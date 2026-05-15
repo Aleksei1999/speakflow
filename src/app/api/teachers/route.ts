@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { cacheStatic, REDIS_KEYS } from '@/lib/cache/redis-cache'
 
 // Map UI price bucket -> [min_kopecks, max_kopecks] (inclusive both sides)
 // Rates are stored in kopecks (1 RUB = 100 kopecks).
@@ -35,6 +37,49 @@ function isNativeHeuristic(languages: string[] | null | undefined): boolean {
   return hasEn && !hasRu
 }
 
+// Дефолтная выборка для /student/teachers — sort=rating, без фильтров,
+// limit=60. Это hot path: страница открывается с этими параметрами,
+// до любой интеракции. Любые фильтры (поиск, спец, цена, language)
+// обходят кеш — комбинаторика бы взорвала ключевое пространство.
+//
+// Используем admin-клиент: данные публичны (`is_listed=true`),
+// RLS-проверка тут только удорожает запрос. Аутентификация юзера
+// делается отдельно — кеш ей ортогонален.
+async function loadDefaultPublicTeachers(limit: number): Promise<any[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('teacher_profiles')
+    .select(
+      `
+        id,
+        user_id,
+        bio,
+        specializations,
+        experience_years,
+        hourly_rate,
+        trial_rate,
+        languages,
+        rating,
+        total_reviews,
+        total_lessons,
+        is_verified,
+        profiles!teacher_profiles_user_id_fkey (
+          full_name,
+          avatar_url
+        )
+      `
+    )
+    .eq('is_listed', true)
+    .order('rating', { ascending: false })
+    .order('total_reviews', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('[teachers/cache] loader failed:', error)
+    throw error
+  }
+  return data ?? []
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -63,6 +108,55 @@ export async function GET(request: NextRequest) {
       )
     }
     const { search, spec, price, native, sort, limit } = parsed.data
+
+    // Дефолтная комбинация — отвечаем из Redis-кеша.
+    // total = data.length: при кеше у нас нет точного count(*), но фронт
+    // показывает только длину массива в "Всего ..." — приближение ок.
+    const isCacheableDefault =
+      !search && !spec && !price && !native && sort === 'rating' && limit <= 60
+    if (isCacheableDefault) {
+      try {
+        const cachedRows = await cacheStatic(
+          `${REDIS_KEYS.teachersPublicDefault}:${limit}`,
+          120,
+          () => loadDefaultPublicTeachers(limit)
+        )
+        const teachers = (cachedRows || [])
+          .map((row: Record<string, unknown>) => {
+            const profile = row.profiles as Record<string, unknown> | null
+            if (!profile) return null
+            const languages = (row.languages as string[] | null) ?? []
+            const fullName = (profile.full_name as string) || 'Преподаватель'
+            const hourlyRate = (row.hourly_rate as number) ?? 0
+            const trialRate = (row.trial_rate as number | null) ?? null
+            return {
+              id: row.id as string,
+              user_id: row.user_id as string,
+              full_name: fullName,
+              avatar_url: (profile.avatar_url as string | null) ?? null,
+              initials: buildInitials(fullName),
+              bio: (row.bio as string | null) ?? null,
+              specializations: (row.specializations as string[] | null) ?? [],
+              experience_years: (row.experience_years as number | null) ?? null,
+              hourly_rate: hourlyRate,
+              hourly_rate_rub: Math.round(hourlyRate / 100),
+              trial_rate: trialRate,
+              trial_rate_rub: trialRate !== null ? Math.round(trialRate / 100) : null,
+              languages,
+              is_native: isNativeHeuristic(languages),
+              rating: Number(row.rating ?? 0),
+              total_reviews: (row.total_reviews as number) ?? 0,
+              total_lessons: (row.total_lessons as number) ?? 0,
+              is_verified: (row.is_verified as boolean) ?? false,
+            }
+          })
+          .filter(Boolean)
+        return NextResponse.json({ teachers, total: teachers.length })
+      } catch (e) {
+        // Кеш недоступен → проваливаемся в обычный путь ниже.
+        console.warn('[teachers] cache path failed, falling through:', (e as Error)?.message)
+      }
+    }
 
     let query = supabase
       .from('teacher_profiles')

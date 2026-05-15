@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createSignedUrlMap } from '@/lib/supabase/signed-url'
+import { getCachedStudentMaterials } from '@/lib/cache/dashboard'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+
+export const dynamic = 'force-dynamic'
 
 const BUCKET = 'teacher-materials'
 
@@ -81,19 +85,21 @@ export async function GET(request: NextRequest) {
     }
     const { type, level, q, sort, limit } = parsed.data
 
-    // RLS already restricts to materials the student is allowed to see.
-    const { data: rows, error } = await supabase
-      .from('materials')
-      .select(
-        'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at'
-      )
-      .order('created_at', { ascending: false })
-    if (error) {
-      console.error('Ошибка загрузки материалов студента:', error)
-      return NextResponse.json({ error: 'Не удалось загрузить материалы' }, { status: 500 })
-    }
+    // Rate-limit (fail-open для read endpoint).
+    const limited = await enforceRateLimit(request, {
+      name: 'api:student-materials',
+      keyParts: [user.id, getClientIp(request)],
+      max: 60,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
-    const all = rows || []
+    // Cached snapshot — RLS-equivalent логика хранится в loader'е
+    // (public / lesson-participant / shares). TTL 60s + per-user tag.
+    // Это снимает раз-в-минуту heavy fan-out на 5 параллельных
+    // запросов в Postgres при каждом hit /student/materials.
+    const snapshot = await getCachedStudentMaterials(user.id)
+    const all = snapshot.rows || []
 
     const counts: Record<string, number> = {
       all: all.length,
@@ -180,9 +186,19 @@ export async function GET(request: NextRequest) {
       signed_url: r.storage_path ? signedMap[r.storage_path] || null : null,
     }))
 
-    return NextResponse.json({ materials, counts })
+    return NextResponse.json(
+      { materials, counts },
+      {
+        headers: {
+          // TanStack Query управляет client-side кэшем — HTTP-кэш
+          // конфликтовал бы. Server cache внутри getCachedStudentMaterials
+          // (TTL 60s) уже даёт быстрый ответ.
+          'Cache-Control': 'private, no-store',
+        }
+      }
+    )
   } catch (err) {
-    console.error('Непредвиденная ошибка GET /api/student/materials:', err)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    console.error('[api/student/materials]', err)
+    return NextResponse.json({ error: 'failed' }, { status: 500 })
   }
 }

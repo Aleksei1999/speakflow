@@ -1,7 +1,29 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { leaderboardQuerySchema } from '@/lib/validations'
+import { cacheStatic, REDIS_KEYS } from '@/lib/cache/redis-cache'
+
+// Дефолтный leaderboard (period=weekly, без фильтров, без friends_only)
+// — самая частая комбинация: /student дашборд + общий обзор /student/leaderboard.
+// Эти данные одинаковы для всех зрителей (зависят только от запроса),
+// поэтому кладём их в глобальный Redis-кеш на 60 sec. Любые
+// фильтрованные / per-user варианты обходят кеш.
+async function loadDefaultLeaderboardRows(fetchLimit: number): Promise<any[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc('get_leaderboard', {
+    p_period: 'weekly',
+    p_level: null,
+    p_friends_only: false,
+    p_limit: fetchLimit,
+  })
+  if (error) {
+    console.error('[leaderboard] cache loader RPC failed:', error)
+    throw error
+  }
+  return data ?? []
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,14 +59,36 @@ export async function GET(request: NextRequest) {
     // админов всё равно осталось ~limit реальных учеников. Дёшево — RPC и
     // так возвращает 50 строк, а добавочные 10 — копейки.
     const fetchLimit = Math.max(limit, 0) + 10
-    const { data, error } = await supabase.rpc('get_leaderboard', {
-      p_period: period,
-      p_level: level ?? null,
-      p_friends_only: friends_only,
-      p_limit: fetchLimit,
-    })
-    if (error) {
-      console.error('Ошибка получения лидерборда:', error)
+
+    // Дефолтный (period=weekly, без фильтров) — отвечаем из Redis-кеша.
+    // Фильтрованные / friends_only варианты гоняем напрямую — они per-user
+    // или per-level, кешировать их в global Redis смысла нет.
+    let data: any[] | null = null
+    let rpcError: unknown = null
+    const isCacheable =
+      period === 'weekly' && !level && !friends_only && fetchLimit <= 110
+    if (isCacheable) {
+      try {
+        data = await cacheStatic(
+          `${REDIS_KEYS.leaderboardWeeklyDefault}:${fetchLimit}`,
+          60,
+          () => loadDefaultLeaderboardRows(fetchLimit)
+        )
+      } catch (e) {
+        rpcError = e
+      }
+    } else {
+      const res = await supabase.rpc('get_leaderboard', {
+        p_period: period,
+        p_level: level ?? null,
+        p_friends_only: friends_only,
+        p_limit: fetchLimit,
+      })
+      data = res.data
+      rpcError = res.error
+    }
+    if (rpcError) {
+      console.error('Ошибка получения лидерборда:', rpcError)
       return NextResponse.json({ error: 'Не удалось загрузить лидерборд' }, { status: 500 })
     }
 
