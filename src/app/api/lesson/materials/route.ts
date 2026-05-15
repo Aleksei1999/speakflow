@@ -1,9 +1,18 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import {
   requireLessonParticipant,
   requireLessonTeacherOrAdmin,
 } from '@/lib/api/lesson-auth'
+
+type MaterialBody = {
+  lessonId?: string | null
+  title?: string | null
+  content?: string | null
+  fileUrl?: string | null
+  storagePath?: string | null
+  mimeType?: string | null
+  fileSize?: number | null
+}
 
 // Используем общую таблицу `materials` (а не legacy `lesson_materials`),
 // чтобы загруженные на уроке файлы сразу видел студент в /student/materials
@@ -37,7 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}))
+    const body = (await request.json().catch(() => ({}))) as MaterialBody
     const {
       lessonId,
       title,

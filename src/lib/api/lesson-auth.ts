@@ -66,12 +66,18 @@ export async function requireLessonParticipant(
 
   const admin = createAdminClient()
 
-  // 1. Caller's profile role.
-  const { data: profile } = await admin
+  // 1. Caller's profile role. Явно реджектим DB-ошибки — иначе они
+  // молча превращались в profileRole='student' и admin/teacher
+  // мог получить ограниченный доступ.
+  const { data: profile, error: profileErr } = await admin
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle<{ role: Role | null }>()
+  if (profileErr) {
+    console.error("[lesson-auth] profile lookup failed", profileErr)
+    return { ok: false, status: 500, error: "Profile lookup failed" }
+  }
   const profileRole = (profile?.role as Role | undefined) ?? "student"
 
   // 2. Lesson lookup. Use admin client — we'll authorise manually below.
@@ -92,11 +98,15 @@ export async function requireLessonParticipant(
   //    the body.
   let teacherProfileId: string | null = null
   if (profileRole === "teacher") {
-    const { data: tp } = await admin
+    const { data: tp, error: tpErr } = await admin
       .from("teacher_profiles")
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle<{ id: string }>()
+    if (tpErr) {
+      console.error("[lesson-auth] teacher_profiles lookup failed", tpErr)
+      return { ok: false, status: 500, error: "Teacher profile lookup failed" }
+    }
     teacherProfileId = tp?.id ?? null
   }
 
