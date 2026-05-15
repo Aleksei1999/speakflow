@@ -4,7 +4,7 @@
 import "@/styles/dashboard/student-settings.css"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { MfaTotpSection } from "@/components/auth/mfa-totp-section"
@@ -119,6 +119,12 @@ export default function StudentSettingsPage() {
   // card on mount and (b) to show a red "обязательно" banner inside it.
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  // Эта же страница re-export'нута в /teacher/settings (см. memory
+  // 2026-04-22 Teacher reuse student). Гэйтим студенческие XP-toggle'ы
+  // (Daily Challenge / Streak / Достижения / Лидерборд) и блок «Видимость
+  // в лидерборде» в Безопасности по pathname, чтобы у преподов их не было.
+  const isTeacher = (pathname ?? "").startsWith("/teacher")
   const mfaRequired = searchParams?.get("mfa") === "required"
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -161,19 +167,10 @@ export default function StudentSettingsPage() {
     if (!mfaRequired || loading) return
     const el = document.getElementById("sec-mfa")
     if (!el) return
-    const container = document.querySelector(
-      ".dash .main-content",
-    ) as HTMLElement | null
-    if (container) {
-      const top =
-        el.getBoundingClientRect().top -
-        container.getBoundingClientRect().top +
-        container.scrollTop -
-        16
-      container.scrollTo({ top, behavior: "smooth" })
-    } else {
-      el.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
+    // scroll-margin-top на .s-card задаёт визуальный отступ; нативный
+    // scrollIntoView сам найдёт правильный scroll-container (window или
+    // .main-content — зависит от того, где реально живёт overflow).
+    el.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [mfaRequired, loading])
 
   // While the Telegram link modal is open, poll status every 3s. As soon as
@@ -447,22 +444,13 @@ export default function StudentSettingsPage() {
                     setActiveSection(n.id)
                     const el = document.getElementById(`sec-${n.id}`)
                     if (!el) return
-                    // Прокручиваем именно scroll-container .main-content
-                    // dashboard-shell'а, иначе scrollIntoView под sticky
-                    // header может «застрять» и оставить элемент за кадром.
-                    const container = document.querySelector(
-                      ".dash .main-content"
-                    ) as HTMLElement | null
-                    if (container) {
-                      const top =
-                        el.getBoundingClientRect().top -
-                        container.getBoundingClientRect().top +
-                        container.scrollTop -
-                        16
-                      container.scrollTo({ top, behavior: "smooth" })
-                    } else {
-                      el.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
+                    // Раньше пытались скроллить .dash .main-content вручную,
+                    // но у этого контейнера height не зафиксирована — реальный
+                    // overflow-scroll живёт на window, и container.scrollTo
+                    // ничего не делал. scrollIntoView сам найдёт правильный
+                    // ancestor; визуальный отступ задаёт scroll-margin-top на
+                    // .s-card в student-settings.css.
+                    el.scrollIntoView({ behavior: "smooth", block: "start" })
                   }}
                 >
                   <svg viewBox="0 0 24 24">{n.icon}</svg>
@@ -489,6 +477,7 @@ export default function StudentSettingsPage() {
               <NotificationsSection
                 value={data.notifications}
                 onPatch={(u) => patch("notifications", u)}
+                isTeacher={isTeacher}
               />
 
               {/* TEMP: disabled by user request on 2026-04-23 — restore when needed.
@@ -506,6 +495,7 @@ export default function StudentSettingsPage() {
                 onChangePassword={stub("Смена пароля")}
                 onManageSessions={stub("Управление сессиями")}
                 onPatch={(u) => patch("visibility", u)}
+                isTeacher={isTeacher}
               />
 
               {/*
@@ -775,11 +765,23 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => vo
 function NotificationsSection({
   value,
   onPatch,
+  isTeacher,
 }: {
   value: Settings["notifications"]
   onPatch: (u: Partial<Settings["notifications"]>) => void
+  isTeacher?: boolean
 }) {
-  const rows: Array<[keyof Settings["notifications"], string, string]> = [
+  // STUDENT_ONLY toggles — student-side XP/gamification (Daily Challenge,
+  // streak, achievements, leaderboard). У преподов их нет, поэтому
+  // фильтруем для teacher-варианта страницы. Бэк-значения остаются как
+  // есть (PATCH /api/settings/me ничего не теряет), мы просто скрываем UI.
+  const STUDENT_ONLY: ReadonlySet<keyof Settings["notifications"]> = new Set([
+    "daily_challenge",
+    "streak_warning",
+    "achievements",
+    "leaderboard",
+  ])
+  const allRows: Array<[keyof Settings["notifications"], string, string]> = [
     ["lesson_reminders", "Напоминание об уроке", "За 30 мин до начала урока или клуба"],
     ["daily_challenge", "Daily Challenge", "Ежедневное напоминание выполнить задание"],
     ["streak_warning", "Streak на грани", "Предупреждение если стрик может прерваться"],
@@ -789,6 +791,7 @@ function NotificationsSection({
     ["email_digest", "Email-рассылка", "Еженедельные итоги прогресса и рекомендации"],
     ["marketing", "Маркетинговые уведомления", "Акции, скидки и новые функции"],
   ]
+  const rows = isTeacher ? allRows.filter(([k]) => !STUDENT_ONLY.has(k)) : allRows
   return (
     <div className="s-card" id="sec-notifications">
       <div className="s-card-head">
@@ -897,11 +900,13 @@ function SecuritySection({
   onChangePassword,
   onManageSessions,
   onPatch,
+  isTeacher,
 }: {
   value: Settings["visibility"]
   onChangePassword: () => void
   onManageSessions: () => void
   onPatch: (u: Partial<Settings["visibility"]>) => void
+  isTeacher?: boolean
 }) {
   return (
     <div className="s-card" id="sec-privacy">
@@ -925,16 +930,18 @@ function SecuritySection({
           </div>
           <button className="s-btn s-btn--outline" onClick={onManageSessions}>Управление</button>
         </div> */}
-        <div className="s-field">
-          <div className="s-field-left">
-            <div className="s-field-label">Видимость в лидерборде</div>
-            <div className="s-field-desc">Показывать имя и прогресс другим участникам</div>
+        {isTeacher ? null : (
+          <div className="s-field">
+            <div className="s-field-left">
+              <div className="s-field-label">Видимость в лидерборде</div>
+              <div className="s-field-desc">Показывать имя и прогресс другим участникам</div>
+            </div>
+            <Toggle
+              on={value.leaderboard_public}
+              onChange={(n) => onPatch({ leaderboard_public: n })}
+            />
           </div>
-          <Toggle
-            on={value.leaderboard_public}
-            onChange={(n) => onPatch({ leaderboard_public: n })}
-          />
-        </div>
+        )}
         {/* «Показывать профиль преподавателям» — скрыто, флаг ещё нигде не читается на бэке */}
         {/* <div className="s-field">
           <div className="s-field-left">
