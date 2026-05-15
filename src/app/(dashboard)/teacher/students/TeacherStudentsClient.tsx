@@ -535,14 +535,13 @@ function StudentRow({ student }: { student: StudentItem }) {
               <MessageIcon />
             </button>
           )}
-          <button
-            type="button"
+          <Link
+            href={`/teacher/students/${student.id}`}
             className="action-btn"
             title="Профиль"
-            onClick={() => toast("Скоро", { description: "Профиль ученика появится позже." })}
           >
             <DotsIcon />
-          </button>
+          </Link>
         </div>
       </td>
     </tr>
