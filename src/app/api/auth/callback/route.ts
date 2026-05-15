@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { logAuditEvent } from '@/lib/audit/log'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -63,6 +64,20 @@ export async function GET(request: Request) {
     } else {
       redirectPath = '/student'
     }
+  }
+
+  // Audit: successful OAuth/email exchange. Best-effort — не блокируем callback.
+  if (user) {
+    await logAuditEvent(request as any, {
+      category: 'auth',
+      action: 'signin',
+      target_type: 'auth.users',
+      target_id: user.id,
+      payload: {
+        provider: user.app_metadata?.provider ?? null,
+        next: safeNext,
+      },
+    })
   }
 
   // Trial-lesson auto-assignment runs once per signup, on the first time

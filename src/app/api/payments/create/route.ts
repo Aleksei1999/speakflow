@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getYooKassaClient } from '@/lib/yookassa/client'
 import { YooKassaError } from '@/lib/yookassa/types'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { logAuditEvent } from '@/lib/audit/log'
 
 const createPaymentSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -172,6 +173,20 @@ export async function POST(request: NextRequest) {
       console.error('[payments/create] Ошибка сохранения платежа:', insertError)
       // Всё равно отдаём ссылку -- вебхук обработает остальное
     }
+
+    // Audit: создание платежа. Цена в копейках, чтобы избежать float.
+    await logAuditEvent(request, {
+      category: 'payment',
+      action: 'payment_created',
+      target_type: 'lessons',
+      target_id: lessonId,
+      payload: {
+        yookassa_payment_id: ykPayment.id,
+        amount_kopecks: lesson.price,
+        currency: 'RUB',
+        student_id: user.id,
+      },
+    })
 
     return NextResponse.json({
       confirmationUrl: ykPayment.confirmation.confirmation_url,

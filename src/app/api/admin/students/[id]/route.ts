@@ -7,6 +7,11 @@ import { requireAdmin } from "@/lib/admin-guard"
 // ---------------------------------------------------------------
 // GET /api/admin/students/[id]
 // Detailed summary of a single student for the admin drawer.
+//
+// TODO(audit): когда появятся PATCH/DELETE — обернуть logAuditEvent с
+//   category:'admin', action:'student_<op>', target_type:'profiles'.
+//   Сам факт изменения роли/баланса дополнительно ловится generic-триггером
+//   audit_profiles_change → category='data'.
 // ---------------------------------------------------------------
 
 export const dynamic = "force-dynamic"

@@ -13,6 +13,7 @@ import {
   invalidateTeacherStats,
 } from "@/lib/cache/invalidate"
 import { transliterateRu } from "@/lib/transliterate"
+import { logAuditEvent } from "@/lib/audit/log"
 
 export const dynamic = "force-dynamic"
 
@@ -254,6 +255,21 @@ export async function POST(
       to: targetEmail,
       subject: "Добро пожаловать в Raw English — данные для входа",
       html: welcomeHtml({ fullName, email: targetEmail, password, loginUrl }),
+    })
+
+    // Audit: админ одобрил заявку препода → создан/обновлён юзер.
+    // НЕ кладём password в payload (никогда, даже truncated).
+    await logAuditEvent(request, {
+      category: 'admin',
+      action: 'teacher_application_approved',
+      target_type: 'teacher_applications',
+      target_id: id,
+      payload: {
+        user_id: userId,
+        email: targetEmail,
+        user_existed: userExisted,
+        email_sent: emailRes.success,
+      },
     })
 
     return NextResponse.json({

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 import { notifyClubHostAssigned } from "@/lib/clubs/notify-host"
+import { logAuditEvent } from "@/lib/audit/log"
 
 // ---------------------------------------------------------------
 // PATCH /api/admin/clubs/[id]
@@ -251,6 +252,20 @@ export async function PATCH(
         assignedByUserId: gate.user.id,
       }).catch(() => {})
     }
+
+    // Audit: админская мутация клуба. Дублирует data-триггер на clubs (он
+    // даст автоматический diff), но admin-категория нужна для UI «кто что
+    // менял в клубах» в отдельном фильтре.
+    await logAuditEvent(request, {
+      category: 'admin',
+      action: d.cancelled === true ? 'club_cancelled' : 'club_updated',
+      target_type: 'clubs',
+      target_id: id,
+      payload: {
+        fields: Object.keys(d),
+        host_changed_to: hostChangedTo ?? undefined,
+      },
+    })
 
     return NextResponse.json({ club: enriched })
   } catch (err) {

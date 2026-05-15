@@ -3,6 +3,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
+import { logAuditEvent } from "@/lib/audit/log"
 
 // ---------------------------------------------------------------
 // PATCH /api/admin/trial-requests/[id]
@@ -106,6 +107,21 @@ export async function PATCH(
     if (!data) {
       return NextResponse.json({ error: "Заявка не найдена" }, { status: 404 })
     }
+
+    // Audit: ручное вмешательство админа в заявку на пробный урок.
+    await logAuditEvent(request, {
+      category: 'admin',
+      action: update.status
+        ? `trial_request_status_${update.status}`
+        : 'trial_request_updated',
+      target_type: 'trial_lesson_requests',
+      target_id: id,
+      payload: {
+        status: update.status ?? null,
+        assigned_teacher_id: update.assigned_teacher_id ?? null,
+        notes_changed: parsed.data.notes !== undefined,
+      },
+    })
 
     return NextResponse.json({ request: data })
   } catch (err) {
