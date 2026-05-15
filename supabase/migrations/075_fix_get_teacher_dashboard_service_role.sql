@@ -1,0 +1,4 @@
+-- Применено через MCP в проде. Локальная копия для воспроизводимости.
+-- Симптом: teacher dashboard показывал "Не удалось загрузить" из-за того что
+-- get_teacher_dashboard вызывается через service_role (auth.uid()=NULL),
+-- а guard блокировал NULL. Симметрично исправлено как в get_student_dashboard.
