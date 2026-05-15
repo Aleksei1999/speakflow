@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { generateLinkingCode } from "@/lib/telegram/bot"
+import { enforceRateLimitStrict } from "@/lib/api/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +32,7 @@ async function fetchBotUsername(): Promise<string | null> {
   return null
 }
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const {
@@ -40,6 +41,14 @@ export async function POST(_request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 })
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: "telegram:link",
+      keyParts: [user.id],
+      max: 5,
+      windowSeconds: 3600,
+    })
+    if (limited) return limited
 
     const code = await generateLinkingCode(user.id)
     const username = await fetchBotUsername()

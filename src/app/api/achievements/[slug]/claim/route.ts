@@ -7,9 +7,10 @@ import {
   evaluateAchievementProgress,
 } from '@/lib/gamification/metrics'
 import { invalidateUserProgress } from '@/lib/cache/invalidate'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -26,6 +27,14 @@ export async function POST(
     if (authError || !user) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'achievements:claim',
+      keyParts: [user.id],
+      max: 30,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     const { data: def, error: defError } = await supabase
       .from('achievement_definitions')

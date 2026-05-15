@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { bookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +35,14 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'booking:create',
+      keyParts: [user.id],
+      max: 10,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // Verify user has student role
     const { data: profile, error: profileError } = await supabase

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { protectPublic } from '@/lib/api/arcjet'
+
+export const revalidate = 30
 
 const SLOT_DURATIONS = [25, 50] as const
 const BUFFER_MINUTES = 5
@@ -64,6 +68,18 @@ function generateSlotsFromWindow(
 
 export async function GET(request: NextRequest) {
   try {
+    const denied = await protectPublic(request)
+    if (denied) return denied
+
+    const limited = await enforceRateLimit(request, {
+      name: 'booking:slots',
+      keyParts: [getClientIp(request)],
+      max: 60,
+      windowSeconds: 60,
+      failMode: 'open',
+    })
+    if (limited) return limited
+
     const { searchParams } = new URL(request.url)
     const teacherId = searchParams.get('teacherId')
     const date = searchParams.get('date')

@@ -7,6 +7,7 @@ import {
   computeUserMetrics,
   evaluateClaimCriteria,
 } from '@/lib/gamification/metrics'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 const deliverySchema = z
   .object({
@@ -37,6 +38,14 @@ export async function POST(
     if (authError || !user) {
       return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'rewards:claim',
+      keyParts: [user.id],
+      max: 30,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     const { data: def, error: defError } = await supabase
       .from('reward_definitions')
