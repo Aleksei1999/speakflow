@@ -22,8 +22,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { requireLessonTeacherOrAdmin } from '@/lib/api/lesson-auth'
-import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
+import {
+  preflightSize,
+  verifyFileType,
+  verifyFileObjectSafety,
+} from '@/lib/api/file-upload'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { logAuditEvent } from '@/lib/audit/log'
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 const BUCKET = 'lesson-files'
@@ -95,6 +100,31 @@ export async function POST(request: NextRequest) {
     const verified = await verifyFileType(file)
     if (verified instanceof NextResponse) return verified
     const resolvedMime = verified.mimeType
+
+    // AV-scan через VirusTotal (hash-based, cached, fail-open).
+    // НЕ блокирует upload если VT недоступен / нет ключа / timeout.
+    const safety = await verifyFileObjectSafety(file)
+    if (!safety.safe) {
+      // Audit БЕЗ имени файла и БЕЗ полного hash — только префикс.
+      await logAuditEvent(request, {
+        category: 'data',
+        action: 'av_blocked_upload',
+        target_type: 'lessons',
+        target_id: lessonId,
+        payload: {
+          endpoint: '/api/lesson/upload',
+          hash_prefix: safety.sha256?.slice(0, 16) ?? null,
+          detections: safety.detections ?? null,
+        },
+      })
+      return NextResponse.json(
+        {
+          error: 'av_detected',
+          message: 'Файл не прошёл антивирусную проверку',
+        },
+        { status: 422 },
+      )
+    }
 
     // 3. Safe filename + collision-resistant path.
     const safeName = sanitizeFilename(file.name || 'file.bin')
