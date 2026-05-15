@@ -4,6 +4,7 @@
 import { Suspense, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 import StudentDetailDrawer from "./StudentDetailDrawer"
 
 const CSS = `
@@ -178,9 +179,41 @@ function AdminStudentsInner({ initial }: { initial: Student[] }) {
     "recent"
   )
 
+  // ---------------------------------------------------------------
+  // TanStack Query: client-side кэш списка студентов.
+  // - `initial` (server-rendered) попадает в queryClient через initialData,
+  //   так что первого fetch не происходит — UI рисуется без HTTP-вызова.
+  // - При смене серверного sort (recent|name) у нас разный queryKey →
+  //   разные ячейки кэша, переключение туда-сюда мгновенно из памяти.
+  // - Локальные sort (xp|lessons) и search фильтруют тот же набор без
+  //   обращения к серверу.
+  // - staleTime 60s совпадает с TTL у getCachedAdminStudents.
+  // ---------------------------------------------------------------
+  const serverSort: "recent" | "name" = sortBy === "name" ? "name" : "recent"
+  const studentsQuery = useQuery<Student[]>({
+    queryKey: ["admin-students", { sort: serverSort, limit: 100 }],
+    queryFn: async () => {
+      const url = `/api/admin/students?sort=${serverSort}&limit=100`
+      const r = await fetch(url, { credentials: "include", cache: "no-store" })
+      if (!r.ok) throw new Error(`admin/students ${r.status}`)
+      const json = await r.json()
+      // /api/admin/students returns { students, count } — shape отличается
+      // от server-rendered initial (тот же набор полей, но из RPC). Тянем
+      // только массив; формат `Student` нам гарантирует server-cache loader.
+      return (json.students ?? []) as Student[]
+    },
+    // Initial data для дефолтного sort='recent': мгновенно показываем то,
+    // что прислал server-component. Когда юзер кликнет «по имени», TanStack
+    // сделает реальный fetch (другой queryKey, нет initialData).
+    initialData: serverSort === "recent" ? initial : undefined,
+    staleTime: 60 * 1000,
+  })
+
+  const data: Student[] = studentsQuery.data ?? initial
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = initial
+    let list = data
     if (q) {
       list = list.filter(
         (s) =>
@@ -208,7 +241,7 @@ function AdminStudentsInner({ initial }: { initial: Student[] }) {
         )
     }
     return sorted
-  }, [initial, search, sortBy])
+  }, [data, search, sortBy])
 
   return (
     <div className="adm-students">
@@ -218,8 +251,9 @@ function AdminStudentsInner({ initial }: { initial: Student[] }) {
         <div>
           <h1>Все <span className="gl">students</span></h1>
           <div className="sub">
-            Всего: {initial.length.toLocaleString("ru-RU")} · показано{" "}
+            Всего: {data.length.toLocaleString("ru-RU")} · показано{" "}
             {filtered.length.toLocaleString("ru-RU")}
+            {studentsQuery.isFetching && data.length > 0 ? " · обновляем…" : ""}
           </div>
         </div>
         <div>
@@ -257,8 +291,8 @@ function AdminStudentsInner({ initial }: { initial: Student[] }) {
       <div className="card">
         {filtered.length === 0 ? (
           <div className="empty">
-            <b>{initial.length === 0 ? "Данные подгружаются" : "Ничего не найдено"}</b>
-            {initial.length === 0
+            <b>{data.length === 0 ? "Данные подгружаются" : "Ничего не найдено"}</b>
+            {data.length === 0
               ? "API /api/admin/students может быть ещё не готов"
               : "Попробуйте изменить запрос"}
           </div>
@@ -343,7 +377,7 @@ function AdminStudentsInner({ initial }: { initial: Student[] }) {
             </table>
             <div className="footer">
               <span>
-                Показано {filtered.length} из {initial.length}
+                Показано {filtered.length} из {data.length}
               </span>
               <span>Данные обновляются в реальном времени</span>
             </div>

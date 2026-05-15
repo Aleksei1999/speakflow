@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useMemo, useState } from "react"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/leaderboard)
@@ -230,50 +231,36 @@ function currentMonthName(): string {
 
 export default function StudentLeaderboardPage() {
   const [period, setPeriod] = useState<Period>("monthly")
-  const [rows, setRows] = useState<Row[]>([])
-  const [me, setMe] = useState<Row | null>(null)
-  // Initial mount still uses `loading` (full skeleton). Switching periods
-  // after first render is wrapped in `startTransition` so React keeps the
-  // old rows visible (dimmed via .lb-table-card[data-pending]) instead of
-  // blanking the table — INP doesn't take a hit from tab-click → blank
-  // table → repaint.
-  const [loading, setLoading] = useState(true)
-  const [isPending, startTransition] = useTransition()
 
-  useEffect(() => {
-    let cancelled = false
-    const isFirstLoad = rows.length === 0 && me === null
-    if (isFirstLoad) setLoading(true)
+  // ---------------------------------------------------------------
+  // TanStack Query: per-period кэш.
+  // - queryKey ['leaderboard', period] — каждый период (weekly/monthly/
+  //   all_time) занимает свою ячейку, переключения туда-обратно мгновенны.
+  // - placeholderData: keepPreviousData — пока новый период грузится,
+  //   TanStack отдаёт предыдущий результат (так же, как было через
+  //   useTransition+pending, но без локального стейта).
+  // - staleTime 30s — текущий месяц обновляется по refetchOnWindowFocus.
+  // ---------------------------------------------------------------
+  const leaderboardQuery = useQuery<ApiResp>({
+    queryKey: ["leaderboard", period],
+    queryFn: async () => {
+      const r = await fetch(`/api/leaderboard?period=${period}&limit=50`, {
+        cache: "no-store",
+        credentials: "include",
+      })
+      if (!r.ok) throw new Error(`leaderboard ${r.status}`)
+      return (await r.json()) as ApiResp
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+  })
 
-    const run = () => {
-      fetch(`/api/leaderboard?period=${period}&limit=50`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-        .then((json: ApiResp) => {
-          if (cancelled) return
-          setRows(json.rows ?? [])
-          setMe(json.me ?? null)
-        })
-        .catch(() => {
-          if (cancelled) return
-          setRows([])
-          setMe(null)
-        })
-        .finally(() => {
-          if (!cancelled && isFirstLoad) setLoading(false)
-        })
-    }
-
-    if (isFirstLoad) {
-      run()
-    } else {
-      startTransition(run)
-    }
-
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period])
+  // `isPlaceholderData` = TanStack показывает старые данные пока
+  // новый период грузится; `loading` = самый первый рендер без кэша.
+  const rows: Row[] = leaderboardQuery.data?.rows ?? []
+  const me: Row | null = leaderboardQuery.data?.me ?? null
+  const loading = leaderboardQuery.isLoading
+  const isPending = leaderboardQuery.isPlaceholderData
 
   const top3 = useMemo(() => rows.slice(0, 3), [rows])
   const rest = useMemo(() => {

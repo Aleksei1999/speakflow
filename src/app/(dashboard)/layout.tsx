@@ -7,6 +7,7 @@ import {
   getCachedUserProgress,
   getCachedTeacherStats,
 } from "@/lib/cache/dashboard"
+import { QueryProvider } from "@/components/providers/query-provider"
 
 // Layout is still force-dynamic (we still need fresh auth check and
 // the children may be dynamic). The three Supabase reads below are
@@ -72,14 +73,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <DashboardShell
-      fullName={profile?.full_name ?? ""}
-      avatarUrl={profile?.avatar_url ?? null}
-      role={role}
-      gamification={gamification}
-      teacherStats={teacherStats}
-    >
-      <div className="dashboard-content" key="dashboard-content">{children}</div>
-    </DashboardShell>
+    <QueryProvider>
+      <DashboardShell
+        fullName={profile?.full_name ?? ""}
+        avatarUrl={profile?.avatar_url ?? null}
+        role={role}
+        gamification={gamification}
+        teacherStats={teacherStats}
+      >
+        <div className="dashboard-content" key="dashboard-content">{children}</div>
+      </DashboardShell>
+    </QueryProvider>
   )
 }

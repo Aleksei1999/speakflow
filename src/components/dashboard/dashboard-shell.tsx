@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { Toaster } from "@/components/ui/sonner"
+import { useStudentDashboard } from "@/hooks/use-student-dashboard"
+import { LEVEL_XP_THRESHOLDS, xpToRoastLevel } from "@/lib/level-utils"
 
 const SHELL_CSS = `
 :root,[data-theme="light"]{
@@ -446,8 +448,37 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   const roleLabel =
     currentRole === "admin" ? "Админ" : currentRole === "teacher" ? "Преподаватель" : "Ученик"
 
-  const xpProgressPct = gamification
-    ? Math.min(100, Math.round((gamification.xp / Math.max(gamification.nextLevelXp, 1)) * 100))
+  // ---------------------------------------------------------------
+  // Live overlay для XP/streak в шапке: пока студент работает в одной
+  // вкладке (например делает квиз / завершает урок), TanStack Query
+  // фоном рефетчит /api/student/dashboard и обновляет бейдж шапки
+  // во всех вкладках через `refetchOnWindowFocus`. Если query пустой
+  // или для teacher/admin — fallback на server-rendered `gamification`.
+  // ---------------------------------------------------------------
+  const liveDashboard = useStudentDashboard({ enabled: role === "student" })
+  const liveGamification = useMemo<Gamification | null>(() => {
+    if (role !== "student") return null
+    const p = liveDashboard.data?.progress
+    if (!p) return null
+    const xp = p.total_xp ?? 0
+    const level = xpToRoastLevel(xp)
+    const t = LEVEL_XP_THRESHOLDS[level]
+    return {
+      xp,
+      level,
+      nextLevel: t?.nextLevel ?? null,
+      nextLevelXp: t?.next ?? xp,
+      currentStreak: p.current_streak ?? 0,
+    }
+  }, [role, liveDashboard.data])
+
+  // Если TanStack уже отдал свежий снимок — заменяем prop. Это безопасно:
+  // оба объекта имеют одинаковую форму, тот же путь рендера, никакой
+  // другой логики не задевает.
+  const effectiveGamification = liveGamification ?? gamification
+
+  const xpProgressPct = effectiveGamification
+    ? Math.min(100, Math.round((effectiveGamification.xp / Math.max(effectiveGamification.nextLevelXp, 1)) * 100))
     : 0
 
   const handleLogout = async () => {
@@ -502,13 +533,13 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
               <div className="profile-photo">{initials || "?"}</div>
             )}
             <div className="profile-name">{fullName || "Пользователь"}</div>
-            {gamification ? (
+            {effectiveGamification ? (
               <>
-                <div className="profile-level">🔥 {gamification.level} · {gamification.xp} XP</div>
-                {gamification.nextLevel ? (
+                <div className="profile-level">🔥 {effectiveGamification.level} · {effectiveGamification.xp} XP</div>
+                {effectiveGamification.nextLevel ? (
                   <div className="profile-xp">
                     <div className="profile-xp-row">
-                      <span>До {gamification.nextLevel}</span>
+                      <span>До {effectiveGamification.nextLevel}</span>
                       <span>{xpProgressPct}%</span>
                     </div>
                     <div className="profile-xp-bar">
@@ -516,8 +547,8 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
                     </div>
                   </div>
                 ) : null}
-                {gamification.currentStreak > 0 ? (
-                  <div className="profile-streak">⚡ {gamification.currentStreak}-дневный стрик</div>
+                {effectiveGamification.currentStreak > 0 ? (
+                  <div className="profile-streak">⚡ {effectiveGamification.currentStreak}-дневный стрик</div>
                 ) : null}
               </>
             ) : teacherStats ? (
@@ -589,7 +620,7 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
 
           <div className="sidebar-footer">
             <span className="dot"></span>
-            Онлайн{gamification ? ` · ${gamification.level}` : teacherStats ? " · Status: active" : ` · ${roleLabel}`}
+            Онлайн{effectiveGamification ? ` · ${effectiveGamification.level}` : teacherStats ? " · Status: active" : ` · ${roleLabel}`}
           </div>
         </aside>
 
