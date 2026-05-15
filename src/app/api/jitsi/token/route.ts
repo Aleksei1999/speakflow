@@ -6,6 +6,7 @@ import { generateJitsiToken } from '@/lib/jitsi/jwt'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { LESSON_JOIN_WINDOW, LESSON_POST_WINDOW } from '@/lib/constants'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { logAuditEvent } from '@/lib/audit/log'
 
 const tokenRequestSchema = z.object({
   lessonId: z.string().uuid('Некорректный ID урока'),
@@ -177,6 +178,24 @@ export async function POST(request: NextRequest) {
       email: profile?.email ?? user.email ?? '',
       avatarUrl: profile?.avatar_url,
       isModerator: isTeacher || isAdmin,
+    })
+
+    // Audit: какой токен выдан на какую комнату/урок. Сам JWT НЕ логируем —
+    // только room/exp/role и user. Это даёт цепочку «кто заходил в урок».
+    // exp вычисляется внутри generateJitsiToken; для аудита берём ожидаемое
+    // окно (closeAtMs) — это потолок легитимного использования токена.
+    const roleInLesson = isTeacher ? 'teacher' : isAdmin ? 'admin' : 'student'
+    await logAuditEvent(request, {
+      category: 'data',
+      action: 'jitsi_token_issued',
+      target_type: 'lessons',
+      target_id: lessonId,
+      payload: {
+        room: roomName,
+        exp_at: new Date(closeAtMs).toISOString(),
+        role_in_lesson: roleInLesson,
+        is_moderator: isTeacher || isAdmin,
+      },
     })
 
     return NextResponse.json({

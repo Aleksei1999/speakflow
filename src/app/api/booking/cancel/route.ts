@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { notifyLessonCancelled } from '@/lib/notifications/booking'
+import { logAuditEvent } from '@/lib/audit/log'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -146,6 +147,23 @@ export async function POST(request: NextRequest) {
 
     // Log notification data for the notification service to pick up
     console.log('Notification prepared:', JSON.stringify(notificationData))
+
+    // Business-level audit: явная фиксация отмены. reason обрезаем до 200
+    // chars на случай, если пользователь вписал длинную историю.
+    await logAuditEvent(request, {
+      category: 'data',
+      action: 'lesson_cancelled',
+      target_type: 'lessons',
+      target_id: lessonId,
+      payload: {
+        cancelled_by: user.id,
+        cancelled_by_role: isStudent ? 'student' : 'teacher',
+        reason: reason ? reason.slice(0, 200) : null,
+        hours_until_lesson: Math.round(hoursUntilLesson * 10) / 10,
+        refund_eligible: refundEligible,
+        previous_status: lesson.status,
+      },
+    })
 
     return NextResponse.json({
       success: true,

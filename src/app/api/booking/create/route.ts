@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { bookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
+import { logAuditEvent } from '@/lib/audit/log'
 
 export async function POST(request: NextRequest) {
   try {
@@ -297,6 +298,22 @@ export async function POST(request: NextRequest) {
       .eq('id', lesson!.id)
 
     void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+
+    // Business-level audit: бронирование ученика. Data-trigger тоже ловит
+    // INSERT, но эта запись содержит teacher/student/scheduled — без diff.
+    await logAuditEvent(request, {
+      category: 'data',
+      action: 'lesson_booked',
+      target_type: 'lessons',
+      target_id: lesson!.id,
+      payload: {
+        teacher_id: teacherProfileId,
+        student_id: user.id,
+        scheduled_at: lesson!.scheduled_at,
+        duration_minutes: lesson!.duration_minutes,
+        price_kopecks: lesson!.price,
+      },
+    })
 
     // Закрепляем слот, если ученик попросил.
     if (wantsPin) {

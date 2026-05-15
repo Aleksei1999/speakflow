@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
+import { logAuditEvent } from "@/lib/audit/log"
 
 const BodySchema = z.object({
   lessonId: z.string().uuid(),
@@ -113,6 +114,19 @@ export async function POST(req: NextRequest) {
     console.error("[recording/init] insert failed:", error)
     return NextResponse.json({ error: "Не удалось создать запись" }, { status: 500 })
   }
+
+  // Audit: начало сессии записи. Каждый chunk НЕ логируем — это спам;
+  // только init и finalize. storage_prefix кладём для трассировки в Storage.
+  await logAuditEvent(req, {
+    category: "data",
+    action: "recording_session_initiated",
+    target_type: "lesson_recordings",
+    target_id: row.id,
+    payload: {
+      lesson_id: gate.lesson.id,
+      storage_prefix: row.storage_prefix,
+    },
+  })
 
   return NextResponse.json({
     recordingId: row.id,
