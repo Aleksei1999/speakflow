@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/leaderboard)
@@ -154,6 +154,13 @@ const LEADERBOARD_CSS = `
 
 .lb-empty{padding:60px 20px;text-align:center;color:var(--muted);font-size:.9rem}
 
+/* Period-switch pending state: keep old rows visible but dimmed so INP
+   doesn't blank the table. .lb-tt.is-pending shows a subtle pulse on the
+   tab the user just clicked. */
+.lb-table-card[data-pending="true"]{opacity:.55;transition:opacity .15s ease;pointer-events:none}
+.lb-tt.is-pending{animation:lbTabPulse 1s ease-in-out infinite}
+@keyframes lbTabPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
 /* ===== HALL OF FAME ===== */
 .lb-hof{margin-bottom:20px}
 .lb-hof-title{font-size:1.1rem;font-weight:800;letter-spacing:-.3px;margin-bottom:4px;text-align:center}
@@ -225,29 +232,47 @@ export default function StudentLeaderboardPage() {
   const [period, setPeriod] = useState<Period>("monthly")
   const [rows, setRows] = useState<Row[]>([])
   const [me, setMe] = useState<Row | null>(null)
+  // Initial mount still uses `loading` (full skeleton). Switching periods
+  // after first render is wrapped in `startTransition` so React keeps the
+  // old rows visible (dimmed via .lb-table-card[data-pending]) instead of
+  // blanking the table — INP doesn't take a hit from tab-click → blank
+  // table → repaint.
   const [loading, setLoading] = useState(true)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    fetch(`/api/leaderboard?period=${period}&limit=50`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((json: ApiResp) => {
-        if (cancelled) return
-        setRows(json.rows ?? [])
-        setMe(json.me ?? null)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setRows([])
-        setMe(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const isFirstLoad = rows.length === 0 && me === null
+    if (isFirstLoad) setLoading(true)
+
+    const run = () => {
+      fetch(`/api/leaderboard?period=${period}&limit=50`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+        .then((json: ApiResp) => {
+          if (cancelled) return
+          setRows(json.rows ?? [])
+          setMe(json.me ?? null)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setRows([])
+          setMe(null)
+        })
+        .finally(() => {
+          if (!cancelled && isFirstLoad) setLoading(false)
+        })
+    }
+
+    if (isFirstLoad) {
+      run()
+    } else {
+      startTransition(run)
+    }
+
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period])
 
   const top3 = useMemo(() => rows.slice(0, 3), [rows])
@@ -372,20 +397,26 @@ export default function StudentLeaderboardPage() {
       </div>
 
       {/* Rankings table */}
-      <div className="lb-table-card">
+      <div className="lb-table-card" data-pending={isPending ? "true" : "false"}>
         <div className="lb-table-head">
           <h3>Рейтинг участников</h3>
           <div className="lb-table-tabs">
-            {PERIOD_TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                className={`lb-tt${period === t.key ? " active" : ""}`}
-                onClick={() => setPeriod(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
+            {PERIOD_TABS.map((t) => {
+              const isActive = period === t.key
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`lb-tt${isActive ? " active" : ""}${
+                    isActive && isPending ? " is-pending" : ""
+                  }`}
+                  onClick={() => setPeriod(t.key)}
+                  disabled={isPending}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
           </div>
         </div>
         <div className="lb-rank-header">
