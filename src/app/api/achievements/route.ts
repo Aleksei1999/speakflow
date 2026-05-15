@@ -1,10 +1,32 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   computeUserMetrics,
   evaluateAchievementProgress,
 } from '@/lib/gamification/metrics'
+import { cacheStatic, REDIS_KEYS } from '@/lib/cache/redis-cache'
+
+// Список ачивок — глобальный справочник. Меняется только при миграциях
+// или явной правке через /admin. Redis TTL=300s даёт быстрый ответ
+// между холодными деплоями. На промах кеша — fallback в Supabase через
+// admin-клиент (RLS на этой таблице не применима — она публична по
+// своей сути).
+async function loadAchievementDefs(): Promise<any[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('achievement_definitions')
+    .select(
+      'id, slug, title, description, category, rarity, icon_emoji, threshold, xp_reward, reward_type, reward_label, is_hidden, sort_order'
+    )
+    .order('sort_order', { ascending: true })
+  if (error) {
+    console.error('Ошибка загрузки achievement_definitions:', error)
+    throw error
+  }
+  return data ?? []
+}
 
 export async function GET(_request: NextRequest) {
   try {
@@ -13,13 +35,10 @@ export async function GET(_request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { data: defs, error } = await supabase
-      .from('achievement_definitions')
-      .select(
-        'id, slug, title, description, category, rarity, icon_emoji, threshold, xp_reward, reward_type, reward_label, is_hidden, sort_order'
-      )
-      .order('sort_order', { ascending: true })
-    if (error) {
+    let defs: any[] = []
+    try {
+      defs = await cacheStatic(REDIS_KEYS.achievementDefs, 300, loadAchievementDefs)
+    } catch (error) {
       console.error('Ошибка загрузки достижений:', error)
       return NextResponse.json({ error: 'Не удалось загрузить достижения' }, { status: 500 })
     }

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { invalidateStatic, invalidateStaticPrefix, REDIS_KEYS } from "@/lib/cache/redis-cache"
 
 // ---------------------------------------------------------------------------
 // GET /api/teacher/profile/me
@@ -184,6 +185,11 @@ export async function PATCH(req: NextRequest) {
         console.error("[PATCH teacher profile] teacher_profiles update failed:", error)
         return NextResponse.json({ error: "Не удалось сохранить преподавательские данные" }, { status: 500 })
       }
+      // Public teachers list (sorted by rating) кеширован в Redis на 120s.
+      // Любая правка teacher_profile может изменить rating / rate / bio / listed —
+      // сбрасываем кеш сразу, чтобы фронт не показал устаревшую карточку.
+      // Префикс-clear — потому что key включает `limit` (60 / 30 / etc).
+      await invalidateStaticPrefix(REDIS_KEYS.teachersPublicDefault)
     }
 
     return NextResponse.json({ ok: true })

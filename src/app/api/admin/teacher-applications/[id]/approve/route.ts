@@ -15,6 +15,7 @@ import {
   invalidateAdminStudents,
   invalidateAdminTeachersList,
 } from "@/lib/cache/invalidate"
+import { invalidateStaticPrefix, REDIS_KEYS } from "@/lib/cache/redis-cache"
 import { transliterateRu } from "@/lib/transliterate"
 import { logAuditEvent } from "@/lib/audit/log"
 
@@ -255,6 +256,10 @@ export async function POST(
     invalidateAdminTrialRequests()
     invalidateAdminStudents()
     invalidateAdminTeachersList()
+    // Global Redis-кеш публичного списка преподов: тут появился новый
+    // is_listed=true → нужно сбросить, иначе студенты до 120s не увидят
+    // нового препода в дефолтной выдаче.
+    await invalidateStaticPrefix(REDIS_KEYS.teachersPublicDefault)
 
     // 6. Шлём письмо с креденшелами.
     const siteUrl =
