@@ -790,14 +790,25 @@ export default async function TeacherDashboardPage() {
                     </td>
                     <td><span className="level-badge">{r.cefr}</span></td>
                     <td>{r.lessonsCount}</td>
-                    <td>{r.nextAt ? formatNextLesson(r.nextAt) : "—"}</td>
+                    {/* formatNextLesson зависит от new Date() для "сегодня/завтра" —
+                        server и client рендерят в разные моменты, near-midnight
+                        возможен mismatch. suppressHydrationWarning подавляет ошибку,
+                        клиентский результат всегда корректнее. */}
+                    <td suppressHydrationWarning>{r.nextAt ? formatNextLesson(r.nextAt) : "—"}</td>
                     <td>
                       <div className="progress-bar" style={{ width: 100 }}>
                         <div className="progress-fill" style={{ width: `${r.progress}%` }} />
                       </div>
                     </td>
                     <td>
-                      <Link href={`/teacher/students/${r.id}`} className="btn btn-sm btn-secondary">Профиль</Link>
+                      {/* FIXME: route /teacher/students/[id] не существует. Пока ведём на общий список с подсветкой. */}
+                      <Link
+                        href={`/teacher/students?focus=${r.id}`}
+                        prefetch={false}
+                        className="btn btn-sm btn-secondary"
+                      >
+                        Профиль
+                      </Link>
                     </td>
                   </tr>
                 ))}
