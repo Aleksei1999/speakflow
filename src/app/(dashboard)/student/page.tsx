@@ -270,20 +270,58 @@ export default async function StudentDashboardPage() {
   const showTrialCard =
     totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
 
-  // Помечаем пробные уроки на горизонте недели (для лейбла «🎯 Пробный»).
-  const todayTrialIds = new Set<string>()
-  if (upcomingLessons.length > 0) {
-    const ids = upcomingLessons.map((l) => l.id)
-    const { data: tlist } = await (supabase as any)
-      .from("trial_lesson_requests")
-      .select("assigned_lesson_id")
-      .eq("user_id", user.id)
-      .in("assigned_lesson_id", ids)
-    for (const t of (tlist ?? []) as Array<{ assigned_lesson_id: string | null }>) {
-      if (t.assigned_lesson_id) todayTrialIds.add(t.assigned_lesson_id)
-    }
-  }
-  const xp = progress?.total_xp ?? 0
+  // Параллельно фетчим всё, что зависит ТОЛЬКО от upcomingLessons (id-список
+   // и teacher_ids уже известны), но друг от друга независимо:
+   //   (a) trial-flow метки — для лейбла «🎯 Пробный»;
+   //   (b) teacher_profiles → profiles — имя препода в строке урока;
+   //   (c) referral count — карточка «Быстрые действия».
+   // Раньше (a)→(b)→(c) шли последовательно, +2-3 round-trip-а к Postgres
+   // даже на простом дашборде. Теперь — одним Promise.all.
+   const upcomingIds = upcomingLessons.map((l) => l.id)
+   const upcomingTeacherIds = Array.from(
+     new Set(todayLessons.map((l) => l.teacher_id).filter(Boolean))
+   ) as string[]
+
+   const trialsPromise = upcomingIds.length > 0
+     ? (supabase as any)
+         .from("trial_lesson_requests")
+         .select("assigned_lesson_id")
+         .eq("user_id", user.id)
+         .in("assigned_lesson_id", upcomingIds)
+     : Promise.resolve({ data: [] as Array<{ assigned_lesson_id: string | null }> })
+
+   // teacher_profiles + profiles одним PostgREST embed-запросом
+   // (через teacher_profiles_user_id_fkey) — раньше шли двумя последовательными
+   // round-trip'ами (см. ниже старый код).
+   const teachersPromise = upcomingTeacherIds.length > 0
+     ? (supabase as any)
+         .from("teacher_profiles")
+         .select(
+           "id, user_id, user:profiles!teacher_profiles_user_id_fkey(full_name)"
+         )
+         .in("id", upcomingTeacherIds)
+     : Promise.resolve({ data: [] as Array<{ id: string; user_id: string; user: any }> })
+
+   // referrals: количество активированных приглашений у текущего юзера.
+   // RLS таблицы ограничивает выдачу до inviter_id = auth.uid().
+   const LIFETIME_REFERRAL_CAP = 10
+   const referralPromise = (supabase as any)
+     .from("referrals")
+     .select("id", { count: "exact", head: true })
+     .eq("status", "activated")
+
+   const [trialsResult, teachersResult, referralResult] = await Promise.all([
+     trialsPromise,
+     teachersPromise,
+     referralPromise,
+   ])
+
+   const todayTrialIds = new Set<string>()
+   for (const t of ((trialsResult.data ?? []) as Array<{ assigned_lesson_id: string | null }>)) {
+     if (t.assigned_lesson_id) todayTrialIds.add(t.assigned_lesson_id)
+   }
+
+   const xp = progress?.total_xp ?? 0
   const level: RoastLevel = xpToRoastLevel(xp)
   const thresholds = LEVEL_XP_THRESHOLDS[level]
   const currentStreak = progress?.current_streak ?? 0
@@ -308,52 +346,29 @@ export default async function StudentDashboardPage() {
     }
   }
 
-  // Teachers for today's lessons
-  const teacherIds = Array.from(new Set(todayLessons.map((l) => l.teacher_id).filter(Boolean))) as string[]
-  let teacherMap: Record<string, { full_name: string | null }> = {}
-  if (teacherIds.length) {
-    const { data: teachersRaw } = await (supabase as any)
-      .from("teacher_profiles")
-      .select("id, profile_id")
-      .in("id", teacherIds)
-    const teachers = (teachersRaw ?? []) as Array<{ id: string; profile_id: string }>
-    const profileIds = teachers.map((t) => t.profile_id)
-    if (profileIds.length) {
-      const { data: profilesRaw } = await (supabase as any)
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", profileIds)
-      const pMap = Object.fromEntries(((profilesRaw ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p]))
-      for (const t of teachers) teacherMap[t.id] = pMap[t.profile_id] ?? { full_name: null }
-    }
+  // Teacher map — извлекаем имя из embed-результата teachersPromise (выше).
+  // Embed возвращает строку вида { id, user_id, user: { full_name } }, где
+  // user может быть массивом (PostgREST single-row reference тоже массив).
+  const teacherMap: Record<string, { full_name: string | null }> = {}
+  for (const t of ((teachersResult.data ?? []) as Array<{ id: string; user_id: string; user: any }>)) {
+    const p = Array.isArray(t.user) ? t.user[0] : t.user
+    teacherMap[t.id] = { full_name: (p?.full_name ?? null) as string | null }
   }
 
   const upcomingLessonId = todayLessons.find((l) => new Date(l.scheduled_at) > now && l.status === "booked")?.id
   const completedTodayCount = todayLessons.filter((l) => l.status === "completed").length
   const remainingTodayCount = todayLessons.filter((l) => ["booked", "in_progress"].includes(l.status)).length
 
-  // Referral stats — раньше шёл HTTP self-call к /api/referrals/me внутри
-  // той же Lambda (+200-500ms на отдельный round-trip и парс cookie).
-  // Дашборду нужно ровно 2 цифры (activated count + cap_remaining),
-  // которые можно вытащить одним select-count к referrals: RLS таблицы
-  // ограничивает выдачу до inviter_id = auth.uid(), так что отдельная
-  // авторизация не нужна. LIFETIME_CAP (10) — то же значение, что в
-  // /api/referrals/me/route.ts. Граcefully падаем на дефолт, если
-  // таблица referrals ещё не мигрирована.
-  const LIFETIME_REFERRAL_CAP = 10
+  // Referral stats — count уже получен параллельно (referralPromise выше).
+  // LIFETIME_CAP=10 — то же значение, что в /api/referrals/me/route.ts.
+  // Если таблица referrals ещё не мигрирована, .count придёт null — fallback'имся
+  // на 0/CAP без падения.
   let referralActivated = 0
   let referralCapRemaining = LIFETIME_REFERRAL_CAP
-  try {
-    const { count } = await (supabase as any)
-      .from("referrals")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "activated")
-    if (typeof count === "number") {
-      referralActivated = count
-      referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - count)
-    }
-  } catch {
-    // API ещё не готов — используем дефолт
+  const refCount = (referralResult as { count: number | null } | null)?.count ?? null
+  if (typeof refCount === "number") {
+    referralActivated = refCount
+    referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - refCount)
   }
 
   return (

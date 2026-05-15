@@ -186,15 +186,20 @@ export default async function TeacherDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any).from("profiles").select("*").eq("id", user.id).single()
+  // profile + teacher_profile в параллель — оба зависят только от user.id.
+  // Раньше шли последовательно (≈ +60-120ms на cold-start dashboard).
+  const [profileResult, teacherProfileResult] = await Promise.all([
+    (supabase as any).from("profiles").select("*").eq("id", user.id).single(),
+    (supabase as any)
+      .from("teacher_profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .single(),
+  ])
+  const profile = profileResult.data
   if (!profile || profile.role !== "teacher") redirect("/student")
 
-  const { data: teacherProfile } = await (supabase as any)
-    .from("teacher_profiles")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
-
+  const teacherProfile = teacherProfileResult.data
   const teacherId = teacherProfile?.id ?? ""
   const hourlyRate = Number(teacherProfile?.hourly_rate ?? 0) // kopecks
 
@@ -209,57 +214,35 @@ export default async function TeacherDashboardPage() {
   const prevMonthStart = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
   const prevMonthEnd = endOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
 
-  // --- Upcoming lessons (today + 6 days ahead) ---
-  const { data: upcomingLessonsRaw } = await (supabase as any)
-    .from("lessons")
-    .select("id, scheduled_at, duration_minutes, status, price, student_id")
-    .eq("teacher_id", teacherId)
-    .gte("scheduled_at", todayStart.toISOString())
-    .lte("scheduled_at", weekAheadEnd.toISOString())
-    .order("scheduled_at", { ascending: true })
-  const upcomingLessons = (upcomingLessonsRaw ?? []) as any[]
-  const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
-
-  // --- Today's hosted Speaking Clubs (teacher = host) ---
-  const { data: hostedTodayRaw } = await (supabase as any)
-    .from("club_hosts")
-    .select(
-      "club_id, clubs!inner(id, topic, starts_at, duration_min, is_published, cancelled_at, seats_taken, capacity)"
-    )
-    .eq("host_id", user.id)
-    .gte("clubs.starts_at", todayStart.toISOString())
-    .lte("clubs.starts_at", todayEnd.toISOString())
-  const todayClubs = ((hostedTodayRaw ?? []) as any[])
-    .map((r) => r.clubs)
-    .filter((c) => c && c.is_published && !c.cancelled_at)
-    .sort(
-      (a, b) =>
-        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
-    )
-
-  const upcomingStudentIds = [...new Set(upcomingLessons.map((l) => l.student_id))]
-  const { data: todayStudentProfilesRaw } = upcomingStudentIds.length
-    ? await (supabase as any).from("profiles").select("id, full_name").in("id", upcomingStudentIds)
-    : { data: [] }
-  const todayStudentsMap = new Map<string, { full_name: string | null }>()
-  ;(todayStudentProfilesRaw ?? []).forEach((p: any) => todayStudentsMap.set(p.id, { full_name: p.full_name }))
-
-  // Помечаем пробные уроки (созданы через trial-flow) — на горизонте недели.
-  const upcomingLessonIds = upcomingLessons.map((l) => l.id)
-  const { data: trialRaw } = upcomingLessonIds.length
-    ? await (supabase as any)
-        .from("trial_lesson_requests")
-        .select("assigned_lesson_id")
-        .in("assigned_lesson_id", upcomingLessonIds)
-    : { data: [] }
-  const trialIdSet = new Set<string>(
-    ((trialRaw ?? []) as Array<{ assigned_lesson_id: string | null }>)
-      .map((t) => t.assigned_lesson_id)
-      .filter((x): x is string => Boolean(x))
-  )
-
-  // --- Month counts (current + prev for delta) ---
-  const [{ count: monthCount }, { count: prevMonthCount }] = await Promise.all([
+  // Все запросы, которые зависят только от teacherId / user.id и временных
+  // окон — гоняем одним Promise.all. Раньше шли последовательно (upcoming →
+  // hosted → monthCount/prevMonthCount → monthCompleted → weekLessons →
+  // activeLessons), ~6 round-trip-ов к Postgres подряд. Это давало +400-800ms
+  // на cold-start teacher dashboard.
+  const [
+    upcomingLessonsResult,
+    hostedTodayResult,
+    monthCountResult,
+    prevMonthCountResult,
+    monthCompletedResult,
+    weekLessonsResult,
+    activeLessonsResult,
+  ] = await Promise.all([
+    (supabase as any)
+      .from("lessons")
+      .select("id, scheduled_at, duration_minutes, status, price, student_id")
+      .eq("teacher_id", teacherId)
+      .gte("scheduled_at", todayStart.toISOString())
+      .lte("scheduled_at", weekAheadEnd.toISOString())
+      .order("scheduled_at", { ascending: true }),
+    (supabase as any)
+      .from("club_hosts")
+      .select(
+        "club_id, clubs!inner(id, topic, starts_at, duration_min, is_published, cancelled_at, seats_taken, capacity)"
+      )
+      .eq("host_id", user.id)
+      .gte("clubs.starts_at", todayStart.toISOString())
+      .lte("clubs.starts_at", todayEnd.toISOString()),
     (supabase as any)
       .from("lessons")
       .select("id", { count: "exact", head: true })
@@ -272,55 +255,93 @@ export default async function TeacherDashboardPage() {
       .eq("teacher_id", teacherId)
       .gte("scheduled_at", prevMonthStart.toISOString())
       .lte("scheduled_at", prevMonthEnd.toISOString()),
+    (supabase as any)
+      .from("lessons")
+      .select("price")
+      .eq("teacher_id", teacherId)
+      .eq("status", "completed")
+      .gte("scheduled_at", monthStart.toISOString())
+      .lte("scheduled_at", monthEnd.toISOString()),
+    (supabase as any)
+      .from("lessons")
+      .select("id, status")
+      .eq("teacher_id", teacherId)
+      .gte("scheduled_at", weekStart.toISOString())
+      .lte("scheduled_at", weekEnd.toISOString()),
+    (supabase as any)
+      .from("lessons")
+      .select("student_id, scheduled_at, status")
+      .eq("teacher_id", teacherId)
+      // NOTE: "Мой ученик" = хоть один урок в статусах, отличных от cancelled/no_show.
+      // Раньше список ограничивался только ('booked','in_progress','completed'), из-за чего
+      // ученики со старыми уроками pending_payment (созданными ДО коммита a2a0600) выпадали.
+      .in("status", [
+        "scheduled",
+        "confirmed",
+        "booked",
+        "in_progress",
+        "completed",
+        "pending_payment", // TEMP: until Yookassa integration is live — a2a0600
+      ])
+      .order("scheduled_at", { ascending: true }),
   ])
 
+  const upcomingLessons = (upcomingLessonsResult.data ?? []) as any[]
+  const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
+
+  const todayClubs = ((hostedTodayResult.data ?? []) as any[])
+    .map((r) => r.clubs)
+    .filter((c) => c && c.is_published && !c.cancelled_at)
+    .sort(
+      (a, b) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    )
+
+  // Производные структуры — данные уже получены параллельно выше.
+  const monthCount = monthCountResult.count
+  const prevMonthCount = prevMonthCountResult.count
   const monthDelta = (prevMonthCount ?? 0) > 0
     ? Math.round((((monthCount ?? 0) - (prevMonthCount ?? 0)) / (prevMonthCount ?? 1)) * 100)
     : null
 
-  // --- Monthly earnings (completed lessons in current month) ---
-  const { data: monthCompletedRaw } = await (supabase as any)
-    .from("lessons")
-    .select("price")
-    .eq("teacher_id", teacherId)
-    .eq("status", "completed")
-    .gte("scheduled_at", monthStart.toISOString())
-    .lte("scheduled_at", monthEnd.toISOString())
-  const earningsKopecks = (monthCompletedRaw ?? []).reduce((s: number, l: any) => s + Number(l.price ?? 0), 0)
+  const earningsKopecks = ((monthCompletedResult.data ?? []) as Array<{ price: number | null }>)
+    .reduce((s, l) => s + Number(l.price ?? 0), 0)
   // Teacher share — 100% of price by default; adjust if platform takes a cut.
   const earningsRub = Math.round(earningsKopecks / 100)
 
-  // --- Week stats: completed / total and cancelled ---
-  const { data: weekLessonsRaw } = await (supabase as any)
-    .from("lessons")
-    .select("id, status")
-    .eq("teacher_id", teacherId)
-    .gte("scheduled_at", weekStart.toISOString())
-    .lte("scheduled_at", weekEnd.toISOString())
-  const weekLessons = (weekLessonsRaw ?? []) as Array<{ status: string }>
+  const weekLessons = (weekLessonsResult.data ?? []) as Array<{ status: string }>
   const weekTotal = weekLessons.length
   const weekCompleted = weekLessons.filter((l) => l.status === "completed").length
   const weekCancelled = weekLessons.filter((l) => l.status === "cancelled" || l.status === "no_show").length
 
-  // --- Active students (distinct student_ids with active lessons) ---
-  // NOTE: "Мой ученик" = хоть один урок в статусах, отличных от cancelled/no_show.
-  // Раньше список ограничивался только ('booked','in_progress','completed'), из-за чего
-  // ученики со старыми уроками pending_payment (созданными ДО коммита a2a0600) выпадали.
-  const ACTIVE_LESSON_STATUSES = [
-    "scheduled",
-    "confirmed",
-    "booked",
-    "in_progress",
-    "completed",
-    "pending_payment", // TEMP: until Yookassa integration is live — a2a0600
-  ]
-  const { data: activeLessonsRaw } = await (supabase as any)
-    .from("lessons")
-    .select("student_id, scheduled_at, status")
-    .eq("teacher_id", teacherId)
-    .in("status", ACTIVE_LESSON_STATUSES)
-    .order("scheduled_at", { ascending: true })
-  const activeLessons = (activeLessonsRaw ?? []) as Array<{ student_id: string; scheduled_at: string; status: string }>
+  const activeLessons = (activeLessonsResult.data ?? []) as Array<{ student_id: string; scheduled_at: string; status: string }>
+
+  // Второй параллельный батч: то, что зависит от lessons-id и student-id
+  // (т.е. от результатов первого батча). upcomingStudent profiles + trial-id
+  // map шли раньше последовательно — теперь параллельно.
+  const upcomingStudentIds = [...new Set(upcomingLessons.map((l) => l.student_id))]
+  const upcomingLessonIds = upcomingLessons.map((l) => l.id)
+
+  const [todayStudentProfilesResult, trialResult] = await Promise.all([
+    upcomingStudentIds.length
+      ? (supabase as any).from("profiles").select("id, full_name").in("id", upcomingStudentIds)
+      : Promise.resolve({ data: [] }),
+    upcomingLessonIds.length
+      ? (supabase as any)
+          .from("trial_lesson_requests")
+          .select("assigned_lesson_id")
+          .in("assigned_lesson_id", upcomingLessonIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const todayStudentsMap = new Map<string, { full_name: string | null }>()
+  ;((todayStudentProfilesResult.data ?? []) as any[]).forEach((p) => todayStudentsMap.set(p.id, { full_name: p.full_name }))
+
+  const trialIdSet = new Set<string>(
+    ((trialResult.data ?? []) as Array<{ assigned_lesson_id: string | null }>)
+      .map((t) => t.assigned_lesson_id)
+      .filter((x): x is string => Boolean(x))
+  )
 
   // per-student: count of lessons, next upcoming lesson.
   // "Следующий урок" = только ещё предстоящий слот в не-финальных статусах.

@@ -499,9 +499,17 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
               const navSlug = item.href.split("/").filter(Boolean).pop() || "home"
               return (
                 <li key={item.href + item.label}>
+                  {/* Prefetch enabled (Next.js default): pre-warms the loading.tsx
+                     skeleton + RSC payload of the next dashboard tab on hover/visible,
+                     which is exactly the path that users walk. Без этого переход
+                     /student → /student/schedule блокируется на 300-800ms while
+                     auth check + layout cache + page query run from scratch.
+                     Раньше стоял prefetch={false} ради подавления dev-console
+                     warning'ов на force-dynamic роутах — теперь у нас есть
+                     loading.tsx у каждого раздела (task #71), prefetch ведёт себя
+                     корректно (грузит skeleton bundle, а не саму страницу). */}
                   <Link
                     href={item.href}
-                    prefetch={false}
                     className={isActive ? "active" : ""}
                     data-onboarding={`nav-${navSlug}`}
                   >
@@ -518,7 +526,10 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           <ul className="nav">
             {bottomItems.map((item) => (
               <li key={item.label}>
-                <Link href={item.href} prefetch={false}>
+                {/* prefetch включён (см. комментарий выше у nav-links): account-links
+                   (профиль/настройки/выход) — частые цели перехода с любого
+                   dashboard-раздела, prefetch'имся ради instant-navigation. */}
+                <Link href={item.href}>
                   <Icon svg={item.icon} />
                   {item.label}
                 </Link>
