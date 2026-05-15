@@ -4,7 +4,7 @@
 import "@/styles/dashboard/student-settings.css"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { MfaTotpSection } from "@/components/auth/mfa-totp-section"
@@ -117,6 +117,7 @@ export default function StudentSettingsPage() {
   // Middleware sets ?mfa=required after a soft-redirect for admins without
   // a verified TOTP factor. We use it (a) to scroll the user to the MFA
   // card on mount and (b) to show a red "обязательно" banner inside it.
+  const router = useRouter()
   const searchParams = useSearchParams()
   const mfaRequired = searchParams?.get("mfa") === "required"
   const [loading, setLoading] = useState(true)
@@ -296,18 +297,28 @@ export default function StudentSettingsPage() {
       // Cache-bust so the image refreshes even when URL is the same.
       const url = `${publicUrl}?t=${Date.now()}`
 
-      const { error: updErr } = await supabase
-        .from("profiles")
-        .update({ avatar_url: url })
-        .eq("id", data.account.id)
-      if (updErr) {
-        toast.error("Не удалось сохранить ссылку на фото")
+      // Используем /api/settings/me PATCH вместо прямого UPDATE — оно
+      // вызывает invalidateProfile() и evict'ит per-user cache
+      // (getCachedProfile, TTL 120s). Без этого sidebar Avatar остаётся
+      // со старым URL до 2 минут.
+      const apiRes = await fetch("/api/settings/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ account: { avatar_url: url } }),
+      })
+      if (!apiRes.ok) {
+        const j = await apiRes.json().catch(() => ({}))
+        toast.error(`Не удалось сохранить ссылку на фото${j?.error ? ": " + j.error : ""}`)
         return
       }
 
       setData((prev) => (prev ? { ...prev, account: { ...prev.account, avatar_url: url } } : prev))
       setOriginal((prev) => (prev ? { ...prev, account: { ...prev.account, avatar_url: url } } : prev))
       toast.success("Фото обновлено")
+      // Заставляем server-layout перечитать profile (после invalidate
+      // в API кэш уже evict'нут, refresh подтянет свежий avatar в sidebar).
+      router.refresh()
     } catch {
       toast.error("Не удалось загрузить фото")
     } finally {
