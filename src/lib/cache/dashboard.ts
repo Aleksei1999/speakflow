@@ -133,7 +133,7 @@ export function getCachedUserProgress(userId: string): Promise<CachedUserProgres
   return unstable_cache(
     async (uid: string) => loadUserProgress(uid),
     ['dashboard-progress', userId],
-    { tags: [progressTag(userId)], revalidate: 30 }
+    { tags: [progressTag(userId)], revalidate: 120 }
   )(userId)
 }
 
@@ -658,7 +658,7 @@ export function getCachedAdminTrialRequests(opts?: {
   return unstable_cache(
     async (s: string) => loadAdminTrialRequests(s === 'all' ? undefined : s),
     ['admin-trial-requests', status],
-    { tags: [adminTrialRequestsTag()], revalidate: 30 }
+    { tags: [adminTrialRequestsTag()], revalidate: 120 }
   )(status)
 }
 
@@ -1026,6 +1026,6 @@ export function getCachedAdminSupportThreads(opts?: {
   return unstable_cache(
     async (lim: string) => loadAdminSupportThreads({ limit: Number(lim) }),
     ['admin-support', String(limit)],
-    { tags: [adminSupportTag()], revalidate: 30 }
+    { tags: [adminSupportTag()], revalidate: 120 }
   )(String(limit))
 }

@@ -187,6 +187,6 @@ export function getCachedStudentDashboard(
   return unstable_cache(
     async (uid: string) => loadStudentDashboardImpl(uid),
     ['student-dashboard', userId],
-    { tags: [studentDashboardTag(userId)], revalidate: 30 }
+    { tags: [studentDashboardTag(userId)], revalidate: 120 }
   )(userId)
 }

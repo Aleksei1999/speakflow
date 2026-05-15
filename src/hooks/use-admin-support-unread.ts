@@ -61,7 +61,7 @@ export function useAdminSupportUnread(opts: { enabled: boolean }) {
     enabled: opts.enabled && hasIdled,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
-    refetchInterval: 120 * 1000,
+    refetchInterval: 300 * 1000,
     refetchOnWindowFocus: true,
   })
 }
