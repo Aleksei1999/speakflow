@@ -8,8 +8,12 @@
 //      сигнатурой первых байт. Клиент может выдать любой file.type;
 //      доверяемся только тому что в bytes реально лежит.
 //   3. assertAllowedMime() — whitelist по расширению + magic bytes.
+//   4. verifyFileSafety() — sha256 → VirusTotal lookup. Реджектим
+//      только при подтверждённом malicious-verdict (≥3 AV-detections).
 
+import { createHash } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
+import { scanFileHash } from "./virustotal"
 
 export interface SizeLimitOptions {
   maxBytes: number
@@ -147,4 +151,67 @@ export async function verifyFileType(file: File): Promise<VerifiedFile | NextRes
   }
 
   return { detectedMime: detected, mimeType: resolved }
+}
+
+// ---------------------------------------------------------------
+// AV scanning (VirusTotal). Hash-based, fail-open.
+// ---------------------------------------------------------------
+
+export interface SafetyResult {
+  safe: boolean
+  /** Машинно-читаемая причина, БЕЗ leak'а какие именно AV сработали. */
+  reason?: "av_detected"
+  /** SHA-256 для аудит-лога (передавать только префикс наружу). */
+  sha256?: string
+  /** Количество AV-движков, отметивших файл как вредоносный. */
+  detections?: number
+}
+
+/**
+ * SHA-256 буфера (используем Node `crypto`, т.к. upload-routes выполняются
+ * в Node runtime — а не Edge — из-за Supabase admin client'а).
+ *
+ * Buffer extends Uint8Array, поэтому отдельной ветки для него не нужно.
+ */
+export function sha256Hex(buf: Uint8Array | ArrayBuffer): string {
+  const view = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf
+  const h = createHash("sha256")
+  h.update(view)
+  return h.digest("hex")
+}
+
+/**
+ * Проверяет файл через VirusTotal:
+ *   - считает SHA-256,
+ *   - ходит в VT (через cache),
+ *   - реджектит только при подтверждённом 'malicious'.
+ *
+ * Любая ошибка инфры (нет ключа, timeout, 5xx) → safe:true (fail-open).
+ * Caller получает sha256 в SafetyResult — может положить hash_prefix в
+ * audit-log, НО ни в коем случае не весь hash и не имя файла.
+ */
+export async function verifyFileSafety(
+  data: ArrayBuffer | Uint8Array
+): Promise<SafetyResult> {
+  const hash = sha256Hex(data)
+  const verdict = await scanFileHash(hash)
+  if (verdict.verdict === "malicious") {
+    return {
+      safe: false,
+      reason: "av_detected",
+      sha256: hash,
+      detections: verdict.detections,
+    }
+  }
+  return { safe: true, sha256: hash }
+}
+
+/**
+ * Convenience-обёртка для File API: вычитывает всё содержимое в Buffer
+ * и прогоняет verifyFileSafety. Используй когда уже принял File через
+ * formData() и хочешь одну строчку.
+ */
+export async function verifyFileObjectSafety(file: File): Promise<SafetyResult> {
+  const ab = await file.arrayBuffer()
+  return verifyFileSafety(ab)
 }

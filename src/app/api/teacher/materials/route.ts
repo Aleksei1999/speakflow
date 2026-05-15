@@ -2,7 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createSignedUrl, createSignedUrlMap } from '@/lib/supabase/signed-url'
+import { verifyFileSafety } from '@/lib/api/file-upload'
+import { logAuditEvent } from '@/lib/audit/log'
 
 const BUCKET = 'teacher-materials'
 const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024 // 10 GB
@@ -360,6 +363,44 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         )
       }
+    }
+
+    // AV scan: качаем загруженный файл admin'ом и прогоняем VT. Fail-open
+    // на сетевых ошибках. Storage RLS не должен ругаться (мы admin), но
+    // если файла нет (не дошёл client-side upload) — реджектим как 400.
+    const admin = createAdminClient()
+    const { data: blob, error: dlErr } = await admin.storage
+      .from(BUCKET)
+      .download(storage_path)
+    if (dlErr || !blob) {
+      return NextResponse.json(
+        { error: 'Файл не найден в хранилище — повторите загрузку' },
+        { status: 400 }
+      )
+    }
+    const safety = await verifyFileSafety(await blob.arrayBuffer())
+    if (!safety.safe) {
+      await logAuditEvent(request, {
+        category: 'data',
+        action: 'av_blocked_upload',
+        target_type: 'materials',
+        target_id: null,
+        payload: {
+          endpoint: '/api/teacher/materials',
+          hash_prefix: safety.sha256?.slice(0, 16) ?? null,
+          detections: safety.detections ?? null,
+        },
+      })
+      // Чистим зловредный файл из bucket — он там оказался через
+      // direct-upload и БД-записи у него ещё нет.
+      await admin.storage.from(BUCKET).remove([storage_path]).catch(() => {})
+      return NextResponse.json(
+        {
+          error: 'av_detected',
+          message: 'Файл не прошёл антивирусную проверку',
+        },
+        { status: 422 }
+      )
     }
 
     const ext = fileTypeFromName(file_name)

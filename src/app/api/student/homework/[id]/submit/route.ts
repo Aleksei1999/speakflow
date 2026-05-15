@@ -2,6 +2,36 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { verifyFileSafety } from "@/lib/api/file-upload"
+import { logAuditEvent } from "@/lib/audit/log"
+
+const HOMEWORK_BUCKET = "homework-submissions"
+
+/**
+ * Достаём storage_path из либо явного поля, либо из supabase signed URL.
+ * Признак нашего пути: `/storage/v1/object/sign/homework-submissions/<path>?...`.
+ * Внешние ссылки (http(s)://… не на наш Storage) → null, мы их не сканируем
+ * (это пользовательские ссылки на YouTube / Google Docs и т.п.).
+ */
+function extractStoragePath(att: {
+  url?: string
+  storage_path?: string
+}): string | null {
+  if (att.storage_path && typeof att.storage_path === "string") {
+    return att.storage_path
+  }
+  if (!att.url) return null
+  try {
+    const u = new URL(att.url)
+    const marker = `/storage/v1/object/sign/${HOMEWORK_BUCKET}/`
+    const idx = u.pathname.indexOf(marker)
+    if (idx === -1) return null
+    return decodeURIComponent(u.pathname.slice(idx + marker.length))
+  } catch {
+    return null
+  }
+}
 
 // ---------------------------------------------------------------
 // POST /api/student/homework/[id]/submit
@@ -20,6 +50,8 @@ const attachmentSchema = z.object({
   url: z.string().trim().min(1).max(1000),
   size: z.number().int().nonnegative().optional(),
   mime: z.string().trim().max(200).optional(),
+  /** Optional: явный путь в Storage. Если задан — сканируем содержимое через VT. */
+  storage_path: z.string().trim().min(1).max(500).optional(),
 })
 
 const bodySchema = z.object({
@@ -100,6 +132,48 @@ export async function POST(
         { error: "Прикрепи файл или напиши ответ перед отправкой" },
         { status: 400 }
       )
+    }
+
+    // AV scan: для каждого аттача, ведущего в наш Supabase Storage,
+    // скачиваем admin'ом и прогоняем hash через VirusTotal. Fail-open
+    // на сетевых ошибках — verifyFileSafety возвращает safe:true.
+    if (attachments && attachments.length > 0) {
+      const admin = createAdminClient()
+      for (const att of attachments) {
+        const path = extractStoragePath(att)
+        if (!path) continue // внешняя ссылка — не наш scope
+        const { data: blob, error: dlErr } = await admin.storage
+          .from(HOMEWORK_BUCKET)
+          .download(path)
+        if (dlErr || !blob) {
+          // Storage не отдал файл — не блокируем submit (мог быть удалён,
+          // RLS-конфликт и т.п.), просто пропускаем AV-проверку.
+          continue
+        }
+        const safety = await verifyFileSafety(await blob.arrayBuffer())
+        if (!safety.safe) {
+          await logAuditEvent(request, {
+            category: "data",
+            action: "av_blocked_upload",
+            target_type: "homework",
+            target_id: id,
+            payload: {
+              endpoint: "/api/student/homework/[id]/submit",
+              hash_prefix: safety.sha256?.slice(0, 16) ?? null,
+              detections: safety.detections ?? null,
+            },
+          })
+          // Best-effort: убираем зловредный файл из Storage.
+          await admin.storage.from(HOMEWORK_BUCKET).remove([path]).catch(() => {})
+          return NextResponse.json(
+            {
+              error: "av_detected",
+              message: "Файл не прошёл антивирусную проверку",
+            },
+            { status: 422 }
+          )
+        }
+      }
     }
 
     const update: Record<string, any> = {
