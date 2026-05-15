@@ -9,12 +9,14 @@ import { QuickActions } from "./_components/quick-actions"
 import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 import { TrialBookingCard } from "./_components/trial-booking-card"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
-import { formatLessonTime } from "@/lib/time"
-import { computeLessonAccess } from "@/lib/lesson-access"
-import { LiveLessonCTA } from "@/components/lesson/live-lesson-cta"
+import { LessonRowClient } from "@/components/lesson/lesson-row-client"
 
-// Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
-export const dynamic = "force-dynamic"
+// Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess (now=new Date())
+// внутри рендера каждой строки урока. Теперь строки рендерит client-side
+// <LessonRowClient> (тикает каждые 5 сек), а server-side рендер кеширует HTML
+// общего layout-а. 30 сек — компромисс между свежестью «у меня X уроков сегодня»
+// (counter в шапке зависит от todayLessons.length) и нагрузкой на БД.
+export const revalidate = 30
 
 const LEVEL_ORDER = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"] as const
 const LEVEL_SHORT: Record<string, string> = {
@@ -488,90 +490,27 @@ export default async function StudentDashboardPage() {
                     </div>
                   ) : null,
                   ((l) => {
-                const dt = new Date(l.scheduled_at)
                 const teacher = l.teacher_id ? teacherMap[l.teacher_id]?.full_name : null
-
-                // Окно доступа
-                const access = computeLessonAccess({
-                  scheduledAt: l.scheduled_at,
-                  durationMinutes: l.duration_minutes ?? 50,
-                  status: l.status,
-                })
-                const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
-                const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
-
-                const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled"
-                const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled"
-                const isActive = isLive // подсветка ячейки только когда реально «идёт»
-                const lessonHref = `/student/lesson/${l.id}`
-
-                // CTA в правом углу строки.
-                // Для completed / "будет позже > 10 мин" → server (статичные лейблы).
-                // Live / waiting / expired / cancelled / no_show — отдаём в client
-                // <LiveLessonCTA>, чтобы секунды до openAt тикали без force-dynamic.
-                // server-side computeLessonAccess выше всё ещё нужен, потому что от
-                // него зависит clickable / isActive (подсветка строки), а это не CTA.
-                let cta: any
-                if (l.status === "completed") {
-                  cta = <span className="sch-status sch-status--done">✓ завершён</span>
-                } else if (
-                  l.status === "no_show" ||
-                  access.status === "no_show" ||
-                  l.status === "cancelled" ||
-                  access.status === "cancelled" ||
-                  isLive ||
-                  isSoon ||
-                  access.status === "expired"
-                ) {
-                  cta = (
-                    <LiveLessonCTA
-                      lessonId={l.id}
-                      scheduledAt={l.scheduled_at}
-                      durationMinutes={l.duration_minutes ?? 50}
-                      role="student"
-                      lessonStatus={l.status}
-                      classPrefix="stu-today-join"
-                      hintClassName="stu-today-hint"
-                      liveLabel="Начать"
-                    />
-                  )
-                } else {
-                  cta = <span className="sch-status sch-status--pending">{formatLessonTime(dt)}</span>
-                }
-
-                // Вся строка кликабельная, если можно войти/скоро открывается
-                const clickable = isLive || isSoon
-                const rowClass = `sch-item${isActive ? " active" : ""}`
                 const isTrial = todayTrialIds.has(l.id)
-                const rowInner = (
-                  <>
-                    <div className="sch-time">
-                      <div className="t">{formatLessonTime(dt)}</div>
-                      <div className="d">{l.duration_minutes} мин</div>
-                    </div>
-                    <div className="sch-info">
-                      <h4>
-                        {isTrial ? "🎯 Пробный урок" : "Урок 1-on-1"}
-                      </h4>
-                      <p>{teacher ? `с ${teacher}` : "Преподаватель назначен"}{isTrial ? " · бесплатно" : ""}</p>
-                    </div>
-                    {cta}
-                  </>
-                )
-
-                return clickable ? (
-                  <Link
+                // Всю time-dependent логику (access window, CTA, .active-подсветка,
+                // <Link>/<div>) делегируем client-row. Это позволяет странице
+                // жить под revalidate=30 — server-side рендер кешируется, а row
+                // сама тикает Date.now() через setInterval(5000).
+                return (
+                  <LessonRowClient
                     key={l.id}
-                    href={lessonHref}
-                    className={`sch-link ${rowClass}${isActive ? "" : ""}`}
-                    style={{ display: "flex", alignItems: "center", gap: 12 }}
-                  >
-                    {rowInner}
-                  </Link>
-                ) : (
-                  <div key={l.id} className={rowClass}>
-                    {rowInner}
-                  </div>
+                    lessonId={l.id}
+                    scheduledAt={l.scheduled_at}
+                    durationMinutes={l.duration_minutes ?? 50}
+                    status={l.status}
+                    role="student"
+                    counterpartName={teacher}
+                    isTrial={isTrial}
+                    classPrefix="stu-today-join"
+                    rowClassName="sch-item"
+                    linkClassName="sch-link"
+                    hintClassName="stu-today-hint"
+                  />
                 )
               })(l),
                 ]

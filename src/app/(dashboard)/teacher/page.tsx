@@ -6,12 +6,16 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
-import { computeLessonAccess } from "@/lib/lesson-access"
-import { LiveLessonCTA } from "@/components/lesson/live-lesson-cta"
+import { LessonRowClient } from "@/components/lesson/lesson-row-client"
+import { ClubRowClient } from "@/components/lesson/club-row-client"
 import OnboardingLauncher from "@/components/onboarding/OnboardingLauncher"
 
-// Не кешируем — секунды у openAt/closeAt должны пересчитываться на каждый запрос.
-export const dynamic = "force-dynamic"
+// Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess(now=new Date())
+// внутри рендера каждой строки урока и Speaking Club row. Теперь обе строки
+// рендерит client (<LessonRowClient> / <ClubRowClient>, тикают каждые 5 сек),
+// а server-side рендер общего layout-а кешируется. 30 сек — компромисс между
+// свежестью «количество уроков сегодня» в шапке и нагрузкой на БД.
+export const revalidate = 30
 
 const TCH_CSS = `
 .tch-home .dashboard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
@@ -438,7 +442,7 @@ export default async function TeacherDashboardPage() {
   const greeting = greetingByHour(now.getHours())
   const todayCount = todayLessons.length
 
-  // (active lesson больше не вычисляем отдельно — его роль выполняет computeLessonAccess в рендере)
+  // (active lesson больше не вычисляем отдельно — его роль выполняет client-side <LessonRowClient>)
 
   return (
     <div className="tch-home">
@@ -502,68 +506,17 @@ export default async function TeacherDashboardPage() {
             ) : null}
             {todayClubs.length > 0 ? (
               <>
-                {todayClubs.map((c: any) => {
-                  const at = new Date(c.starts_at)
-                  const access = computeLessonAccess({
-                    scheduledAt: c.starts_at,
-                    durationMinutes: c.duration_min ?? 60,
-                  })
-                  const secondsUntilOpen = Math.max(
-                    0,
-                    Math.floor((access.openAtMs - access.nowMs) / 1000)
-                  )
-                  const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
-                  const isLive = access.status === "live"
-                  const isSoon =
-                    access.status === "waiting" && secondsUntilOpen <= 600
-                  // CTA для Speaking Club row.
-                  // Live / waiting / expired — через client <LiveLessonCTA> (тикает каждые 5 сек),
-                  // дефолт «ожидается» (> 10 мин до openAt) — server-side статичный лейбл.
-                  let cta: any
-                  if (isLive || isSoon || access.status === "expired") {
-                    cta = (
-                      <LiveLessonCTA
-                        lessonId={c.id}
-                        scheduledAt={c.starts_at}
-                        durationMinutes={c.duration_min ?? 60}
-                        role="club"
-                        classPrefix="tch-today-join"
-                        hintClassName="tch-today-hint"
-                        liveLabel="🎙 Зайти"
-                      />
-                    )
-                  } else {
-                    cta = <span className="status status-pending">ожидается</span>
-                  }
-                  const clickable = isLive || isSoon
-                  const href = `/club/${c.id}/room`
-                  const inner = (
-                    <>
-                      <div className="schedule-time">
-                        <div className="time">{formatLessonTime(at)}</div>
-                        <div className="dur">{c.duration_min ?? 60} мин</div>
-                      </div>
-                      <div className="schedule-info">
-                        <h4>🎙 {c.topic}</h4>
-                        <p>Speaking Club · {c.seats_taken ?? 0}/{c.capacity ?? c.seats_taken ?? 0} участников</p>
-                      </div>
-                      {cta}
-                    </>
-                  )
-                  return clickable ? (
-                    <Link
-                      key={c.id}
-                      href={href}
-                      className={`schedule-link schedule-item${isLive ? " active" : ""}`}
-                    >
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div key={c.id} className="schedule-item">
-                      {inner}
-                    </div>
-                  )
-                })}
+                {todayClubs.map((c: any) => (
+                  <ClubRowClient
+                    key={c.id}
+                    clubId={c.id}
+                    startsAt={c.starts_at}
+                    durationMin={c.duration_min ?? 60}
+                    topic={c.topic}
+                    seatsTaken={c.seats_taken ?? 0}
+                    capacity={c.capacity ?? c.seats_taken ?? 0}
+                  />
+                ))}
               </>
             ) : null}
             {upcomingLessons.length === 0 ? null : (
@@ -598,101 +551,26 @@ export default async function TeacherDashboardPage() {
                     </div>
                   ) : null,
                   ((l) => {
-                    const at = new Date(l.scheduled_at)
                     const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
                     const isTrial = trialIdSet.has(l.id)
-
-                    const access = computeLessonAccess({
-                      scheduledAt: l.scheduled_at,
-                      durationMinutes: l.duration_minutes ?? 50,
-                      status: l.status,
-                    })
-                    const secondsUntilOpen = Math.max(0, Math.floor((access.openAtMs - access.nowMs) / 1000))
-                    const minutesUntilOpen = Math.ceil(secondsUntilOpen / 60)
-
-                    const isLive = access.status === "live" && l.status !== "completed" && l.status !== "cancelled" && l.status !== "no_show"
-                    const isSoon = access.status === "waiting" && secondsUntilOpen <= 600 && l.status !== "cancelled" && l.status !== "no_show"
-                    const isActive = isLive
-                    const lessonHref = `/teacher/lesson/${l.id}`
-
-                    // CTA — таже схема, что в student/page.tsx: completed/default —
-                    // server-side, остальное через client <LiveLessonCTA> (5-сек tick).
-                    let cta: any
-                    if (l.status === "completed") {
-                      cta = <span className="status status-success">✓ завершён</span>
-                    } else if (
-                      l.status === "no_show" ||
-                      access.status === "no_show" ||
-                      l.status === "cancelled" ||
-                      access.status === "cancelled" ||
-                      isLive ||
-                      isSoon ||
-                      access.status === "expired"
-                    ) {
-                      cta = (
-                        <LiveLessonCTA
-                          lessonId={l.id}
-                          scheduledAt={l.scheduled_at}
-                          durationMinutes={l.duration_minutes ?? 50}
-                          role="teacher"
-                          lessonStatus={l.status}
-                          classPrefix="tch-today-join"
-                          hintClassName="tch-today-hint"
-                          liveLabel="Начать"
-                        />
-                      )
-                    } else {
-                      cta = <span className="status status-pending">ожидается</span>
-                    }
-
-                    const clickable = isLive || isSoon
-                    const rowClass = `schedule-item ${isActive ? "active" : ""}`
-                    const rowInner = (
-                      <>
-                        <div className="schedule-time">
-                          <div className="time">{formatLessonTime(at)}</div>
-                          <div className="dur">{l.duration_minutes} мин</div>
-                        </div>
-                        <div className="schedule-info">
-                          <h4>
-                            {studentName}
-                            {isTrial ? (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                  marginLeft: 8,
-                                  background: "rgba(230,57,70,.10)",
-                                  color: "var(--red)",
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                  padding: "2px 8px",
-                                  borderRadius: 100,
-                                  letterSpacing: ".3px",
-                                  textTransform: "uppercase",
-                                  border: "1px solid rgba(230,57,70,.2)",
-                                  verticalAlign: "middle",
-                                }}
-                              >
-                                🎯 Пробный
-                              </span>
-                            ) : null}
-                          </h4>
-                          <p>{isTrial ? "Пробный урок · бесплатно" : "Урок английского"}</p>
-                        </div>
-                        {cta}
-                      </>
-                    )
-
-                    return clickable ? (
-                      <Link key={l.id} href={lessonHref} className={`schedule-link ${rowClass}`}>
-                        {rowInner}
-                      </Link>
-                    ) : (
-                      <div key={l.id} className={rowClass}>
-                        {rowInner}
-                      </div>
+                    // Всю time-dependent логику (access window, CTA, .active-подсветка,
+                    // <Link>/<div>) делегируем client-row. Это позволяет странице
+                    // жить под revalidate=30 — без force-dynamic.
+                    return (
+                      <LessonRowClient
+                        key={l.id}
+                        lessonId={l.id}
+                        scheduledAt={l.scheduled_at}
+                        durationMinutes={l.duration_minutes ?? 50}
+                        status={l.status}
+                        role="teacher"
+                        counterpartName={studentName}
+                        isTrial={isTrial}
+                        classPrefix="tch-today-join"
+                        rowClassName="schedule-item"
+                        linkClassName="schedule-link"
+                        hintClassName="tch-today-hint"
+                      />
                     )
                   })(l),
                 ]

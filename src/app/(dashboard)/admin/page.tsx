@@ -5,7 +5,15 @@ import { createClient } from "@/lib/supabase/server"
 import { getCachedProfile } from "@/lib/cache/dashboard"
 import AdminHomeClient from "./AdminHomeClient"
 
-export const dynamic = "force-dynamic"
+// Внутри page нет live-countdown в render — все stat-числа (`live_now`,
+// `lessons_today`, etc.) приходят из админских API через HTTP-self-fetch
+// с cache:"no-store" внутри safeFetch. cookies() / headers() в этом
+// render-tree обращаются — Next-runtime сам пометит route как dynamic
+// (cookies/headers — opt-out из static prerender). revalidate=30 здесь
+// — сигнал «если бы prerender был, обновляй раз в 30 сек», в реальности
+// каждый запрос всё равно динамический, но мы избавляемся от явного
+// force-dynamic, чтобы поведение совпало с другими dashboard-страницами.
+export const revalidate = 30
 
 type AdminStats = {
   students_active: number
