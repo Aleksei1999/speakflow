@@ -1,4 +1,4 @@
-.teachers-page{max-width:1100px;margin:0 auto}
+.teachers-page,.dash .teachers-page{max-width:1100px;margin:0 auto}
 
 /* Header */
 .teachers-page .page-header{text-align:center;margin-bottom:28px}
