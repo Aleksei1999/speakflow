@@ -11,6 +11,9 @@ import { TrialBookingCard } from "./_components/trial-booking-card"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { LessonRowClient } from "@/components/lesson/lesson-row-client"
 import { getCachedStudentDashboard } from "@/lib/dashboard/student"
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
+import { getQueryClient } from "@/lib/query/client"
+import { STUDENT_DASHBOARD_QUERY_KEY } from "@/hooks/use-student-dashboard"
 
 // Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess (now=new Date())
 // внутри рендера каждой строки урока. Теперь строки рендерит client-side
@@ -280,7 +283,17 @@ export default async function StudentDashboardPage() {
   const referralActivated = dashboard.referral.activated_count ?? 0
   const referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - referralActivated)
 
+  // SSR-prefetch: переиспользуем уже загруженный `dashboard` снапшот
+  // как initial-данные для TanStack `useStudentDashboard()`. Никакого
+  // второго RPC-вызова — просто seed через setQueryData. После dehydrate
+  // данные сериализуются в RSC payload и гидратируются на клиенте
+  // вместе с первым рендером, чтобы dashboard-shell XP-бейдж
+  // отрисовался без HTTP-запроса.
+  const queryClient = getQueryClient()
+  queryClient.setQueryData(STUDENT_DASHBOARD_QUERY_KEY, dashboard)
+
   return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
     <div className="stu-home">
       <style dangerouslySetInnerHTML={{ __html: STU_CSS }} />
       <LandingXpClaimer />
@@ -542,5 +555,6 @@ export default async function StudentDashboardPage() {
         </div>
       </div>
     </div>
+    </HydrationBoundary>
   )
 }
