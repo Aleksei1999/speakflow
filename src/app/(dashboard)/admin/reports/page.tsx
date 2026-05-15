@@ -15,7 +15,7 @@ const CSS = `
 .adm-stub .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;transition:all .15s ease;cursor:pointer;border:none;text-decoration:none;background:var(--surface);border:1px solid var(--border);color:var(--text)}
 .adm-stub .btn:hover{border-color:var(--text)}
 .adm-stub .hero{background:linear-gradient(135deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--border);border-radius:20px;padding:50px 40px;text-align:center;position:relative;overflow:hidden}
-.adm-stub .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:320px;height:320px;background:radial-gradient(circle,rgba(216,242,106,.12),transparent 60%);pointer-events:none}
+.adm-stub .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:320px;height:320px;background:radial-gradient(circle,rgba(221,234,136,.12),transparent 60%);pointer-events:none}
 .adm-stub .hero .badge{display:inline-block;background:var(--lime);color:#0A0A0A;padding:5px 14px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;position:relative;z-index:1}
 .adm-stub .hero h2{font-size:28px;font-weight:800;letter-spacing:-.8px;color:var(--text);margin-bottom:10px;position:relative;z-index:1}
 .adm-stub .hero p{font-size:14px;color:var(--muted);max-width:540px;margin:0 auto;line-height:1.6;position:relative;z-index:1}

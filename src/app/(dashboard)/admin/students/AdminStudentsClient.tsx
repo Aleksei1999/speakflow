@@ -56,9 +56,9 @@ const CSS = `
 .adm-students .user-sub{font-size:11px;color:var(--muted);margin-top:2px}
 
 .adm-students .level-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bg);color:var(--text)}
-.adm-students .level-pill.rare{background:rgba(230,57,70,.1);color:var(--red)}
-.adm-students .level-pill.mrare{background:rgba(216,242,106,.25);color:#5A7A00}
-[data-theme="dark"] .adm-students .level-pill.mrare{background:rgba(216,242,106,.15);color:var(--lime)}
+.adm-students .level-pill.rare{background:rgba(182,63,55,.1);color:var(--red)}
+.adm-students .level-pill.mrare{background:rgba(221,234,136,.25);color:#5A7A00}
+[data-theme="dark"] .adm-students .level-pill.mrare{background:rgba(221,234,136,.15);color:var(--lime)}
 .adm-students .level-pill.medium{background:rgba(245,185,66,.15);color:#B8860B}
 .adm-students .level-pill.welldone{background:var(--accent-dark);color:#fff}
 [data-theme="dark"] .adm-students .level-pill.welldone{background:var(--red)}

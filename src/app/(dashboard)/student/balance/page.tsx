@@ -48,8 +48,8 @@ const BALANCE_CSS = `
 
 /* Balance hero */
 .bal-card{background:#0A0A0A;border-radius:20px;padding:28px;margin-bottom:24px;position:relative;overflow:hidden;color:#fff}
-.bal-card::before{content:'';position:absolute;top:-60%;right:-30%;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(230,57,70,.08),transparent 70%);pointer-events:none}
-.bal-card::after{content:'';position:absolute;bottom:-40%;left:-20%;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(216,242,106,.05),transparent 70%);pointer-events:none}
+.bal-card::before{content:'';position:absolute;top:-60%;right:-30%;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(182,63,55,.08),transparent 70%);pointer-events:none}
+.bal-card::after{content:'';position:absolute;bottom:-40%;left:-20%;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(221,234,136,.05),transparent 70%);pointer-events:none}
 .bal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:relative;z-index:1}
 .bal-label{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px}
 .bal-amount{font-size:2.5rem;font-weight:800;letter-spacing:-1.5px;line-height:1;position:relative;z-index:1}
@@ -58,7 +58,7 @@ const BALANCE_CSS = `
 .bal-actions{display:flex;gap:8px;margin-top:18px;position:relative;z-index:1}
 .bal-btn{padding:10px 24px;border-radius:12px;font-size:.85rem;font-weight:700;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit}
 .bal-btn--primary{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.4)}
-.bal-btn--primary:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.4),0 10px 20px rgba(230,57,70,.15)}
+.bal-btn--primary:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.4),0 10px 20px rgba(182,63,55,.15)}
 .bal-btn--ghost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.08)}
 .bal-btn--ghost:hover{background:rgba(255,255,255,.1);color:#fff}
 
@@ -113,7 +113,7 @@ const BALANCE_CSS = `
 .sf-text--dim{color:var(--muted);text-decoration:line-through}
 .balance-page .sub-btn{width:100%;padding:12px;border-radius:12px;border:none;font-size:.88rem;font-weight:700;transition:all .2s;cursor:pointer;font-family:inherit}
 .balance-page .sub-btn--upgrade{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.35)}
-.balance-page .sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 20px rgba(230,57,70,.1)}
+.balance-page .sub-btn--upgrade:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 20px rgba(182,63,55,.1)}
 .balance-page .sub-btn--current{background:var(--bg);color:var(--muted);cursor:default}
 .balance-page .sub-btn--current:disabled{cursor:not-allowed}
 .sub-warning{margin-top:16px;padding:14px 18px;border-radius:14px;background:color-mix(in srgb,var(--red) 4%,transparent);border:1px solid color-mix(in srgb,var(--red) 8%,transparent);display:flex;align-items:flex-start;gap:10px}

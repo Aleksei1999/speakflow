@@ -100,7 +100,7 @@
 
 .teachers-page .prof-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .teachers-page .prof-slot{padding:10px 8px;border-radius:10px;border:1px solid var(--border);text-align:center;transition:all .15s;cursor:pointer;background:var(--surface);font-family:inherit;color:inherit}
-.teachers-page .prof-slot:hover{border-color:var(--red);background:rgba(230,57,70,.03)}
+.teachers-page .prof-slot:hover{border-color:var(--red);background:rgba(182,63,55,.03)}
 .teachers-page .prof-slot.selected{background:var(--red);border-color:var(--red);color:#fff}
 .teachers-page .prof-slot-day{font-size:.6rem;color:var(--muted);font-weight:600;text-transform:uppercase}
 .teachers-page .prof-slot.selected .prof-slot-day{color:rgba(255,255,255,.75)}
@@ -120,7 +120,7 @@
 .teachers-page .prof-price{font-size:.78rem;color:var(--muted);flex:1}
 .teachers-page .prof-price b{font-size:1.1rem;color:var(--text)}
 .teachers-page .prof-book{padding:12px 28px;border:none;border-radius:12px;background:var(--red);color:#fff;font-size:.88rem;font-weight:700;box-shadow:0 3px 0 rgba(180,30,45,.35);transition:all .2s;display:flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit}
-.teachers-page .prof-book:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 24px rgba(230,57,70,.12)}
+.teachers-page .prof-book:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.35),0 10px 24px rgba(182,63,55,.12)}
 .teachers-page .prof-book:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:0 3px 0 rgba(180,30,45,.35)}
 .teachers-page .prof-book.success{background:var(--lime);color:#0A0A0A;box-shadow:0 3px 0 rgba(140,180,40,.4)}
 .teachers-page .prof-section-loading{font-size:.78rem;color:var(--muted)}

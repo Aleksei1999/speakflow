@@ -39,7 +39,7 @@ const STYLES = `
 .cdlg-bd .actions .cdlg-cancel:hover{background:var(--surface-2,#FAFAF7)}
 .cdlg-bd .actions .cdlg-ok{background:var(--black,#0A0A0A);color:#fff}
 .cdlg-bd .actions .cdlg-ok:hover{filter:brightness(1.15)}
-.cdlg-bd .actions .cdlg-ok.danger{background:var(--red,#E63946)}
+.cdlg-bd .actions .cdlg-ok.danger{background:var(--red,#B63F37)}
 .cdlg-bd .actions .cdlg-ok.danger:hover{filter:brightness(.95)}
 @keyframes cdlg-fade{from{opacity:0}to{opacity:1}}
 @keyframes cdlg-pop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}

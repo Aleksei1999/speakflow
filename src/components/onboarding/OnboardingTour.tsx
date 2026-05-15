@@ -27,19 +27,19 @@ const CSS = `
 .ob-overlay{position:fixed;inset:0;z-index:9998;pointer-events:none}
 .ob-overlay.ob-overlay--blocking{pointer-events:auto;background:rgba(10,10,10,0)}
 .ob-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.ob-mark{stroke:#D8F26A;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.ob-svg{filter:drop-shadow(0 0 10px rgba(216,242,106,.45))}
+.ob-mark{stroke:#DDEA88;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ob-svg{filter:drop-shadow(0 0 10px rgba(221,234,136,.45))}
 .ob-mark--draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:obDraw .75s cubic-bezier(.65,0,.35,1) forwards}
 @keyframes obDraw{to{stroke-dashoffset:0}}
 .ob-tip{position:absolute;z-index:9999;background:#1A1A18;color:#fff;border-radius:14px;padding:14px 16px;max-width:300px;box-shadow:0 18px 40px rgba(0,0,0,.45);pointer-events:auto;animation:obFadeIn .25s ease-out}
-.ob-tip-title{font-size:13px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;color:#D8F26A}
+.ob-tip-title{font-size:13px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;color:#DDEA88}
 .ob-tip-text{font-size:14px;line-height:1.5;font-weight:500}
 .ob-tip-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
 .ob-tip-meta{font-size:11px;color:rgba(255,255,255,.5);font-weight:600;letter-spacing:.3px}
 .ob-tip-actions{display:flex;align-items:center;gap:6px}
 .ob-tip-skip{background:transparent;border:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;padding:6px 8px;border-radius:8px}
 .ob-tip-skip:hover{color:#fff;background:rgba(255,255,255,.05)}
-.ob-tip-next{background:#D8F26A;color:#0A0A0A;border:none;font-size:13px;font-weight:800;cursor:pointer;padding:8px 14px;border-radius:100px;transition:all .15s}
+.ob-tip-next{background:#DDEA88;color:#0A0A0A;border:none;font-size:13px;font-weight:800;cursor:pointer;padding:8px 14px;border-radius:100px;transition:all .15s}
 .ob-tip-next:hover{background:#fff}
 .ob-tip-arrow{position:absolute;width:14px;height:14px;background:#1A1A18;transform:rotate(45deg)}
 @keyframes obFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}

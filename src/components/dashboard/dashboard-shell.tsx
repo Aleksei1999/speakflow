@@ -13,13 +13,13 @@ import { LEVEL_XP_THRESHOLDS, xpToRoastLevel } from "@/lib/level-utils"
 
 const SHELL_CSS = `
 :root,[data-theme="light"]{
-  --red:#E63946;--lime:#D8F26A;--lime-dark:#5A7A00;
+  --red:#B63F37;--lime:#DDEA88;--lime-dark:#5A7A00;
   --bg:#F5F5F3;--surface:#fff;--surface-2:#FAFAF7;
   --border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A;
   --accent-dark:#0A0A0A;--shadow:rgba(10,10,10,.04);
 }
 [data-theme="dark"]{
-  --red:#E63946;--lime:#D8F26A;--lime-dark:#D8F26A;
+  --red:#B63F37;--lime:#DDEA88;--lime-dark:#DDEA88;
   --bg:#0F0F0E;--surface:#1A1A18;--surface-2:#222220;
   --border:#2A2A28;--muted:#8A8A86;--text:#F5F5F3;
   --accent-dark:#1A1A18;--shadow:rgba(0,0,0,.3);
@@ -44,7 +44,7 @@ const SHELL_CSS = `
 .dash .profile-photo-wrap .profile-photo-img{position:absolute;inset:0;margin:0}
 .dash .profile-name{font-weight:800;font-size:16px;letter-spacing:-.3px}
 .dash .profile-role{font-size:12px;color:var(--muted);margin-top:3px}
-.dash .profile-level{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(230,57,70,.08);color:var(--red)}
+.dash .profile-level{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(182,63,55,.08);color:var(--red)}
 .dash .profile-xp{margin-top:10px}
 .dash .profile-xp-row{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px}
 .dash .profile-xp-bar{height:4px;background:var(--border);border-radius:100px;overflow:hidden}

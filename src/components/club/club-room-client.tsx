@@ -42,7 +42,7 @@ declare global {
 }
 
 const CSS = `
-:root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
+:root{--red:#B63F37;--lime:#DDEA88;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
 .cr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px)}
 .cr *{box-sizing:border-box}.cr a{color:inherit;text-decoration:none}.cr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .cr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0}

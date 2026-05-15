@@ -22,23 +22,23 @@ const CSS = `
 .lg-wrap{min-height:calc(100vh - 80px);display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif}
 .lg-card{background:#fff;border:1px solid #EEEEEA;border-radius:20px;padding:36px 32px;max-width:480px;width:100%;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .lg-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px}
-.lg-badge.wait{background:#D8F26A;color:#0A0A0A}
+.lg-badge.wait{background:#DDEA88;color:#0A0A0A}
 .lg-badge.expired{background:#F5F5F3;color:#8A8A86}
-.lg-badge.cancelled{background:#E63946;color:#fff}
+.lg-badge.cancelled{background:#B63F37;color:#fff}
 .lg-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:0 0 10px}
 .lg-sub{font-size:14px;color:#8A8A86;line-height:1.55;margin:0 0 24px}
 .lg-sub strong{color:#0A0A0A;font-weight:700}
 .lg-timer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:28px 0}
 .lg-timer .slot{background:#0A0A0A;color:#fff;border-radius:14px;padding:16px 4px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.lg-timer .slot.soon{background:#E63946}
+.lg-timer .slot.soon{background:#B63F37}
 .lg-timer .num{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1}
 .lg-timer .lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;font-weight:600}
-.lg-soon{font-size:16px;font-weight:700;color:#E63946;margin:24px 0}
+.lg-soon{font-size:16px;font-weight:700;color:#B63F37;margin:24px 0}
 .lg-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .lg-btn{padding:11px 22px;border-radius:999px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:transform .1s ease,background .15s ease}
 .lg-btn:active{transform:scale(0.97)}
 .lg-btn.primary{background:#0A0A0A;color:#fff}
-.lg-btn.primary:hover{background:#E63946}
+.lg-btn.primary:hover{background:#B63F37}
 .lg-btn.ghost{background:#F5F5F3;color:#0A0A0A}
 .lg-btn.ghost:hover{background:#EEEEEA}
 .lg-meta{font-size:12px;color:#8A8A86;margin-top:14px}

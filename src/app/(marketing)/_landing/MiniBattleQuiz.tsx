@@ -1083,7 +1083,7 @@ const MINI_BATTLE_CSS = `
   font-weight: 700;
   padding: 16px 28px;
   border-radius: 14px;
-  box-shadow: 0 4px 0 #991F1F, 0 8px 24px rgba(230,57,70,0.2);
+  box-shadow: 0 4px 0 #991F1F, 0 8px 24px rgba(182,63,55,0.2);
   transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
   width: 100%;
   max-width: 320px;

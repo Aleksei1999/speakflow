@@ -25,7 +25,7 @@
 }
 [data-theme="dark"] .stu-mat2 .from-teacher{background:linear-gradient(100deg,#1a1a18 0%,#222220 100%)}
 .stu-mat2 .from-teacher::before{content:'';position:absolute;top:0;bottom:0;left:0;width:4px;background:linear-gradient(180deg,var(--red),var(--lime))}
-.stu-mat2 .from-teacher::after{content:'';position:absolute;top:-50%;right:-10%;width:380px;height:380px;background:radial-gradient(circle,rgba(216,242,106,.1),transparent 60%);pointer-events:none}
+.stu-mat2 .from-teacher::after{content:'';position:absolute;top:-50%;right:-10%;width:380px;height:380px;background:radial-gradient(circle,rgba(221,234,136,.1),transparent 60%);pointer-events:none}
 .stu-mat2 .ft-bignum{font-family:'Gluten',cursive;font-size:64px;font-weight:600;color:var(--lime);line-height:.9;letter-spacing:-2px;position:relative;z-index:1;align-self:center;padding-right:4px}
 .stu-mat2 .ft-who{display:flex;align-items:flex-start;gap:12px;position:relative;z-index:1;min-width:0}
 .stu-mat2 .ft-avatar{width:42px;height:42px;border-radius:50%;background:var(--red);border:2px solid var(--lime);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;margin-top:2px;color:#fff}
@@ -42,9 +42,9 @@
 .stu-mat2 .mat-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
 .stu-mat2 .m-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px}
 .stu-mat2 .m-stat-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.stu-mat2 .m-stat-ico.red{background:rgba(230,57,70,.08);color:var(--red)}
-.stu-mat2 .m-stat-ico.lime{background:rgba(216,242,106,.2);color:var(--lime-dark,#5A7A00)}
-[data-theme="dark"] .stu-mat2 .m-stat-ico.lime{background:rgba(216,242,106,.15);color:var(--lime)}
+.stu-mat2 .m-stat-ico.red{background:rgba(182,63,55,.08);color:var(--red)}
+.stu-mat2 .m-stat-ico.lime{background:rgba(221,234,136,.2);color:var(--lime-dark,#5A7A00)}
+[data-theme="dark"] .stu-mat2 .m-stat-ico.lime{background:rgba(221,234,136,.15);color:var(--lime)}
 .stu-mat2 .m-stat-ico.dark{background:var(--bg);color:var(--text)}
 .stu-mat2 .m-stat-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .stu-mat2 .m-stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1;font-variant-numeric:tabular-nums}
@@ -84,7 +84,7 @@
 .stu-mat2 .lesson-head:hover{background:var(--surface-2,var(--bg))}
 .stu-mat2 .lesson-date{width:54px;height:54px;background:var(--bg);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
 .stu-mat2 .lesson-date.today{background:var(--lime);color:#0A0A0A}
-.stu-mat2 .lesson-date.upcoming{background:rgba(230,57,70,.08);color:var(--red)}
+.stu-mat2 .lesson-date.upcoming{background:rgba(182,63,55,.08);color:var(--red)}
 .stu-mat2 .lesson-date-day{font-size:16px;font-weight:800;line-height:1;letter-spacing:-.5px}
 .stu-mat2 .lesson-date-mon{font-size:10px;font-weight:700;text-transform:uppercase;margin-top:2px;opacity:.7}
 .stu-mat2 .lesson-info{flex:1;min-width:0}
@@ -102,7 +102,7 @@
 /* MATERIAL ITEM */
 .stu-mat2 .mat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;transition:background .15s;position:relative}
 .stu-mat2 .mat-item:hover{background:var(--surface-2,var(--bg))}
-.stu-mat2 .mat-item.new::before{content:'';position:absolute;left:-2px;top:14px;width:6px;height:6px;background:var(--red);border-radius:50%;box-shadow:0 0 8px rgba(230,57,70,.4)}
+.stu-mat2 .mat-item.new::before{content:'';position:absolute;left:-2px;top:14px;width:6px;height:6px;background:var(--red);border-radius:50%;box-shadow:0 0 8px rgba(182,63,55,.4)}
 .stu-mat2 .mat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
 .stu-mat2 .mat-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .stu-mat2 .mat-icon.pdf{background:var(--red)}

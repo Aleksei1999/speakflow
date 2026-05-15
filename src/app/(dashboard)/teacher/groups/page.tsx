@@ -52,14 +52,14 @@ const CSS = `
 .tch-grp .mem-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
 .tch-grp .mem-item:last-child{border-bottom:none}
 .tch-grp .mem-item:hover{background:var(--bg)}
-.tch-grp .mem-item.checked{background:rgba(230,57,70,.06)}
+.tch-grp .mem-item.checked{background:rgba(182,63,55,.06)}
 .tch-grp .mem-item .chk{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;background:var(--surface);flex-shrink:0}
 .tch-grp .mem-item.checked .chk{background:var(--red);border-color:var(--red);color:#fff}
 .tch-grp .mem-item .chk svg{width:10px;height:10px;display:none}
 .tch-grp .mem-item.checked .chk svg{display:block}
 .tch-grp .mem-item .av{width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;object-fit:cover}
 .tch-grp .mem-item .nm{flex:1;font-size:13px;font-weight:600}
-.tch-grp .mem-item .lvl{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(230,57,70,.1);color:var(--red);font-weight:700}
+.tch-grp .mem-item .lvl{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(182,63,55,.1);color:var(--red);font-weight:700}
 
 .tch-grp .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 `

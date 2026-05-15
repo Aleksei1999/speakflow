@@ -56,9 +56,9 @@ function welcomeHtml(args: {
       <div style="font-size:11px;color:#6B6B6B;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">Логин (email)</div>
       <div style="font-size:14px;font-weight:600;margin-bottom:14px">${email}</div>
       <div style="font-size:11px;color:#6B6B6B;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">Временный пароль</div>
-      <div style="font-size:16px;font-weight:800;font-family:Menlo,monospace;letter-spacing:.5px;background:#fff;padding:10px 14px;border-radius:8px;border:1px dashed rgba(230,57,70,.3);display:inline-block">${password}</div>
+      <div style="font-size:16px;font-weight:800;font-family:Menlo,monospace;letter-spacing:.5px;background:#fff;padding:10px 14px;border-radius:8px;border:1px dashed rgba(182,63,55,.3);display:inline-block">${password}</div>
     </div>
-    <a href="${loginUrl}" style="display:inline-block;background:#E63946;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(180,30,45,.3)">Войти на платформу</a>
+    <a href="${loginUrl}" style="display:inline-block;background:#B63F37;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(180,30,45,.3)">Войти на платформу</a>
     <p style="font-size:12px;color:#6B6B6B;line-height:1.5;margin:24px 0 0">После первого входа рекомендуем сменить пароль в настройках профиля. Если письмо пришло вам по ошибке — проигнорируйте его.</p>
   </div>
 </body></html>`

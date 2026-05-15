@@ -726,7 +726,7 @@ export default function StudentTeachersPage() {
                       type="button"
                       onClick={() => setReviewFormOpen(true)}
                       style={{
-                        background: "var(--red, #E63946)",
+                        background: "var(--red, #B63F37)",
                         color: "#fff",
                         border: "none",
                         borderRadius: 10,
@@ -828,7 +828,7 @@ export default function StudentTeachersPage() {
                         onClick={submitReview}
                         disabled={reviewSubmitting}
                         style={{
-                          background: "var(--red, #E63946)",
+                          background: "var(--red, #B63F37)",
                           color: "#fff",
                           border: "none",
                           borderRadius: 10,

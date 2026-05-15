@@ -2,7 +2,7 @@
  * Расширенные email-шаблоны Raw English (визуальная система 2026-04).
  *
  * Тёмно-минималистичный бренд-стиль: карточка 560px, шрифт Inter,
- * #F5F5F3 фон, #0A0A0A текст, акцент #E63946 (Raw English red).
+ * #F5F5F3 фон, #0A0A0A текст, акцент #B63F37 (Raw English red).
  *
  * Все шаблоны используют inline-стили (email-клиенты чистят <style>).
  * SVG-лого Raw English инлайнится в шапке каждого письма.
@@ -78,9 +78,9 @@ function layoutV2(params: {
 </body></html>`
 }
 
-/** Info/warning-блок под CTA (левый акцент #E63946). */
+/** Info/warning-блок под CTA (левый акцент #B63F37). */
 function noteBlock(text: string): string {
-  return `<div style="padding:14px 16px;background:#FAFAF7;border-left:3px solid #E63946;border-radius:6px;font-size:13px;color:#8A8A86;line-height:1.55;">${text}</div>`
+  return `<div style="padding:14px 16px;background:#FAFAF7;border-left:3px solid #B63F37;border-radius:6px;font-size:13px;color:#8A8A86;line-height:1.55;">${text}</div>`
 }
 
 // =============================================================================

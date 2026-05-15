@@ -1172,8 +1172,8 @@ function AvailabilityEditor() {
             <div
               role="alert"
               style={{
-                background: "rgba(230,57,70,.08)",
-                border: "1px solid rgba(230,57,70,.25)",
+                background: "rgba(182,63,55,.08)",
+                border: "1px solid rgba(182,63,55,.25)",
                 borderRadius: 12,
                 padding: "12px 14px",
                 marginBottom: 14,

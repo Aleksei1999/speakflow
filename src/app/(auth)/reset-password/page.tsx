@@ -140,7 +140,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="fade-in">
         <div className="auth-success">
-          <div className="success-icon" style={{ background: 'rgba(230,57,70,.12)' }}>⏳</div>
+          <div className="success-icon" style={{ background: 'rgba(182,63,55,.12)' }}>⏳</div>
           <h3>Ссылка недействительна</h3>
           <p>Ссылка для сброса пароля недействительна или истекла.</p>
           <Link href="/forgot-password" className="auth-submit auth-submit--red">

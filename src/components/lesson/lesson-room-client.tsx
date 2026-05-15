@@ -31,7 +31,7 @@ interface Material { id: string; title: string; content: string; file_url: strin
 declare global { interface Window { JitsiMeetExternalAPI: any } }
 
 const CSS = `
-:root{--red:#E63946;--lime:#D8F26A;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
+:root{--red:#B63F37;--lime:#DDEA88;--black:#0A0A0A;--bg:#F5F5F3;--surface:#FFFFFF;--surface-2:#FAFAF7;--border:#EEEEEA;--muted:#8A8A86;--text:#0A0A0A}
 .lr{font-family:'Inter',sans-serif;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;margin:-24px -28px;height:calc(100vh - 0px);max-width:100vw;box-sizing:border-box}
 .lr *{box-sizing:border-box}.lr a{color:inherit;text-decoration:none}.lr button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .lr .lh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 24px;background:var(--black);color:#fff;flex-shrink:0;padding-top:max(14px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
@@ -76,9 +76,9 @@ const CSS = `
 .lr .quality-badge .bar i:nth-child(3){height:12px}
 .lr .quality-badge.good .bar i{opacity:1}
 .lr .quality-badge.fair .bar i:nth-child(1),.lr .quality-badge.fair .bar i:nth-child(2){opacity:1}
-.lr .quality-badge.poor{background:rgba(230,57,70,.85)}
+.lr .quality-badge.poor{background:rgba(182,63,55,.85)}
 .lr .quality-badge.poor .bar i:nth-child(1){opacity:1}
-.lr .quality-badge.lost{background:rgba(230,57,70,.95)}
+.lr .quality-badge.lost{background:rgba(182,63,55,.95)}
 .lr .vc{display:flex;justify-content:center;gap:12px;padding:6px 0 2px;flex-shrink:0}
 .lr .cb{width:52px;height:52px;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s ease;color:var(--text)}
 .lr .cb:hover{background:#e8e8e4}.lr .cb.active{background:var(--lime)}.lr .cb.danger{background:var(--red);color:#fff;transform:rotate(135deg)}.lr .cb.danger:hover{opacity:.9}
@@ -126,7 +126,7 @@ const CSS = `
 .lr .rec-pill.paused .dot{background:#A0A09A}
 .lr .rec-pill.start .dot{background:var(--lime);animation:pulse 1.4s infinite}
 .lr .rec-pill.off .dot{background:#666}
-.lr .rec-pill.err{background:rgba(230,57,70,.18);border-color:rgba(230,57,70,.5)}
+.lr .rec-pill.err{background:rgba(182,63,55,.18);border-color:rgba(182,63,55,.5)}
 .lr .rec-pill.err .dot{background:var(--red)}
 .lr .rec-pill .stop{margin-left:2px;background:transparent;color:rgba(255,255,255,.65);border:0;font-size:14px;padding:0 2px;cursor:pointer;line-height:1}
 .lr .rec-pill .stop:hover{color:#fff}
