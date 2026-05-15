@@ -90,12 +90,13 @@ export function LessonRowClient({
   linkClassName,
   hintClassName,
 }: LessonRowClientProps): React.ReactNode {
-  // SSR-safe init: до hydration используем Date.now() прямо в initializer.
-  // Если на момент SSR (например, ISR build-time) и client-side render
-  // разойдутся — first tick через 5 сек выровняет.
-  const [now, setNow] = useState<number>(() => Date.now())
+  // Hydration-safe init: 0 на SSR и initial client render → стабильный
+  // безопасный state. После mount useEffect выставляет реальный Date.now()
+  // и стартует tick. Так избегаем React #418 на boundary live↔waiting↔expired.
+  const [now, setNow] = useState<number>(0)
 
   useEffect(() => {
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), TICK_MS)
     return () => clearInterval(id)
   }, [])
