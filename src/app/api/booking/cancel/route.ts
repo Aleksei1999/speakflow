@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { notifyLessonCancelled } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
-import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
+import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -155,8 +155,14 @@ export async function POST(request: NextRequest) {
         .maybeSingle<TeacherUserLookup>()
       if (tpRow?.user_id) {
         invalidateTeacherStudents(tpRow.user_id)
+        // Teacher dashboard RPC snapshot: today/upcoming/week_stats — все
+        // меняются при отмене урока. Передаём auth user_id (не teacher_profile_id).
+        invalidateTeacherDashboard(tpRow.user_id)
       }
     }
+    // Student dashboard snapshot включает stats + upcoming_lessons; после
+    // отмены оба меняются.
+    invalidateStudentDashboard(lesson.student_id)
 
     // Prepare notification data (actual sending handled by separate module)
     const notificationData = {

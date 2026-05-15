@@ -29,6 +29,8 @@ import {
   adminSupportTag,
   adminTeachersListTag,
 } from './dashboard'
+import { studentDashboardTag } from '@/lib/dashboard/student'
+import { teacherDashboardTag } from '@/lib/dashboard/teacher'
 
 const PROFILE = 'default'
 
@@ -57,6 +59,31 @@ export function invalidateUserProgress(userId: string): void {
 export function invalidateTeacherStats(userId: string): void {
   if (!userId) return
   safeRevalidate(teacherStatsTag(userId), 'teacher-stats')
+}
+
+/**
+ * Student dashboard JSONB snapshot (миграция 073, RPC get_student_dashboard).
+ * Включает profile/progress/stats/upcoming_lessons/achievements/leaderboard/
+ * recent_xp_events/trial_request/referral. Триггерим на любую мутацию,
+ * меняющую любое из этих полей у конкретного студента.
+ */
+export function invalidateStudentDashboard(userId: string): void {
+  if (!userId) return
+  safeRevalidate(studentDashboardTag(userId), 'student-dashboard')
+}
+
+/**
+ * Teacher dashboard JSONB snapshot (миграция 074, RPC get_teacher_dashboard).
+ * Включает profile/teacher_profile/today/upcoming/today_clubs/week_stats/
+ * month_stats/active_lesson/club_hosts_unread/pending_trial_count.
+ * Триггерим на любую мутацию, меняющую любое из этих полей у учителя:
+ *  - booking create/cancel/teacher-create (today/upcoming/week/month/students)
+ *  - admin clubs assign / club_hosts mutations (today_clubs/unread)
+ *  - lesson recording finalize (status может стать completed → earnings/week)
+ */
+export function invalidateTeacherDashboard(userId: string): void {
+  if (!userId) return
+  safeRevalidate(teacherDashboardTag(userId), 'teacher-dashboard')
 }
 
 // ============================================================

@@ -9,6 +9,7 @@ import { z } from "zod"
 import { requireLessonTeacherOrAdmin } from "@/lib/api/lesson-auth"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 import { logAuditEvent } from "@/lib/audit/log"
+import { invalidateTeacherDashboard, invalidateStudentDashboard } from "@/lib/cache/invalidate"
 
 const BodySchema = z
   .object({
@@ -130,6 +131,35 @@ export async function POST(req: NextRequest) {
       total_bytes: totalBytes,
     },
   })
+
+  // Cron 055_complete_finished_lessons флипнет lesson.status →
+  // 'completed' в течение минуты, после чего month earnings / week
+  // completed-count у учителя и stats/upcoming у студента изменятся.
+  // Сбрасываем кешированные dashboard-снапшоты обеих сторон —
+  // следующий рендер увидит свежие данные сразу, как cron отработает.
+  // Если lesson уже completed — invalidate всё равно безопасен (no-op
+  // для тэга без подписчиков).
+  try {
+    // gate.lesson — это lessons row с teacher_id / student_id (см. lesson-auth).
+    const lessonRow: any = (gate as any).lesson
+    const teacherProfileId = lessonRow?.teacher_id
+    const studentUserId = lessonRow?.student_id
+    if (teacherProfileId) {
+      // teacher_id -> teacher_profiles.id; нужен auth user_id для тэга.
+      const { data: tp } = await gate.admin
+        .from("teacher_profiles")
+        .select("user_id")
+        .eq("id", teacherProfileId)
+        .maybeSingle<{ user_id: string }>()
+      if (tp?.user_id) invalidateTeacherDashboard(tp.user_id)
+    }
+    if (studentUserId) {
+      invalidateStudentDashboard(studentUserId)
+    }
+  } catch (e) {
+    // invalidation — best-effort; не блокируем ответ recorder'у.
+    console.warn("[recording/finalize] dashboard invalidate failed:", e)
+  }
 
   return NextResponse.json({
     ok: true,

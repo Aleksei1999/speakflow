@@ -14,7 +14,7 @@ import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { invalidateUserProgress } from '@/lib/cache/invalidate'
+import { invalidateUserProgress, invalidateStudentDashboard } from '@/lib/cache/invalidate'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 const LANDING_XP_CAP = 200
@@ -104,6 +104,8 @@ export async function POST(request: NextRequest) {
 
   // Trigger updates total_xp/level on user_progress; evict the cache.
   invalidateUserProgress(user.id)
+  // Dashboard RPC снапшот тоже содержит progress + recent_xp_events.
+  invalidateStudentDashboard(user.id)
 
   return NextResponse.json({
     credited: amountToCredit,

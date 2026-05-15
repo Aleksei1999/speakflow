@@ -11,6 +11,7 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { enforceRateLimitStrict } from "@/lib/api/rate-limit"
+import { invalidateStudentDashboard } from "@/lib/cache/invalidate"
 
 const BodySchema = z.object({
   quizId: z.string().uuid(),
@@ -122,6 +123,9 @@ export async function POST(req: NextRequest) {
       console.log("[quiz/submit] award_xp:", xpRes)
     }
   }
+
+  // Dashboard snapshot включает progress + recent_xp_events.
+  invalidateStudentDashboard(user.id)
 
   return NextResponse.json({
     ok: true,

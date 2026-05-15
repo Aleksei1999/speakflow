@@ -1,14 +1,16 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns"
+import { format, addDays, isSameDay, startOfMonth, endOfMonth } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
 import { LessonRowClient } from "@/components/lesson/lesson-row-client"
 import { ClubRowClient } from "@/components/lesson/club-row-client"
-import OnboardingLauncher from "@/components/onboarding/OnboardingLauncher"
+// import OnboardingLauncher from "@/components/onboarding/OnboardingLauncher"
+import { getCachedTeacherDashboard } from "@/lib/dashboard/teacher"
 
 // Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess(now=new Date())
 // внутри рендера каждой строки урока и Speaking Club row. Теперь обе строки
@@ -191,167 +193,75 @@ export default async function TeacherDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  // profile + teacher_profile в параллель — оба зависят только от user.id.
-  // Раньше шли последовательно (≈ +60-120ms на cold-start dashboard).
-  const [profileResult, teacherProfileResult] = await Promise.all([
-    (supabase as any).from("profiles").select("*").eq("id", user.id).single(),
-    (supabase as any)
-      .from("teacher_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single(),
-  ])
-  const profile = profileResult.data
-  if (!profile || profile.role !== "teacher") redirect("/student")
+  // ─────────────────────────────────────────────────────────────
+  // ① Один RPC вместо ~10 параллельных запросов.
+  // Возвращает: profile / teacher_profile / today (lessons + clubs) /
+  //             upcoming-14d / week_stats / month_stats / counters.
+  // Кешируется per-user на 30 сек, инвалидируется booking/clubs/finalize.
+  // Студенческая секция «Мои ученики» — отдельный батч ниже, т.к. ей
+  // нужен полный history-список уроков, а не upcoming/14d.
+  // ─────────────────────────────────────────────────────────────
+  const dashboard = await getCachedTeacherDashboard(user.id)
+  if (!dashboard || !dashboard.profile) redirect("/login")
 
-  const teacherProfile = teacherProfileResult.data
-  const teacherId = teacherProfile?.id ?? ""
-  const hourlyRate = Number(teacherProfile?.hourly_rate ?? 0) // kopecks
+  const profile = dashboard.profile
+  if (profile.role !== "teacher") redirect("/student")
+
+  const teacherProfile = dashboard.teacher_profile
+  const teacherId = dashboard.teacher_profile_id ?? ""
 
   const now = new Date()
-  const todayStart = startOfDay(now)
-  const todayEnd = endOfDay(now)
-  const weekAheadEnd = endOfDay(addDays(now, 13))
   const monthStart = startOfMonth(now)
   const monthEnd = endOfMonth(now)
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
-  const prevMonthStart = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
-  const prevMonthEnd = endOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
 
-  // Все запросы, которые зависят только от teacherId / user.id и временных
-  // окон — гоняем одним Promise.all. Раньше шли последовательно (upcoming →
-  // hosted → monthCount/prevMonthCount → monthCompleted → weekLessons →
-  // activeLessons), ~6 round-trip-ов к Postgres подряд. Это давало +400-800ms
-  // на cold-start teacher dashboard.
-  const [
-    upcomingLessonsResult,
-    hostedTodayResult,
-    monthCountResult,
-    prevMonthCountResult,
-    monthCompletedResult,
-    weekLessonsResult,
-    activeLessonsResult,
-  ] = await Promise.all([
-    (supabase as any)
-      .from("lessons")
-      .select("id, scheduled_at, duration_minutes, status, price, student_id")
-      .eq("teacher_id", teacherId)
-      .gte("scheduled_at", todayStart.toISOString())
-      .lte("scheduled_at", weekAheadEnd.toISOString())
-      .order("scheduled_at", { ascending: true }),
-    (supabase as any)
-      .from("club_hosts")
-      .select(
-        "club_id, clubs!inner(id, topic, starts_at, duration_min, is_published, cancelled_at, seats_taken, capacity)"
-      )
-      .eq("host_id", user.id)
-      .gte("clubs.starts_at", todayStart.toISOString())
-      .lte("clubs.starts_at", todayEnd.toISOString()),
-    (supabase as any)
-      .from("lessons")
-      .select("id", { count: "exact", head: true })
-      .eq("teacher_id", teacherId)
-      .gte("scheduled_at", monthStart.toISOString())
-      .lte("scheduled_at", monthEnd.toISOString()),
-    (supabase as any)
-      .from("lessons")
-      .select("id", { count: "exact", head: true })
-      .eq("teacher_id", teacherId)
-      .gte("scheduled_at", prevMonthStart.toISOString())
-      .lte("scheduled_at", prevMonthEnd.toISOString()),
-    (supabase as any)
-      .from("lessons")
-      .select("price")
-      .eq("teacher_id", teacherId)
-      .eq("status", "completed")
-      .gte("scheduled_at", monthStart.toISOString())
-      .lte("scheduled_at", monthEnd.toISOString()),
-    (supabase as any)
-      .from("lessons")
-      .select("id, status")
-      .eq("teacher_id", teacherId)
-      .gte("scheduled_at", weekStart.toISOString())
-      .lte("scheduled_at", weekEnd.toISOString()),
-    (supabase as any)
-      .from("lessons")
-      .select("student_id, scheduled_at, status")
-      .eq("teacher_id", teacherId)
-      // NOTE: "Мой ученик" = хоть один урок в статусах, отличных от cancelled/no_show.
-      // Раньше список ограничивался только ('booked','in_progress','completed'), из-за чего
-      // ученики со старыми уроками pending_payment (созданными ДО коммита a2a0600) выпадали.
-      .in("status", [
-        "scheduled",
-        "confirmed",
-        "booked",
-        "in_progress",
-        "completed",
-        "pending_payment", // TEMP: until Yookassa integration is live — a2a0600
-      ])
-      .order("scheduled_at", { ascending: true }),
-  ])
+  const todayLessons = dashboard.today ?? []
+  const upcomingLessons = dashboard.upcoming ?? []
+  const todayClubs = dashboard.today_clubs ?? []
 
-  const upcomingLessons = (upcomingLessonsResult.data ?? []) as any[]
-  const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
-
-  const todayClubs = ((hostedTodayResult.data ?? []) as any[])
-    .map((r) => r.clubs)
-    .filter((c) => c && c.is_published && !c.cancelled_at)
-    .sort(
-      (a, b) =>
-        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
-    )
-
-  // Производные структуры — данные уже получены параллельно выше.
-  const monthCount = monthCountResult.count
-  const prevMonthCount = prevMonthCountResult.count
-  const monthDelta = (prevMonthCount ?? 0) > 0
-    ? Math.round((((monthCount ?? 0) - (prevMonthCount ?? 0)) / (prevMonthCount ?? 1)) * 100)
+  const monthCount = dashboard.month_stats.this_month_count
+  const prevMonthCount = dashboard.month_stats.prev_month_count
+  const monthDelta = prevMonthCount > 0
+    ? Math.round(((monthCount - prevMonthCount) / prevMonthCount) * 100)
     : null
 
-  const earningsKopecks = ((monthCompletedResult.data ?? []) as Array<{ price: number | null }>)
-    .reduce((s, l) => s + Number(l.price ?? 0), 0)
-  // Teacher share — 100% of price by default; adjust if platform takes a cut.
-  const earningsRub = Math.round(earningsKopecks / 100)
+  const earningsRub = Math.round(dashboard.month_stats.earnings_kopecks / 100)
 
-  const weekLessons = (weekLessonsResult.data ?? []) as Array<{ status: string }>
-  const weekTotal = weekLessons.length
-  const weekCompleted = weekLessons.filter((l) => l.status === "completed").length
-  const weekCancelled = weekLessons.filter((l) => l.status === "cancelled" || l.status === "no_show").length
+  const weekTotal = dashboard.week_stats.total
+  const weekCompleted = dashboard.week_stats.completed
+  const weekCancelled = dashboard.week_stats.cancelled
 
-  const activeLessons = (activeLessonsResult.data ?? []) as Array<{ student_id: string; scheduled_at: string; status: string }>
+  // ─────────────────────────────────────────────────────────────
+  // ② Секция «Мои ученики»: НЕ покрывается RPC (нужны ВСЕ уроки
+  // учителя за всё время, не только upcoming 14d). Используем
+  // admin-client напрямую — page уже под auth-gate, а данные
+  // ниже не зависят от per-user RLS (мы знаем teacherProfileId).
+  // ─────────────────────────────────────────────────────────────
+  const admin = createAdminClient()
 
-  // Второй параллельный батч: то, что зависит от lessons-id и student-id
-  // (т.е. от результатов первого батча). upcomingStudent profiles + trial-id
-  // map шли раньше последовательно — теперь параллельно.
-  const upcomingStudentIds = [...new Set(upcomingLessons.map((l) => l.student_id))]
-  const upcomingLessonIds = upcomingLessons.map((l) => l.id)
+  const { data: activeLessonsRaw } = teacherId
+    ? await (admin as any)
+        .from("lessons")
+        .select("student_id, scheduled_at, status")
+        .eq("teacher_id", teacherId)
+        // NOTE: "Мой ученик" = хоть один урок в статусах, отличных от cancelled/no_show.
+        .in("status", [
+          "scheduled",
+          "confirmed",
+          "booked",
+          "in_progress",
+          "completed",
+          "pending_payment", // TEMP: until Yookassa integration is live — a2a0600
+        ])
+        .order("scheduled_at", { ascending: true })
+    : { data: [] }
 
-  const [todayStudentProfilesResult, trialResult] = await Promise.all([
-    upcomingStudentIds.length
-      ? (supabase as any).from("profiles").select("id, full_name").in("id", upcomingStudentIds)
-      : Promise.resolve({ data: [] }),
-    upcomingLessonIds.length
-      ? (supabase as any)
-          .from("trial_lesson_requests")
-          .select("assigned_lesson_id")
-          .in("assigned_lesson_id", upcomingLessonIds)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  const todayStudentsMap = new Map<string, { full_name: string | null }>()
-  ;((todayStudentProfilesResult.data ?? []) as any[]).forEach((p) => todayStudentsMap.set(p.id, { full_name: p.full_name }))
-
-  const trialIdSet = new Set<string>(
-    ((trialResult.data ?? []) as Array<{ assigned_lesson_id: string | null }>)
-      .map((t) => t.assigned_lesson_id)
-      .filter((x): x is string => Boolean(x))
-  )
+  const activeLessons = (activeLessonsRaw ?? []) as Array<{
+    student_id: string
+    scheduled_at: string
+    status: string
+  }>
 
   // per-student: count of lessons, next upcoming lesson.
-  // "Следующий урок" = только ещё предстоящий слот в не-финальных статусах.
-  // pending_payment и in_progress сюда тоже попадают (старые записи + только что
-  // стартовавшие), completed / cancelled / no_show — нет.
   const UPCOMING_FOR_NEXT = new Set([
     "scheduled",
     "confirmed",
@@ -378,15 +288,14 @@ export default async function TeacherDashboardPage() {
   }
   const studentIds = [...byStudent.keys()]
 
-  // Profiles + progress for active students
   const [{ data: studentProfilesRaw }, { data: studentProgressRaw }] = studentIds.length
     ? await Promise.all([
-        (supabase as any)
+        (admin as any)
           .from("profiles")
           .select("id, full_name, email, avatar_url, role")
           .in("id", studentIds)
           .eq("role", "student"),
-        (supabase as any)
+        (admin as any)
           .from("user_progress")
           .select("user_id, total_xp, english_level")
           .in("user_id", studentIds),
@@ -441,8 +350,6 @@ export default async function TeacherDashboardPage() {
   const initials = initialsFrom(profile.full_name)
   const greeting = greetingByHour(now.getHours())
   const todayCount = todayLessons.length
-
-  // (active lesson больше не вычисляем отдельно — его роль выполняет client-side <LessonRowClient>)
 
   return (
     <div className="tch-home">
@@ -514,7 +421,7 @@ export default async function TeacherDashboardPage() {
                     durationMin={c.duration_min ?? 60}
                     topic={c.topic}
                     seatsTaken={c.seats_taken ?? 0}
-                    capacity={c.capacity ?? c.seats_taken ?? 0}
+                    capacity={c.capacity ?? c.max_seats ?? c.seats_taken ?? 0}
                   />
                 ))}
               </>
@@ -551,8 +458,8 @@ export default async function TeacherDashboardPage() {
                     </div>
                   ) : null,
                   ((l) => {
-                    const studentName = todayStudentsMap.get(l.student_id)?.full_name ?? "Ученик"
-                    const isTrial = trialIdSet.has(l.id)
+                    const studentName = l.student_name ?? "Ученик"
+                    const isTrial = !!l.is_trial
                     // Всю time-dependent логику (access window, CTA, .active-подсветка,
                     // <Link>/<div>) делегируем client-row. Это позволяет странице
                     // жить под revalidate=30 — без force-dynamic.

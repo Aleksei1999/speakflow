@@ -4,7 +4,7 @@ import { bookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
-import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
+import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
 
 export async function POST(request: NextRequest) {
   try {
@@ -314,6 +314,13 @@ export async function POST(request: NextRequest) {
     // `teacherId` is the teacher's auth user_id (we resolved teacher_profiles
     // via `.eq('user_id', teacherId)` above).
     invalidateTeacherStudents(teacherId)
+    // Студенческий dashboard RPC snapshot включает stats + upcoming_lessons —
+    // новый урок должен сразу появиться у студента.
+    invalidateStudentDashboard(user.id)
+    // Teacher /teacher dashboard RPC snapshot: today/upcoming/week_stats/month_stats.
+    // teacherId здесь — auth user_id преподавателя (resolved выше через
+    // .eq('user_id', teacherId)).
+    invalidateTeacherDashboard(teacherId)
 
     // Business-level audit: бронирование ученика. Data-trigger тоже ловит
     // INSERT, но эта запись содержит teacher/student/scheduled — без diff.

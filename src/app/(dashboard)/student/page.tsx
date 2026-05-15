@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { format, startOfDay, endOfDay, subDays, addDays, isSameDay } from "date-fns"
+import { format, startOfDay, subDays, addDays, isSameDay } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
@@ -10,6 +10,7 @@ import { LandingXpClaimer } from "./_components/landing-xp-claimer"
 import { TrialBookingCard } from "./_components/trial-booking-card"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
 import { LessonRowClient } from "@/components/lesson/lesson-row-client"
+import { getCachedStudentDashboard } from "@/lib/dashboard/student"
 
 // Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess (now=new Date())
 // внутри рендера каждой строки урока. Теперь строки рендерит client-side
@@ -181,150 +182,76 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/login")
 
   const now = new Date()
-  const todayStart = startOfDay(now)
-  const todayEnd = endOfDay(now)
-  const weekStart = startOfDay(subDays(now, 6))
-  const weekAheadEnd = endOfDay(addDays(now, 13))
 
   // Day of week index (0=Mon .. 6=Sun) — российская неделя
   const weekdayIdx = (d: Date) => (d.getDay() + 6) % 7
   const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
   const todayIdx = weekdayIdx(now)
 
-  const [profileResult, progressResult, monthLessonsResult, completedMonthResult, todayLessonsResult, achResult, achDefResult, lbResult, xpDailyResult, allLessonsCountResult, trialReqResult] =
-    await Promise.all([
-      (supabase as any).from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-      (supabase as any).from("user_progress").select("total_xp, english_level, current_streak, longest_streak").eq("user_id", user.id).maybeSingle(),
-      (supabase as any)
-        .from("lessons")
-        .select("id", { count: "exact", head: true })
-        .eq("student_id", user.id)
-        .gte("scheduled_at", startOfDay(subDays(now, 30)).toISOString()),
-      (supabase as any)
-        .from("lessons")
-        .select("id", { count: "exact", head: true })
-        .eq("student_id", user.id)
-        .eq("status", "completed"),
-      (supabase as any)
-        .from("lessons")
-        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
-        .eq("student_id", user.id)
-        .gte("scheduled_at", todayStart.toISOString())
-        .lte("scheduled_at", weekAheadEnd.toISOString())
-        .order("scheduled_at", { ascending: true }),
-      (supabase as any)
-        .from("user_achievements")
-        .select("achievement_id, earned_at")
-        .eq("user_id", user.id),
-      (supabase as any)
-        .from("achievement_definitions")
-        .select("id, slug, title, icon_emoji, sort_order, rarity")
-        .order("sort_order", { ascending: true }),
-      (supabase as any).rpc("get_leaderboard", { p_period: "weekly", p_limit: 5 }),
-      (supabase as any)
-        .from("xp_events")
-        .select("created_at")
-        .eq("user_id", user.id)
-        .gte("created_at", weekStart.toISOString()),
-      // Total lessons count — нужен для определения «новичка» (пробный ещё не пройден).
-      (supabase as any)
-        .from("lessons")
-        .select("id", { count: "exact", head: true })
-        .eq("student_id", user.id),
-      // Открытая заявка на пробный (если есть). Новичок может зайти на дашборд
-      // и до того, как заявка создана (например, OAuth signup) — тогда trial = null.
-      (supabase as any)
-        .from("trial_lesson_requests")
-        .select("id, status, assigned_lesson_id, preferred_slot")
-        .eq("user_id", user.id)
-        .in("status", ["pending", "assigned", "scheduled"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ])
+  // ============================================================
+  // Один RPC `get_student_dashboard` вместо ~11 параллельных
+  // Supabase запросов + 3 follow-up'ов. Миграция 073, кеш в
+  // unstable_cache (per-user, тег `student-dashboard-<uid>`,
+  // TTL=30s — совпадает с прежним `export const revalidate = 30`).
+  // SECURITY DEFINER + auth.uid() check внутри RPC → admin client OK.
+  // ============================================================
+  const dashboard = await getCachedStudentDashboard(user.id)
+  const LIFETIME_REFERRAL_CAP = 10
 
-  // Закреплённые слоты теперь потребляются модалкой бронирования
-  // (автоподбор «обычного времени» по weekday в МСК), а не баннером
-  // на дашборде. Запрос здесь не нужен.
-
-  const profile = profileResult.data as { full_name: string | null } | null
-  const progress = progressResult.data as { total_xp: number | null; english_level: string | null; current_streak: number | null; longest_streak: number | null } | null
-  // Уроки на ближайшие 7 дней (включая сегодня).
-  const upcomingLessons = (todayLessonsResult.data ?? []) as Array<{ id: string; scheduled_at: string; duration_minutes: number; status: string; jitsi_room_name: string | null; teacher_id: string | null }>
+  const profile = dashboard.profile
+  const progress = dashboard.progress
+  // Уроки на ближайшие 14 дней — RPC уже фильтрует по МСК-окну.
+  const upcomingLessons = dashboard.upcoming_lessons as Array<{
+    id: string
+    scheduled_at: string
+    duration_minutes: number
+    status: string
+    teacher_id: string | null
+    teacher_user_id: string | null
+    teacher_name: string | null
+    teacher_avatar: string | null
+    room_name: string | null
+  }>
   const todayLessons = upcomingLessons.filter((l) => isSameDay(new Date(l.scheduled_at), now))
-  const monthLessonsCount = monthLessonsResult.count ?? 0
-  const completedMonthCount = completedMonthResult.count ?? 0
-  const earnedAchIds = new Set(((achResult.data ?? []) as Array<{ achievement_id: string }>).map((a) => a.achievement_id))
-  const achDefsAll = (achDefResult.data ?? []) as Array<{ id: string; slug: string; title: string; icon_emoji: string | null }>
+  const monthLessonsCount = dashboard.stats.month_total
+  const completedMonthCount = dashboard.stats.completed_30d
+
+  const earnedAchIds = new Set(dashboard.achievements_earned.map((a) => a.achievement_id))
+  const achDefsAll = dashboard.achievement_defs
   const achEarned = achDefsAll.filter((a) => earnedAchIds.has(a.id))
   const achLocked = achDefsAll.filter((a) => !earnedAchIds.has(a.id))
   const achDefs = [...achEarned, ...achLocked].slice(0, 8)
-  const leaderboard = (lbResult.data ?? []) as Array<{ out_rank: number; out_user_id: string; out_xp: number; out_full_name: string | null; out_avatar_url: string | null }>
-  const xpDaily = (xpDailyResult.data ?? []) as Array<{ created_at: string }>
+  const leaderboard = dashboard.leaderboard_weekly
+  const xpDaily = dashboard.xp_events_week
 
   const fullName = profile?.full_name ?? "Ученик"
   const firstName = fullName.split(" ")[0]
 
-  const totalLessonsCount = allLessonsCountResult.count ?? 0
-  const trialReq = (trialReqResult.data ?? null) as
-    | { id: string; status: string; assigned_lesson_id: string | null; preferred_slot: string | null }
-    | null
+  const totalLessonsCount = dashboard.stats.total_lessons
+  const trialReq = dashboard.trial_request
   // Карточку показываем новичкам: нет ни одного урока + нет привязанного пробного.
   const showTrialCard =
     totalLessonsCount === 0 && !(trialReq && trialReq.assigned_lesson_id)
 
-  // Параллельно фетчим всё, что зависит ТОЛЬКО от upcomingLessons (id-список
-   // и teacher_ids уже известны), но друг от друга независимо:
-   //   (a) trial-flow метки — для лейбла «🎯 Пробный»;
-   //   (b) teacher_profiles → profiles — имя препода в строке урока;
-   //   (c) referral count — карточка «Быстрые действия».
-   // Раньше (a)→(b)→(c) шли последовательно, +2-3 round-trip-а к Postgres
-   // даже на простом дашборде. Теперь — одним Promise.all.
-   const upcomingIds = upcomingLessons.map((l) => l.id)
-   const upcomingTeacherIds = Array.from(
-     new Set(todayLessons.map((l) => l.teacher_id).filter(Boolean))
-   ) as string[]
+  // todayTrialIds — RPC не возвращает связку urot↔trial_request, но это
+  // нужно только для лейбла «🎯 Пробный» в строке урока. Считаем на лету:
+  // если у студента есть открытая trial-заявка и её assigned_lesson_id
+  // совпадает с одним из upcoming-уроков — помечаем.
+  const todayTrialIds = new Set<string>()
+  if (trialReq?.assigned_lesson_id) {
+    todayTrialIds.add(trialReq.assigned_lesson_id)
+  }
 
-   const trialsPromise = upcomingIds.length > 0
-     ? (supabase as any)
-         .from("trial_lesson_requests")
-         .select("assigned_lesson_id")
-         .eq("user_id", user.id)
-         .in("assigned_lesson_id", upcomingIds)
-     : Promise.resolve({ data: [] as Array<{ assigned_lesson_id: string | null }> })
+  // teacherMap — RPC уже подмешал teacher_name/avatar/user_id в каждую
+  // строку upcoming_lessons. Сохраняем форму прежнего map'а для совместимости.
+  const teacherMap: Record<string, { full_name: string | null }> = {}
+  for (const l of upcomingLessons) {
+    if (l.teacher_id) {
+      teacherMap[l.teacher_id] = { full_name: l.teacher_name }
+    }
+  }
 
-   // teacher_profiles + profiles одним PostgREST embed-запросом
-   // (через teacher_profiles_user_id_fkey) — раньше шли двумя последовательными
-   // round-trip'ами (см. ниже старый код).
-   const teachersPromise = upcomingTeacherIds.length > 0
-     ? (supabase as any)
-         .from("teacher_profiles")
-         .select(
-           "id, user_id, user:profiles!teacher_profiles_user_id_fkey(full_name)"
-         )
-         .in("id", upcomingTeacherIds)
-     : Promise.resolve({ data: [] as Array<{ id: string; user_id: string; user: any }> })
-
-   // referrals: количество активированных приглашений у текущего юзера.
-   // RLS таблицы ограничивает выдачу до inviter_id = auth.uid().
-   const LIFETIME_REFERRAL_CAP = 10
-   const referralPromise = (supabase as any)
-     .from("referrals")
-     .select("id", { count: "exact", head: true })
-     .eq("status", "activated")
-
-   const [trialsResult, teachersResult, referralResult] = await Promise.all([
-     trialsPromise,
-     teachersPromise,
-     referralPromise,
-   ])
-
-   const todayTrialIds = new Set<string>()
-   for (const t of ((trialsResult.data ?? []) as Array<{ assigned_lesson_id: string | null }>)) {
-     if (t.assigned_lesson_id) todayTrialIds.add(t.assigned_lesson_id)
-   }
-
-   const xp = progress?.total_xp ?? 0
+  const xp = progress?.total_xp ?? 0
   const level: RoastLevel = xpToRoastLevel(xp)
   const thresholds = LEVEL_XP_THRESHOLDS[level]
   const currentStreak = progress?.current_streak ?? 0
@@ -349,30 +276,9 @@ export default async function StudentDashboardPage() {
     }
   }
 
-  // Teacher map — извлекаем имя из embed-результата teachersPromise (выше).
-  // Embed возвращает строку вида { id, user_id, user: { full_name } }, где
-  // user может быть массивом (PostgREST single-row reference тоже массив).
-  const teacherMap: Record<string, { full_name: string | null }> = {}
-  for (const t of ((teachersResult.data ?? []) as Array<{ id: string; user_id: string; user: any }>)) {
-    const p = Array.isArray(t.user) ? t.user[0] : t.user
-    teacherMap[t.id] = { full_name: (p?.full_name ?? null) as string | null }
-  }
-
-  const upcomingLessonId = todayLessons.find((l) => new Date(l.scheduled_at) > now && l.status === "booked")?.id
-  const completedTodayCount = todayLessons.filter((l) => l.status === "completed").length
-  const remainingTodayCount = todayLessons.filter((l) => ["booked", "in_progress"].includes(l.status)).length
-
-  // Referral stats — count уже получен параллельно (referralPromise выше).
-  // LIFETIME_CAP=10 — то же значение, что в /api/referrals/me/route.ts.
-  // Если таблица referrals ещё не мигрирована, .count придёт null — fallback'имся
-  // на 0/CAP без падения.
-  let referralActivated = 0
-  let referralCapRemaining = LIFETIME_REFERRAL_CAP
-  const refCount = (referralResult as { count: number | null } | null)?.count ?? null
-  if (typeof refCount === "number") {
-    referralActivated = refCount
-    referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - refCount)
-  }
+  // Referral stats — RPC уже посчитал activated/pending для текущего юзера.
+  const referralActivated = dashboard.referral.activated_count ?? 0
+  const referralCapRemaining = Math.max(0, LIFETIME_REFERRAL_CAP - referralActivated)
 
   return (
     <div className="stu-home">
