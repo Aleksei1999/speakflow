@@ -1,47 +1,14 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedRole } from "@/lib/auth/get-role"
+import { getCachedAdminStudents } from "@/lib/cache/dashboard"
 import AdminStudentsClient from "./AdminStudentsClient"
 
-// List-страница без countdown'ов: явный force-dynamic заменён на revalidate=60
-// (де-факто cookies()/headers() всё равно опт-аутят из кэша; намерение — переход
-// на unstable_cache per-userId позже).
+// Auth check uses cookies() → page is per-request dynamic. Student list
+// comes from getCachedAdminStudents (unstable_cache, TTL 60s, tag
+// 'admin-students'), invalidated when admin mutates a profile/role.
 export const revalidate = 60
-
-type Student = {
-  id: string
-  full_name: string
-  email: string | null
-  avatar_url: string | null
-  level: string | null
-  goal: string | null
-  total_xp: number
-  current_streak: number
-  lessons_count: number
-  last_lesson_at: string | null
-  created_at: string
-  is_active: boolean
-}
-
-async function loadStudents(): Promise<Student[]> {
-  try {
-    const hdrs = await headers()
-    const host = hdrs.get("host")
-    const proto = hdrs.get("x-forwarded-proto") ?? "http"
-    const cookie = hdrs.get("cookie") ?? ""
-    if (!host) return []
-    const res = await fetch(
-      `${proto}://${host}/api/admin/students?limit=100&sort=recent`,
-      { headers: { cookie }, cache: "no-store" }
-    )
-    if (!res.ok) return []
-    const json = await res.json()
-    return Array.isArray(json.students) ? json.students : []
-  } catch {
-    return []
-  }
-}
 
 export default async function AdminStudentsPage() {
   const supabase = await createClient()
@@ -50,16 +17,20 @@ export default async function AdminStudentsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any)
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-  if (!profile) redirect("/login")
-  if (profile.role === "student") redirect("/student")
-  if (profile.role === "teacher") redirect("/teacher")
-  if (profile.role !== "admin") redirect("/login")
+  // Reuse cached role from layout.
+  const role = await getCachedRole(user.id)
+  if (!role) redirect("/login")
+  if (role === "student") redirect("/student")
+  if (role === "teacher") redirect("/teacher")
+  if (role !== "admin") redirect("/login")
 
-  const students = await loadStudents()
+  let students: any[]
+  try {
+    students = await getCachedAdminStudents({ limit: 100, sort: "recent" })
+  } catch (err) {
+    console.error("[admin/students] cached loader failed", err)
+    students = []
+  }
+
   return <AdminStudentsClient initial={students} />
 }

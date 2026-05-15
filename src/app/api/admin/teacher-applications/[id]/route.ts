@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 import { logAuditEvent } from "@/lib/audit/log"
+import { invalidateAdminTrialRequests } from "@/lib/cache/invalidate"
 
 export const dynamic = "force-dynamic"
 
@@ -90,6 +91,8 @@ export async function PATCH(
         notes_changed: parsed.data.notes !== undefined,
       },
     })
+
+    invalidateAdminTrialRequests()
 
     return NextResponse.json({ application: data })
   } catch (err) {

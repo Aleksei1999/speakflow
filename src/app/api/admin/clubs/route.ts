@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 import { notifyClubHostAssigned } from "@/lib/clubs/notify-host"
+import {
+  invalidateAdminClubs,
+  invalidateTeacherClubs,
+} from "@/lib/cache/invalidate"
 
 // ---------------------------------------------------------------
 // GET  /api/admin/clubs?limit=50&status=upcoming|past|draft
@@ -316,6 +320,12 @@ export async function POST(request: NextRequest) {
       ...club,
       club_hosts: hostRow ? [hostRow] : club.club_hosts ?? [],
     })
+
+    // New club hits admin list + (if assigned) the host's teacher-clubs list.
+    invalidateAdminClubs()
+    if (d.host_teacher_id) {
+      invalidateTeacherClubs(d.host_teacher_id)
+    }
 
     return NextResponse.json({ club: enriched }, { status: 201 })
   } catch (err) {

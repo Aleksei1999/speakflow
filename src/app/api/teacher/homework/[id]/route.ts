@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import {
+  invalidateStudentHomework,
+  invalidateTeacherHomework,
+} from '@/lib/cache/invalidate'
 
 // ---------------------------------------------------------------
 // PATCH actions:
@@ -275,6 +279,13 @@ export async function PATCH(
       )
     }
 
+    // Any PATCH (review/edit/remind/mark_overdue) changes a row both lists
+    // depend on. own.hw.student_id is the student's auth user_id;
+    // homework.teacher_id FKs profiles(id) directly, so user.id is the
+    // teacher's auth user_id.
+    invalidateStudentHomework(own.hw.student_id)
+    invalidateTeacherHomework(user.id)
+
     return NextResponse.json({
       homework: {
         ...updated,
@@ -327,6 +338,9 @@ export async function DELETE(
         { status: 500 }
       )
     }
+
+    invalidateStudentHomework(own.hw.student_id)
+    invalidateTeacherHomework(user.id)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

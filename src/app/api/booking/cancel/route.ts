@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { notifyLessonCancelled } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
+import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -141,6 +142,21 @@ export async function POST(request: NextRequest) {
       cancelledByUserId: user.id,
       reason: reason || null,
     }).catch(() => {})
+
+    // Teacher's «Мои ученики» list is derived from lessons → invalidate.
+    // `lesson.teacher_id` references teacher_profiles(id); resolve to the
+    // teacher's auth user_id for the per-user tag.
+    {
+      type TeacherUserLookup = { user_id: string }
+      const { data: tpRow } = await supabase
+        .from('teacher_profiles')
+        .select('user_id')
+        .eq('id', lesson.teacher_id)
+        .maybeSingle<TeacherUserLookup>()
+      if (tpRow?.user_id) {
+        invalidateTeacherStudents(tpRow.user_id)
+      }
+    }
 
     // Prepare notification data (actual sending handled by separate module)
     const notificationData = {

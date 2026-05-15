@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedTeacherStudents } from "@/lib/cache/dashboard"
 import TeacherStudentsClient from "./TeacherStudentsClient"
 
-// List-страница: явный force-dynamic заменён на revalidate=60.
-// cookies()/headers() всё равно опт-аутят рендер из кэша (per-userId) —
-// avatar_url из миграции 048 успевает попадать в свежий snapshot.
+// Auth check uses cookies() → page is per-request dynamic. Aggregated
+// students/lessons/progress are fetched through getCachedTeacherStudents
+// (unstable_cache, TTL 60s, tag 'teacher-students-${userId}'), invalidated
+// on booking/cancel/complete mutations.
 export const revalidate = 60
 
 const CSS = `
@@ -156,33 +157,184 @@ const EMPTY_SNAPSHOT: InitialSnapshot = {
   stats: { total: 0, active_today: 0, avg_progress: 0, needs_attention: 0 },
 }
 
-// FIXME(perf): HTTP-self-fetch к собственному /api/teacher/students в той же
-// serverless-функции — лишний cookie parse, network hop, второй auth.getUser().
-// План: вынести логику из src/app/api/teacher/students/route.ts в
-// src/lib/teacher/students.ts (signature: `getStudentsForTeacher(teacherUserId,
-// { level, q }) → InitialSnapshot`), импортировать здесь напрямую, а route.ts
-// сделать тонким wrapper'ом. Отложено: route.ts ~300 строк бизнес-логики +
-// нужно пересмотреть filtering (level/q), это > 2 файлов рефакторинга.
-async function loadInitialSnapshot(): Promise<InitialSnapshot> {
-  try {
-    const hdrs = await headers()
-    const host = hdrs.get("host")
-    const proto = hdrs.get("x-forwarded-proto") ?? "http"
-    if (!host) return EMPTY_SNAPSHOT
-    const cookie = hdrs.get("cookie") ?? ""
-    const res = await fetch(`${proto}://${host}/api/teacher/students?level=all`, {
-      headers: { cookie },
-      cache: "no-store",
-    })
-    if (!res.ok) return EMPTY_SNAPSHOT
-    const json = await res.json()
-    return {
-      students: Array.isArray(json.students) ? json.students : [],
-      counts: { ...EMPTY_SNAPSHOT.counts, ...(json.counts ?? {}) },
-      stats: { ...EMPTY_SNAPSHOT.stats, ...(json.stats ?? {}) },
+// Mirrors the aggregation in /api/teacher/students but consumes the
+// cached raw fetch instead of an HTTP self-call. Filter level=all matches
+// the only request this page ever made.
+const UPCOMING_STATUSES = new Set([
+  "scheduled",
+  "confirmed",
+  "booked",
+  "in_progress",
+  "pending_payment",
+])
+
+const ACTIVE_STUDENT_STATUSES = new Set([
+  "scheduled",
+  "confirmed",
+  "booked",
+  "in_progress",
+  "completed",
+  "pending_payment",
+])
+
+function isSameCalendarDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function buildSnapshot(cached: {
+  teacher_profile_id: string | null
+  lessons: any[]
+  profiles: any[]
+  progress: any[]
+}): InitialSnapshot {
+  if (!cached.teacher_profile_id) return EMPTY_SNAPSHOT
+  const allLessons = cached.lessons
+  const now = Date.now()
+  const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000
+
+  const studentIds = new Set<string>()
+  const lastLessonByStudent: Record<string, string> = {}
+  const completedCountByStudent: Record<string, number> = {}
+  const lastAnyLessonTsByStudent: Record<string, number> = {}
+  const nextLessonByStudent: Record<
+    string,
+    { scheduled_at: string; id: string; notes: string | null }
+  > = {}
+
+  for (const row of allLessons) {
+    const sid = row.student_id
+    if (!sid) continue
+    if (!ACTIVE_STUDENT_STATUSES.has(row.status)) continue
+    studentIds.add(sid)
+    if (!lastLessonByStudent[sid]) {
+      lastLessonByStudent[sid] = row.scheduled_at
     }
-  } catch {
-    return EMPTY_SNAPSHOT
+    const ts = new Date(row.scheduled_at).getTime()
+    if (!Number.isNaN(ts)) {
+      if (
+        !lastAnyLessonTsByStudent[sid] ||
+        ts > lastAnyLessonTsByStudent[sid]
+      ) {
+        lastAnyLessonTsByStudent[sid] = ts
+      }
+    }
+    if (row.status === "completed") {
+      completedCountByStudent[sid] = (completedCountByStudent[sid] || 0) + 1
+    }
+    if (UPCOMING_STATUSES.has(row.status) && !Number.isNaN(ts) && ts > now) {
+      const cur = nextLessonByStudent[sid]
+      if (!cur || ts < new Date(cur.scheduled_at).getTime()) {
+        nextLessonByStudent[sid] = {
+          scheduled_at: row.scheduled_at,
+          id: row.id,
+          notes: row.teacher_notes ?? null,
+        }
+      }
+    }
+  }
+
+  const progMap: Record<string, any> = {}
+  for (const p of cached.progress) progMap[p.user_id] = p
+
+  const all = cached.profiles
+    .filter((p: any) => studentIds.has(p.id))
+    .map((p: any) => {
+      const pr = progMap[p.id] || {}
+      const completed = pr.lessons_completed ?? completedCountByStudent[p.id] ?? 0
+      const current_streak = pr.current_streak ?? 0
+      const nextLesson = nextLessonByStudent[p.id] || null
+      const lastLessonTs = lastAnyLessonTsByStudent[p.id] || 0
+      const noLessonsRecent = lastLessonTs === 0 || lastLessonTs < fourteenDaysAgo
+      const needs_attention = current_streak === 0 || noLessonsRecent
+
+      const course_progress_pct = Math.min(
+        100,
+        Math.round((completed || 0) / 0.2)
+      )
+
+      let next_lesson_topic = "Урок"
+      if (nextLesson?.notes) {
+        const firstLine = String(nextLesson.notes)
+          .split("\n")
+          .map((s) => s.trim())
+          .find((s) => s.length > 0)
+        if (firstLine) next_lesson_topic = firstLine.slice(0, 80)
+      }
+
+      return {
+        id: p.id,
+        full_name: p.full_name || "Ученик",
+        avatar_url: p.avatar_url || null,
+        email: p.email || null,
+        english_level: pr.english_level || null,
+        total_xp: pr.total_xp || 0,
+        current_streak,
+        lessons_completed: completed,
+        last_lesson_at: lastLessonByStudent[p.id] || null,
+        next_lesson_id: nextLesson?.id || null,
+        next_lesson_at: nextLesson?.scheduled_at || null,
+        next_lesson_topic,
+        course_progress_pct,
+        needs_attention,
+      }
+    })
+
+  const counts: Record<string, number> = {
+    all: all.length,
+    A1: 0,
+    A2: 0,
+    B1: 0,
+    B2: 0,
+    C1: 0,
+    C2: 0,
+  }
+  for (const s of all) {
+    if (s.english_level && counts[s.english_level] !== undefined) {
+      counts[s.english_level] += 1
+    }
+  }
+
+  // Sort: today first, then by next_lesson_at asc, then by last_lesson_at desc.
+  const nowDate = new Date()
+  all.sort((a: any, b: any) => {
+    const aNext = a.next_lesson_at ? new Date(a.next_lesson_at) : null
+    const bNext = b.next_lesson_at ? new Date(b.next_lesson_at) : null
+    const aToday = aNext ? isSameCalendarDay(aNext, nowDate) : false
+    const bToday = bNext ? isSameCalendarDay(bNext, nowDate) : false
+    if (aToday !== bToday) return aToday ? -1 : 1
+    if (aNext && bNext) return aNext.getTime() - bNext.getTime()
+    if (aNext) return -1
+    if (bNext) return 1
+    const aLast = a.last_lesson_at ? new Date(a.last_lesson_at).getTime() : 0
+    const bLast = b.last_lesson_at ? new Date(b.last_lesson_at).getTime() : 0
+    return bLast - aLast
+  })
+
+  let activeToday = 0
+  let needsAttention = 0
+  let progressSum = 0
+  for (const s of all) {
+    if (s.next_lesson_at && isSameCalendarDay(new Date(s.next_lesson_at), nowDate)) {
+      activeToday += 1
+    }
+    if (s.needs_attention) needsAttention += 1
+    progressSum += s.course_progress_pct || 0
+  }
+  const avgProgress = all.length > 0 ? Math.round(progressSum / all.length) : 0
+
+  return {
+    students: all,
+    counts,
+    stats: {
+      total: all.length,
+      active_today: activeToday,
+      avg_progress: avgProgress,
+      needs_attention: needsAttention,
+    },
   }
 }
 
@@ -209,14 +361,15 @@ export default async function TeacherStudentsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: tp } = await (supabase as any)
-    .from("teacher_profiles")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle()
-  if (!tp) redirect("/dashboard")
-
-  const snap = await loadInitialSnapshot()
+  let snap: InitialSnapshot
+  try {
+    const cached = await getCachedTeacherStudents(user.id)
+    if (!cached.teacher_profile_id) redirect("/dashboard")
+    snap = buildSnapshot(cached)
+  } catch (err) {
+    console.error("[teacher/students] cached loader failed", err)
+    snap = EMPTY_SNAPSHOT
+  }
   const s = snap.stats
   const subParts: string[] = []
   subParts.push(`${s.total} активных`)

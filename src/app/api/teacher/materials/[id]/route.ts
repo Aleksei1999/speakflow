@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import {
+  invalidateTeacherMaterials,
+  invalidateStudentMaterials,
+} from '@/lib/cache/invalidate'
 
 const BUCKET = 'teacher-materials'
 
@@ -27,6 +31,59 @@ async function resolveTeacherProfileId(supabase: any, userId: string) {
     .eq('user_id', userId)
     .maybeSingle()
   return data?.id ?? null
+}
+
+/**
+ * Invalidate cached materials lists for every student who could see this
+ * material (shares + lesson participants). Best-effort; never throws.
+ */
+async function invalidateAffectedStudents(supabase: any, materialId: string, lessonId: string | null) {
+  try {
+    const tasks: Array<Promise<any>> = []
+    tasks.push(
+      supabase
+        .from('material_shares')
+        .select('target_type, target_id')
+        .eq('material_id', materialId)
+    )
+    if (lessonId) {
+      tasks.push(
+        supabase
+          .from('lessons')
+          .select('student_id')
+          .eq('id', lessonId)
+          .maybeSingle()
+      )
+    }
+    const [sharesRes, lessonRes] = await Promise.all(tasks)
+    const userIds = new Set<string>()
+    for (const s of sharesRes?.data ?? []) {
+      if (s.target_type === 'student' && s.target_id) {
+        userIds.add(s.target_id)
+      } else if (s.target_type === 'homework' && s.target_id) {
+        const { data: hw } = await supabase
+          .from('homework')
+          .select('student_id')
+          .eq('id', s.target_id)
+          .maybeSingle()
+        if (hw?.student_id) userIds.add(hw.student_id)
+      } else if (s.target_type === 'group' && s.target_id) {
+        const { data: members } = await supabase
+          .from('teacher_group_members')
+          .select('member_id')
+          .eq('group_id', s.target_id)
+        for (const m of members ?? []) {
+          if (m.member_id) userIds.add(m.member_id)
+        }
+      }
+    }
+    if (lessonRes && 'data' in lessonRes && lessonRes.data?.student_id) {
+      userIds.add(lessonRes.data.student_id)
+    }
+    for (const uid of userIds) invalidateStudentMaterials(uid)
+  } catch (err) {
+    console.error('[material-invalidate] failed', err)
+  }
 }
 
 // ---------------------------------------------------------------
@@ -62,7 +119,7 @@ export async function DELETE(
     // Fetch material + verify ownership
     const { data: material, error: fetchErr } = await supabase
       .from('materials')
-      .select('id, teacher_id, storage_path')
+      .select('id, teacher_id, storage_path, lesson_id')
       .eq('id', id)
       .maybeSingle()
     if (fetchErr) {
@@ -72,6 +129,10 @@ export async function DELETE(
     if (!material || material.teacher_id !== teacherProfileId) {
       return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
     }
+
+    // Snapshot the set of affected students BEFORE deleting the row —
+    // material_shares get cascaded away and we'd lose visibility data.
+    await invalidateAffectedStudents(supabase, id, material.lesson_id ?? null)
 
     // Remove storage object first — if this fails we bail out so we don't
     // orphan the row pointing at a live file.
@@ -100,6 +161,8 @@ export async function DELETE(
         { status: 500 }
       )
     }
+
+    invalidateTeacherMaterials(user.id)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
@@ -196,6 +259,15 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
     }
+
+    // Visibility-relevant fields (lesson_id, is_public, title/desc) may have
+    // changed — re-evaluate the share/lesson set and invalidate.
+    invalidateTeacherMaterials(user.id)
+    await invalidateAffectedStudents(
+      supabase,
+      id,
+      'lesson_id' in updatePayload ? (updatePayload.lesson_id as string | null) : updated.lesson_id ?? null
+    )
 
     return NextResponse.json(updated)
   } catch (err) {

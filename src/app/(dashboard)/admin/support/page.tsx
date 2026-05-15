@@ -1,47 +1,14 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedRole } from "@/lib/auth/get-role"
+import { getCachedAdminSupportThreads } from "@/lib/cache/dashboard"
 import AdminSupportClient from "./AdminSupportClient"
 
-// List-страница без countdown'ов: явный force-dynamic заменён на revalidate=60
-// (де-факто cookies()/headers() всё равно опт-аутят из кэша; намерение — переход
-// на unstable_cache per-userId позже).
-export const revalidate = 60
-
-type Thread = {
-  id: string
-  subject: string
-  student_id: string | null
-  student_name: string
-  student_email: string | null
-  student_level: string | null
-  priority: "low" | "medium" | "high"
-  status: "open" | "pending" | "resolved" | "closed"
-  last_message_at: string
-  created_at: string
-  unread_count: number
-  last_message_preview: string | null
-}
-
-async function loadThreads(): Promise<Thread[]> {
-  try {
-    const hdrs = await headers()
-    const host = hdrs.get("host")
-    const proto = hdrs.get("x-forwarded-proto") ?? "http"
-    const cookie = hdrs.get("cookie") ?? ""
-    if (!host) return []
-    const res = await fetch(
-      `${proto}://${host}/api/support/threads?admin=1&limit=100`,
-      { headers: { cookie }, cache: "no-store" }
-    )
-    if (!res.ok) return []
-    const json = await res.json()
-    return Array.isArray(json.threads) ? json.threads : []
-  } catch {
-    return []
-  }
-}
+// Auth check uses cookies() → page is per-request dynamic. Threads come
+// from getCachedAdminSupportThreads (unstable_cache, TTL 30s, tag
+// 'admin-support'), invalidated on new messages / thread mutations.
+export const revalidate = 30
 
 export default async function AdminSupportPage() {
   const supabase = await createClient()
@@ -50,16 +17,19 @@ export default async function AdminSupportPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any)
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-  if (!profile) redirect("/login")
-  if (profile.role === "student") redirect("/student")
-  if (profile.role === "teacher") redirect("/teacher")
-  if (profile.role !== "admin") redirect("/login")
+  const role = await getCachedRole(user.id)
+  if (!role) redirect("/login")
+  if (role === "student") redirect("/student")
+  if (role === "teacher") redirect("/teacher")
+  if (role !== "admin") redirect("/login")
 
-  const threads = await loadThreads()
+  let threads: any[]
+  try {
+    threads = await getCachedAdminSupportThreads({ limit: 100 })
+  } catch (err) {
+    console.error("[admin/support] cached loader failed", err)
+    threads = []
+  }
+
   return <AdminSupportClient initial={threads} />
 }

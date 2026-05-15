@@ -6,6 +6,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createSignedUrl, createSignedUrlMap } from '@/lib/supabase/signed-url'
 import { verifyFileSafety } from '@/lib/api/file-upload'
 import { logAuditEvent } from '@/lib/audit/log'
+import {
+  invalidateTeacherMaterials,
+  invalidateStudentMaterials,
+} from '@/lib/cache/invalidate'
 
 const BUCKET = 'teacher-materials'
 const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024 // 10 GB
@@ -438,6 +442,23 @@ export async function POST(request: NextRequest) {
         { error: 'Не удалось сохранить материал' },
         { status: 500 }
       )
+    }
+
+    // New material is immediately visible to the teacher and to any student
+    // whose lesson_id matches (shares are added later via the /share endpoint
+    // — those invalidations live there).
+    invalidateTeacherMaterials(user.id)
+    if (lesson_id) {
+      // Lesson-linked materials become visible to lesson participants. The
+      // student id lives on the lessons row; fetch it cheaply.
+      const { data: lessonRow } = await supabase
+        .from('lessons')
+        .select('student_id')
+        .eq('id', lesson_id)
+        .maybeSingle()
+      if (lessonRow?.student_id) {
+        invalidateStudentMaterials(lessonRow.student_id)
+      }
     }
 
     return NextResponse.json(

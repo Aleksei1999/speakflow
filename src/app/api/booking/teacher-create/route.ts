@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { teacherBookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
+import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
 
 /**
  * POST /api/booking/teacher-create
@@ -234,6 +235,11 @@ export async function POST(request: NextRequest) {
       .eq('id', lesson!.id)
 
     void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+
+    // Teacher's cached «Мои ученики» list is derived from lessons — invalidate.
+    // user.id is the teacher's auth user_id (we resolved teacher_profiles via
+    // .eq('user_id', user.id) at the top).
+    invalidateTeacherStudents(user.id)
 
     // Business-level audit: учитель назначил урок ученику.
     await logAuditEvent(request, {

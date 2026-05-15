@@ -13,37 +13,123 @@
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
-import { profileTag, progressTag, teacherStatsTag } from './dashboard'
+import {
+  profileTag,
+  progressTag,
+  teacherStatsTag,
+  studentMaterialsTag,
+  studentHomeworkTag,
+  teacherStudentsTag,
+  teacherClubsTag,
+  teacherHomeworkTag,
+  teacherMaterialsTag,
+  adminTrialRequestsTag,
+  adminStudentsTag,
+  adminClubsTag,
+  adminSupportTag,
+  adminTeachersListTag,
+} from './dashboard'
 
 const PROFILE = 'default'
+
+function safeRevalidate(tag: string, label: string): void {
+  try {
+    revalidateTag(tag, PROFILE)
+  } catch (err) {
+    // revalidateTag should never throw in normal flow, but log defensively
+    console.error(`[cache] revalidateTag ${label} failed`, err)
+  }
+}
 
 /** Profile fields shown in the dashboard sidebar (full_name, avatar_url, role). */
 export function invalidateProfile(userId: string): void {
   if (!userId) return
-  try {
-    revalidateTag(profileTag(userId), PROFILE)
-  } catch (err) {
-    // revalidateTag should never throw in normal flow, but log defensively
-    console.error('[cache] revalidateTag profile failed', err)
-  }
+  safeRevalidate(profileTag(userId), 'profile')
 }
 
 /** Student gamification: total_xp, english_level, current_streak. */
 export function invalidateUserProgress(userId: string): void {
   if (!userId) return
-  try {
-    revalidateTag(progressTag(userId), PROFILE)
-  } catch (err) {
-    console.error('[cache] revalidateTag progress failed', err)
-  }
+  safeRevalidate(progressTag(userId), 'progress')
 }
 
 /** Teacher hero stats: rating, total_reviews, experience_years. */
 export function invalidateTeacherStats(userId: string): void {
   if (!userId) return
-  try {
-    revalidateTag(teacherStatsTag(userId), PROFILE)
-  } catch (err) {
-    console.error('[cache] revalidateTag teacher-stats failed', err)
-  }
+  safeRevalidate(teacherStatsTag(userId), 'teacher-stats')
+}
+
+// ============================================================
+// List-page invalidators
+// ============================================================
+
+/** Materials visible to a student (public + lessons + shares). */
+export function invalidateStudentMaterials(userId: string): void {
+  if (!userId) return
+  safeRevalidate(studentMaterialsTag(userId), 'student-materials')
+}
+
+/** Homework rows belonging to a student. */
+export function invalidateStudentHomework(userId: string): void {
+  if (!userId) return
+  safeRevalidate(studentHomeworkTag(userId), 'student-homework')
+}
+
+/** Aggregated students list for a teacher (derived from lessons). */
+export function invalidateTeacherStudents(teacherUserId: string): void {
+  if (!teacherUserId) return
+  safeRevalidate(teacherStudentsTag(teacherUserId), 'teacher-students')
+}
+
+/** Speaking clubs where this teacher is a host. */
+export function invalidateTeacherClubs(teacherUserId: string): void {
+  if (!teacherUserId) return
+  safeRevalidate(teacherClubsTag(teacherUserId), 'teacher-clubs')
+}
+
+/**
+ * Homework rows assigned by a teacher.
+ *
+ * Reserved for future teacher-side homework cache loaders.
+ * Already wired into mutation endpoints so the tag is consistent
+ * if/when a `getCachedTeacherHomework` loader gets added.
+ */
+export function invalidateTeacherHomework(teacherUserId: string): void {
+  if (!teacherUserId) return
+  safeRevalidate(teacherHomeworkTag(teacherUserId), 'teacher-homework')
+}
+
+/**
+ * Materials owned by a teacher (their personal library).
+ *
+ * Reserved for future teacher/materials cache loader.
+ */
+export function invalidateTeacherMaterials(teacherUserId: string): void {
+  if (!teacherUserId) return
+  safeRevalidate(teacherMaterialsTag(teacherUserId), 'teacher-materials')
+}
+
+/** Admin: teacher applications / trial requests global list. */
+export function invalidateAdminTrialRequests(): void {
+  safeRevalidate(adminTrialRequestsTag(), 'admin-trial-requests')
+}
+
+/** Admin: students global list. */
+export function invalidateAdminStudents(): void {
+  safeRevalidate(adminStudentsTag(), 'admin-students')
+}
+
+/** Admin: clubs global list. */
+export function invalidateAdminClubs(): void {
+  safeRevalidate(adminClubsTag(), 'admin-clubs')
+}
+
+/** Admin: support threads global list. */
+export function invalidateAdminSupport(): void {
+  safeRevalidate(adminSupportTag(), 'admin-support')
+}
+
+/** Admin: teachers dropdown source (used in admin/clubs UI etc). */
+export function invalidateAdminTeachersList(): void {
+  safeRevalidate(adminTeachersListTag(), 'admin-teachers-list')
 }
