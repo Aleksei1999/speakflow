@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendNotification, type NotificationType } from '@/lib/notifications/service'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 
 /**
  * Internal API для отправки уведомлений.
@@ -28,6 +29,14 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'notifications:send',
+      keyParts: [getClientIp(request)],
+      max: 60,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     const body = await request.json()
     const { userId, type, data } = body

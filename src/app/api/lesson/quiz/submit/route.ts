@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { enforceRateLimitStrict } from "@/lib/api/rate-limit"
 
 const BodySchema = z.object({
   quizId: z.string().uuid(),
@@ -43,6 +44,15 @@ export async function POST(req: NextRequest) {
   if ((quiz as any).lessons?.student_id !== user.id) {
     return NextResponse.json({ error: "Это не ваш урок" }, { status: 403 })
   }
+
+  const limited = await enforceRateLimitStrict(req, {
+    name: "lesson:quiz",
+    keyParts: [user.id, quiz.lesson_id],
+    max: 10,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
+
   if (answers.length !== quiz.question_count) {
     return NextResponse.json({ error: "Неверное число ответов" }, { status: 400 })
   }

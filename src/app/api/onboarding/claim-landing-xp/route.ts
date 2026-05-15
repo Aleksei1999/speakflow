@@ -9,12 +9,13 @@
 // Idempotent: users can only claim signup_bonus once — the server caps total
 // landing XP ever credited per user at LANDING_XP_CAP.
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { invalidateUserProgress } from '@/lib/cache/invalidate'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 const LANDING_XP_CAP = 200
 const LANDING_LEVEL_CAP = 8
@@ -24,7 +25,7 @@ const bodySchema = z.object({
   level: z.number().int().min(0).max(LANDING_LEVEL_CAP).optional(),
 })
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let body: unknown
   try {
     body = await request.json()
@@ -48,6 +49,14 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Необходимо авторизоваться' }, { status: 401 })
   }
+
+  const limited = await enforceRateLimitStrict(request, {
+    name: 'onboarding:claim-xp',
+    keyParts: [user.id],
+    max: 3,
+    windowSeconds: 3600,
+  })
+  if (limited) return limited
 
   const admin = createAdminClient()
 

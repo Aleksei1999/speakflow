@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { notifyLessonCancelled } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -40,6 +41,14 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'booking:cancel',
+      keyParts: [user.id],
+      max: 10,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // Fetch the lesson
     type LessonRow = {
