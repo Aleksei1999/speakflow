@@ -1,94 +1,14 @@
 // @ts-nocheck
 "use client"
 
+import "@/styles/dashboard/admin-support.css"
+
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/client"
-
-const CSS = `
-.adm-support{max-width:1400px;margin:0 auto}
-
-.adm-support .page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
-.adm-support .page-hdr h1{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.1;color:var(--text)}
-.adm-support .page-hdr .sub{font-size:13px;color:var(--muted);margin-top:4px}
-
-.adm-support .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;transition:all .15s ease;cursor:pointer;border:none;text-decoration:none}
-.adm-support .btn:disabled{opacity:.55;cursor:not-allowed}
-.adm-support .btn-sm{padding:6px 14px;font-size:12px}
-.adm-support .btn-primary{background:var(--accent-dark);color:#fff}
-.adm-support .btn-primary:hover{background:var(--red)}
-.adm-support .btn-red{background:var(--red);color:#fff}
-.adm-support .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text)}
-.adm-support .btn-secondary:hover{border-color:var(--text)}
-
-.adm-support .layout{display:grid;grid-template-columns:340px 1fr;gap:16px;min-height:calc(100vh - 240px)}
-
-.adm-support .thread-list{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.adm-support .thread-tabs{display:flex;gap:4px;padding:10px;border-bottom:1px solid var(--border);background:var(--surface-2);overflow-x:auto}
-.adm-support .thread-tabs button{padding:6px 12px;border-radius:100px;font-size:11px;font-weight:700;color:var(--muted);border:none;background:none;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
-.adm-support .thread-tabs button:hover{color:var(--text)}
-.adm-support .thread-tabs button.active{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-support .thread-tabs button.active{background:var(--red)}
-
-.adm-support .thread-items{flex:1;overflow-y:auto}
-.adm-support .thread-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;position:relative}
-.adm-support .thread-item:hover{background:var(--surface-2)}
-.adm-support .thread-item.active{background:var(--bg);border-left:3px solid var(--red)}
-.adm-support .thread-item.priority-high{border-left:3px solid var(--red)}
-.adm-support .thread-item.priority-med{border-left:3px solid #F59E0B}
-.adm-support .thread-item.priority-low{border-left:3px solid #22c55e}
-.adm-support .thread-item.unread{background:rgba(230,57,70,.05)}
-.adm-support .thread-item.unread .th-subject{font-weight:800}
-.adm-support .thread-item.unread .th-last{color:var(--text)}
-.adm-support .thread-item.unread::after{content:"";position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--red)}
-.adm-support .th-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:var(--text);overflow:hidden}
-.adm-support .th-avatar img{width:100%;height:100%;object-fit:cover}
-.adm-support .th-avatar.red{background:var(--red);color:#fff}
-.adm-support .th-avatar.lime{background:var(--lime);color:#0A0A0A}
-.adm-support .th-avatar.dark{background:var(--accent-dark);color:#fff}
-[data-theme="dark"] .adm-support .th-avatar.dark{background:var(--red)}
-.adm-support .th-body{flex:1;min-width:0}
-.adm-support .th-subject{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.adm-support .th-last{font-size:11px;color:var(--muted);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.adm-support .th-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;font-size:10px;color:var(--muted);font-weight:600}
-.adm-support .unread-dot{background:var(--red);color:#fff;border-radius:999px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;padding:0 5px}
-
-.adm-support .chat-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.adm-support .chat-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface-2);flex-wrap:wrap}
-.adm-support .chat-head-info h3{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px}
-.adm-support .chat-head-info p{font-size:12px;color:var(--muted);margin-top:2px}
-.adm-support .chat-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.adm-support .chat-head-actions select{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);font-family:inherit;font-weight:600;cursor:pointer}
-
-.adm-support .chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
-.adm-support .msg{display:flex;gap:10px;max-width:72%}
-.adm-support .msg.me{align-self:flex-end;flex-direction:row-reverse}
-.adm-support .msg-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;color:var(--text);overflow:hidden}
-.adm-support .msg-avatar img{width:100%;height:100%;object-fit:cover}
-.adm-support .msg.me .msg-avatar{background:var(--red);color:#fff;border-color:var(--red)}
-.adm-support .msg-bubble{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
-.adm-support .msg.me .msg-bubble{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark)}
-[data-theme="dark"] .adm-support .msg.me .msg-bubble{background:var(--red);border-color:var(--red)}
-.adm-support .msg-time{font-size:10px;color:var(--muted);margin-top:4px;display:block;text-align:right}
-
-.adm-support .chat-composer{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end}
-.adm-support .chat-composer textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;min-height:40px;max-height:140px;transition:border-color .15s}
-.adm-support .chat-composer textarea:focus{outline:none;border-color:var(--text)}
-
-.adm-support .empty-thread{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;padding:40px 16px;text-align:center}
-.adm-support .empty-thread b{display:block;color:var(--text);font-size:16px;margin-bottom:6px}
-
-.adm-support .empty{padding:60px 16px;text-align:center;color:var(--muted);font-size:14px}
-.adm-support .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
-
-@media(max-width:900px){
-  .adm-support .layout{grid-template-columns:1fr}
-  .adm-support .thread-list{max-height:360px}
-}
-`
 
 type Thread = {
   id: string
@@ -428,7 +348,6 @@ export default function AdminSupportClient({
 
   return (
     <div className="adm-support">
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       <div className="page-hdr">
         <div>
