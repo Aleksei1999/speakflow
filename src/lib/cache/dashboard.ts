@@ -58,6 +58,7 @@ export type CachedProfile = {
   full_name: string | null
   avatar_url: string | null
   role: 'student' | 'teacher' | 'admin' | null
+  email_verified: boolean | null
 } | null
 
 export type CachedUserProgress = {
@@ -77,7 +78,7 @@ async function loadProfile(userId: string): Promise<CachedProfile> {
   const admin = createAdminClient()
   const { data, error } = await (admin as any)
     .from('profiles')
-    .select('full_name, avatar_url, role')
+    .select('full_name, avatar_url, role, email_verified')
     .eq('id', userId)
     .maybeSingle()
   if (error) {

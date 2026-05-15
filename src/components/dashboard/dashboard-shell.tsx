@@ -42,6 +42,8 @@ const SHELL_CSS = `
 .dash .profile-photo-wrap{position:relative;width:64px;height:64px;margin:0 auto 10px}
 .dash .profile-photo-wrap .profile-photo,
 .dash .profile-photo-wrap .profile-photo-img{position:absolute;inset:0;margin:0}
+.dash .profile-verified-badge{position:absolute;top:-4px;right:-4px;line-height:0;z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
+.dash .profile-verified-badge svg{display:block;width:22px;height:22px}
 .dash .profile-name{font-weight:800;font-size:16px;letter-spacing:-.3px}
 .dash .profile-role{font-size:12px;color:var(--muted);margin-top:3px}
 .dash .profile-level{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(182,63,55,.08);color:var(--red)}
@@ -207,12 +209,14 @@ type Props = {
   fullName: string
   avatarUrl: string | null
   role: "student" | "teacher" | "admin" | null
+  /** Из profiles.email_verified (синкается с auth.users.email_confirmed_at триггером 080). */
+  emailVerified?: boolean
   gamification?: Gamification | null
   teacherStats?: TeacherStats | null
   children: React.ReactNode
 }
 
-export function DashboardShell({ fullName, avatarUrl, role, gamification, teacherStats, children }: Props) {
+export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamification, teacherStats, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -513,24 +517,54 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
           </div>
 
           <div className="profile-card">
-            {avatarUrl && !avatarBroken ? (
-              <div className="profile-photo-wrap">
-                {/* Initials sit underneath; <img> covers them when it loads.
-                    If the <img> errors out (CORS, 404, blocked) onError hides
-                    it via state and the initials show through. */}
+            <div className="profile-photo-wrap">
+              {avatarUrl && !avatarBroken ? (
+                <>
+                  {/* Initials sit underneath; <img> covers them when it loads.
+                      If the <img> errors out (CORS, 404, blocked) onError hides
+                      it via state and the initials show through. */}
+                  <div className="profile-photo">{initials || "?"}</div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={avatarUrl}
+                    alt={fullName}
+                    className="profile-photo-img"
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarBroken(true)}
+                  />
+                </>
+              ) : (
                 <div className="profile-photo">{initials || "?"}</div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarUrl}
-                  alt={fullName}
-                  className="profile-photo-img"
-                  referrerPolicy="no-referrer"
-                  onError={() => setAvatarBroken(true)}
-                />
-              </div>
-            ) : (
-              <div className="profile-photo">{initials || "?"}</div>
-            )}
+              )}
+              {/* Verified badge — облачко с галочкой, появляется только когда
+                  email_verified=true. SVG из Origin UI template, цвета на
+                  CSS-variables брендовые. */}
+              {emailVerified ? (
+                <span className="profile-verified-badge" aria-hidden="false">
+                  <span className="sr-only">Подтверждённый аккаунт</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="var(--surface)"
+                      d="M3.046 8.277A4.402 4.402 0 0 1 8.303 3.03a4.4 4.4 0 0 1 7.411 0 4.397 4.397 0 0 1 5.19 3.068c.207.713.23 1.466.067 2.19a4.4 4.4 0 0 1 0 7.415 4.403 4.403 0 0 1-3.06 5.187 4.398 4.398 0 0 1-2.186.072 4.398 4.398 0 0 1-7.422 0 4.398 4.398 0 0 1-5.257-5.248 4.4 4.4 0 0 1 0-7.437Z"
+                    />
+                    <path
+                      fill="var(--red)"
+                      d="M4.674 8.954a3.602 3.602 0 0 1 4.301-4.293 3.6 3.6 0 0 1 6.064 0 3.598 3.598 0 0 1 4.3 4.302 3.6 3.6 0 0 1 0 6.067 3.6 3.6 0 0 1-4.29 4.302 3.6 3.6 0 0 1-6.074 0 3.598 3.598 0 0 1-4.3-4.293 3.6 3.6 0 0 1 0-6.085Z"
+                    />
+                    <path
+                      fill="var(--surface)"
+                      d="M15.707 9.293a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 1 1 1.414-1.414L11 12.586l3.293-3.293a1 1 0 0 1 1.414 0Z"
+                    />
+                  </svg>
+                </span>
+              ) : null}
+            </div>
             <div className="profile-name">{fullName || "Пользователь"}</div>
             {effectiveGamification ? (
               <>
