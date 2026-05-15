@@ -5,6 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 import { notifyClubHostAssigned } from "@/lib/clubs/notify-host"
 import { logAuditEvent } from "@/lib/audit/log"
+import {
+  invalidateAdminClubs,
+  invalidateTeacherClubs,
+} from "@/lib/cache/invalidate"
 
 // ---------------------------------------------------------------
 // PATCH /api/admin/clubs/[id]
@@ -251,6 +255,31 @@ export async function PATCH(
         hostUserId: hostChangedTo,
         assignedByUserId: gate.user.id,
       }).catch(() => {})
+    }
+
+    // Admin clubs list is global, teacher-clubs list is per-host.
+    invalidateAdminClubs()
+    if (hostChangedTo) invalidateTeacherClubs(hostChangedTo)
+    // If we just unassigned the previous host, their cached list still
+    // contains the club — flip their tag too. We saved the prior host_id
+    // in `currentHostId` earlier (inside the d.host_teacher_id !== undefined
+    // branch); the lookup is repeated here only when needed.
+    if (d.host_teacher_id !== undefined) {
+      const adminLookup = createAdminClient()
+      const { data: prevHosts } = await adminLookup
+        .from("club_hosts")
+        .select("host_id")
+        .eq("club_id", id)
+        .order("sort_order", { ascending: true })
+        .returns<{ host_id: string }[]>()
+      // After the PATCH applied, current hosts == prev hosts. Anyone in
+      // either set (cur ∪ prev) needs invalidation — but `hostChangedTo`
+      // already covers the new host. Cover any leftover (e.g. delete case).
+      for (const h of prevHosts ?? []) {
+        if (h.host_id && h.host_id !== hostChangedTo) {
+          invalidateTeacherClubs(h.host_id)
+        }
+      }
     }
 
     // Audit: админская мутация клуба. Дублирует data-триггер на clubs (он

@@ -2,6 +2,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { invalidateStudentMaterials } from '@/lib/cache/invalidate'
+
+/**
+ * Collapse share targets (student / homework / group) to the set of student
+ * auth user_ids that are now affected, so we can flip their per-user cache
+ * tag in one pass.
+ */
+async function resolveAffectedStudents(
+  supabase: any,
+  students: string[] = [],
+  homeworks: string[] = [],
+  groups: string[] = []
+): Promise<string[]> {
+  const userIds = new Set<string>(students.filter(Boolean))
+  if (homeworks.length > 0) {
+    const { data: hw } = await supabase
+      .from('homework')
+      .select('id, student_id')
+      .in('id', homeworks)
+    for (const h of hw ?? []) {
+      if (h.student_id) userIds.add(h.student_id)
+    }
+  }
+  if (groups.length > 0) {
+    const { data: members } = await supabase
+      .from('teacher_group_members')
+      .select('member_id')
+      .in('group_id', groups)
+    for (const m of members ?? []) {
+      if (m.member_id) userIds.add(m.member_id)
+    }
+  }
+  return Array.from(userIds)
+}
 
 const idSchema = z.string().uuid({ message: 'Некорректный идентификатор материала' })
 
@@ -263,6 +297,15 @@ export async function POST(
 
     const { shares } = await expandShares(supabase, id)
 
+    // Newly-shared material appears in each affected student's cached list.
+    const affected = await resolveAffectedStudents(
+      supabase,
+      students,
+      homeworks,
+      groups
+    )
+    for (const uid of affected) invalidateStudentMaterials(uid)
+
     return NextResponse.json(
       {
         inserted: insertedRows?.length || 0,
@@ -325,6 +368,21 @@ export async function DELETE(
       )
     }
 
+    // Capture target_ids BEFORE delete so we can invalidate per-student caches.
+    const { data: targetsBefore } = await supabase
+      .from('material_shares')
+      .select('target_type, target_id')
+      .in('id', parsed.data.share_ids)
+      .eq('material_id', id)
+    const studentsAff: string[] = []
+    const hwAff: string[] = []
+    const groupAff: string[] = []
+    for (const t of targetsBefore ?? []) {
+      if (t.target_type === 'student' && t.target_id) studentsAff.push(t.target_id)
+      else if (t.target_type === 'homework' && t.target_id) hwAff.push(t.target_id)
+      else if (t.target_type === 'group' && t.target_id) groupAff.push(t.target_id)
+    }
+
     const { error, count } = await supabase
       .from('material_shares')
       .delete({ count: 'exact' })
@@ -337,6 +395,14 @@ export async function DELETE(
         { status: 500 }
       )
     }
+
+    const affected = await resolveAffectedStudents(
+      supabase,
+      studentsAff,
+      hwAff,
+      groupAff
+    )
+    for (const uid of affected) invalidateStudentMaterials(uid)
 
     return NextResponse.json({ ok: true, removed: count || 0 })
   } catch (err) {

@@ -3,6 +3,10 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
+import {
+  invalidateAdminClubs,
+  invalidateTeacherClubs,
+} from "@/lib/cache/invalidate"
 
 // ---------------------------------------------------------------
 // POST /api/admin/clubs/[id]/assign
@@ -143,6 +147,20 @@ export async function POST(
       }
       assigned.push(studentId)
       seatsLeft--
+    }
+
+    // Seats_taken changed (DB trigger recalc) → admin/clubs snapshot stale.
+    // Hosts of this club also see updated participant lists.
+    if (assigned.length > 0) {
+      invalidateAdminClubs()
+      const { data: hosts } = await admin
+        .from("club_hosts")
+        .select("host_id")
+        .eq("club_id", id)
+        .returns<{ host_id: string }[]>()
+      for (const h of hosts ?? []) {
+        if (h.host_id) invalidateTeacherClubs(h.host_id)
+      }
     }
 
     return NextResponse.json({

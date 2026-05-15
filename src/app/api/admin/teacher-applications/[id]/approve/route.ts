@@ -11,6 +11,9 @@ import { sendEmail } from "@/lib/resend/client"
 import {
   invalidateProfile,
   invalidateTeacherStats,
+  invalidateAdminTrialRequests,
+  invalidateAdminStudents,
+  invalidateAdminTeachersList,
 } from "@/lib/cache/invalidate"
 import { transliterateRu } from "@/lib/transliterate"
 import { logAuditEvent } from "@/lib/audit/log"
@@ -245,6 +248,13 @@ export async function POST(
     // correct sidebar/stats on next navigation.
     invalidateProfile(userId)
     invalidateTeacherStats(userId)
+    // Application status and the admin's three list caches all need refresh:
+    // - trial-requests changes status to 'approved'
+    // - students list loses one row (role flipped)
+    // - teachers dropdown gains a new teacher_profile
+    invalidateAdminTrialRequests()
+    invalidateAdminStudents()
+    invalidateAdminTeachersList()
 
     // 6. Шлём письмо с креденшелами.
     const siteUrl =

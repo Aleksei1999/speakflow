@@ -4,6 +4,7 @@ import { bookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
+import { invalidateTeacherStudents } from '@/lib/cache/invalidate'
 
 export async function POST(request: NextRequest) {
   try {
@@ -307,6 +308,12 @@ export async function POST(request: NextRequest) {
       .eq('id', lesson!.id)
 
     void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+
+    // The teacher's «Мои ученики» list is derived from lessons; invalidate
+    // its cached snapshot so the new student shows up on next request.
+    // `teacherId` is the teacher's auth user_id (we resolved teacher_profiles
+    // via `.eq('user_id', teacherId)` above).
+    invalidateTeacherStudents(teacherId)
 
     // Business-level audit: бронирование ученика. Data-trigger тоже ловит
     // INSERT, но эта запись содержит teacher/student/scheduled — без diff.

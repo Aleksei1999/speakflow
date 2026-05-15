@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { verifyFileSafety } from "@/lib/api/file-upload"
 import { logAuditEvent } from "@/lib/audit/log"
+import {
+  invalidateStudentHomework,
+  invalidateTeacherHomework,
+} from "@/lib/cache/invalidate"
 
 const HOMEWORK_BUCKET = "homework-submissions"
 
@@ -86,10 +90,10 @@ export async function POST(
       )
     }
 
-    // Ownership + current status
+    // Ownership + current status (teacher_id is needed for cache invalidation).
     const { data: hw, error: fetchErr } = await supabase
       .from("homework")
-      .select("id, student_id, status, attachments")
+      .select("id, student_id, teacher_id, status, attachments")
       .eq("id", id)
       .maybeSingle()
     if (fetchErr) {
@@ -203,6 +207,15 @@ export async function POST(
         { error: "Не удалось отправить задание" },
         { status: 500 }
       )
+    }
+
+    // Submission flips status pending→submitted — both lists need refresh.
+    // homework.teacher_id FKs profiles(id), so it's already the teacher's
+    // auth user_id (used by getCachedTeacherStudents / future teacher
+    // homework loaders).
+    invalidateStudentHomework(user.id)
+    if (hw.teacher_id) {
+      invalidateTeacherHomework(hw.teacher_id)
     }
 
     return NextResponse.json({

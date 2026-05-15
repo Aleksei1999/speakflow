@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import {
+  invalidateStudentHomework,
+  invalidateTeacherHomework,
+} from '@/lib/cache/invalidate'
 
 // ---------------------------------------------------------------
 // Homework table schema reference
@@ -474,6 +478,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // New row appears in both the student's homework list and (eventually)
+    // the teacher's homework list — invalidate both per-user tags.
+    invalidateStudentHomework(student_id)
+    invalidateTeacherHomework(user.id)
 
     return NextResponse.json({ homework: inserted }, { status: 201 })
   } catch (err) {

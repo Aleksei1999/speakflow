@@ -1,13 +1,16 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedRole } from "@/lib/auth/get-role"
+import {
+  getCachedAdminClubs,
+  getCachedAdminTeachersList,
+} from "@/lib/cache/dashboard"
 import AdminClubsClient from "./AdminClubsClient"
 
-// List-страница без live-countdown'ов. cookies()/headers() всё равно делают
-// рендер per-request (de-facto dynamic), но явный force-dynamic убран —
-// revalidate=60 фиксирует намерение «60 сек кеш норм». Когда мигрируем
-// чтение на unstable_cache per-userId — реальный кеш и включится.
+// Auth check uses cookies() → page is per-request dynamic. Clubs +
+// teacher list come from getCachedAdminClubs / getCachedAdminTeachersList
+// (unstable_cache, 60-120s TTL, tags 'admin-clubs' / 'admin-teachers-list').
 export const revalidate = 60
 
 type Club = {
@@ -29,47 +32,6 @@ type TeacherOption = {
   full_name: string
 }
 
-async function safeFetch(url: string, cookie: string): Promise<any> {
-  try {
-    const res = await fetch(url, { headers: { cookie }, cache: "no-store" })
-    if (!res.ok) return null
-    return await res.json()
-  } catch {
-    return null
-  }
-}
-
-async function loadSnapshot(): Promise<{
-  clubs: Club[]
-  teachers: TeacherOption[]
-}> {
-  const hdrs = await headers()
-  const host = hdrs.get("host")
-  const proto = hdrs.get("x-forwarded-proto") ?? "http"
-  const cookie = hdrs.get("cookie") ?? ""
-  if (!host) return { clubs: [], teachers: [] }
-  const base = `${proto}://${host}`
-
-  const [clubsRes, teacherRes] = await Promise.all([
-    safeFetch(`${base}/api/admin/clubs`, cookie),
-    safeFetch(`${base}/api/teachers?limit=100`, cookie),
-  ])
-
-  return {
-    clubs: Array.isArray(clubsRes?.clubs) ? clubsRes.clubs : [],
-    teachers: Array.isArray(teacherRes?.teachers)
-      ? teacherRes.teachers
-          // Use the teacher's auth user_id — club_hosts.host_id FKs profiles(id),
-          // not teacher_profiles(id).
-          .map((t: any) => ({
-            id: (t.user_id as string | null) ?? null,
-            full_name: t.full_name || t.name || "—",
-          }))
-          .filter((t: any) => !!t.id)
-      : [],
-  }
-}
-
 export default async function AdminClubsPage() {
   const supabase = await createClient()
   const {
@@ -77,16 +39,28 @@ export default async function AdminClubsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await (supabase as any)
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-  if (!profile) redirect("/login")
-  if (profile.role === "student") redirect("/student")
-  if (profile.role === "teacher") redirect("/teacher")
-  if (profile.role !== "admin") redirect("/login")
+  const role = await getCachedRole(user.id)
+  if (!role) redirect("/login")
+  if (role === "student") redirect("/student")
+  if (role === "teacher") redirect("/teacher")
+  if (role !== "admin") redirect("/login")
 
-  const snap = await loadSnapshot()
-  return <AdminClubsClient initial={snap} />
+  let clubs: Club[] = []
+  let teachers: TeacherOption[] = []
+  try {
+    const [clubsSnap, teacherList] = await Promise.all([
+      getCachedAdminClubs({ limit: 50 }),
+      getCachedAdminTeachersList({ limit: 100 }),
+    ])
+    clubs = (clubsSnap.clubs ?? []) as Club[]
+    teachers = teacherList
+      // club_hosts.host_id FKs profiles(id); we already cache user_id
+      // as `id` in the loader, so the shape matches.
+      .filter((t) => !!t.id)
+      .map((t) => ({ id: t.id, full_name: t.full_name || "—" }))
+  } catch (err) {
+    console.error("[admin/clubs] cached loaders failed", err)
+  }
+
+  return <AdminClubsClient initial={{ clubs, teachers }} />
 }
