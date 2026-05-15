@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import { addMonths, differenceInDays, endOfMonth, format, isFuture, startOfMonth, subMonths } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -402,7 +403,7 @@ export default async function TeacherPayoutsPage() {
             </div>
             <div className="np-actions">
               <button className="btn btn-lime" disabled>Запросить раньше</button>
-              <a href="/teacher/settings" className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff" }}>Сменить способ</a>
+              <Link href="/teacher/settings" className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff" }}>Сменить способ</Link>
             </div>
           </div>
           <div className="np-details">
@@ -546,7 +547,7 @@ export default async function TeacherPayoutsPage() {
         <div className="card">
           <div className="card-header">
             <h3>Откуда выручка · {format(now, "LLLL", { locale: ru })}</h3>
-            <a href="/teacher/students" className="btn btn-sm btn-secondary">Все ученики</a>
+            <Link href="/teacher/students" className="btn btn-sm btn-secondary">Все ученики</Link>
           </div>
           {students.length === 0 ? (
             <div className="empty">В этом месяце ещё нет завершённых уроков</div>
@@ -571,10 +572,10 @@ export default async function TeacherPayoutsPage() {
         <div className="card">
           <div className="card-header">
             <h3>Способы получения</h3>
-            <a href="/teacher/settings" className="btn btn-sm btn-secondary">+ Добавить</a>
+            <Link href="/teacher/settings" className="btn btn-sm btn-secondary">+ Добавить</Link>
           </div>
           <div className="methods-empty">
-            Способы выплат пока не настроены. Зайди в <a href="/teacher/settings" style={{ color: "var(--text)", fontWeight: 700 }}>Настройки</a>, чтобы привязать карту или криптокошелёк.
+            Способы выплат пока не настроены. Зайди в <Link href="/teacher/settings" style={{ color: "var(--text)", fontWeight: 700 }}>Настройки</Link>, чтобы привязать карту или криптокошелёк.
           </div>
         </div>
       </div>

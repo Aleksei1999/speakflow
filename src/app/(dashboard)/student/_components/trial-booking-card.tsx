@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { TurnstileWidget } from "@/components/auth/turnstile-widget"
@@ -184,9 +185,9 @@ export function TrialBookingCard({ firstName }: Props) {
           )}
         </p>
         {done.assigned ? (
-          <a href="/student/schedule" className="trial-btn-secondary">
+          <Link href="/student/schedule" className="trial-btn-secondary">
             Открыть расписание
-          </a>
+          </Link>
         ) : null}
       </div>
     )
@@ -364,7 +365,7 @@ export function TrialBookingCard({ firstName }: Props) {
         Далее — выбрать преподавателя →
       </button>
       <p className="trial-foot">
-        Нужно другое время? <a href="/student/teachers">Открыть полный каталог →</a>
+        Нужно другое время? <Link href="/student/teachers">Открыть полный каталог →</Link>
       </p>
     </div>
   )

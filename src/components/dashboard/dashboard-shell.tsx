@@ -268,6 +268,50 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
     }
   }, [role, pathname, router])
 
+  // Soft-prefetch топ-5 наиболее вероятных следующих вкладок при mount шелла.
+  // Дополняет `<Link prefetch>` на самих ссылках — pre-warms RSC payload + loading.tsx
+  // ДО того как пользователь успеет навести курсор. Откладываем на idle, чтобы не
+  // конкурировать с initial render и критичными запросами текущей страницы.
+  // Лимит 5 — иначе сжигаем bandwidth и упираемся в edge function quotas.
+  useEffect(() => {
+    if (!role) return
+    if (typeof window === "undefined") return
+
+    const tabs =
+      role === "admin"
+        ? ["/admin", "/admin/students", "/admin/teachers", "/admin/trial-requests", "/admin/support"]
+        : role === "teacher"
+        ? ["/teacher", "/teacher/schedule", "/teacher/students", "/teacher/materials", "/teacher/homework"]
+        : ["/student", "/student/schedule", "/student/materials", "/student/homework", "/student/achievements"]
+
+    const run = () => {
+      for (const t of tabs) {
+        try { router.prefetch(t) } catch {}
+      }
+    }
+
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+
+    let idleId: number | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    if (typeof w.requestIdleCallback === "function") {
+      idleId = w.requestIdleCallback(run, { timeout: 2000 })
+    } else {
+      timeoutId = setTimeout(run, 600)
+    }
+
+    return () => {
+      if (idleId !== null && typeof w.cancelIdleCallback === "function") {
+        w.cancelIdleCallback(idleId)
+      }
+      if (timeoutId !== null) clearTimeout(timeoutId)
+    }
+  }, [role, router])
+
   useEffect(() => {
     const stored = (typeof window !== "undefined" ? localStorage.getItem("theme") : null) as
       | "light"
