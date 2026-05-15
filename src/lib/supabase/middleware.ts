@@ -24,7 +24,12 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession (local cookie decode, ~3ms) вместо getUser (network call
+  // в Supabase Auth, ~80ms). Middleware принимает только redirect-решения;
+  // настоящая security-проверка через getUser() остаётся на каждой server
+  // page и в API routes — там подделанный cookie реджектится с 401.
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   let role: string | null = null
   if (user) {
