@@ -152,6 +152,10 @@ const accountSchema = z
     city: z.string().max(120).nullable().optional(),
     timezone: z.string().max(60).optional(),
     language: z.enum(['ru', 'en']).optional(),
+    // URL аватара в Supabase Storage (avatars bucket). Записывается
+    // после client-side upload, server только сохраняет ссылку +
+    // invalidateProfile() для evict per-user cache.
+    avatar_url: z.string().url().max(2000).nullable().optional(),
   })
   .strict()
 
@@ -218,6 +222,7 @@ export async function PATCH(request: NextRequest) {
       if (a.city !== undefined) patch.city = a.city
       if (a.timezone !== undefined) patch.timezone = a.timezone
       if (a.language !== undefined) patch.language = a.language
+      if (a.avatar_url !== undefined) patch.avatar_url = a.avatar_url
 
       if (a.first_name !== undefined || a.last_name !== undefined) {
         const fn = a.first_name ?? current.first_name ?? ''
