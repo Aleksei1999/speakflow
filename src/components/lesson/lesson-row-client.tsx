@@ -30,7 +30,9 @@ import { computeLessonAccess } from "@/lib/lesson-access"
 import { LiveLessonCTA } from "./live-lesson-cta"
 import { formatLessonTime } from "@/lib/time"
 
-const TICK_MS = 5000
+// 30s tick — countdown в минутах, smooth достаточно. 5s давало
+// «страница обновляется сама» на /teacher с множеством строк.
+const TICK_MS = 30000
 const SOON_WINDOW_SEC = 600
 
 export type LessonRowRole = "student" | "teacher"
