@@ -34,7 +34,7 @@ const CSS = `
 .adm-apps .stat.new{background:rgba(59,130,246,.12);color:#3B82F6}
 .adm-apps .stat.in_review{background:rgba(245,158,11,.12);color:#D97706}
 .adm-apps .stat.approved{background:rgba(34,197,94,.12);color:#22C55E}
-.adm-apps .stat.rejected{background:rgba(230,57,70,.12);color:var(--red)}
+.adm-apps .stat.rejected{background:rgba(182,63,55,.12);color:var(--red)}
 .adm-apps .stat.archived{background:var(--bg);color:var(--muted)}
 .adm-apps select.status-select{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);font-family:inherit;font-weight:600;cursor:pointer}
 .adm-apps .when{font-size:11px;color:var(--muted);font-weight:600}

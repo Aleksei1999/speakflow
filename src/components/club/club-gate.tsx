@@ -21,15 +21,15 @@ const CSS = `
 .cg-wrap{min-height:calc(100vh - 80px);display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif}
 .cg-card{background:#fff;border:1px solid #EEEEEA;border-radius:20px;padding:36px 32px;max-width:480px;width:100%;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .cg-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px}
-.cg-badge.wait{background:#D8F26A;color:#0A0A0A}
+.cg-badge.wait{background:#DDEA88;color:#0A0A0A}
 .cg-badge.expired{background:#F5F5F3;color:#8A8A86}
-.cg-badge.cancelled{background:#E63946;color:#fff}
+.cg-badge.cancelled{background:#B63F37;color:#fff}
 .cg-title{font-size:24px;font-weight:800;letter-spacing:-.5px;margin:0 0 10px}
 .cg-sub{font-size:14px;color:#8A8A86;line-height:1.55;margin:0 0 24px}
 .cg-sub strong{color:#0A0A0A;font-weight:700}
 .cg-timer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:28px 0}
 .cg-timer .slot{background:#0A0A0A;color:#fff;border-radius:14px;padding:16px 4px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.cg-timer .slot.soon{background:#E63946}
+.cg-timer .slot.soon{background:#B63F37}
 .cg-timer .num{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1}
 .cg-timer .lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;font-weight:600}
 .cg-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}

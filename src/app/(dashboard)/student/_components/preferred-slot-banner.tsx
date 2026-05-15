@@ -57,7 +57,7 @@ export function PreferredSlotBanner({ slots }: { slots: Slot[] }) {
         flexDirection: "column",
         gap: 8,
         background:
-          "linear-gradient(135deg, rgba(74,222,128,.10), rgba(230,57,70,.06))",
+          "linear-gradient(135deg, rgba(74,222,128,.10), rgba(182,63,55,.06))",
         border: "1px solid rgba(74,222,128,.25)",
         borderRadius: 14,
         padding: "12px 14px",
@@ -107,7 +107,7 @@ export function PreferredSlotBanner({ slots }: { slots: Slot[] }) {
               onClick={() => rebook(s)}
               disabled={pending === s.nextIso}
               style={{
-                background: "#E63946",
+                background: "#B63F37",
                 color: "#fff",
                 border: "none",
                 borderRadius: 12,

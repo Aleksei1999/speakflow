@@ -58,22 +58,22 @@
 .tch-schedule .cg-c--plus{display:flex;align-items:center;justify-content:center;color:transparent;font-size:1.1rem;font-weight:700}
 .tch-schedule .cg-c--plus:hover{color:var(--red)}
 
-.tch-schedule .ev{position:absolute;left:3px;right:3px;top:3px;padding:5px 7px;border-radius:8px;font-size:.6rem;font-weight:600;line-height:1.25;cursor:pointer;transition:all .15s;overflow:hidden;z-index:2;border-left:3px solid;background:rgba(216,242,106,.2);color:var(--lime-dark);border-color:var(--lime)}
+.tch-schedule .ev{position:absolute;left:3px;right:3px;top:3px;padding:5px 7px;border-radius:8px;font-size:.6rem;font-weight:600;line-height:1.25;cursor:pointer;transition:all .15s;overflow:hidden;z-index:2;border-left:3px solid;background:rgba(221,234,136,.2);color:var(--lime-dark);border-color:var(--lime)}
 .tch-schedule .ev:hover{transform:scale(1.04);box-shadow:0 4px 12px var(--shadow);z-index:5}
 .tch-schedule .ev-t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tch-schedule .ev-s{font-size:.52rem;opacity:.65;margin-top:1px}
 .tch-schedule .ev--done{background:rgba(34,197,94,.08);color:#15803d;border-color:#22c55e;opacity:.7}
 .tch-schedule .ev--cancel{background:rgba(138,138,134,.1);color:var(--muted);border-color:var(--muted);opacity:.5;text-decoration:line-through}
-.tch-schedule .ev--now{background:var(--lime)!important;color:#0A0A0A!important;border-color:var(--lime-dark)!important;box-shadow:0 0 0 2px rgba(216,242,106,.3);animation:tchEvP 2s ease-in-out infinite}
-@keyframes tchEvP{0%,100%{box-shadow:0 0 0 2px rgba(216,242,106,.3)}50%{box-shadow:0 0 0 5px rgba(216,242,106,.15)}}
+.tch-schedule .ev--now{background:var(--lime)!important;color:#0A0A0A!important;border-color:var(--lime-dark)!important;box-shadow:0 0 0 2px rgba(221,234,136,.3);animation:tchEvP 2s ease-in-out infinite}
+@keyframes tchEvP{0%,100%{box-shadow:0 0 0 2px rgba(221,234,136,.3)}50%{box-shadow:0 0 0 5px rgba(221,234,136,.15)}}
 
 .tch-schedule .list-title{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:14px 0 10px;display:flex;align-items:center;gap:8px}
 .tch-schedule .ltb{padding:3px 9px;border-radius:6px;font-size:.58rem;font-weight:700;text-transform:none;letter-spacing:0}
 .tch-schedule .ltb--today{background:var(--red);color:#fff}
-.tch-schedule .ltb--tm{background:rgba(216,242,106,.2);color:var(--lime-dark)}
+.tch-schedule .ltb--tm{background:rgba(221,234,136,.2);color:var(--lime-dark)}
 
 .tch-schedule .lc{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:all .2s}
-.tch-schedule .lc:hover{border-color:rgba(230,57,70,.15);box-shadow:0 6px 20px var(--shadow)}
+.tch-schedule .lc:hover{border-color:rgba(182,63,55,.15);box-shadow:0 6px 20px var(--shadow)}
 .tch-schedule .lc-strip{width:5px;flex-shrink:0;background:var(--lime)}
 .tch-schedule .lc-strip--done{background:#22c55e}
 .tch-schedule .lc-strip--cancel{background:var(--muted)}
@@ -82,12 +82,12 @@
 .tch-schedule .lc-time{width:90px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;border-right:1px solid var(--border);background:var(--surface-2)}
 .tch-schedule .lc-time-val{font-size:1.1rem;font-weight:800;letter-spacing:-.5px;line-height:1}
 .tch-schedule .lc-time-dur{font-size:.6rem;color:var(--muted);margin-top:3px}
-.tch-schedule .lc-time-xp{font-size:.55rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(216,242,106,.15);border-radius:4px}
+.tch-schedule .lc-time-xp{font-size:.55rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(221,234,136,.15);border-radius:4px}
 
 .tch-schedule .lc-body{flex:1;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .tch-schedule .lc-name{font-size:.92rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:8px}
-.tch-schedule .lc-trial-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(230,57,70,.10);color:var(--red);font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.3px;text-transform:uppercase;border:1px solid rgba(230,57,70,.2)}
-.tch-schedule .lc-time-xp--trial{color:var(--red);background:rgba(230,57,70,.10) !important}
+.tch-schedule .lc-trial-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(182,63,55,.10);color:var(--red);font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.3px;text-transform:uppercase;border:1px solid rgba(182,63,55,.2)}
+.tch-schedule .lc-time-xp--trial{color:var(--red);background:rgba(182,63,55,.10) !important}
 .tch-schedule .lc-desc{font-size:.72rem;color:var(--muted);line-height:1.4}
 
 .tch-schedule .lc-teacher{display:flex;align-items:center;gap:8px;padding:14px 12px;border-left:1px solid var(--border);flex-shrink:0}
@@ -106,7 +106,7 @@
 .tch-schedule .lc-btn--missed{background:rgba(245,158,11,.10);color:#B45309;border:1px solid rgba(245,158,11,.35)}
 [data-theme="dark"] .tch-schedule .lc-btn--missed{color:#FBBF24;border-color:rgba(245,158,11,.45)}
 
-.tch-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(216,242,106,.2),0 6px 20px var(--shadow)}
+.tch-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(221,234,136,.2),0 6px 20px var(--shadow)}
 .tch-schedule .lc--now .lc-time{background:var(--lime)}
 .tch-schedule .lc--now .lc-time-val{color:#0A0A0A}
 .tch-schedule .lc--now .lc-time-dur{color:rgba(0,0,0,.5)}
@@ -161,7 +161,7 @@
 .tch-schedule .mdl-result{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.78rem;transition:background .1s}
 .tch-schedule .mdl-result:last-child{border-bottom:none}
 .tch-schedule .mdl-result:hover{background:var(--surface-2)}
-.tch-schedule .mdl-result--on{background:rgba(216,242,106,.2)}
+.tch-schedule .mdl-result--on{background:rgba(221,234,136,.2)}
 .tch-schedule .mdl-result-sm{font-size:.62rem;color:var(--muted)}
 .tch-schedule .mdl-empty{padding:12px;text-align:center;font-size:.72rem;color:var(--muted)}
 .tch-schedule .mdl-dur{display:flex;gap:8px}

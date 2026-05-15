@@ -26,8 +26,8 @@ export default function AuthLayout({
           --auth-text: #1A1A1A;
           --auth-text2: #555;
           --auth-text3: #999;
-          --auth-red: #E63946;
-          --auth-lime: #D8F26A;
+          --auth-red: #B63F37;
+          --auth-lime: #DDEA88;
           --auth-lime-dark: #5A7A00;
           --auth-input-bg: #F5F5F3;
         }
@@ -55,16 +55,16 @@ export default function AuthLayout({
         .auth-level-name { font-size: .82rem; font-weight: 700; color: var(--auth-text); }
         .auth-level-name .gl { font-family: var(--font-gluten), cursive; color: var(--auth-red); font-weight: 600; }
         .auth-level-sub { font-size: .7rem; color: var(--auth-text3); margin-top: 1px; }
-        .auth-level-xp { padding: 4px 10px; border-radius: 8px; background: rgba(230,57,70,.08); color: var(--auth-red); font-size: .65rem; font-weight: 700; white-space: nowrap; }
+        .auth-level-xp { padding: 4px 10px; border-radius: 8px; background: rgba(182,63,55,.08); color: var(--auth-red); font-size: .65rem; font-weight: 700; white-space: nowrap; }
 
-        .auth-quiz-cta { width: 100%; padding: 14px 16px; border-radius: 14px; background: var(--auth-input-bg); border: 1px dashed rgba(230,57,70,.3); cursor: pointer; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-family: inherit; text-align: left; transition: all .2s; }
+        .auth-quiz-cta { width: 100%; padding: 14px 16px; border-radius: 14px; background: var(--auth-input-bg); border: 1px dashed rgba(182,63,55,.3); cursor: pointer; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-family: inherit; text-align: left; transition: all .2s; }
         .auth-quiz-cta:hover { border-color: var(--auth-red); background: #fff; }
         .auth-quiz-cta-icon { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: var(--auth-lime); box-shadow: 0 3px 0 rgba(140,180,40,.3); }
         .auth-quiz-cta-text { flex: 1; }
         .auth-quiz-cta-title { font-size: .82rem; font-weight: 700; color: var(--auth-text); }
         .auth-quiz-cta-sub { font-size: .7rem; color: var(--auth-text3); margin-top: 1px; }
 
-        .trial-banner { padding: 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(230,57,70,.06), rgba(216,242,106,.08)); border: 1px solid rgba(230,57,70,.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .trial-banner { padding: 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(182,63,55,.06), rgba(221,234,136,.08)); border: 1px solid rgba(182,63,55,.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
         .trial-icon { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; background: var(--auth-lime); display: flex; align-items: center; justify-content: center; font-size: 1rem; box-shadow: 0 2px 0 rgba(140,180,40,.3); }
         .trial-text { flex: 1; }
         .trial-title { font-size: .82rem; font-weight: 700; margin-bottom: 2px; color: var(--auth-text); }
@@ -79,11 +79,11 @@ export default function AuthLayout({
 
         .field-input { width: 100%; padding: 13px 16px; background: var(--auth-input-bg); border: 2px solid transparent; border-radius: 12px; font-family: inherit; font-size: .88rem; font-weight: 500; color: var(--auth-text); outline: none; transition: all .2s; }
         .field-input::placeholder { color: var(--auth-text3); font-weight: 400; }
-        .field-input:focus { border-color: var(--auth-red); background: var(--auth-card); box-shadow: 0 0 0 4px rgba(230,57,70,.06); }
+        .field-input:focus { border-color: var(--auth-red); background: var(--auth-card); box-shadow: 0 0 0 4px rgba(182,63,55,.06); }
         .field-input[aria-invalid="true"] { border-color: var(--auth-red); }
 
         .phone-wrap { display: flex; align-items: center; gap: 0; background: var(--auth-input-bg); border-radius: 12px; border: 2px solid transparent; transition: all .2s; }
-        .phone-wrap:focus-within { border-color: var(--auth-red); background: var(--auth-card); box-shadow: 0 0 0 4px rgba(230,57,70,.06); }
+        .phone-wrap:focus-within { border-color: var(--auth-red); background: var(--auth-card); box-shadow: 0 0 0 4px rgba(182,63,55,.06); }
         .phone-wrap[data-invalid="true"] { border-color: var(--auth-red); }
         .phone-flag { padding: 13px 0 13px 16px; font-size: .9rem; flex-shrink: 0; }
         .phone-input { flex: 1; padding: 13px 16px 13px 8px; background: transparent; border: none; font-family: inherit; font-size: .88rem; font-weight: 500; color: var(--auth-text); outline: none; min-width: 0; }
@@ -97,8 +97,8 @@ export default function AuthLayout({
 
         .role-row { display: flex; gap: 8px; }
         .role-opt { flex: 1; padding: 12px; border-radius: 12px; background: var(--auth-input-bg); border: 2px solid transparent; cursor: pointer; font-family: inherit; font-size: .8rem; font-weight: 600; color: var(--auth-text2); transition: all .2s; text-align: center; }
-        .role-opt:hover { border-color: rgba(230,57,70,.2); }
-        .role-opt[data-active="true"] { background: var(--auth-card); border-color: var(--auth-red); color: var(--auth-red); box-shadow: 0 2px 8px rgba(230,57,70,.12); }
+        .role-opt:hover { border-color: rgba(182,63,55,.2); }
+        .role-opt[data-active="true"] { background: var(--auth-card); border-color: var(--auth-red); color: var(--auth-red); box-shadow: 0 2px 8px rgba(182,63,55,.12); }
 
         .check-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
         .check-box { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; border: 2px solid var(--auth-border); background: var(--auth-input-bg); display: flex; align-items: center; justify-content: center; transition: all .2s; margin-top: 1px; }
@@ -120,10 +120,10 @@ export default function AuthLayout({
 
         .auth-submit { width: 100%; padding: 15px; border: none; border-radius: 14px; font-family: inherit; font-size: .92rem; font-weight: 700; cursor: pointer; transition: all .3s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
         .auth-submit:disabled { opacity: .7; cursor: not-allowed; transform: none !important; }
-        .auth-submit--red { background: var(--auth-red); color: #fff; box-shadow: 0 4px 0 rgba(180,30,45,.4), 0 8px 24px rgba(230,57,70,.12); }
-        .auth-submit--red:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(180,30,45,.4), 0 14px 36px rgba(230,57,70,.15); }
-        .auth-submit--lime { background: var(--auth-lime); color: var(--auth-dark); box-shadow: 0 4px 0 rgba(140,180,40,.45), 0 8px 24px rgba(216,242,106,.12); }
-        .auth-submit--lime:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(140,180,40,.45), 0 14px 36px rgba(216,242,106,.15); }
+        .auth-submit--red { background: var(--auth-red); color: #fff; box-shadow: 0 4px 0 rgba(180,30,45,.4), 0 8px 24px rgba(182,63,55,.12); }
+        .auth-submit--red:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(180,30,45,.4), 0 14px 36px rgba(182,63,55,.15); }
+        .auth-submit--lime { background: var(--auth-lime); color: var(--auth-dark); box-shadow: 0 4px 0 rgba(140,180,40,.45), 0 8px 24px rgba(221,234,136,.12); }
+        .auth-submit--lime:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(140,180,40,.45), 0 14px 36px rgba(221,234,136,.15); }
         .auth-submit--ghost { background: var(--auth-input-bg); color: var(--auth-text); box-shadow: none; }
         .auth-submit--ghost:hover:not(:disabled) { background: #EDEDEA; }
         .auth-submit svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -135,11 +135,11 @@ export default function AuthLayout({
         .forgot-link { font-size: .72rem; color: var(--auth-red); font-weight: 600; text-decoration: none; text-align: right; margin-top: -6px; align-self: flex-end; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
         .forgot-link:hover { text-decoration: underline; }
 
-        .auth-error { background: rgba(230,57,70,.08); border: 1px solid rgba(230,57,70,.2); color: var(--auth-red); padding: 10px 14px; border-radius: 12px; font-size: .78rem; font-weight: 500; }
+        .auth-error { background: rgba(182,63,55,.08); border: 1px solid rgba(182,63,55,.2); color: var(--auth-red); padding: 10px 14px; border-radius: 12px; font-size: .78rem; font-weight: 500; }
         .auth-field-error { font-size: .68rem; color: var(--auth-red); font-weight: 600; margin-top: 2px; }
 
         .auth-success { text-align: center; padding: 20px 0; }
-        .success-icon { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; background: var(--auth-lime); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 4px 0 rgba(140,180,40,.4), 0 0 30px rgba(216,242,106,.15); animation: sPop .5s cubic-bezier(.16,1,.3,1) both; }
+        .success-icon { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; background: var(--auth-lime); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 4px 0 rgba(140,180,40,.4), 0 0 30px rgba(221,234,136,.15); animation: sPop .5s cubic-bezier(.16,1,.3,1) both; }
         @keyframes sPop { from { transform: scale(0) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
         .auth-success h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; color: var(--auth-text); }
         .auth-success h3 .gl { font-family: var(--font-gluten), cursive; color: var(--auth-red); font-weight: 600; }
@@ -148,8 +148,8 @@ export default function AuthLayout({
         .sd-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
         .sd-row + .sd-row { border-top: 1px solid var(--auth-border); }
         .sd-icon { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .8rem; }
-        .sd-icon--red { background: rgba(230,57,70,.08); }
-        .sd-icon--lime { background: rgba(216,242,106,.15); }
+        .sd-icon--red { background: rgba(182,63,55,.08); }
+        .sd-icon--lime { background: rgba(221,234,136,.15); }
         .sd-label { font-size: .72rem; color: var(--auth-text3); }
         .sd-val { font-size: .82rem; font-weight: 700; margin-top: 1px; color: var(--auth-text); }
 

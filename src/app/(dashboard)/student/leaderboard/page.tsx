@@ -65,8 +65,8 @@ const LEADERBOARD_CSS = `
 
 /* Prizes banner */
 .lb-prizes{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden}
-.lb-prizes::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,162,0,.04),transparent 50%,rgba(230,57,70,.02));pointer-events:none}
-[data-theme="dark"] .lb-prizes::before{background:linear-gradient(135deg,rgba(255,215,0,.03),transparent 50%,rgba(230,57,70,.02))}
+.lb-prizes::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,162,0,.04),transparent 50%,rgba(182,63,55,.02));pointer-events:none}
+[data-theme="dark"] .lb-prizes::before{background:linear-gradient(135deg,rgba(255,215,0,.03),transparent 50%,rgba(182,63,55,.02))}
 .lb-prizes-icon{font-size:2rem;flex-shrink:0;position:relative;z-index:1}
 .lb-prizes-text{flex:1;position:relative;z-index:1}
 .lb-prizes-title{font-size:.92rem;font-weight:800;margin-bottom:2px}

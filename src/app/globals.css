@@ -173,7 +173,7 @@
    Scoped overrides (e.g. .teachers-page .gl) take precedence by specificity. */
 .gl {
   font-family: var(--font-gluten, 'Gluten', cursive);
-  color: var(--red, #E63946);
+  color: var(--red, #B63F37);
   font-weight: 600;
   letter-spacing: -0.5px;
 }
@@ -205,7 +205,7 @@
 }
 .skip-link:focus {
   top: 0;
-  outline: 3px solid #D8F26A;
+  outline: 3px solid #DDEA88;
   outline-offset: -3px;
 }
 

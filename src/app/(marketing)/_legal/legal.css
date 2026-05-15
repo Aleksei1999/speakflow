@@ -54,7 +54,7 @@
   font-size: 0.78rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--red, #E63946);
+  color: var(--red, #B63F37);
   font-weight: 700;
   margin-bottom: 12px;
 }
@@ -96,7 +96,7 @@
   color: var(--text, #1E1E1E);
 }
 .legal-prose a {
-  color: var(--red, #E63946);
+  color: var(--red, #B63F37);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -111,7 +111,7 @@
 .legal-callout {
   background: var(--bg2, #F3F1EC);
   border: 1px solid var(--border, rgba(0,0,0,0.07));
-  border-left: 4px solid var(--red, #E63946);
+  border-left: 4px solid var(--red, #B63F37);
   border-radius: 12px;
   padding: 18px 22px;
   margin: 24px 0 32px;

@@ -48,22 +48,22 @@
 .stu-schedule .cg-c:hover{background:var(--surface-2)}
 .stu-schedule .cg-c:last-child{border-right:none}
 
-.stu-schedule .ev{position:absolute;left:3px;right:3px;top:3px;padding:5px 7px;border-radius:8px;font-size:.6rem;font-weight:600;line-height:1.25;cursor:pointer;transition:all .15s;overflow:hidden;z-index:2;border-left:3px solid;background:rgba(216,242,106,.2);color:var(--lime-dark);border-color:var(--lime)}
+.stu-schedule .ev{position:absolute;left:3px;right:3px;top:3px;padding:5px 7px;border-radius:8px;font-size:.6rem;font-weight:600;line-height:1.25;cursor:pointer;transition:all .15s;overflow:hidden;z-index:2;border-left:3px solid;background:rgba(221,234,136,.2);color:var(--lime-dark);border-color:var(--lime)}
 .stu-schedule .ev:hover{transform:scale(1.04);box-shadow:0 4px 12px var(--shadow);z-index:5}
 .stu-schedule .ev-t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stu-schedule .ev-s{font-size:.52rem;opacity:.65;margin-top:1px}
 .stu-schedule .ev--done{background:rgba(34,197,94,.08);color:#15803d;border-color:#22c55e;opacity:.7}
 .stu-schedule .ev--cancel{background:rgba(138,138,134,.1);color:var(--muted);border-color:var(--muted);opacity:.5;text-decoration:line-through}
-.stu-schedule .ev--now{background:var(--lime)!important;color:#0A0A0A!important;border-color:var(--lime-dark)!important;box-shadow:0 0 0 2px rgba(216,242,106,.3);animation:stuEvP 2s ease-in-out infinite}
-@keyframes stuEvP{0%,100%{box-shadow:0 0 0 2px rgba(216,242,106,.3)}50%{box-shadow:0 0 0 5px rgba(216,242,106,.15)}}
+.stu-schedule .ev--now{background:var(--lime)!important;color:#0A0A0A!important;border-color:var(--lime-dark)!important;box-shadow:0 0 0 2px rgba(221,234,136,.3);animation:stuEvP 2s ease-in-out infinite}
+@keyframes stuEvP{0%,100%{box-shadow:0 0 0 2px rgba(221,234,136,.3)}50%{box-shadow:0 0 0 5px rgba(221,234,136,.15)}}
 
 .stu-schedule .list-title{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:14px 0 10px;display:flex;align-items:center;gap:8px}
 .stu-schedule .ltb{padding:3px 9px;border-radius:6px;font-size:.58rem;font-weight:700;text-transform:none;letter-spacing:0}
 .stu-schedule .ltb--today{background:var(--red);color:#fff}
-.stu-schedule .ltb--tm{background:rgba(216,242,106,.2);color:var(--lime-dark)}
+.stu-schedule .ltb--tm{background:rgba(221,234,136,.2);color:var(--lime-dark)}
 
 .stu-schedule .lc{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:all .2s}
-.stu-schedule .lc:hover{border-color:rgba(230,57,70,.15);box-shadow:0 6px 20px var(--shadow)}
+.stu-schedule .lc:hover{border-color:rgba(182,63,55,.15);box-shadow:0 6px 20px var(--shadow)}
 .stu-schedule .lc-strip{width:5px;flex-shrink:0;background:var(--lime)}
 .stu-schedule .lc-strip--done{background:#22c55e}
 .stu-schedule .lc-strip--cancel{background:var(--muted)}
@@ -72,7 +72,7 @@
 .stu-schedule .lc-time{width:90px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;border-right:1px solid var(--border);background:var(--surface-2)}
 .stu-schedule .lc-time-val{font-size:1.1rem;font-weight:800;letter-spacing:-.5px;line-height:1}
 .stu-schedule .lc-time-dur{font-size:.6rem;color:var(--muted);margin-top:3px}
-.stu-schedule .lc-time-xp{font-size:.55rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(216,242,106,.15);border-radius:4px}
+.stu-schedule .lc-time-xp{font-size:.55rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(221,234,136,.15);border-radius:4px}
 
 .stu-schedule .lc-body{flex:1;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .stu-schedule .lc-name{font-size:.92rem;font-weight:700;margin-bottom:2px}
@@ -100,7 +100,7 @@
 .stu-schedule .lc-btn--live:hover{background:#15803D}
 @keyframes lcLivePulse{0%,100%{box-shadow:0 2px 0 rgba(21,128,61,.3)}50%{box-shadow:0 2px 0 rgba(21,128,61,.3),0 0 18px rgba(22,163,74,.45)}}
 
-.stu-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(216,242,106,.2),0 6px 20px var(--shadow)}
+.stu-schedule .lc--now{border-color:var(--lime);box-shadow:0 0 0 2px rgba(221,234,136,.2),0 6px 20px var(--shadow)}
 .stu-schedule .lc--now .lc-time{background:var(--lime)}
 .stu-schedule .lc--now .lc-time-val{color:#0A0A0A}
 .stu-schedule .lc--now .lc-time-dur{color:rgba(0,0,0,.5)}

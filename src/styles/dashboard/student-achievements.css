@@ -3,7 +3,7 @@
 
 /* Header */
 .achievements-page .ach-hdr{text-align:center;margin-bottom:28px;position:relative}
-.achievements-page .ach-hdr::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(230,57,70,.08),transparent 70%);pointer-events:none}
+.achievements-page .ach-hdr::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(182,63,55,.08),transparent 70%);pointer-events:none}
 .achievements-page .ach-hdr h1{font-size:2rem;font-weight:800;letter-spacing:-.8px;position:relative;color:var(--text)}
 .achievements-page .ach-hdr h1 .gl{font-family:'Gluten',cursive;color:var(--red);font-weight:600}
 .achievements-page .ach-hdr-sub{font-size:.85rem;color:var(--muted);margin-top:4px;position:relative}
@@ -78,7 +78,7 @@
 .achievements-page .ac--earned::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),var(--lime))}
 .achievements-page .ac--earned .ac-check{display:flex}
 
-.achievements-page .ac-check{display:none;position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:var(--lime);align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#0A0A0A;box-shadow:0 2px 8px rgba(216,242,106,.3)}
+.achievements-page .ac-check{display:none;position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:var(--lime);align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#0A0A0A;box-shadow:0 2px 8px rgba(221,234,136,.3)}
 
 .achievements-page .ac-rarity{position:absolute;top:12px;right:12px;font-size:.5rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:4px}
 .achievements-page .ac-rarity--common{background:var(--surface-2);color:var(--muted)}
@@ -130,7 +130,7 @@
 [data-theme="dark"] .achievements-page .rw--locked{opacity:.3}
 [data-theme="dark"] .achievements-page .rw--locked:hover{opacity:.4}
 .achievements-page .rw--next{border-color:color-mix(in srgb, var(--red) 30%, var(--border));animation:achNextPulse 3s ease-in-out infinite}
-@keyframes achNextPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,0)}50%{box-shadow:0 0 0 6px rgba(230,57,70,.06)}}
+@keyframes achNextPulse{0%,100%{box-shadow:0 0 0 0 rgba(182,63,55,0)}50%{box-shadow:0 0 0 6px rgba(182,63,55,.06)}}
 
 .achievements-page .rw-icon{font-size:2.2rem;margin-bottom:10px;display:block}
 .achievements-page .rw--locked .rw-icon{filter:grayscale(1) brightness(.7)}

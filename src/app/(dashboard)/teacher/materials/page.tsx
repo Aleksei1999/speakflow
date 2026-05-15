@@ -37,7 +37,7 @@ const CSS = `
 /* UPLOAD ZONE */
 .tch-mat .upload-zone{margin-top:16px;padding:18px;border:2px dashed var(--border);border-radius:14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface-2)}
 .tch-mat .upload-zone:hover{border-color:var(--text);background:var(--bg)}
-.tch-mat .upload-zone.dragging{border-color:var(--red);background:rgba(230,57,70,.06)}
+.tch-mat .upload-zone.dragging{border-color:var(--red);background:rgba(182,63,55,.06)}
 .tch-mat .upload-zone .up-icon{width:36px;height:36px;margin:0 auto 8px;background:var(--surface);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--red)}
 .tch-mat .upload-zone .up-text{font-size:13px;font-weight:700;margin-bottom:2px}
 .tch-mat .upload-zone .up-sub{font-size:11px;color:var(--muted)}
@@ -91,8 +91,8 @@ const CSS = `
 
 .tch-mat .mat-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
 .tch-mat .mat-tag{font-size:10px;padding:2px 8px;background:var(--bg);border-radius:999px;color:var(--muted);font-weight:600}
-.tch-mat .mat-tag.level{background:rgba(230,57,70,.08);color:var(--red)}
-[data-theme="dark"] .tch-mat .mat-tag.level{background:rgba(230,57,70,.15)}
+.tch-mat .mat-tag.level{background:rgba(182,63,55,.08);color:var(--red)}
+[data-theme="dark"] .tch-mat .mat-tag.level{background:rgba(182,63,55,.15)}
 
 .tch-mat .mat-footer{margin-top:auto;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:6px}
 .tch-mat .mat-use-count{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}

@@ -22,7 +22,7 @@ const CSS = `
 .tch-clubs .clubs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .tch-clubs .club-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s;position:relative}
 .tch-clubs .club-card:hover{border-color:var(--text)}
-.tch-clubs .club-card.unseen{border-color:var(--red);background:rgba(230,57,70,.04)}
+.tch-clubs .club-card.unseen{border-color:var(--red);background:rgba(182,63,55,.04)}
 .tch-clubs .club-card.unseen::before{content:"NEW";position:absolute;top:14px;right:14px;background:var(--red);color:#fff;border-radius:999px;padding:2px 9px;font-size:10px;font-weight:800;letter-spacing:.4px}
 .tch-clubs .club-card .title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.2px;line-height:1.3;padding-right:48px}
 .tch-clubs .club-card .desc{font-size:12px;color:var(--muted);line-height:1.45;min-height:34px}
@@ -31,7 +31,7 @@ const CSS = `
 .tch-clubs .club-status{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
 .tch-clubs .club-status.published{background:rgba(34,197,94,.1);color:#22c55e}
 .tch-clubs .club-status.draft{background:var(--bg);color:var(--muted)}
-.tch-clubs .club-status.cancelled{background:rgba(230,57,70,.1);color:var(--red)}
+.tch-clubs .club-status.cancelled{background:rgba(182,63,55,.1);color:var(--red)}
 .tch-clubs .club-status.completed{background:var(--accent-dark);color:#fff}
 
 .tch-clubs .capacity-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:4px}

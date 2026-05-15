@@ -209,7 +209,7 @@ export function LessonRowClient({
                   alignItems: "center",
                   gap: 4,
                   marginLeft: 8,
-                  background: "rgba(230,57,70,.10)",
+                  background: "rgba(182,63,55,.10)",
                   color: "var(--red)",
                   fontSize: 10,
                   fontWeight: 800,
@@ -217,7 +217,7 @@ export function LessonRowClient({
                   borderRadius: 100,
                   letterSpacing: ".3px",
                   textTransform: "uppercase",
-                  border: "1px solid rgba(230,57,70,.2)",
+                  border: "1px solid rgba(182,63,55,.2)",
                   verticalAlign: "middle",
                 }}
               >

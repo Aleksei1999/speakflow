@@ -35,7 +35,7 @@ const CSS = `
 .tch-sp .hero-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .tch-sp .hero-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--bg);border:1px solid var(--border);color:var(--text)}
 .tch-sp .hero-pill.lime{background:var(--lime);color:#0A0A0A;border-color:var(--lime)}
-.tch-sp .hero-pill.red{background:rgba(230,57,70,.1);color:var(--red);border-color:transparent}
+.tch-sp .hero-pill.red{background:rgba(182,63,55,.1);color:var(--red);border-color:transparent}
 .tch-sp .hero-pill.dark{background:var(--accent-dark);color:#fff;border-color:transparent}
 [data-theme="dark"] .tch-sp .hero-pill.dark{background:var(--red)}
 .tch-sp .hero-xp{display:flex;align-items:center;gap:10px;margin-top:14px}
@@ -69,7 +69,7 @@ const CSS = `
 .tch-sp .lesson-when span{font-size:11px;color:var(--muted)}
 .tch-sp .lesson-status{display:inline-flex;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--border);color:var(--text);white-space:nowrap}
 .tch-sp .lesson-status.completed{background:rgba(34,197,94,.1);border-color:transparent;color:#22c55e}
-.tch-sp .lesson-status.cancelled{background:rgba(230,57,70,.1);border-color:transparent;color:var(--red)}
+.tch-sp .lesson-status.cancelled{background:rgba(182,63,55,.1);border-color:transparent;color:var(--red)}
 .tch-sp .lesson-status.no_show{background:rgba(245,158,11,.1);border-color:transparent;color:#F59E0B}
 .tch-sp .lesson-status.in_progress,.tch-sp .lesson-status.booked,.tch-sp .lesson-status.scheduled,.tch-sp .lesson-status.confirmed,.tch-sp .lesson-status.pending_payment{background:var(--accent-dark);color:#fff;border-color:transparent}
 [data-theme="dark"] .tch-sp .lesson-status.in_progress,[data-theme="dark"] .tch-sp .lesson-status.booked,[data-theme="dark"] .tch-sp .lesson-status.scheduled,[data-theme="dark"] .tch-sp .lesson-status.confirmed,[data-theme="dark"] .tch-sp .lesson-status.pending_payment{background:var(--red)}

@@ -24,7 +24,7 @@ const CSS = `
 /* NEXT PAYOUT HERO */
 .tch-pay .next-payout{background:var(--accent-dark);color:#fff;border-radius:20px;padding:28px 32px;margin-bottom:22px;display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:center;position:relative;overflow:hidden}
 [data-theme="dark"] .tch-pay .next-payout{background:var(--red)}
-.tch-pay .next-payout::before{content:'';position:absolute;top:-50%;right:-10%;width:50%;height:200%;background:radial-gradient(ellipse,rgba(216,242,106,.18),transparent 60%);pointer-events:none}
+.tch-pay .next-payout::before{content:'';position:absolute;top:-50%;right:-10%;width:50%;height:200%;background:radial-gradient(ellipse,rgba(221,234,136,.18),transparent 60%);pointer-events:none}
 [data-theme="dark"] .tch-pay .next-payout::before{background:radial-gradient(ellipse,rgba(0,0,0,.2),transparent 60%)}
 .tch-pay .np-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--lime);font-weight:800;margin-bottom:12px;position:relative}
 [data-theme="dark"] .tch-pay .np-label{color:#fff;opacity:.8}

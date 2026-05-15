@@ -61,7 +61,7 @@ const SHARE_CSS = `
 .tch-mat .share-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
 .tch-mat .share-item:last-child{border-bottom:none}
 .tch-mat .share-item:hover{background:var(--bg)}
-.tch-mat .share-item.checked{background:rgba(230,57,70,.06)}
+.tch-mat .share-item.checked{background:rgba(182,63,55,.06)}
 .tch-mat .share-item .chk{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface)}
 .tch-mat .share-item.checked .chk{background:var(--red);border-color:var(--red);color:#fff}
 .tch-mat .share-item .chk svg{width:10px;height:10px;display:none}
@@ -70,7 +70,7 @@ const SHARE_CSS = `
 .tch-mat .share-item .info{flex:1;min-width:0}
 .tch-mat .share-item .info .nm{font-size:13px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tch-mat .share-item .info .sub{font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tch-mat .share-item .lvl{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(230,57,70,.1);color:var(--red);font-weight:700;flex-shrink:0}
+.tch-mat .share-item .lvl{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(182,63,55,.1);color:var(--red);font-weight:700;flex-shrink:0}
 
 .tch-mat .share-empty{padding:22px 14px;text-align:center;font-size:12px;color:var(--muted)}
 

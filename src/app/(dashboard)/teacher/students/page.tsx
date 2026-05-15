@@ -80,9 +80,9 @@ const CSS = `
 .tch-std .st-email{font-size:11px;color:var(--muted);margin-top:1px}
 
 .tch-std .level-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--bg);color:var(--text);white-space:nowrap}
-.tch-std .level-pill.rare{background:rgba(230,57,70,.1);color:var(--red)}
-.tch-std .level-pill.mrare{background:rgba(216,242,106,.25);color:#5A7A00}
-[data-theme="dark"] .tch-std .level-pill.mrare{background:rgba(216,242,106,.15);color:var(--lime)}
+.tch-std .level-pill.rare{background:rgba(182,63,55,.1);color:var(--red)}
+.tch-std .level-pill.mrare{background:rgba(221,234,136,.25);color:#5A7A00}
+[data-theme="dark"] .tch-std .level-pill.mrare{background:rgba(221,234,136,.15);color:var(--lime)}
 .tch-std .level-pill.medium{background:rgba(245,185,66,.15);color:#B8860B}
 .tch-std .level-pill.mwell{background:rgba(34,197,94,.1);color:#22c55e}
 .tch-std .level-pill.welldone{background:var(--accent-dark);color:#fff}

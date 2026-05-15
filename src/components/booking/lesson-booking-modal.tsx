@@ -84,7 +84,7 @@ function getInitials(name: string): string {
 }
 
 // Стабильный цвет фона аватара по имени — чтобы плашки не были одинаково красными.
-const AVATAR_COLORS = ["#E63946", "#16A34A", "#2563EB", "#9333EA", "#F59E0B", "#0891B2"]
+const AVATAR_COLORS = ["#B63F37", "#16A34A", "#2563EB", "#9333EA", "#F59E0B", "#0891B2"]
 function colorFromName(name: string): string {
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
@@ -690,7 +690,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                     checked={pinSlot}
                     disabled={!selectedSlot}
                     onChange={(e) => setPinSlot(e.target.checked)}
-                    style={{ accentColor: "#E63946" }}
+                    style={{ accentColor: "#B63F37" }}
                   />
                   <span>
                     🔁 Закрепить за собой это время
@@ -741,7 +741,7 @@ const MODAL_CSS = `
 .cal-dur{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px}
 .cal-dur-btn{padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
 .cal-dur-btn:hover{border-color:var(--red)}
-.cal-dur-btn.active{background:rgba(230,57,70,.08);border-color:var(--red);color:var(--red)}
+.cal-dur-btn.active{background:rgba(182,63,55,.08);border-color:var(--red);color:var(--red)}
 
 .cal-month{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .cal-month-name{font-size:.95rem;font-weight:700;text-transform:capitalize;color:var(--text)}
@@ -754,13 +754,13 @@ const MODAL_CSS = `
 .cal-day:hover:not(:disabled){background:var(--surface-2)}
 .cal-day--empty{pointer-events:none}
 .cal-day--past,.cal-day:disabled{color:var(--muted);opacity:.4;cursor:not-allowed}
-.cal-day--today{background:rgba(230,57,70,.12);color:var(--red);font-weight:800}
+.cal-day--today{background:rgba(182,63,55,.12);color:var(--red);font-weight:800}
 .cal-day--selected{background:var(--red)!important;color:#fff!important;box-shadow:0 2px 0 rgba(180,30,45,.3)}
 
 .cal-slots-title{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .cal-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
 .cal-slot{padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center;cursor:pointer;transition:all .15s;font:inherit}
-.cal-slot:hover:not(:disabled){border-color:var(--red);background:rgba(230,57,70,.04)}
+.cal-slot:hover:not(:disabled){border-color:var(--red);background:rgba(182,63,55,.04)}
 .cal-slot.selected{background:var(--red);border-color:var(--red);color:#fff}
 .cal-slot-time{font-size:.85rem;font-weight:700}
 .cal-slot-dur{font-size:.6rem;color:var(--muted);margin-top:1px}
@@ -777,7 +777,7 @@ const MODAL_CSS = `
 .cal-footer{padding:14px 22px 18px;border-top:1px solid var(--border)}
 .cal-btn{width:100%;padding:14px;border:none;border-radius:14px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s}
 .cal-btn--red{background:var(--red);color:#fff;box-shadow:0 4px 0 rgba(180,30,45,.4)}
-.cal-btn--red:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 rgba(180,30,45,.4),0 12px 24px rgba(230,57,70,.22)}
+.cal-btn--red:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 rgba(180,30,45,.4),0 12px 24px rgba(182,63,55,.22)}
 .cal-btn--red:disabled{opacity:.4;cursor:not-allowed}
 
 .tch-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
@@ -786,7 +786,7 @@ const MODAL_CSS = `
 .tch-filter.active{background:var(--red);border-color:var(--red);color:#fff}
 .tch-list{display:flex;flex-direction:column;gap:8px}
 .tch-card{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;text-align:left;font:inherit;color:var(--text);width:100%}
-.tch-card:hover{border-color:var(--red);background:rgba(230,57,70,.03);transform:translateY(-1px)}
+.tch-card:hover{border-color:var(--red);background:rgba(182,63,55,.03);transform:translateY(-1px)}
 .tch-avatar{width:48px;height:48px;border-radius:14px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;flex-shrink:0;overflow:hidden}
 .tch-avatar img{width:100%;height:100%;object-fit:cover}
 .tch-info{flex:1;min-width:0}

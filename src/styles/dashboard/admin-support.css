@@ -29,7 +29,7 @@
 .adm-support .thread-item.priority-high{border-left:3px solid var(--red)}
 .adm-support .thread-item.priority-med{border-left:3px solid #F59E0B}
 .adm-support .thread-item.priority-low{border-left:3px solid #22c55e}
-.adm-support .thread-item.unread{background:rgba(230,57,70,.05)}
+.adm-support .thread-item.unread{background:rgba(182,63,55,.05)}
 .adm-support .thread-item.unread .th-subject{font-weight:800}
 .adm-support .thread-item.unread .th-last{color:var(--text)}
 .adm-support .thread-item.unread::after{content:"";position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--red)}

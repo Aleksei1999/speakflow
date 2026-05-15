@@ -59,11 +59,11 @@ const PRICING_CSS = `
 .pricing-section .sf-text--dim{color:var(--text3);text-decoration:line-through}
 .pricing-section .sub-cta{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:14px;font-family:inherit;font-size:.92rem;font-weight:800;cursor:pointer;border:none;transition:all .25s;text-decoration:none;letter-spacing:.2px}
 .pricing-section .sub-cta--red{background:var(--red);color:#fff;box-shadow:0 3px 0 rgba(180,30,45,.4)}
-.pricing-section .sub-cta--red:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.4),0 12px 30px rgba(230,57,70,.18)}
+.pricing-section .sub-cta--red:hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(180,30,45,.4),0 12px 30px rgba(182,63,55,.18)}
 .pricing-section .sub-cta--ghost{background:var(--bg2);color:var(--text2)}
 .pricing-section .sub-cta--ghost:hover{background:var(--card);color:var(--text)}
 
-.pricing-section .pricing-foot{margin-top:26px;padding:18px 22px;border-radius:14px;background:var(--red-bg);border:1px solid rgba(230,57,70,.18);display:flex;align-items:flex-start;gap:12px}
+.pricing-section .pricing-foot{margin-top:26px;padding:18px 22px;border-radius:14px;background:var(--red-bg);border:1px solid rgba(182,63,55,.18);display:flex;align-items:flex-start;gap:12px}
 .pricing-section .pricing-foot-icon{font-size:1.2rem;flex-shrink:0;margin-top:2px}
 .pricing-section .pricing-foot-text{font-size:.8rem;color:var(--text);line-height:1.55}
 .pricing-section .pricing-foot-text b{color:var(--red)}

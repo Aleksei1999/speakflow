@@ -57,12 +57,12 @@
 .clubs-page .ev:hover{transform:scale(1.04);box-shadow:0 4px 12px var(--shadow);z-index:5}
 .clubs-page .ev-n{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .clubs-page .ev-s{font-size:.5rem;opacity:.6;margin-top:1px}
-.clubs-page .ev--s{background:rgba(230,57,70,.1);color:var(--red);border-color:var(--red)}
+.clubs-page .ev--s{background:rgba(182,63,55,.1);color:var(--red);border-color:var(--red)}
 .clubs-page .ev--d{background:rgba(10,10,10,.06);color:var(--text);border-color:#0A0A0A}
 .clubs-page .ev--w{background:rgba(168,85,247,.07);color:#7c3aed;border-color:#a855f7}
-.clubs-page .ev--n{background:rgba(216,242,106,.15);color:var(--lime-dark);border-color:var(--lime)}
+.clubs-page .ev--n{background:rgba(221,234,136,.15);color:var(--lime-dark);border-color:var(--lime)}
 .clubs-page .ev--full{opacity:.35}
-.clubs-page .ev--soon{box-shadow:0 0 0 2px rgba(230,57,70,.15)}
+.clubs-page .ev--soon{box-shadow:0 0 0 2px rgba(182,63,55,.15)}
 .clubs-page .ev-seats{font-size:.48rem;font-weight:700;margin-top:1px}
 .clubs-page .ev-seats b{color:var(--red)}
 .clubs-page .ev--highlight{outline:3px solid var(--lime);outline-offset:-3px;animation:clubsFlash 1.2s ease-in-out}
@@ -72,11 +72,11 @@
 .clubs-page .sec-title{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:14px 0 10px;display:flex;align-items:center;gap:8px}
 .clubs-page .badge{padding:3px 9px;border-radius:6px;font-size:.58rem;font-weight:700;text-transform:none;letter-spacing:0}
 .clubs-page .badge--today{background:var(--red);color:#fff}
-.clubs-page .badge--tm{background:rgba(216,242,106,.2);color:var(--lime-dark)}
+.clubs-page .badge--tm{background:rgba(221,234,136,.2);color:var(--lime-dark)}
 
 .clubs-page .cc{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:all .2s}
-.clubs-page .cc:hover{border-color:rgba(230,57,70,.15);box-shadow:0 6px 20px var(--shadow)}
-.clubs-page .cc--highlight{border-color:var(--lime);box-shadow:0 0 0 2px rgba(216,242,106,.35)}
+.clubs-page .cc:hover{border-color:rgba(182,63,55,.15);box-shadow:0 6px 20px var(--shadow)}
+.clubs-page .cc--highlight{border-color:var(--lime);box-shadow:0 0 0 2px rgba(221,234,136,.35)}
 .clubs-page .cc-strip{width:5px;flex-shrink:0}
 .clubs-page .cs-s{background:var(--red)}
 .clubs-page .cs-d{background:#0A0A0A}
@@ -85,13 +85,13 @@
 .clubs-page .cc-time{width:76px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 6px;border-right:1px solid var(--border);background:var(--surface-2)}
 .clubs-page .cc-tv{font-size:1.05rem;font-weight:800;letter-spacing:-.5px;line-height:1}
 .clubs-page .cc-td{font-size:.58rem;color:var(--muted);margin-top:2px}
-.clubs-page .cc-xp{font-size:.52rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(216,242,106,.12);border-radius:4px}
+.clubs-page .cc-xp{font-size:.52rem;font-weight:700;color:var(--lime-dark);margin-top:4px;padding:2px 6px;background:rgba(221,234,136,.12);border-radius:4px}
 .clubs-page .cc-body{flex:1;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .clubs-page .cc-topic{font-size:.88rem;font-weight:700;margin-bottom:1px}
 .clubs-page .cc-desc{font-size:.68rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .clubs-page .cc-tags{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
 .clubs-page .cc-tag{padding:2px 6px;border-radius:4px;font-size:.52rem;font-weight:600;background:var(--bg);color:var(--muted)}
-.clubs-page .cc-tag--lvl{background:rgba(230,57,70,.06);color:var(--red)}
+.clubs-page .cc-tag--lvl{background:rgba(182,63,55,.06);color:var(--red)}
 
 .clubs-page .cc-host{display:flex;align-items:center;gap:8px;padding:12px;border-left:1px solid var(--border);flex-shrink:0}
 .clubs-page .cc-ha{width:32px;height:32px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;overflow:hidden}
