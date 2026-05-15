@@ -202,7 +202,22 @@ export default async function TeacherDashboardPage() {
   // нужен полный history-список уроков, а не upcoming/14d.
   // ─────────────────────────────────────────────────────────────
   const dashboard = await getCachedTeacherDashboard(user.id)
-  if (!dashboard || !dashboard.profile) redirect("/login")
+  // ВАЖНО: НЕ redirect("/login") при null. У user'а валидная сессия (мы
+  // прошли getUser() выше), middleware сразу редиректит залогиненного
+  // обратно на /teacher → infinite loop. Лучше показать понятную ошибку.
+  if (!dashboard || !dashboard.profile) {
+    return (
+      <div style={{ padding: 24, maxWidth: 720, margin: "40px auto" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+          Не удалось загрузить дашборд
+        </h1>
+        <p style={{ color: "var(--muted)" }}>
+          Возможно временная проблема с базой. Обновите страницу через
+          минуту. Если повторяется — напишите в поддержку.
+        </p>
+      </div>
+    )
+  }
 
   const profile = dashboard.profile
   if (profile.role !== "teacher") redirect("/student")

@@ -364,7 +364,9 @@ export default async function TeacherStudentsPage() {
   let snap: InitialSnapshot
   try {
     const cached = await getCachedTeacherStudents(user.id)
-    if (!cached.teacher_profile_id) redirect("/dashboard")
+    // teacher без teacher_profile.id — ведём на /teacher (главная),
+    // не на /dashboard (этого route нет — был 404).
+    if (!cached.teacher_profile_id) redirect("/teacher")
     snap = buildSnapshot(cached)
   } catch (err) {
     console.error("[teacher/students] cached loader failed", err)
