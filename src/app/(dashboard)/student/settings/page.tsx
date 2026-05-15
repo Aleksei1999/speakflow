@@ -276,13 +276,17 @@ export default function StudentSettingsPage() {
     try {
       const supabase = createClient()
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase()
-      const storagePath = `avatars/${data.account.id}.${ext}`
+      // RLS storage.objects (миграция 072): первая папка должна быть
+      // auth.uid()::text. Bucket уже `avatars`, поэтому путь — `<uid>/avatar.<ext>`,
+      // НЕ `avatars/<uid>.<ext>` (с двойным префиксом RLS блокирует).
+      const storagePath = `${data.account.id}/avatar.${ext}`
 
       const { error: uploadErr } = await supabase.storage
         .from("avatars")
         .upload(storagePath, file, { cacheControl: "3600", upsert: true })
       if (uploadErr) {
-        toast.error("Ошибка загрузки фото")
+        console.error("[avatar upload] storage error:", uploadErr)
+        toast.error(`Ошибка загрузки: ${uploadErr.message || "неизвестная"}`)
         return
       }
 
