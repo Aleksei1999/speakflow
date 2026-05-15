@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -54,11 +53,11 @@ export async function GET(
     const { limit } = parsed.data
 
     // Verify teacher exists / is listed before returning reviews.
-    const { data: teacher, error: teacherErr } = await supabase
+    const { data: teacher, error: teacherErr } = (await supabase
       .from('teacher_profiles')
       .select('id, is_listed')
       .eq('id', teacherProfileId)
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; is_listed: boolean } | null; error: any }
 
     if (teacherErr) {
       console.error('Ошибка загрузки преподавателя:', teacherErr)
@@ -191,8 +190,8 @@ export async function POST(
       )
     }
 
-    const { data: inserted, error: insertErr } = await supabase
-      .from('reviews')
+    // FIXME(types): supabase-js infers Insert params as 'never' on minimal Database type
+    const { data: inserted, error: insertErr } = await (supabase.from('reviews') as any)
       .insert({
         lesson_id: targetLesson,
         student_id: user.id,
@@ -220,11 +219,11 @@ export async function POST(
     // cache is keyed by user_id as well — look up the teacher's auth user_id
     // from teacher_profiles.id and evict the cached hero stats.
     try {
-      const { data: tp } = await supabase
+      const { data: tp } = (await supabase
         .from('teacher_profiles')
         .select('user_id')
         .eq('id', teacherProfileId)
-        .maybeSingle()
+        .maybeSingle()) as { data: { user_id: string } | null }
       if (tp?.user_id) invalidateTeacherStats(tp.user_id)
     } catch (err) {
       // Non-fatal — TTL will refresh within 60s anyway.

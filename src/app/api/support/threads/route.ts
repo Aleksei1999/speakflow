@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -96,15 +95,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
-    const threadIds = (data ?? []).map((t: any) => t.id)
+    const threadIds = ((data ?? []) as any[]).map((t: any) => t.id)
     const previewByThread = new Map<string, { body: string; sender_role: string }>()
     if (threadIds.length) {
+      // FIXME(types): 'support_messages' table missing in Database type
+      type SupportMsg = { thread_id: string; body: string; sender_role: string; created_at: string }
       // Latest message per thread for preview.
-      const { data: msgs } = await client
+      const { data: msgs } = (await (client as any)
         .from("support_messages")
         .select("thread_id, body, sender_role, created_at")
         .in("thread_id", threadIds)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false })) as { data: SupportMsg[] | null }
       for (const m of msgs ?? []) {
         if (!previewByThread.has(m.thread_id)) {
           previewByThread.set(m.thread_id, {
@@ -181,8 +182,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 })
     }
 
-    // Rate-limit: 10 новых тикетов в час на пользователя. fail-closed:
-    // тикеты дёргают админов Telegram-уведомлениями.
+    // Rate-limit: 10 новых обращений в час на пользователя. fail-closed:
+    // обращения дёргают админов Telegram-уведомлениями.
     const limited = await enforceRateLimitStrict(request, {
       name: "support:threads:create",
       keyParts: [user.id, getClientIp(request)],
@@ -216,8 +217,9 @@ export async function POST(request: NextRequest) {
     const senderRole: "student" | "teacher" | "admin" =
       role === "admin" ? "admin" : role === "teacher" ? "teacher" : "student"
 
+    // FIXME(types): 'support_threads' table missing in Database type
     // 1) Create thread under caller's RLS (user_id = auth.uid()).
-    const { data: thread, error: thErr } = await supabase
+    const { data: thread, error: thErr } = (await (supabase as any)
       .from("support_threads")
       .insert({
         user_id: user.id,
@@ -226,21 +228,22 @@ export async function POST(request: NextRequest) {
         priority: "med",
       })
       .select("id, user_id, subject, status, priority, last_message_at, created_at, updated_at")
-      .single()
+      .single()) as { data: { id: string } | null; error: any }
 
     if (thErr || !thread) {
       console.error("POST /api/support/threads thread error:", thErr)
       return NextResponse.json(
-        { error: "Не удалось создать тикет" },
+        { error: "Не удалось создать обращение" },
         { status: 500 }
       )
     }
 
+    // FIXME(types): 'support_messages' table missing in Database type
     // 2) Append first message. Trigger will bump last_message_at + status.
-    const { data: firstMsg, error: msgErr } = await supabase
+    const { data: firstMsg, error: msgErr } = await (supabase as any)
       .from("support_messages")
       .insert({
-        thread_id: thread.id,
+        thread_id: thread!.id,
         sender_id: user.id,
         sender_role: senderRole,
         body: messageBody,
@@ -253,7 +256,7 @@ export async function POST(request: NextRequest) {
       // Roll back thread via admin client (RLS won't let user delete).
       try {
         const adminClient = createAdminClient()
-        await adminClient.from("support_threads").delete().eq("id", thread.id)
+        await (adminClient as any).from("support_threads").delete().eq("id", thread!.id)
       } catch {}
       return NextResponse.json(
         { error: "Не удалось сохранить сообщение" },
@@ -261,14 +264,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Audit: создан тикет поддержки. Тема — первые 80 chars (subject уже
+    // Audit: создан обращение поддержки. Тема — первые 80 chars (subject уже
     // обрезан до 200 zod-схемой, но в audit-log это всё равно PII-чувствительно
     // — кладём только превью для контекста).
     await logAuditEvent(request, {
       category: "data",
       action: "support_thread_created",
       target_type: "support_threads",
-      target_id: thread.id,
+      target_id: thread!.id,
       payload: {
         subject_first_chars: subject.slice(0, 80),
         sender_role: senderRole,

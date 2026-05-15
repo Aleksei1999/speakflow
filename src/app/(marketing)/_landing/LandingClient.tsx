@@ -359,7 +359,7 @@ export default function LandingClient() {
               <span style={{ color: "var(--text3)", margin: "0 6px" }}>→</span>
               <I3 kind="steak-mw" size="md"></I3>
             </div>
-            <div className="testimonial-text">Геймификация убивает скуку. Челленджи, ачивки, рейтинг — и всё это пока болтаешь на английском с крутыми людьми.</div>
+            <div className="testimonial-text">Геймификация убивает скуку. Челленджи, достижения, рейтинг — и всё это пока болтаешь на английском с крутыми людьми.</div>
             <div className="testimonial-author">
               <div className="ta-avatar"><I3 kind="face-m3"></I3></div>
               <div>
@@ -395,7 +395,7 @@ export default function LandingClient() {
             <div className="platform-card reveal"><div className="pc-icon"><I3 kind="controller" size="lg"></I3></div><div className="pc-title">XP и уровни</div><div className="pc-desc">Зарабатывай очки опыта за каждое действие: урок, клуб, челлендж.</div><div className="pc-tag">Gamification</div></div>
             <div className="platform-card reveal"><div className="pc-icon"><I3 kind="fire" size="lg"></I3></div><div className="pc-title">Стрики и челленджи</div><div className="pc-desc">Не прерывай цепочку! Ежедневные задания держат тебя в тонусе.</div><div className="pc-tag">Motivation</div></div>
             <div className="platform-card reveal"><div className="pc-icon"><I3 kind="chart" size="lg"></I3></div><div className="pc-title">Персональный трек</div><div className="pc-desc">Индивидуальная программа на основе твоего уровня и целей.</div><div className="pc-tag">Personal</div></div>
-            <div className="platform-card reveal"><div className="pc-icon"><I3 kind="trophy" size="lg"></I3></div><div className="pc-title">37 ачивок</div><div className="pc-desc">Реальные призы: мерч, скидки, бесплатные уроки за прогресс.</div><div className="pc-tag">Achievements</div></div>
+            <div className="platform-card reveal"><div className="pc-icon"><I3 kind="trophy" size="lg"></I3></div><div className="pc-title">37 достижений</div><div className="pc-desc">Реальные призы: мерч, скидки, бесплатные уроки за прогресс.</div><div className="pc-tag">Achievements</div></div>
             <div className="platform-card reveal"><div className="pc-icon"><I3 kind="mic" size="lg"></I3></div><div className="pc-title">Уроки 1-on-1</div><div className="pc-desc">Персональные занятия с native speakers. General и специализированный.</div><div className="pc-tag">Lessons</div></div>
             <div className="platform-card reveal"><div className="pc-icon"><I3 kind="robot" size="lg"></I3></div><div className="pc-title">AI-ассистент</div><div className="pc-desc">Помогает прямо во время урока. Объясняет, переводит, подсказывает.</div><div className="pc-tag">AI</div></div>
           </div>
@@ -414,7 +414,7 @@ export default function LandingClient() {
             <div className="xp-card reveal"><div className="xp-icon"><I3 kind="xp-star" size="xl"></I3></div><div className="xp-title">XP за всё</div><div className="xp-desc">Урок = +55 XP. Speaking Club = +30 XP. Daily Challenge = +10 XP. Стрик = +5 XP/день. Каждое действие — прогресс.</div></div>
             <div className="xp-card reveal"><div className="xp-icon"><I3 kind="fire" size="xl"></I3></div><div className="xp-title">Стрики и призы</div><div className="xp-desc">7 дней = стикерпак. 30 дней = мерч. 100 дней = бесплатный месяц. 365 = Hall of Fame.</div></div>
             <div className="xp-card reveal"><div className="xp-icon"><I3 kind="shield" size="xl"></I3></div><div className="xp-title">Лидерборд</div><div className="xp-desc">Топ-3 каждый месяц получают подарки. Мерч, уроки, эксклюзивные ивенты.</div></div>
-            <div className="xp-card reveal"><div className="xp-icon"><I3 kind="trophy" size="xl"></I3></div><div className="xp-title">37 ачивок</div><div className="xp-desc">От First Flame до Unstoppable. Common, Rare, Epic, Legendary. С реальными призами.</div></div>
+            <div className="xp-card reveal"><div className="xp-icon"><I3 kind="trophy" size="xl"></I3></div><div className="xp-title">37 достижений</div><div className="xp-desc">От First Flame до Unstoppable. Common, Rare, Epic, Legendary. С реальными призами.</div></div>
           </div>
           <div className="levels-grid">
             <div className="level-card reveal"><div className="level-name">Raw</div><div className="level-desc-short">Понимаю слова, боюсь говорить</div></div>
@@ -437,7 +437,7 @@ export default function LandingClient() {
           <div className="timeline">
             <div className="tl-step reveal"><div className="tl-icon"><I3 kind="target" size="xl"></I3></div><div className="tl-num">Step 01</div><div className="tl-title">Определи уровень</div><div className="tl-text">Пройди тест — узнай прожарку и получи персональный план.</div></div>
             <div className="tl-step reveal"><div className="tl-icon"><I3 kind="mic" size="xl"></I3></div><div className="tl-num">Step 02</div><div className="tl-title">Учись и практикуй</div><div className="tl-text">Уроки + speaking clubs. Теория → живая практика.</div></div>
-            <div className="tl-step reveal"><div className="tl-icon"><I3 kind="controller" size="xl"></I3></div><div className="tl-num">Step 03</div><div className="tl-title">Зарабатывай XP</div><div className="tl-text">Челленджи, стрики, ачивки — учёба затягивает.</div></div>
+            <div className="tl-step reveal"><div className="tl-icon"><I3 kind="controller" size="xl"></I3></div><div className="tl-num">Step 03</div><div className="tl-title">Зарабатывай XP</div><div className="tl-text">Челленджи, стрики, достижения — учёба затягивает.</div></div>
             <div className="tl-step reveal"><div className="tl-icon"><I3 kind="fire" size="xl"></I3></div><div className="tl-num">Step 04</div><div className="tl-title">Level up</div><div className="tl-text">Расти от Raw до Well Done. В своём темпе.</div></div>
           </div>
         </div>
@@ -472,7 +472,7 @@ export default function LandingClient() {
             <h3 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Всё для прогресса</h3>
             <ul className="membership-list">
               <li><span className="ml-check">✓</span> Персональная платформа</li>
-              <li><span className="ml-check">✓</span> XP, стрики, 37 ачивок с призами</li>
+              <li><span className="ml-check">✓</span> XP, стрики, 37 достижений с призами</li>
               <li><span className="ml-check">✓</span> Лидерборд с подарками</li>
               <li><span className="ml-check">✓</span> AI-ассистент на уроках</li>
               <li><span className="ml-check">✓</span> Серия видеоуроков + тесты</li>

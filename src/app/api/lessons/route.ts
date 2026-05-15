@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -80,11 +79,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Определяем роль для выбора колонки фильтрации.
-    const { data: profile, error: profErr } = await supabase
+    const { data: profile, error: profErr } = (await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single()) as { data: { role: 'student' | 'teacher' | 'admin' } | null; error: any }
 
     if (profErr || !profile) {
       return NextResponse.json(
@@ -104,11 +103,11 @@ export async function GET(request: NextRequest) {
 
     if (profile.role === 'teacher') {
       // teacher_id в lessons — это teacher_profiles.id, а не auth.user.id
-      const { data: tp, error: tpErr } = await supabase
+      const { data: tp, error: tpErr } = (await supabase
         .from('teacher_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle()
+        .maybeSingle()) as { data: { id: string } | null; error: any }
 
       if (tpErr) {
         console.error('[/api/lessons] teacher_profiles lookup failed', tpErr)

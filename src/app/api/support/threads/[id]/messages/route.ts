@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -69,11 +68,11 @@ export async function POST(
     }
 
     // Resolve sender role. Admin/teacher/student all map into the enum.
-    const { data: profile } = await supabase
+    const { data: profile } = (await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .maybeSingle()
+      .maybeSingle()) as { data: { role: 'student' | 'teacher' | 'admin' } | null }
     const role = profile?.role
     const senderRole: "student" | "teacher" | "admin" =
       role === "admin" ? "admin" : role === "teacher" ? "teacher" : "student"
@@ -89,10 +88,11 @@ export async function POST(
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
     if (!thread) {
-      return NextResponse.json({ error: "Тикет не найден" }, { status: 404 })
+      return NextResponse.json({ error: "Обращение не найден" }, { status: 404 })
     }
 
-    const { data: message, error: msgErr } = await supabase
+    // FIXME(types): 'support_messages' table missing in Database type
+    const { data: message, error: msgErr } = await (supabase as any)
       .from("support_messages")
       .insert({
         thread_id: id,
@@ -112,7 +112,7 @@ export async function POST(
       )
     }
 
-    // Audit: сообщение в тикет. Сам body НЕ логируем (это поддержка → PII);
+    // Audit: сообщение в обращение. Сам body НЕ логируем (это поддержка → PII);
     // фиксируем только факт + длину + наличие вложений.
     await logAuditEvent(request, {
       category: "data",

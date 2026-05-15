@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -13,13 +12,19 @@ export async function GET(_request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { data: defs, error } = await supabase
+    // FIXME(types): 'reward_definitions' table missing in Database type
+    type RewardDef = {
+      id: string; slug: string; title: string; description: string | null
+      icon_emoji: string | null; reward_type: string
+      claim_criteria: any; sort_order: number
+    }
+    const { data: defs, error } = (await (supabase as any)
       .from('reward_definitions')
       .select(
         'id, slug, title, description, icon_emoji, reward_type, claim_criteria, sort_order'
       )
       .eq('is_active', true)
-      .order('sort_order', { ascending: true })
+      .order('sort_order', { ascending: true })) as { data: RewardDef[] | null; error: any }
     if (error) {
       console.error('Ошибка загрузки наград:', error)
       return NextResponse.json({ error: 'Не удалось загрузить награды' }, { status: 500 })
@@ -37,7 +42,8 @@ export async function GET(_request: NextRequest) {
 
     const [metrics, claimedRes] = await Promise.all([
       computeUserMetrics(supabase, user.id),
-      supabase
+      // FIXME(types): 'user_rewards' table missing in Database type
+      (supabase as any)
         .from('user_rewards')
         .select('reward_id, status')
         .eq('user_id', user.id),

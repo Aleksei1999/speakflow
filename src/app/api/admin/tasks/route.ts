@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/admin-guard"
 //
 // Источники (в порядке сортировки урегентности):
 // 1. teacher_applications.status='new' — новые заявки преподавателей.
-// 2. support_threads с last_user_message_at > admin_last_seen_at — непрочитанные тикеты.
+// 2. support_threads с last_user_message_at > admin_last_seen_at — непрочитанные обращения.
 // 3. trial_lesson_requests без assigned_lesson_id и старше 30 минут — застрявшие пробники.
 // 4. clubs published, starts_at в ближайшие 24ч и seats_taken < 2 — клубы под угрозой отмены.
 // 5. lessons.status='pending_payment' старше суток — зависшие оплаты.
@@ -143,7 +143,7 @@ export async function GET(_req: NextRequest) {
 
     const tasks: Task[] = []
 
-    // Помощь по нику ученика для тикетов и оплат
+    // Помощь по нику ученика для обращений и оплат
     const studentIds = new Set<string>()
     for (const t of threadsRes.data ?? []) studentIds.add(t.student_id)
     for (const l of pendingRes.data ?? []) studentIds.add(l.student_id)
@@ -174,7 +174,7 @@ export async function GET(_req: NextRequest) {
       })
     }
 
-    // 2) Тикеты с непрочитанным от пользователя
+    // 2) Обращения с непрочитанным от пользователя
     for (const t of threadsRes.data ?? []) {
       const lastUser = t.last_user_message_at ? new Date(t.last_user_message_at).getTime() : 0
       const lastSeen = t.admin_last_seen_at ? new Date(t.admin_last_seen_at).getTime() : 0
@@ -184,7 +184,7 @@ export async function GET(_req: NextRequest) {
         id: `thread:${t.id}`,
         kind: "support_thread",
         title: `Ответить в поддержке · ${t.subject || "(без темы)"}`,
-        meta: ["тикет", studentName, t.priority === "high" ? "high" : "med"],
+        meta: ["обращение", studentName, t.priority === "high" ? "high" : "med"],
         urgent: t.priority === "high",
         href: `/admin/support?thread=${t.id}`,
         ts: t.last_user_message_at,

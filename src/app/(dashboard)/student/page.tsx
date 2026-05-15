@@ -361,7 +361,7 @@ export default async function StudentDashboardPage() {
         </div>
 
         <div className="card">
-          <div className="card-head"><h3>Ачивки</h3><Link href="/student/achievements" className="btn btn-sm btn-outline">Все</Link></div>
+          <div className="card-head"><h3>Достижения</h3><Link href="/student/achievements" className="btn btn-sm btn-outline">Все</Link></div>
           <div className="card-body">
             {achDefs.length === 0 ? (
               <div className="sch-empty">Пока нет достижений</div>

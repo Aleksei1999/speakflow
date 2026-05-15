@@ -117,7 +117,7 @@ export default function AdminSupportClient({
   // if the active thread is not in the filtered list (e.g. user just
   // switched from "Все" → "В работе" while looking at an open ticket),
   // jump to the first thread in the new list — or clear selection so
-  // the empty-state «Выберите тикет» is shown.
+  // the empty-state «Выберите обращение» is shown.
   useEffect(() => {
     if (filtered.length === 0) {
       if (activeId !== null) setActiveId(null)
@@ -410,7 +410,7 @@ export default function AdminSupportClient({
                 <b>{threads.length === 0 ? "Данные подгружаются" : "Пусто"}</b>
                 {threads.length === 0
                   ? "API поддержки может быть ещё не готов"
-                  : "В этой категории тикетов нет"}
+                  : "В этой категории обращений нет"}
               </div>
             ) : (
               filtered.map((t, i) => {
@@ -472,8 +472,8 @@ export default function AdminSupportClient({
           {!active ? (
             <div className="empty-thread">
               <div>
-                <b>Выберите тикет</b>
-                Кликните на тикет слева, чтобы открыть переписку
+                <b>Выберите обращение</b>
+                Кликните на обращение слева, чтобы открыть переписку
               </div>
             </div>
           ) : (

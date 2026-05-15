@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -77,13 +76,14 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient()
 
+    // FIXME(types): 'teacher_applications' table missing in Database type
     // Простая антиспам-дедупликация: тот же email за последние 5 минут.
-    const { data: dup } = await admin
+    const { data: dup } = (await (admin as any)
       .from("teacher_applications")
       .select("id, created_at")
       .eq("email", d.email)
       .gte("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
-      .maybeSingle()
+      .maybeSingle()) as { data: { id: string; created_at: string } | null }
     if (dup) {
       return NextResponse.json({ ok: true, duplicate: true, id: dup.id })
     }
@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
     const firstLatin = transliterateRu(d.first_name)
     const lastLatin = transliterateRu(d.last_name)
 
-    const { data: app, error } = await admin
+    // FIXME(types): 'teacher_applications' table missing in Database type
+    const { data: app, error } = (await (admin as any)
       .from("teacher_applications")
       .insert({
         first_name: firstLatin,
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
         notes: d.notes ?? null,
       })
       .select("id, created_at")
-      .single()
+      .single()) as { data: { id: string; created_at: string } | null; error: any }
 
     if (error || !app) {
       console.error("[teach/apply] insert error:", error)

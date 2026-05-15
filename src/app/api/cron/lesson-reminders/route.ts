@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNotification } from '@/lib/notifications/service'
@@ -32,8 +31,16 @@ export async function GET(request: NextRequest) {
     const from = new Date(now.getTime() + 55 * 60 * 1000) // +55 минут
     const to = new Date(now.getTime() + 65 * 60 * 1000)   // +65 минут
 
+    type LessonReminderRow = {
+      id: string
+      scheduled_at: string
+      duration_minutes: number
+      student_id: string
+      teacher_id: string
+      jitsi_room_name: string | null
+    }
     // Находим уроки в окне напоминания
-    const { data: lessons, error: queryError } = await supabase
+    const { data: lessons, error: queryError } = (await supabase
       .from('lessons')
       .select(`
         id,
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('status', 'booked')
       .gte('scheduled_at', from.toISOString())
-      .lte('scheduled_at', to.toISOString())
+      .lte('scheduled_at', to.toISOString())) as { data: LessonReminderRow[] | null; error: any }
 
     if (queryError) {
       console.error('[cron/lesson-reminders] Ошибка запроса уроков:', queryError)
@@ -70,13 +77,14 @@ export async function GET(request: NextRequest) {
       userIds.add(lesson.teacher_id)
     }
 
+    type ParticipantProfile = { id: string; full_name: string; email: string }
     // Получаем профили всех участников одним запросом
-    const { data: profiles } = await supabase
+    const { data: profiles } = (await supabase
       .from('profiles')
       .select('id, full_name, email')
-      .in('id', Array.from(userIds))
+      .in('id', Array.from(userIds))) as { data: ParticipantProfile[] | null }
 
-    const profileMap = new Map(
+    const profileMap = new Map<string, ParticipantProfile>(
       (profiles || []).map((p) => [p.id, p])
     )
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // POST /api/trial-lesson/request
 // Called after signup (when there's already a session — e.g. on the dashboard).
 // Creates a trial_lesson_requests row, auto-assigns a teacher when a slot is

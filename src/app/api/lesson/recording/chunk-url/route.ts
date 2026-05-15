@@ -1,4 +1,3 @@
-// @ts-nocheck
 // POST /api/lesson/recording/chunk-url
 // Выдаёт signed upload URL для очередного chunk'а. seq назначает сервер
 // атомарным RPC по next_seq_{t,s}; upsert:false исключает перезапись.
@@ -56,12 +55,13 @@ export async function POST(req: NextRequest) {
   })
   if (limited) return limited
 
-  const { data: rec } = await gate.admin
+  // FIXME(types): 'lesson_recordings' table missing in Database type
+  const { data: rec } = (await (gate.admin as any)
     .from("lesson_recordings")
     .select("id, storage_prefix, status")
     .eq("id", recordingId)
     .eq("lesson_id", gate.lesson.id)
-    .maybeSingle()
+    .maybeSingle()) as { data: { id: string; storage_prefix: string; status: 'recording' | 'finalized' | 'failed' } | null }
 
   if (!rec) return NextResponse.json({ error: "Recording не найден" }, { status: 404 })
   if (rec.status === "finalized") {
@@ -70,8 +70,9 @@ export async function POST(req: NextRequest) {
 
   const roleTag = gate.role === "student" ? "S" : "T"
 
+  // FIXME(types): RPC 'lesson_recordings_next_seq' missing in Database type
   // Атомарное выделение seq через SECURITY DEFINER RPC — без гонок.
-  const { data: assigned, error: rpcErr } = await gate.admin.rpc(
+  const { data: assigned, error: rpcErr } = await (gate.admin.rpc as any)(
     "lesson_recordings_next_seq",
     { p_recording_id: recordingId, p_role: roleTag }
   )
@@ -98,9 +99,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Не удалось создать upload URL" }, { status: 500 })
   }
 
+  // FIXME(types): 'lesson_recordings' table missing in Database type
   // chunks_count = MAX(next_seq_t, next_seq_s) для UI индикатора.
   // Доп. фильтр lesson_id — defense-in-depth, страхует от регрессий.
-  await gate.admin
+  await (gate.admin as any)
     .from("lesson_recordings")
     .update({ chunks_count: seq + 1 })
     .eq("id", recordingId)

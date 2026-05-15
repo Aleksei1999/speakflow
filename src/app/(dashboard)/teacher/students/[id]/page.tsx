@@ -496,7 +496,7 @@ export default async function TeacherStudentProfilePage({
           </div>
           <div className="card-body">
             {data.achievements.length === 0 ? (
-              <div className="empty">Ачивок пока нет</div>
+              <div className="empty">Достижений пока нет</div>
             ) : (
               <div className="ach-grid">
                 {data.achievements.map((a) => (

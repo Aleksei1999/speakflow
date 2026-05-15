@@ -315,14 +315,14 @@ export default function SupportClient({
       if (!res.ok) throw new Error("failed")
       const json = await res.json()
       const t = json?.thread as Thread | undefined
-      toast.success("Тикет создан")
+      toast.success("Обращение создан")
       setModalOpen(false)
       setSubject("")
       setFirstBody("")
       await loadThreads()
       if (t?.id) setActiveId(t.id)
     } catch {
-      toast.error("Не удалось создать тикет")
+      toast.error("Не удалось создать обращение")
     } finally {
       setCreating(false)
     }
@@ -373,7 +373,7 @@ export default function SupportClient({
             className="btn btn-red"
             onClick={() => setModalOpen(true)}
           >
-            + Новый тикет
+            + Новый обращение
           </button>
         </div>
 
@@ -381,7 +381,7 @@ export default function SupportClient({
           {/* LIST */}
           <aside className="sp-list">
             <div className="sp-list-head">
-              <h3>Мои тикеты</h3>
+              <h3>Мои обращения</h3>
               <span className="count">
                 {threads.length > 0 ? `${threads.length} шт.` : "0 шт."}
               </span>
@@ -409,7 +409,7 @@ export default function SupportClient({
                 <div className="sp-empty">
                   {search
                     ? "По запросу ничего не найдено."
-                    : `Пока нет обращений. Создайте тикет, чтобы связаться с поддержкой ${roleLabel}.`}
+                    : `Пока нет обращений. Создайте обращение, чтобы связаться с поддержкой ${roleLabel}.`}
                 </div>
               ) : (
                 filteredThreads.map((t) => {
@@ -463,7 +463,7 @@ export default function SupportClient({
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                 </div>
-                <h3>Выберите тикет</h3>
+                <h3>Выберите обращение</h3>
                 <p>
                   Откройте существующее обращение слева или создайте новое, чтобы начать переписку с командой
                   поддержки.
@@ -473,7 +473,7 @@ export default function SupportClient({
                   className="btn btn-dark"
                   onClick={() => setModalOpen(true)}
                 >
-                  + Новый тикет
+                  + Новый обращение
                 </button>
               </div>
             ) : (
@@ -557,7 +557,7 @@ export default function SupportClient({
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder={
                         activeThread?.status === "closed"
-                          ? "Тикет закрыт. Создайте новый, чтобы продолжить."
+                          ? "Обращение закрыт. Создайте новый, чтобы продолжить."
                           : "Напишите сообщение..."
                       }
                       disabled={activeThread?.status === "closed" || sending}
@@ -601,7 +601,7 @@ export default function SupportClient({
           }}
         >
           <div className="m-card">
-            <h2>Новый тикет</h2>
+            <h2>Новый обращение</h2>
             <p className="sub">
               Опишите вопрос как можно подробнее — так мы ответим быстрее и точнее.
             </p>
@@ -645,7 +645,7 @@ export default function SupportClient({
                 onClick={handleCreate}
                 disabled={!subject.trim() || !firstBody.trim() || creating}
               >
-                {creating ? "Отправка..." : "Создать тикет"}
+                {creating ? "Отправка..." : "Создать обращение"}
               </button>
             </div>
           </div>

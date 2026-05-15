@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — TODO(types): needs 'courses'/'course_enrollments'/'course_lesson_progress'/'course_lessons' tables added to Database type
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 

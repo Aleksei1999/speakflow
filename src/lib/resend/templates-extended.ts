@@ -183,7 +183,7 @@ export function achievementUnlockedEmail(
   xpReward: number,
   ctaUrl: string
 ): { subject: string; html: string } {
-  const subject = `🏆 Ачивка: ${title}`
+  const subject = `🏆 Достижение: ${title}`
   const bodyHtml = `
     <p style="margin:0 0 18px;">Ты разблокировал новое достижение:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 18px;background:#FAFAF7;border-radius:10px;">
@@ -200,10 +200,10 @@ export function achievementUnlockedEmail(
   const html = layoutV2({
     title: subject,
     category: 'Достижение',
-    heading: 'Новая ачивка!',
+    heading: 'Новая достижение!',
     name,
     bodyHtml,
-    ctaLabel: 'Посмотреть все ачивки',
+    ctaLabel: 'Посмотреть все достижения',
     ctaUrl,
   })
   return { subject, html }
@@ -228,7 +228,7 @@ export function levelUpEmail(
         <p style="margin:0;font-size:14px;color:#8A8A86;">Всего XP: <span style="color:#0A0A0A;font-weight:700;">${totalXp.toLocaleString('ru-RU')}</span></p>
       </td></tr>
     </table>
-    <p style="margin:0 0 14px;">Новый уровень открывает новые ачивки, челленджи и бонусы в магазине наград.</p>
+    <p style="margin:0 0 14px;">Новый уровень открывает новые достижения, челленджи и бонусы в магазине наград.</p>
   `
   const html = layoutV2({
     title: subject,
@@ -303,7 +303,7 @@ export function weeklyDigestEmail(
       </td></tr>
       <tr><td style="padding:14px 18px;">
         <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;"><tr>
-          <td style="font-size:13px;color:#8A8A86;">Главная ачивка</td>
+          <td style="font-size:13px;color:#8A8A86;">Главная достижение</td>
           <td align="right" style="font-size:15px;font-weight:700;color:#0A0A0A;">${escapeHtml(topAchievement)}</td>
         </tr></table>
       </td></tr>
@@ -414,14 +414,14 @@ export function formatTelegramAchievementUnlocked(
   xpReward: number,
   ctaUrl: string
 ): string {
-  return `🏆 <b>Новая ачивка!</b>
+  return `🏆 <b>Новая достижение!</b>
 
 ${icon} <b>${title}</b>
 ${description}
 
 Начислено: <b>+${xpReward} XP</b>
 
-<a href="${ctaUrl}">Посмотреть все ачивки</a>`
+<a href="${ctaUrl}">Посмотреть все достижения</a>`
 }
 
 export function formatTelegramLevelUp(
@@ -467,7 +467,7 @@ ${name}, твоя неделя в цифрах:
 • XP: <b>+${weekXp.toLocaleString('ru-RU')}</b>
 • Уроков: <b>${lessonsAttended}</b>
 • Серия: <b>${streakDays} ${pluralDays(streakDays)}</b>
-• Главная ачивка: <b>${topAchievement}</b>
+• Главная достижение: <b>${topAchievement}</b>
 
 <a href="${ctaUrl}">Открыть дашборд</a>`
 }

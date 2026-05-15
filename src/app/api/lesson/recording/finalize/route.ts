@@ -1,4 +1,3 @@
-// @ts-nocheck
 // POST /api/lesson/recording/finalize
 // Препод/админ закрывает запись урока. duration_sec / total_bytes /
 // chunks_count считаются на сервере, клиентские значения игнорируются.
@@ -51,12 +50,22 @@ export async function POST(req: NextRequest) {
   })
   if (limited) return limited
 
-  const { data: rec } = await gate.admin
+  // FIXME(types): 'lesson_recordings' table missing in Database type
+  type RecordingFinalizeRow = {
+    id: string
+    status: 'recording' | 'finalized' | 'failed'
+    storage_prefix: string
+    started_at: string | null
+    next_seq_t: number | null
+    next_seq_s: number | null
+    chunks_count: number | null
+  }
+  const { data: rec } = (await (gate.admin as any)
     .from("lesson_recordings")
     .select("id, status, storage_prefix, started_at, next_seq_t, next_seq_s, chunks_count")
     .eq("id", recordingId)
     .eq("lesson_id", gate.lesson.id)
-    .maybeSingle()
+    .maybeSingle()) as { data: RecordingFinalizeRow | null }
 
   if (!rec) {
     return NextResponse.json({ error: "Recording не найден" }, { status: 404 })
@@ -99,7 +108,8 @@ export async function POST(req: NextRequest) {
   const seqMax = Math.max(seqT, seqS)
   const chunksCount = Math.max(1, seqMax, Number(rec.chunks_count ?? 0))
 
-  const { error } = await gate.admin
+  // FIXME(types): 'lesson_recordings' table missing in Database type
+  const { error } = await (gate.admin as any)
     .from("lesson_recordings")
     .update({
       status: "finalized",

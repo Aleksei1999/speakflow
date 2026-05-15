@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ---------------------------------------------------------------
 // Secure lesson file upload.
 //
@@ -178,8 +177,8 @@ export async function POST(request: NextRequest) {
       is_public: false,
     }
 
-    const { data: mat, error: matError } = await admin
-      .from('materials')
+    // FIXME(types): materials Insert in Database type lacks storage_path/mime_type columns
+    const { data: mat, error: matError } = await (admin.from('materials') as any)
       .insert(insertRow)
       .select()
       .single()

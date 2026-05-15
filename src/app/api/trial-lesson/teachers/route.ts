@@ -1,4 +1,3 @@
-// @ts-nocheck
 // GET /api/trial-lesson/teachers?slot=ISO
 // Возвращает список преподавателей, доступных на этот слот для пробного.
 // Использует list_trial_teachers RPC.
@@ -38,7 +37,8 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient()
-  const { data, error } = await admin.rpc("list_trial_teachers", {
+  // FIXME(types): RPC 'list_trial_teachers' missing in Database type
+  const { data, error } = await (admin.rpc as any)("list_trial_teachers", {
     p_slot: parsed.data.slot,
     p_duration: parsed.data.duration ?? 30,
     p_tz: "Europe/Moscow",

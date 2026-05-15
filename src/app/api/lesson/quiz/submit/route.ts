@@ -1,4 +1,3 @@
-// @ts-nocheck
 // POST /api/lesson/quiz/submit
 // Студент сабмитит ответы на квиз → считаем правильные → пишем
 // lesson_quiz_attempts → начисляем XP через award_xp.
@@ -35,12 +34,21 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
 
+  // FIXME(types): 'lesson_quizzes' table missing in Database type
+  type QuizRow = {
+    id: string
+    lesson_id: string
+    questions: any[]
+    question_count: number
+    summary_id: string | null
+    lessons: { student_id: string } | null
+  }
   // Загружаем квиз + урок, чтобы убедиться что вызывающий — student урока.
-  const { data: quiz } = await admin
+  const { data: quiz } = (await (admin as any)
     .from("lesson_quizzes")
     .select("id, lesson_id, questions, question_count, summary_id, lessons:lesson_id(student_id)")
     .eq("id", quizId)
-    .maybeSingle()
+    .maybeSingle()) as { data: QuizRow | null }
   if (!quiz) return NextResponse.json({ error: "Квиз не найден" }, { status: 404 })
   if ((quiz as any).lessons?.student_id !== user.id) {
     return NextResponse.json({ error: "Это не ваш урок" }, { status: 403 })
@@ -58,13 +66,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Неверное число ответов" }, { status: 400 })
   }
 
+  // FIXME(types): 'lesson_quiz_attempts' table missing in Database type
+  type AttemptRow = { id: string; score: number; total: number; xp_awarded: number; answers: any }
   // Существующая попытка?
-  const { data: existing } = await admin
+  const { data: existing } = (await (admin as any)
     .from("lesson_quiz_attempts")
     .select("id, score, total, xp_awarded, answers")
     .eq("quiz_id", quizId)
     .eq("student_id", user.id)
-    .maybeSingle()
+    .maybeSingle()) as { data: AttemptRow | null }
   if (existing) {
     return NextResponse.json({
       ok: false,
@@ -90,8 +100,9 @@ export async function POST(req: NextRequest) {
   const perfect = score === total
   const xpAmount = score * 5 + (perfect ? 20 : 0)
 
+  // FIXME(types): 'lesson_quiz_attempts' table missing in Database type
   // Сначала пишем attempt (источник истины), потом начисляем XP.
-  const { data: attempt, error: aErr } = await admin
+  const { data: attempt, error: aErr } = (await (admin as any)
     .from("lesson_quiz_attempts")
     .insert({
       quiz_id: quizId,
@@ -102,17 +113,18 @@ export async function POST(req: NextRequest) {
       xp_awarded: xpAmount,
     })
     .select("id")
-    .single()
+    .single()) as { data: { id: string } | null; error: any }
   if (aErr || !attempt) {
     console.error("[quiz/submit] insert attempt failed:", aErr)
     return NextResponse.json({ error: "Не удалось сохранить" }, { status: 500 })
   }
 
   if (xpAmount > 0) {
-    const { data: xpRes, error: xpErr } = await admin.rpc("award_xp", {
+    // FIXME(types): RPC 'award_xp' missing in Database type
+    const { data: xpRes, error: xpErr } = await (admin.rpc as any)("award_xp", {
       p_user_id: user.id,
       p_source: "lesson_quiz",
-      p_source_id: attempt.id,
+      p_source_id: attempt!.id,
       p_amount: xpAmount,
       p_description: `Тест по уроку: ${score}/${total}${perfect ? " (perfect)" : ""}`,
       p_metadata: { quiz_id: quizId, lesson_id: quiz.lesson_id },

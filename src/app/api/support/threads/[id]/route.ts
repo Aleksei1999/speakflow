@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -70,7 +69,7 @@ export async function GET(
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
     if (!thread) {
-      return NextResponse.json({ error: "Тикет не найден" }, { status: 404 })
+      return NextResponse.json({ error: "Обращение не найден" }, { status: 404 })
     }
 
     const { data: messages, error: msgErr } = await supabase
@@ -135,7 +134,7 @@ export async function PATCH(
     const role = await getCallerRole(supabase, user.id)
     if (role !== "admin") {
       return NextResponse.json(
-        { error: "Только админ может менять статус тикета" },
+        { error: "Только админ может менять статус обращения" },
         { status: 403 }
       )
     }
@@ -164,16 +163,18 @@ export async function PATCH(
 
     const adminClient = createAdminClient()
 
+    // FIXME(types): 'support_threads' table missing in Database type
+    type ThreadStatusPriority = { status: string; priority: string }
     // Снимаем «до» — нужно для audit-payload from→to. Best-effort:
-    // если не получили (например, тикета уже нет) — UPDATE ниже всё равно
+    // если не получили (например, обращения уже нет) — UPDATE ниже всё равно
     // вернёт null и эндпоинт ответит 404 как раньше.
-    const { data: previous } = await adminClient
+    const { data: previous } = (await (adminClient as any)
       .from("support_threads")
       .select("status, priority")
       .eq("id", id)
-      .maybeSingle()
+      .maybeSingle()) as { data: ThreadStatusPriority | null }
 
-    const { data, error } = await adminClient
+    const { data, error } = await (adminClient as any)
       .from("support_threads")
       .update(update)
       .eq("id", id)
@@ -187,7 +188,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
     if (!data) {
-      return NextResponse.json({ error: "Тикет не найден" }, { status: 404 })
+      return NextResponse.json({ error: "Обращение не найден" }, { status: 404 })
     }
 
     // Audit: смена статуса/приоритета админом. Логируем только если что-то

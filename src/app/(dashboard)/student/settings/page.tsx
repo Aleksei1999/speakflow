@@ -769,7 +769,7 @@ function NotificationsSection({
     ["daily_challenge", "Daily Challenge", "Ежедневное напоминание выполнить задание"],
     ["streak_warning", "Streak на грани", "Предупреждение если стрик может прерваться"],
     ["new_clubs", "Новые Speaking Clubs", "Когда появляются новые клубы на интересные темы"],
-    ["achievements", "Достижения и XP", "Уведомления о новых ачивках и level up"],
+    ["achievements", "Достижения и XP", "Уведомления о новых достижениях и level up"],
     ["leaderboard", "Лидерборд", "Когда кто-то обгоняет тебя в рейтинге"],
     ["email_digest", "Email-рассылка", "Еженедельные итоги прогресса и рекомендации"],
     ["marketing", "Маркетинговые уведомления", "Акции, скидки и новые функции"],
@@ -861,7 +861,7 @@ function AppearanceSection({
         <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Звуки достижений</div>
-            <div className="s-field-desc">Звуковой эффект при получении XP и ачивок</div>
+            <div className="s-field-desc">Звуковой эффект при получении XP и достижений</div>
           </div>
           <Toggle on={value.sounds} onChange={(n) => onPatch({ sounds: n })} />
         </div>
@@ -1092,14 +1092,14 @@ function DangerSection({
         <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Экспорт данных</div>
-            <div className="s-field-desc">Скачать все свои данные: историю уроков, XP, ачивки</div>
+            <div className="s-field-desc">Скачать все свои данные: историю уроков, XP, достижения</div>
           </div>
           <button className="s-btn s-btn--outline" onClick={onExport}>Экспортировать</button>
         </div>
         <div className="s-field">
           <div className="s-field-left">
             <div className="s-field-label">Сбросить прогресс</div>
-            <div className="s-field-desc">Обнулить XP, стрики и ачивки. Уроки сохранятся.</div>
+            <div className="s-field-desc">Обнулить XP, стрики и достижения. Уроки сохранятся.</div>
           </div>
           <button className="s-btn s-btn--danger" onClick={onReset}>Сбросить</button>
         </div>

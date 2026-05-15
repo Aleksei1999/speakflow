@@ -144,7 +144,7 @@ const studentNav: NavItem[] = [
   { href: "/student/homework", label: "Домашка", icon: icons.edit },
   { href: "/student/clubs", label: "Speaking Clubs", icon: icons.mic },
   { href: "/student/teachers", label: "Преподаватели", icon: icons.users },
-  { href: "/student/achievements", label: "Ачивки", icon: icons.trophy },
+  { href: "/student/achievements", label: "Достижения", icon: icons.trophy },
   { href: "/student/materials", label: "Материалы", icon: icons.book },
   { href: "/student/leaderboard", label: "Лидерборд", icon: icons.leaderboard },
   { href: "/student/referrals", label: "Рефералы", icon: icons.referrals },
@@ -415,12 +415,12 @@ export function DashboardShell({ fullName, avatarUrl, role, gamification, teache
   // Пропущено, потому что требует:
   //   1. `ALTER PUBLICATION supabase_realtime ADD TABLE
   //      public.support_threads;` (миграция + RLS-аудит — мы
-  //      палим админам метаданные всех тикетов)
+  //      палим админам метаданные всех обращений)
   //   2. Аккуратной агрегации (счётчик считается RPC'шкой, не
   //      одной колонкой), а на клиенте надо либо invalidate'ить
   //      query, либо инкрементить optimistic.
   // refetchOnWindowFocus + custom-event invalidation покрывают
-  // 95% UX-кейсов — оставляем real-time на отдельный тикет.
+  // 95% UX-кейсов — оставляем real-time на отдельный обращение.
 
   const baseNav =
     currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav

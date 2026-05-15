@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -32,18 +31,25 @@ export async function POST(
       )
     }
 
-    const { data: existing } = await supabase
+    // FIXME(types): 'user_friends' table missing in Database type
+    type FriendshipRow = {
+      user_id: string
+      friend_id: string
+      status: 'pending' | 'accepted' | 'blocked'
+    }
+    const { data: existing } = (await (supabase as any)
       .from('user_friends')
       .select('user_id, friend_id, status')
       .or(
         `and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`
       )
-      .maybeSingle()
+      .maybeSingle()) as { data: FriendshipRow | null }
 
     // Normalize: after block, the row should have user_id=me, friend_id=them, status=blocked.
     if (existing) {
       if (existing.user_id === user.id) {
-        const { error: updateError } = await supabase
+        // FIXME(types): 'user_friends' table missing in Database type
+        const { error: updateError } = await (supabase as any)
           .from('user_friends')
           .update({ status: 'blocked', responded_at: new Date().toISOString() })
           .eq('user_id', user.id)
@@ -64,7 +70,8 @@ export async function POST(
           console.error('Ошибка очистки входящей заявки:', delError)
           return NextResponse.json({ error: 'Не удалось заблокировать' }, { status: 500 })
         }
-        const { error: insError } = await supabase
+        // FIXME(types): 'user_friends' table missing in Database type
+        const { error: insError } = await (supabase as any)
           .from('user_friends')
           .insert({
             user_id: user.id,
@@ -78,7 +85,8 @@ export async function POST(
         }
       }
     } else {
-      const { error: insertError } = await supabase.from('user_friends').insert({
+      // FIXME(types): 'user_friends' table missing in Database type
+      const { error: insertError } = await (supabase as any).from('user_friends').insert({
         user_id: user.id,
         friend_id: userId,
         status: 'blocked',
