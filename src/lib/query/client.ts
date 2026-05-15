@@ -9,8 +9,13 @@
 // gcTime = 5 min — таб может оставаться неактивным, а данные
 // должны выживать переключения между вкладками dashboard.
 //
-// refetchOnWindowFocus + refetchOnReconnect — стандартная
-// «freshness on resume» политика TanStack.
+// refetchOnWindowFocus: false — иначе при каждом возврате на вкладку
+// (alt-tab из email/мессенджера) идёт background fetch, который
+// раздражает пользователя «миганием» данных. Свежесть гарантируется
+// staleTime и явными invalidateQueries после мутаций.
+//
+// refetchOnReconnect остаётся — после потери и восстановления
+// интернета данные могли реально устареть.
 //
 // Singleton pattern: на сервере (SSR) каждый запрос получает
 // свежий QueryClient — иначе пользователи делят кэш. На клиенте
@@ -24,8 +29,9 @@ function makeQueryClient() {
       queries: {
         staleTime: 30 * 1000,
         gcTime: 5 * 60 * 1000,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: false,
         refetchOnReconnect: true,
+        refetchOnMount: false,
         retry: 1,
       },
     },
