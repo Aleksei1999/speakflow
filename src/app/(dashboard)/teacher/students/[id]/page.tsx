@@ -161,14 +161,20 @@ function hwStatusLabel(status: string): string {
   return HW_STATUS_LABELS[status] || status
 }
 
+// Важно: timeZone обязателен. Без него Node (UTC) и браузер (Moscow)
+// рендерят разные дни для near-midnight created_at — React ловит как
+// hydration mismatch (#418).
+const REGISTERED_DATE_FMT = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+})
+
 function formatRegisteredDate(iso: string | null): string {
   if (!iso) return "—"
   try {
-    return new Date(iso).toLocaleDateString("ru-RU", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })
+    return REGISTERED_DATE_FMT.format(new Date(iso))
   } catch {
     return "—"
   }
