@@ -15,9 +15,17 @@ import {
   endOfWeek,
 } from "date-fns"
 import { ru } from "date-fns/locale"
+import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/client"
-import { LessonBookingModal } from "@/components/booking/lesson-booking-modal"
 import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
+
+// LessonBookingModal — большой компонент (~800 строк + supabase realtime канал).
+// Открывается по клику на «Забронировать» / по тапу в weekly grid — на первый
+// paint /student/schedule не нужен. ssr:false: модалка чисто клиентская.
+const LessonBookingModal = dynamic(
+  () => import("@/components/booking/lesson-booking-modal").then((m) => m.LessonBookingModal),
+  { ssr: false, loading: () => null },
+)
 import { computeLessonAccess } from "@/lib/lesson-access"
 
 type LessonRow = {
@@ -516,19 +524,21 @@ export default function StudentSchedulePage() {
         })
       )}
 
-      <LessonBookingModal
-        open={bookingOpen}
-        onOpenChange={setBookingOpen}
-        initialDate={bookingPreset?.date}
-        initialTime={bookingPreset?.time}
-        onBooked={(scheduledAt) => {
+      {bookingOpen ? (
+        <LessonBookingModal
+          open={bookingOpen}
+          onOpenChange={setBookingOpen}
+          initialDate={bookingPreset?.date}
+          initialTime={bookingPreset?.time}
+          onBooked={(scheduledAt) => {
           // Прыгаем на неделю урока, чтобы свежая бронь сразу была видна.
           const dt = new Date(scheduledAt)
           const newWeekStart = startOfWeek(dt, { weekStartsOn: 1 })
           setWeekCursor(newWeekStart)
           // useEffect на weekStart вызовет fetchLessons автоматически.
         }}
-      />
+        />
+      ) : null}
     </div>
   )
 }

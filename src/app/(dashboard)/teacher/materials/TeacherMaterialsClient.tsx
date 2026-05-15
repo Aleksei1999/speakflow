@@ -5,7 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { format, formatDistanceToNow } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
-import ShareMaterialModal from "./ShareMaterialModal"
+import dynamic from "next/dynamic"
+
+// ShareMaterialModal (~650 строк) открывается по клику «Поделиться» —
+// для первого рендера /teacher/materials не нужен.
+const ShareMaterialModal = dynamic(() => import("./ShareMaterialModal"), {
+  ssr: false,
+  loading: () => null,
+})
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const MATERIALS_BUCKET = "teacher-materials"

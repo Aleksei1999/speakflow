@@ -1,7 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { LessonBookingModal } from "@/components/booking/lesson-booking-modal"
+import dynamic from "next/dynamic"
+
+// LessonBookingModal — ~800 строк + supabase realtime канал. На dashboard
+// открывается только по клику на CTA — ленивая загрузка экономит initial JS.
+const LessonBookingModal = dynamic(
+  () => import("@/components/booking/lesson-booking-modal").then((m) => m.LessonBookingModal),
+  { ssr: false, loading: () => null },
+)
 
 type Props = {
   className?: string
@@ -15,7 +22,7 @@ export function BookingLauncher({ className, children }: Props) {
       <button type="button" className={className} onClick={() => setOpen(true)}>
         {children}
       </button>
-      <LessonBookingModal open={open} onOpenChange={setOpen} />
+      {open ? <LessonBookingModal open={open} onOpenChange={setOpen} /> : null}
     </>
   )
 }

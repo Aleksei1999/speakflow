@@ -5,7 +5,14 @@ import { Suspense, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import StudentDetailDrawer from "./StudentDetailDrawer"
+import dynamic from "next/dynamic"
+
+// StudentDetailDrawer (~350 строк) открывается по клику на строку таблицы —
+// для initial paint /admin/students не нужен.
+const StudentDetailDrawer = dynamic(() => import("./StudentDetailDrawer"), {
+  ssr: false,
+  loading: () => null,
+})
 
 const CSS = `
 .adm-students{max-width:1400px;margin:0 auto}
