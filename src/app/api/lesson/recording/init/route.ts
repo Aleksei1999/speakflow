@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing lessonId" }, { status: 400 })
   }
 
-  const gate = await requireLessonTeacherOrAdmin(parsed.data.lessonId)
+  // WRITE: запрещаем старт записи на отменённом / завершённом уроке.
+  const gate = await requireLessonTeacherOrAdmin(parsed.data.lessonId, { requireActive: true })
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   // Rate-limit: 20 init/min на пользователя. fail-closed — recording —

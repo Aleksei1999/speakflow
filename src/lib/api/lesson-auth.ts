@@ -45,12 +45,32 @@ export type LessonGateOk = {
 }
 export type LessonGateFail = {
   ok: false
-  status: 400 | 401 | 403 | 404 | 500
+  status: 400 | 401 | 403 | 404 | 409 | 500
   error: string
 }
 
+/**
+ * Статусы, при которых WRITE-операции по уроку запрещены.
+ * Чтение истории остаётся доступным (для просмотра завершённых уроков).
+ */
+const INACTIVE_LESSON_STATUSES = new Set(["cancelled", "no_show", "completed"])
+
+export type LessonGateOptions = {
+  /**
+   * Если true — гейт возвращает 409 для урока в статусе
+   * cancelled | no_show | completed. По умолчанию false
+   * (исторический доступ нужен GET-эндпоинтам).
+   *
+   * Используй в WRITE-эндпоинтах: chat, notes, materials,
+   * homework, upload, recording.* — чтобы участники
+   * отменённого/завершённого урока не могли продолжать в него писать.
+   */
+  requireActive?: boolean
+}
+
 export async function requireLessonParticipant(
-  lessonId: string | null | undefined
+  lessonId: string | null | undefined,
+  options: LessonGateOptions = {}
 ): Promise<LessonGateOk | LessonGateFail> {
   if (!lessonId || typeof lessonId !== "string") {
     return { ok: false, status: 400, error: "Missing lessonId" }
@@ -128,6 +148,20 @@ export async function requireLessonParticipant(
     return { ok: false, status: 403, error: "Нет доступа к этому уроку" }
   }
 
+  // 5. Активность урока — опционально. Админу тоже не даём, чтобы
+  // случайно не подложить домашку/материал в архивный урок: пусть
+  // открывает запись урока, а не пишет в неё.
+  if (options.requireActive) {
+    const status = (lesson.status ?? "").toLowerCase()
+    if (INACTIVE_LESSON_STATUSES.has(status)) {
+      return {
+        ok: false,
+        status: 409,
+        error: "Урок недоступен для изменений (отменён или завершён)",
+      }
+    }
+  }
+
   return {
     ok: true,
     user: { id: user.id, email: user.email ?? null },
@@ -144,9 +178,10 @@ export async function requireLessonParticipant(
  * (студенты не имеют права POST'ить материалы / homework).
  */
 export async function requireLessonTeacherOrAdmin(
-  lessonId: string | null | undefined
+  lessonId: string | null | undefined,
+  options: LessonGateOptions = {}
 ): Promise<LessonGateOk | LessonGateFail> {
-  const gate = await requireLessonParticipant(lessonId)
+  const gate = await requireLessonParticipant(lessonId, options)
   if (!gate.ok) return gate
   if (gate.role !== "teacher" && gate.role !== "admin") {
     return { ok: false, status: 403, error: "Только преподаватель урока или админ" }

@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const { lessonId, title, description, dueDate } = body ?? {}
 
-    const gate = await requireLessonTeacherOrAdmin(lessonId)
+    // WRITE: запрещаем создавать домашку после отмены / завершения урока.
+    const gate = await requireLessonTeacherOrAdmin(lessonId, { requireActive: true })
     if (!gate.ok) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }

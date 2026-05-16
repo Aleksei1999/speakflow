@@ -5,6 +5,7 @@ import { LessonRoomClient } from '@/components/lesson/lesson-room-client'
 import { LessonGate } from '@/components/lesson/lesson-gate'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
+import { getJitsiRoomName } from '@/lib/jitsi/room'
 import { computeLessonAccess } from '@/lib/lesson-access'
 
 export default async function StudentLessonPage({
@@ -91,7 +92,10 @@ export default async function StudentLessonPage({
   const lessonNumber = (completedRes.count ?? 0) + 1
   const studentLevel = progressRes.data?.english_level ?? '—'
 
-  const roomName = lesson.jitsi_room_name ?? `raw-english-${lessonId.slice(0, 8)}`
+  // ВАЖНО: имя комнаты должно совпадать с тем, на которое /api/jitsi/token
+  // выпускает JWT. Используем единый helper (см. lib/jitsi/room.ts).
+  // Старый "красивый" префикс `raw-english-${slice(0,8)}` ломал prosody.
+  const roomName = getJitsiRoomName(lesson)
   let jitsiToken = ''
   try {
     jitsiToken = await generateJitsiToken(roomName, {

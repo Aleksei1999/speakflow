@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
       fileSize,
     } = body ?? {}
 
-    const gate = await requireLessonTeacherOrAdmin(lessonId)
+    // WRITE: запрещаем добавлять материалы после отмены / завершения урока.
+    const gate = await requireLessonTeacherOrAdmin(lessonId, { requireActive: true })
     if (!gate.ok) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }

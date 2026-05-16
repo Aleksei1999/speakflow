@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
   const { lessonId, recordingId } = parsed.data
 
   // Только teacher/admin: студент не может закрыть чужую запись.
-  const gate = await requireLessonTeacherOrAdmin(lessonId)
+  // WRITE: finalize запрещён для отменённого / завершённого урока.
+  const gate = await requireLessonTeacherOrAdmin(lessonId, { requireActive: true })
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   // Rate-limit: 10 finalize/min на пользователя. fail-closed —

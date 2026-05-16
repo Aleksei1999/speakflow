@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
     const lessonId: string | undefined = body?.lessonId
     const rawContent: unknown = body?.content
 
-    const gate = await requireLessonParticipant(lessonId)
+    // WRITE: запрещаем создание заметки после отмены / завершения урока.
+    const gate = await requireLessonParticipant(lessonId, { requireActive: true })
     if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
     if (typeof rawContent !== 'string') {
@@ -67,7 +68,8 @@ export async function PUT(request: NextRequest) {
     const lessonId: string | undefined = body?.lessonId
     const rawContent: unknown = body?.content
 
-    const gate = await requireLessonParticipant(lessonId)
+    // WRITE: запрещаем upsert заметки после отмены / завершения урока.
+    const gate = await requireLessonParticipant(lessonId, { requireActive: true })
     if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
     if (typeof rawContent !== 'string') {

@@ -80,6 +80,9 @@ export async function generateJitsiToken(
     .setSubject(JITSI_CONFIG.domain)
     .setAudience('jitsi')
     .setIssuedAt()
+    // nbf = "not before" — защита от clock-skew replay. Prosody-jwt опционально
+    // верифицирует claim; отсутствие безопасно, наличие не ломает рантайм.
+    .setNotBefore(Math.floor(Date.now() / 1000))
     .setExpirationTime(exp)
     .sign(secret)
 
