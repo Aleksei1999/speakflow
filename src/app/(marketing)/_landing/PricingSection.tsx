@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import {
   TOPUP_TIERS,
   FREE_FEATURES,
@@ -77,50 +78,47 @@ const PRICING_CSS = `
 `
 
 export default function PricingSection() {
+  const t = useTranslations("landing.pricing")
   return (
     <section
       className="pricing-section"
       id="pricing"
       data-level="7"
       data-xp="10"
-      data-lu="Цены прозрачно"
+      data-lu={t("tag")}
     >
       <style dangerouslySetInnerHTML={{ __html: PRICING_CSS }} />
 
       <div className="pricing-head">
-        <div className="section-tag">Прозрачно</div>
+        <div className="section-tag">{t("tag")}</div>
         <h2 className="section-title">
-          Никакой <span className="gluten">подписки на воздух.</span>
+          {t("titlePart1")} <span className="gluten">{t("titlePart2")}</span>
         </h2>
-        <p className="section-desc">
-          Платишь за уроки — с баланса. Геймификацию, клубы и призы получаешь по подписке Raw Pro. Всё прозрачно, без скрытых списаний.
-        </p>
+        <p className="section-desc">{t("desc")}</p>
       </div>
 
       {/* Top-up tiers */}
-      <h3 className="pricing-sub-h">Пополнение баланса для уроков</h3>
-      <p className="pricing-sub-d">
-        Один урок 1-on-1 — 50 минут с преподавателем. Чем больше пополняешь — тем дешевле каждый урок.
-      </p>
+      <h3 className="pricing-sub-h">{t("topupTitle")}</h3>
+      <p className="pricing-sub-d">{t("topupDesc")}</p>
 
       <div className="pr-grid">
-        {TOPUP_TIERS.map((t) => {
+        {TOPUP_TIERS.map((tier) => {
           const cls =
-            t.badge === "popular"
+            tier.badge === "popular"
               ? "pr-card pr-card--popular"
-              : t.badge === "best"
+              : tier.badge === "best"
               ? "pr-card pr-card--best"
               : "pr-card"
           return (
-            <div key={t.amount} className={cls}>
+            <div key={tier.amount} className={cls}>
               <div className="pr-body">
-                <div className="pr-amount">{formatRub(t.amount)} ₽</div>
+                <div className="pr-amount">{formatRub(tier.amount)} ₽</div>
                 <div className="pr-lessons">
-                  ≈ <b>{t.lessons}</b> {plural(t.lessons, ["урок", "урока", "уроков"])}
+                  ≈ <b>{tier.lessons}</b> {plural(tier.lessons, ["урок", "урока", "уроков"])}
                 </div>
-                {t.bonus && <div className="pr-bonus">{t.bonus}</div>}
-                {t.save && <div className="pr-save">{t.save}</div>}
-                <div className="pr-perprice">{formatRub(t.perPrice)} ₽ / урок</div>
+                {tier.bonus && <div className="pr-bonus">{tier.bonus}</div>}
+                {tier.save && <div className="pr-save">{tier.save}</div>}
+                <div className="pr-perprice">{t("perLesson", { price: formatRub(tier.perPrice) })}</div>
               </div>
             </div>
           )
@@ -128,18 +126,16 @@ export default function PricingSection() {
       </div>
 
       {/* Subscription */}
-      <h3 className="pricing-sub-h">Подписка на платформу</h3>
-      <p className="pricing-sub-d">
-        Подписка открывает Speaking Clubs, геймификацию, достижения, лидерборд и AI-план. Уроки оплачиваются отдельно — с баланса.
-      </p>
+      <h3 className="pricing-sub-h">{t("subscriptionTitle")}</h3>
+      <p className="pricing-sub-d">{t("subscriptionDesc")}</p>
 
       <div className="sub-grid">
         <div className="sub-card">
           <div className="sub-head">
-            <div className="sub-name">Без подписки</div>
+            <div className="sub-name">{t("freeName")}</div>
             <div>
-              <div className="sub-price-val sub-price-val--free">0 ₽</div>
-              <div className="sub-price-per">бесплатно</div>
+              <div className="sub-price-val sub-price-val--free">{t("freePrice")}</div>
+              <div className="sub-price-per">{t("freePriceCaption")}</div>
             </div>
           </div>
           <div className="sub-features">
@@ -153,30 +149,30 @@ export default function PricingSection() {
             ))}
           </div>
           <a className="sub-cta sub-cta--ghost" href="/register">
-            Зарегистрироваться бесплатно
+            {t("freeCta")}
           </a>
         </div>
 
         <div className="sub-card sub-card--pro">
           <div className="sub-head">
             <div className="sub-name">
-              <span className="gluten">Raw</span> Pro
+              <span className="gluten">{t("proBrand")}</span> {t("proName")}
             </div>
             <div>
               <div className="sub-price-val">{formatRub(PRO_PRICE_RUB)} ₽</div>
-              <div className="sub-price-per">/ месяц</div>
+              <div className="sub-price-per">{t("proPriceCaption")}</div>
             </div>
           </div>
           <div className="sub-features">
-            {PRO_FEATURES_YES.map((t, i) => (
+            {PRO_FEATURES_YES.map((text, i) => (
               <div key={i} className="sf">
                 <div className="sf-icon sf-icon--yes">✓</div>
-                <div className="sf-text">{renderBold(t)}</div>
+                <div className="sf-text">{renderBold(text)}</div>
               </div>
             ))}
           </div>
           <a className="sub-cta sub-cta--red" href="/register">
-            Подключить Pro — {formatRub(PRO_PRICE_RUB)} ₽/мес
+            {t("proCta", { price: formatRub(PRO_PRICE_RUB) })}
           </a>
         </div>
       </div>
@@ -184,7 +180,10 @@ export default function PricingSection() {
       <div className="pricing-foot">
         <div className="pricing-foot-icon">💡</div>
         <div className="pricing-foot-text">
-          <b>Без подписки</b> ты можешь только записываться на уроки 1-on-1. Speaking Clubs, геймификация, достижения, лидерборд, AI-план и коммьюнити доступны только с <b>Raw Pro</b>. Подписка не включает стоимость уроков.
+          <b>{t("footerStrong1")}</b>
+          {t("footerMid")}
+          <b>{t("footerStrong2")}</b>
+          {t("footerEnd")}
         </div>
       </div>
     </section>

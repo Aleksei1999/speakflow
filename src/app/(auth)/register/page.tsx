@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { createClient } from '@/lib/supabase/client'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
@@ -94,6 +95,8 @@ export default function RegisterPage() {
 function RegisterPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations('auth.register')
+  const locale = useLocale() as 'ru' | 'en'
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null)
   const [goals, setGoals] = useState<QuizGoals | null>(null)
   const [showPwd, setShowPwd] = useState(false)
@@ -196,7 +199,7 @@ function RegisterPageInner() {
     if (!phone.trim()) e.phone = true
     setErrors(e)
     if (!consent) {
-      showToast('Нужно согласие с условиями')
+      showToast(t('errorAgree'))
       return false
     }
     return Object.keys(e).length === 0
@@ -241,11 +244,11 @@ function RegisterPageInner() {
     if (error) {
       setPending(false)
       if (error.message.includes('already registered')) {
-        setServerError('Пользователь с таким email уже зарегистрирован')
+        setServerError(t('errorEmailUsed'))
       } else if (error.message.includes('rate limit')) {
-        setServerError('Слишком много попыток. Подождите несколько минут.')
+        setServerError(locale === 'en' ? 'Too many attempts. Wait a few minutes.' : 'Слишком много попыток. Подождите несколько минут.')
       } else {
-        setServerError('Не удалось создать аккаунт: ' + error.message)
+        setServerError(t('errorGeneric'))
       }
       return
     }
@@ -490,11 +493,11 @@ function RegisterPageInner() {
             {serverError && <div className="server-error">{serverError}</div>}
 
             <div className="field">
-              <label htmlFor="r-name">Имя</label>
+              <label htmlFor="r-name">{t('firstName')}</label>
               <input
                 id="r-name"
                 type="text"
-                placeholder="Мария"
+                placeholder={locale === 'en' ? 'Maria' : 'Мария'}
                 autoComplete="given-name"
                 className={errors.name ? 'err' : ''}
                 value={name}
@@ -503,7 +506,7 @@ function RegisterPageInner() {
             </div>
 
             <div className="field">
-              <label htmlFor="r-email">Email</label>
+              <label htmlFor="r-email">{t('email')}</label>
               <input
                 id="r-email"
                 type="email"
@@ -516,12 +519,14 @@ function RegisterPageInner() {
             </div>
 
             <div className="field">
-              <label htmlFor="r-password">Пароль</label>
+              <label htmlFor="r-password">{t('password')}</label>
               <div className="pwd-wrap">
                 <input
                   id="r-password"
                   type={showPwd ? 'text' : 'password'}
-                  placeholder={`Минимум ${PASSWORD_MIN} символов, буквы + цифра`}
+                  placeholder={locale === 'en'
+                    ? `At least ${PASSWORD_MIN} chars, letters + digit`
+                    : `Минимум ${PASSWORD_MIN} символов, буквы + цифра`}
                   autoComplete="new-password"
                   aria-invalid={!!errors.password}
                   aria-describedby={passwordError ? 'r-password-error' : undefined}
@@ -536,7 +541,7 @@ function RegisterPageInner() {
                   type="button"
                   className="pwd-toggle"
                   onClick={() => setShowPwd((v) => !v)}
-                  aria-label={showPwd ? 'Скрыть пароль' : 'Показать пароль'}
+                  aria-label={showPwd ? (locale === 'en' ? 'Hide password' : 'Скрыть пароль') : (locale === 'en' ? 'Show password' : 'Показать пароль')}
                 >
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
                     <path d="M1 9 Q9 3, 17 9 Q9 15, 1 9 Z" stroke="currentColor" strokeWidth="1.5" />
