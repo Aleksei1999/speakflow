@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from '@/i18n/config'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -48,15 +49,19 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
 
   // Резолвим роль один раз — нужна и для redirect, и для отдельной
-  // admin_signin записи в audit log.
+  // admin_signin записи в audit log. Заодно подтягиваем language —
+  // чтобы выставить rwen_locale cookie сразу после логина (next-intl
+  // подхватит UI-локаль уже на дашборде).
   let resolvedRole: string | null = null
+  let resolvedLanguage: string | null = null
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, language')
       .eq('id', user.id)
-      .single<{ role: string }>()
+      .single<{ role: string; language: string | null }>()
     resolvedRole = profile?.role ?? null
+    resolvedLanguage = profile?.language ?? null
   }
 
   if (!redirectPath) {
@@ -123,5 +128,19 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${redirectPath}`)
+  const res = NextResponse.redirect(`${origin}${redirectPath}`)
+
+  // Persist UI locale in a cookie so SSR/next-intl can pick it up on
+  // every subsequent request without hitting profiles each time.
+  if (resolvedLanguage && isLocale(resolvedLanguage)) {
+    res.cookies.set(LOCALE_COOKIE, resolvedLanguage, {
+      path: '/',
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+    })
+  }
+
+  return res
 }

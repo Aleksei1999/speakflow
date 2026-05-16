@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Gluten } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { Preloader } from "@/components/layout/preloader";
 import "./globals.css";
 
@@ -34,14 +36,24 @@ export const metadata: Metadata = {
 // turning the page into force-dynamic — keeping ISR intact.
 const authBootstrapScript = `(function(){try{var m=document.cookie.match(/(?:^|; )rwen_authed=([^;]+)/);var r=m?decodeURIComponent(m[1]):'';var html=document.documentElement;if(r){html.setAttribute('data-authed','1');html.setAttribute('data-role',r);}else{html.removeAttribute('data-authed');html.removeAttribute('data-role');}}catch(e){}})();`
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Single-locale runtime: next-intl resolves the locale per-request from
+  // the rwen_locale cookie via src/i18n/request.ts. We just need the
+  // resolved value here to set <html lang> and pass messages to the
+  // client provider once.
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const skipLabel =
+    (messages as any)?.common?.skipToContent ??
+    (locale === "en" ? "Skip to main content" : "Перейти к основному содержимому");
+
   return (
     <html
-      lang="ru"
+      lang={locale}
       className={`${inter.variable} ${gluten.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -49,20 +61,22 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: authBootstrapScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-        {/* WCAG 2.4.1 Bypass Blocks: skip-link для клавиатуры/SR.
-            Виден только когда сфокусирован (через :focus в globals.css). */}
-        <a href="#main" className="skip-link">Перейти к основному содержимому</a>
-        <Preloader />
-        <main id="main" className="flex-1 flex flex-col">
-          {children}
-        </main>
-        {/* Vercel Speed Insights — Core Web Vitals (LCP/INP/CLS/FCP/TTFB).
-            Дашборд: vercel.com/<team>/<project>/speed-insights. Sample
-            rate 100% по дефолту, минимальный overhead (~3 KB gzipped). */}
-        <SpeedInsights />
-        {/* Vercel Web Analytics — page views, custom events. Без cookies,
-            GDPR-safe. Dashboard: vercel.com/<team>/<project>/analytics. */}
-        <Analytics />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {/* WCAG 2.4.1 Bypass Blocks: skip-link для клавиатуры/SR.
+              Виден только когда сфокусирован (через :focus в globals.css). */}
+          <a href="#main" className="skip-link">{skipLabel}</a>
+          <Preloader />
+          <main id="main" className="flex-1 flex flex-col">
+            {children}
+          </main>
+          {/* Vercel Speed Insights — Core Web Vitals (LCP/INP/CLS/FCP/TTFB).
+              Дашборд: vercel.com/<team>/<project>/speed-insights. Sample
+              rate 100% по дефолту, минимальный overhead (~3 KB gzipped). */}
+          <SpeedInsights />
+          {/* Vercel Web Analytics — page views, custom events. Без cookies,
+              GDPR-safe. Dashboard: vercel.com/<team>/<project>/analytics. */}
+          <Analytics />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// next-intl plugin — points to the request config file. The site is
+// single-locale at runtime (no /en/... prefix), but next-intl is still
+// used as a messages / formatting provider. See src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -102,7 +108,7 @@ const nextConfig: NextConfig = {
 // /monitoring → ingest sentry (обходит ad-blockers). Активируется
 // только если SENTRY_AUTH_TOKEN задан — иначе билд проходит без
 // загрузки maps.
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNextIntl(nextConfig), {
   org: process.env.SENTRY_ORG ?? "raw-english",
   project: process.env.SENTRY_PROJECT ?? "raw-english-web",
   silent: !process.env.CI,
