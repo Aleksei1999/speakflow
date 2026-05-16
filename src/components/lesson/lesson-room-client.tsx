@@ -294,7 +294,7 @@ export function LessonRoomClient({
           disableSelfView:false,
           // Расшаренный экран занимает всю доступную высоту вместо контейнера
           // с большими чёрными полями сверху/снизу.
-          videoLayoutFit:"nocrop",
+          // disableLargeVideoCrop: false — Jitsi default fit, без override.
           disableLargeVideoCrop:false,
         },
         interfaceConfigOverwrite:{
@@ -311,7 +311,6 @@ export function LessonRoomClient({
           DISABLE_DOMINANT_SPEAKER_INDICATOR:true,
           DISABLE_VIDEO_BACKGROUND:true,
           RECENT_LIST_ENABLED:false,
-          VIDEO_LAYOUT_FIT:"nocrop",
         },
         // userInfo НЕ передаём: JWT context.user.name — единственный источник имени.
         // Иначе клиент мог бы подменить displayName через iframe options в обход JWT.
