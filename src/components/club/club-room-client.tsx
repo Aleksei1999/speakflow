@@ -76,6 +76,7 @@ const CSS = `
 .cr .vm .jitsi-mount{position:absolute;inset:0}
 .cr .vm .jitsi-mount > div{width:100%;height:100%}
 .cr .vm .jitsi-mount iframe{width:100%;height:100%;border:0;display:block}
+.cr .vm.no-jitsi-clicks::after{content:"";position:absolute;inset:0;z-index:5;background:transparent}
 .cr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .cr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
@@ -227,7 +228,7 @@ export function ClubRoomClient({
           hideDisplayName: true,
           // Make shared screens use the available height instead of sitting in
           // a small contained box with large black margins.
-          videoLayoutFit: "height",
+          videoLayoutFit: "width",
           disableLargeVideoCrop: false,
         },
         interfaceConfigOverwrite: {
@@ -245,7 +246,7 @@ export function ClubRoomClient({
           RECENT_LIST_ENABLED: false,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
-          VIDEO_LAYOUT_FIT: "height",
+          VIDEO_LAYOUT_FIT: "width",
           DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
@@ -474,7 +475,7 @@ export function ClubRoomClient({
           <div className={`lb ${sidebarOn ? "" : "no-sidebar"}`}>
             <div className="stage">
               <div className="va">
-                <div className="vm">
+                <div className={`vm ${!isModerator ? "no-jitsi-clicks" : ""}`}>
                   <div className="jitsi-mount" ref={jitsiRef} />
                   <div className="live-badge">
                     <span className="blink" />

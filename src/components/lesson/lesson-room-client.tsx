@@ -66,6 +66,7 @@ const CSS = `
 .lr .vm .jitsi-mount{position:absolute;inset:0}
 .lr .vm .jitsi-mount > div{width:100%;height:100%}
 .lr .vm .jitsi-mount iframe{width:100%;height:100%;border:0;display:block}
+.lr .vm.no-jitsi-clicks::after{content:"";position:absolute;inset:0;z-index:5;background:transparent}
 .lr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
 .lr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
@@ -293,7 +294,7 @@ export function LessonRoomClient({
           disableSelfView:false,
           // Расшаренный экран занимает всю доступную высоту вместо контейнера
           // с большими чёрными полями сверху/снизу.
-          videoLayoutFit:"height",
+          videoLayoutFit:"width",
           disableLargeVideoCrop:false,
         },
         interfaceConfigOverwrite:{
@@ -310,7 +311,7 @@ export function LessonRoomClient({
           DISABLE_DOMINANT_SPEAKER_INDICATOR:true,
           DISABLE_VIDEO_BACKGROUND:true,
           RECENT_LIST_ENABLED:false,
-          VIDEO_LAYOUT_FIT:"height",
+          VIDEO_LAYOUT_FIT:"width",
         },
         // userInfo НЕ передаём: JWT context.user.name — единственный источник имени.
         // Иначе клиент мог бы подменить displayName через iframe options в обход JWT.
@@ -776,7 +777,7 @@ export function LessonRoomClient({
           <div className={`lb ${sidebarOn?"":"no-sidebar"}`}>
             <div className="stage">
             <div className="va">
-              <div className="vm">
+              <div className={`vm ${!isTeacher ? "no-jitsi-clicks" : ""}`}>
                 <div className="jitsi-mount" ref={jitsiRef} />
                 <div className="live-badge"><span className="blink"/>LIVE</div>
                 {connQuality !== "unknown" && (
