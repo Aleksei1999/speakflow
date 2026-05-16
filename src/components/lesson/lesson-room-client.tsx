@@ -290,6 +290,7 @@ export function LessonRoomClient({
           // Tile view: одинаковые тайлы для всех включая себя.
           startWithTileView:true,
           disableTileView:false,
+          disableSelfView:false,
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -299,7 +300,6 @@ export function LessonRoomClient({
           HIDE_INVITE_MORE_HEADER:true,
           DISABLE_FOCUS_INDICATOR:true,
           VERTICAL_FILMSTRIP:false,
-          TILE_VIEW_MAX_COLUMNS:2,
           TOOLBAR_BUTTONS: toolbarForRole,
           CONNECTION_INDICATOR_DISABLED:true,
           VIDEO_QUALITY_LABEL_DISABLED:true,
@@ -323,14 +323,18 @@ export function LessonRoomClient({
       setTimeout(setIframeTitle, 100)
       setTimeout(setIframeTitle, 800)
 
-      // Форсим tile view: startWithTileView иногда игнорируется,
-      // если кто-то уже в комнате.
-      const forceTile = () => {
+      // Tile view ставим один раз при join и при изменении состава.
+      // Когда активен screen-share, Jitsi сам уходит в stage view с шаром в
+      // центре — мы НЕ возвращаем обратно в tile, иначе share-стрим теряется
+      // и остаются только камеры. Также НЕ делаем pinParticipant(null) —
+      // это снимает auto-pin с share-source и тоже ломает презентацию.
+      let screenShareActive = false
+      const forceTileIfNoShare = () => {
+        if (screenShareActive) return
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
-        try { jitsiApi.current?.executeCommand("pinParticipant", null) } catch {}
       }
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
-        setTimeout(forceTile, 200)
+        setTimeout(forceTileIfNoShare, 200)
         setConnQuality("good")
       })
       jitsiApi.current?.addListener("participantConnectionStatusChanged", (e: any) => {
@@ -342,18 +346,20 @@ export function LessonRoomClient({
       jitsiApi.current?.addListener("connectionFailed", () => setConnQuality("lost"))
       jitsiApi.current?.addListener("connectionEstablished", () => setConnQuality("good"))
       jitsiApi.current?.addListener("participantJoined", () => {
-        setTimeout(forceTile, 100)
+        setTimeout(forceTileIfNoShare, 100)
       })
-      jitsiApi.current?.addListener("tileViewChanged", (e: any) => {
-        if (e && e.enabled === false) {
-          setTimeout(forceTile, 50)
+      jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
+        screenShareActive = !!e?.on
+        if (screenShareActive) {
+          // Уходим в stage view чтобы share занял основную часть экрана.
+          try { jitsiApi.current?.executeCommand("setTileView", false) } catch {}
+        } else {
+          // Share выключили — возвращаемся в tile.
+          setTimeout(forceTileIfNoShare, 100)
         }
       })
-      jitsiApi.current?.addListener("dominantSpeakerChanged", () => {
-        setTimeout(forceTile, 100)
-      })
-      // safety на случай если listeners не сработали
-      setTimeout(forceTile, 1500)
+      // safety: если listeners не сработали (бывает при reconnect)
+      setTimeout(forceTileIfNoShare, 1500)
 
       // Leave/kick/close → redirect, иначе пользователь стрянет
       // в чёрном iframe без выхода (например модератор кикнул студента).
