@@ -2,7 +2,8 @@
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { format, formatDistanceToNow } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { getTranslations, getLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import TeacherMaterialsClient from "./TeacherMaterialsClient"
 
@@ -148,36 +149,40 @@ const CSS = `
 }
 `
 
-function pluralFiles(n: number) {
+function pluralFiles(n: number, t: any, locale: string) {
+  if (locale !== "ru") {
+    return n === 1 ? t("filesOne") : t("filesMany")
+  }
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "файл"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "файла"
-  return "файлов"
+  if (mod10 === 1 && mod100 !== 11) return t("filesOne")
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return t("filesFew")
+  return t("filesMany")
 }
 
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б"
+function formatBytes(bytes: number, locale: string): string {
+  const ru = locale === "ru"
+  if (!Number.isFinite(bytes) || bytes <= 0) return ru ? "0 Б" : "0 B"
   const GB = 1024 * 1024 * 1024
   const MB = 1024 * 1024
   const KB = 1024
-  if (bytes >= GB) return `${(bytes / GB).toFixed(1)} ГБ`
-  if (bytes >= MB) return `${(bytes / MB).toFixed(1)} МБ`
-  if (bytes >= KB) return `${(bytes / KB).toFixed(0)} КБ`
-  return `${bytes} Б`
+  if (bytes >= GB) return `${(bytes / GB).toFixed(1)} ${ru ? "ГБ" : "GB"}`
+  if (bytes >= MB) return `${(bytes / MB).toFixed(1)} ${ru ? "МБ" : "MB"}`
+  if (bytes >= KB) return `${(bytes / KB).toFixed(0)} ${ru ? "КБ" : "KB"}`
+  return `${bytes} ${ru ? "Б" : "B"}`
 }
 
-function formatLastAdded(iso: string | null): string {
-  if (!iso) return "данных пока нет"
+function formatLastAdded(iso: string | null, t: any, dateLocale: any): string {
+  if (!iso) return t("noDataYet")
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return "данных пока нет"
+  if (Number.isNaN(d.getTime())) return t("noDataYet")
   const diffDays = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
-  if (diffDays <= 0) return "сегодня"
-  if (diffDays === 1) return "вчера"
+  if (diffDays <= 0) return t("today")
+  if (diffDays === 1) return t("yesterday")
   if (diffDays < 30) {
-    return formatDistanceToNow(d, { addSuffix: true, locale: ru })
+    return formatDistanceToNow(d, { addSuffix: true, locale: dateLocale })
   }
-  return format(d, "LLLL yyyy", { locale: ru })
+  return format(d, "LLLL yyyy", { locale: dateLocale })
 }
 
 type InitialSnapshot = {
@@ -233,11 +238,14 @@ export default async function TeacherMaterialsPage() {
   if (!profile || profile.role !== "teacher") redirect("/student")
 
   const snap = await loadInitialSnapshot()
+  const t = await getTranslations("dashboard.teacher.materials")
+  const locale = await getLocale()
+  const dateLocale = locale === "ru" ? ru : enUS
   const totalFiles = Number(snap.counts.all ?? 0)
   const subParts = [
-    `${totalFiles} ${pluralFiles(totalFiles)}`,
-    `${formatBytes(snap.storage.used_bytes)} из ${formatBytes(snap.storage.total_bytes)}`,
-    `последнее добавление ${formatLastAdded(snap.last_uploaded_at)}`,
+    t("subFiles", { count: totalFiles, filesWord: pluralFiles(totalFiles, t, locale) }),
+    t("subStorage", { used: formatBytes(snap.storage.used_bytes, locale), total: formatBytes(snap.storage.total_bytes, locale) }),
+    t("subLastAdded", { when: formatLastAdded(snap.last_uploaded_at, t, dateLocale) }),
   ]
 
   return (
@@ -246,7 +254,7 @@ export default async function TeacherMaterialsPage() {
       <div className="tch-mat">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">materials</span></h1>
+            <h1>{t("headingMy")} <span className="gl">{t("headingWord")}</span></h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>

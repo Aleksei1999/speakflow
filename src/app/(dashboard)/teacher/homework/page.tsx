@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
+import { getTranslations, getLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import TeacherHomeworkClient from "./TeacherHomeworkClient"
 
@@ -146,12 +147,15 @@ const CSS = `
 }
 `
 
-function pluralTask(n: number): string {
+function pluralTaskRu(n: number, t: any): string {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "задание"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "задания"
-  return "заданий"
+  if (mod10 === 1 && mod100 !== 11) return t("taskOne")
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return t("taskFew")
+  return t("taskMany")
+}
+function pluralTaskEn(n: number, t: any): string {
+  return n === 1 ? t("taskOne") : t("taskMany")
 }
 
 type InitialSnapshot = {
@@ -212,12 +216,15 @@ export default async function TeacherHomeworkPage() {
 
   const snap = await loadInitialSnapshot()
   const c = snap.counts
+  const t = await getTranslations("dashboard.teacher.homework")
+  const locale = await getLocale()
+  const pluralTask = locale === "ru" ? pluralTaskRu : pluralTaskEn
   const subParts: string[] = []
-  if (c.submitted > 0) subParts.push(`${c.submitted} ждут проверки`)
-  subParts.push(`${c.assigned} выдано`)
-  if (c.overdue > 0) subParts.push(`${c.overdue} просрочено`)
+  if (c.submitted > 0) subParts.push(t("subWaiting", { count: c.submitted }))
+  subParts.push(t("subAssigned", { count: c.assigned }))
+  if (c.overdue > 0) subParts.push(t("subOverdue", { count: c.overdue }))
   if (subParts.length === 1 && c.all === 0) {
-    subParts[0] = `пока ${c.all} ${pluralTask(c.all)}`
+    subParts[0] = t("subEmpty", { count: c.all, word: pluralTask(c.all, t) })
   }
 
   return (
@@ -226,7 +233,7 @@ export default async function TeacherHomeworkPage() {
       <div className="tch-hw">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">homework</span></h1>
+            <h1>{t("headingMy")} <span className="gl">{t("headingWord")}</span></h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>

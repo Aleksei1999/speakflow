@@ -3,6 +3,7 @@
 import "@/styles/dashboard/student-achievements.css"
 
 import { useEffect, useMemo, useState } from "react"
+import { useTranslations } from "next-intl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/achievements and /api/rewards)
@@ -99,6 +100,15 @@ function fmtNum(n: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentAchievementsPage() {
+  const t = useTranslations("dashboard.student.achievements")
+  const CATEGORY_META_LOCALIZED: Record<Category, { emoji: string; name: string; tab: string }> = {
+    streak: { emoji: "🔥", name: t("categoryStreakName"), tab: t("categoryStreakTab") },
+    speaking: { emoji: "🎙", name: "Speaking Clubs", tab: "🎙 Speaking" },
+    levels: { emoji: "📈", name: t("categoryLevelsName"), tab: t("categoryLevelsTab") },
+    xp: { emoji: "⚡", name: "XP", tab: "⚡ XP" },
+    community: { emoji: "👥", name: t("categoryCommunityName"), tab: t("categoryCommunityTab") },
+    special: { emoji: "💎", name: t("categorySpecialName"), tab: t("categorySpecialTab") },
+  }
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [rewards, setRewards] = useState<Reward[]>([])
   const [loading, setLoading] = useState(true)
@@ -293,10 +303,10 @@ export default function StudentAchievementsPage() {
       {/* Header */}
       <div className="ach-hdr">
         <h1>
-          Мои <span className="gl">achievements</span>
+          {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
         </h1>
         <div className="ach-hdr-sub">
-          Зарабатывай XP, открывай достижения, получай реальные призы
+          {t("subtitle")}
         </div>
       </div>
 
@@ -318,7 +328,7 @@ export default function StudentAchievementsPage() {
           </svg>
           <div className="xp-ring-center">
             <div className="xp-ring-pct">{stats.pct}%</div>
-            <div className="xp-ring-label">Достижений открыто</div>
+            <div className="xp-ring-label">{t("ringLabel")}</div>
             <div className="xp-ring-sub">
               {stats.earned} / {stats.total}
             </div>
@@ -332,21 +342,21 @@ export default function StudentAchievementsPage() {
           <div className="hs-val">
             {stats.earned} / {stats.total}
           </div>
-          <div className="hs-label">Достижений</div>
+          <div className="hs-label">{t("statAchievements")}</div>
         </div>
         <div className="hs">
           <div className="hs-val">+{fmtNum(stats.xpEarned)}</div>
-          <div className="hs-label">XP за достижения</div>
+          <div className="hs-label">XP</div>
         </div>
         <div className="hs hs--lime">
           <div className="hs-val">{stats.rewardsEarned}</div>
-          <div className="hs-label">Призов получено</div>
+          <div className="hs-label">{t("statPrizes")}</div>
         </div>
         <div className="hs hs--gold">
           <div className="hs-val">
             <span className="gl">{stats.next?.title ?? "—"}</span>
           </div>
-          <div className="hs-label">Следующая достижение</div>
+          <div className="hs-label">{t("statNext")}</div>
         </div>
       </div>
 
@@ -357,7 +367,7 @@ export default function StudentAchievementsPage() {
           className={`ct${activeCat === "all" ? " active" : ""}`}
           onClick={() => setActiveCat("all")}
         >
-          Все ({stats.total})
+          {t("tabAll")} ({stats.total})
         </button>
         {CATEGORY_ORDER.map((cat) => {
           const count = achievements.filter((a) => a.category === cat).length
@@ -368,7 +378,7 @@ export default function StudentAchievementsPage() {
               className={`ct${activeCat === cat ? " active" : ""}`}
               onClick={() => setActiveCat(cat)}
             >
-              {CATEGORY_META[cat].tab}
+              {CATEGORY_META_LOCALIZED[cat].tab}
               {count > 0 ? ` (${count})` : ""}
             </button>
           )
@@ -383,7 +393,7 @@ export default function StudentAchievementsPage() {
           ))}
         </div>
       ) : visibleAchievements.length === 0 ? (
-        <div className="ach-empty">Достижения скоро появятся</div>
+        <div className="ach-empty">{t("empty")}</div>
       ) : (
         CATEGORY_ORDER.map((cat) => {
           const items = grouped.get(cat) ?? []
@@ -391,7 +401,7 @@ export default function StudentAchievementsPage() {
           const earned = items.filter((i) => i.is_earned).length
           const total = items.length
           const pct = total > 0 ? Math.round((earned / total) * 100) : 0
-          const meta = CATEGORY_META[cat]
+          const meta = CATEGORY_META_LOCALIZED[cat]
           return (
             <div key={cat} className="cat">
               <div className="cat-head">
@@ -463,7 +473,7 @@ export default function StudentAchievementsPage() {
                           onClick={() => onClaimAchievement(a.slug)}
                           disabled={claiming.has(a.slug)}
                         >
-                          {claiming.has(a.slug) ? "…" : "Забрать награду"}
+                          {claiming.has(a.slug) ? t("claiming") : t("claim")}
                         </button>
                       ) : null}
                     </div>
@@ -476,8 +486,8 @@ export default function StudentAchievementsPage() {
       )}
 
       {/* ===== REWARD SHOP ===== */}
-      <div className="shop-title">🎁 Призы и подарки</div>
-      <div className="shop-sub">Реальные награды за реальный прогресс</div>
+      <div className="shop-title">🎁 {t("shopTitle")}</div>
+      <div className="shop-sub">{t("shopSub")}</div>
 
       {loading ? (
         <div className="shop-grid">
@@ -486,7 +496,7 @@ export default function StudentAchievementsPage() {
           ))}
         </div>
       ) : rewards.length === 0 ? (
-        <div className="ach-empty">Призы появятся скоро</div>
+        <div className="ach-empty">{t("shopEmpty")}</div>
       ) : (
         <div className="shop-grid">
           {rewards.map((r) => {
@@ -514,7 +524,7 @@ export default function StudentAchievementsPage() {
                     onClick={() => onClaimReward(r)}
                     disabled={claiming.has(r.slug)}
                   >
-                    {claiming.has(r.slug) ? "…" : "Забрать"}
+                    {claiming.has(r.slug) ? t("claiming") : t("claimReward")}
                   </button>
                 ) : (
                   <span className="rw-status rw-status--locked">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useTranslations } from "next-intl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/leaderboard)
@@ -196,11 +197,7 @@ const LEADERBOARD_CSS = `
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PERIOD_TABS: { key: Period; label: string }[] = [
-  { key: "monthly", label: "За месяц" },
-  { key: "weekly", label: "За неделю" },
-  { key: "all_time", label: "За всё время" },
-]
+// PERIOD_TABS labels resolved in-component via t()
 
 const PRIZES: { key: 1 | 2 | 3; tag: string; podium: string }[] = [
   { key: 1, tag: "🥇 Мерч + урок", podium: "🎧 Мерч + урок 1-on-1" },
@@ -230,6 +227,12 @@ function currentMonthName(): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentLeaderboardPage() {
+  const tt = useTranslations("dashboard.student.leaderboard")
+  const PERIOD_TABS: { key: Period; label: string }[] = [
+    { key: "monthly", label: tt("periodMonthly") },
+    { key: "weekly", label: tt("periodWeekly") },
+    { key: "all_time", label: tt("periodAllTime") },
+  ]
   const [period, setPeriod] = useState<Period>("monthly")
 
   // ---------------------------------------------------------------
@@ -279,8 +282,8 @@ export default function StudentLeaderboardPage() {
     period === "monthly"
       ? currentMonthName()
       : period === "weekly"
-        ? "Эта неделя"
-        : "За всё время"
+        ? tt("periodHeaderWeek")
+        : tt("periodHeaderAll")
 
   const podiumSlots: (Row | null)[] = [
     top3.find((r) => r.rank === 2) ?? null,
@@ -294,20 +297,20 @@ export default function StudentLeaderboardPage() {
 
       <div className="lb-hdr">
         <h1>
-          Мой <span className="gl">leaderboard</span>
+          {tt("headingMain")} <span className="gl">{tt("headingHighlight")}</span>
         </h1>
         <div className="lb-hdr-sub">
-          Соревнуйся с коммьюнити · Топ-3 каждый месяц получают призы
+          {tt("subtitle")}
         </div>
       </div>
 
       <div className="lb-month-sel">
-        <button className="lb-month-btn" disabled aria-label="Предыдущий период">
+        <button className="lb-month-btn" disabled aria-label={tt("prevPeriodAria")}>
           ←
         </button>
         <div className="lb-month-name">{monthTitle}</div>
         {period !== "all_time" && <div className="lb-month-live">LIVE</div>}
-        <button className="lb-month-btn" disabled aria-label="Следующий период">
+        <button className="lb-month-btn" disabled aria-label={tt("nextPeriodAria")}>
           →
         </button>
       </div>
@@ -315,7 +318,7 @@ export default function StudentLeaderboardPage() {
       <div className="lb-prizes">
         <div className="lb-prizes-icon">🏆</div>
         <div className="lb-prizes-text">
-          <div className="lb-prizes-title">Призы месяца</div>
+          <div className="lb-prizes-title">{tt("prizesTitle")}</div>
           <div className="lb-prizes-desc">
             Топ-3 ученика по XP получают реальные подарки. Рейтинг обновляется в
             реальном времени.
@@ -347,8 +350,8 @@ export default function StudentLeaderboardPage() {
               >
                 <div className="lb-podium-rank">{rankEmoji}</div>
                 <div className="lb-podium-avatar">—</div>
-                <div className="lb-podium-name">Пока пусто</div>
-                <div className="lb-podium-level">Будь первым</div>
+                <div className="lb-podium-name">{tt("podiumEmpty")}</div>
+                <div className="lb-podium-level">{tt("podiumBeFirst")}</div>
                 <div className="lb-podium-xp">0</div>
                 <div className="lb-podium-xp-label">XP</div>
                 <div className="lb-podium-prize">
@@ -369,7 +372,7 @@ export default function StudentLeaderboardPage() {
                 )}
               </div>
               <div className="lb-podium-name">
-                {row.full_name ?? "Без имени"}
+                {row.full_name ?? tt("noName")}
                 {row.is_me ? " (ты)" : ""}
               </div>
               <div className="lb-podium-level">{row.english_level ?? "—"}</div>
@@ -386,21 +389,21 @@ export default function StudentLeaderboardPage() {
       {/* Rankings table */}
       <div className="lb-table-card" data-pending={isPending ? "true" : "false"}>
         <div className="lb-table-head">
-          <h3>Рейтинг участников</h3>
+          <h3>{tt("tableTitle")}</h3>
           <div className="lb-table-tabs">
-            {PERIOD_TABS.map((t) => {
-              const isActive = period === t.key
+            {PERIOD_TABS.map((tab) => {
+              const isActive = period === tab.key
               return (
                 <button
-                  key={t.key}
+                  key={tab.key}
                   type="button"
                   className={`lb-tt${isActive ? " active" : ""}${
                     isActive && isPending ? " is-pending" : ""
                   }`}
-                  onClick={() => setPeriod(t.key)}
+                  onClick={() => setPeriod(tab.key)}
                   disabled={isPending}
                 >
-                  {t.label}
+                  {tab.label}
                 </button>
               )
             })}
@@ -409,15 +412,15 @@ export default function StudentLeaderboardPage() {
         <div className="lb-rank-header">
           <div>#</div>
           <div />
-          <div>Участник</div>
-          <div style={{ textAlign: "right" }}>XP</div>
-          <div style={{ textAlign: "right" }}>Клубов</div>
-          <div style={{ textAlign: "right" }}>Стрик</div>
+          <div>{tt("colMember")}</div>
+          <div style={{ textAlign: "right" }}>{tt("colXp")}</div>
+          <div style={{ textAlign: "right" }}>{tt("colClubs")}</div>
+          <div style={{ textAlign: "right" }}>{tt("colStreak")}</div>
         </div>
 
-        {loading && <div className="lb-empty">Загрузка…</div>}
+        {loading && <div className="lb-empty">{tt("loading")}</div>}
         {!loading && rows.length === 0 && (
-          <div className="lb-empty">Пока никого нет — стань первым!</div>
+          <div className="lb-empty">{tt("empty")}</div>
         )}
         {!loading &&
           rest.map((r, i) => {
@@ -458,8 +461,8 @@ export default function StudentLeaderboardPage() {
                 </div>
                 <div className="lb-rank-info">
                   <div className="lb-rank-name">
-                    {row.full_name ?? "Без имени"}
-                    {row.is_me && <span className="lb-badge-me">ТЫ</span>}
+                    {row.full_name ?? tt("noName")}
+                    {row.is_me && <span className="lb-badge-me">{tt("youBadge")}</span>}
                   </div>
                   <div className="lb-rank-level">{row.english_level ?? "—"}</div>
                 </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — синхронизированы с GET /api/referrals/me
@@ -121,6 +122,7 @@ type Props = {
 }
 
 export function ReferralsClient({ initialData }: Props) {
+  const t = useTranslations("dashboard.student.referrals")
   const [data, setData] = useState<ReferralsData>(initialData)
   const [copied, setCopied] = useState(false)
   const [canShare, setCanShare] = useState(false)
@@ -182,16 +184,16 @@ export function ReferralsClient({ initialData }: Props) {
 
   const copyLink = useCallback(async () => {
     if (!shareUrl) {
-      toast.error("Ссылка пока недоступна. Обнови страницу через минуту.")
+      toast.error(t("linkUnavailable"))
       return
     }
     try {
       await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
-      toast.success("Ссылка скопирована")
+      toast.success(t("linkCopied"))
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
-      toast.error("Не удалось скопировать. Выдели ссылку вручную.")
+      toast.error(t("copyFailed"))
     }
   }, [shareUrl])
 
@@ -200,7 +202,7 @@ export function ReferralsClient({ initialData }: Props) {
     try {
       await navigator.share({
         title: "Raw English",
-        text: "Присоединяйся ко мне на Raw English — прокачай английский и получи +50 XP при регистрации 🎁",
+        text: t("shareText"),
         url: shareUrl,
       })
     } catch {
@@ -214,9 +216,9 @@ export function ReferralsClient({ initialData }: Props) {
 
       <div className="ref-header">
         <div>
-          <h1>Рефералы 👥</h1>
+          <h1>{t("title")} {t("titleEmoji")}</h1>
           <div className="sub">
-            Приглашай друзей и получай XP за каждого активного ученика
+            {t("heroTitle")}
           </div>
         </div>
       </div>
@@ -226,7 +228,7 @@ export function ReferralsClient({ initialData }: Props) {
         <div className="hero-head">
           <div className="hero-emoji">🎁</div>
           <div>
-            <div className="hero-title">Пригласи друга — получи 100 XP</div>
+            <div className="hero-title">{t("heroTitle")}</div>
             <div className="hero-sub">
               Другу +50 XP и бесплатный пробный урок, тебе +100 XP после его первого урока
             </div>
@@ -237,9 +239,9 @@ export function ReferralsClient({ initialData }: Props) {
           <input
             type="text"
             readOnly
-            value={shareUrl || "Загружаем ссылку…"}
+            value={shareUrl || t("linkPlaceholder")}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="Твоя реферальная ссылка"
+            aria-label={t("linkAria")}
           />
           <button
             type="button"
@@ -247,14 +249,14 @@ export function ReferralsClient({ initialData }: Props) {
             onClick={copyLink}
             disabled={!shareUrl}
           >
-            {copied ? "✓ Скопировано" : "Копировать"}
+            {copied ? t("copied") : t("copyBtn")}
           </button>
           {canShare && shareUrl ? (
             <button
               type="button"
               className="hero-btn hero-btn--ghost"
               onClick={nativeShare}
-              aria-label="Поделиться"
+              aria-label={t("shareAria")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="18" cy="5" r="3" />
@@ -263,7 +265,7 @@ export function ReferralsClient({ initialData }: Props) {
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              Поделиться
+              {t("shareAria")}
             </button>
           ) : null}
         </div>
@@ -284,13 +286,13 @@ export function ReferralsClient({ initialData }: Props) {
         <div className="step">
           <div className="step-num">1</div>
           <div className="step-icon">📨</div>
-          <div className="step-title">Поделись ссылкой</div>
-          <div className="step-text">Отправь другу свою персональную ссылку</div>
+          <div className="step-title">{t("step1Title")}</div>
+          <div className="step-text">{t("step1Text")}</div>
         </div>
         <div className="step">
           <div className="step-num">2</div>
           <div className="step-icon">🔥</div>
-          <div className="step-title">Он регистрируется</div>
+          <div className="step-title">{t("step2Title")}</div>
           <div className="step-text">
             Друг заходит по твоей ссылке и создаёт аккаунт
           </div>
@@ -299,7 +301,7 @@ export function ReferralsClient({ initialData }: Props) {
         <div className="step">
           <div className="step-num">3</div>
           <div className="step-icon">🏆</div>
-          <div className="step-title">Первый урок</div>
+          <div className="step-title">{t("step3Title")}</div>
           <div className="step-text">
             Как только друг сходит на первый урок — XP твой
           </div>
@@ -310,7 +312,7 @@ export function ReferralsClient({ initialData }: Props) {
       {/* Список приглашённых */}
       <div className="card">
         <div className="card-head">
-          <h3>Приглашённые</h3>
+          <h3>{t("invitedTitle")}</h3>
           <div className="count">
             {data.stats.registered} {pluralize(data.stats.registered, "зарегистрирован", "зарегистрировано", "зарегистрировано")} · {activated} активирован{activated === 1 ? "" : activated < 5 ? "о" : "о"}
           </div>
@@ -319,7 +321,7 @@ export function ReferralsClient({ initialData }: Props) {
           {data.invitees.length === 0 ? (
             <div className="empty">
               <div className="empty-emoji">☝️</div>
-              <div className="empty-title">Пока никто не зарегистрировался по твоей ссылке</div>
+              <div className="empty-title">{t("emptyTitle")}</div>
               <div className="empty-sub">
                 Поделись ссылкой с другом — и получай +100 XP за каждого активного ученика
               </div>
@@ -329,9 +331,9 @@ export function ReferralsClient({ initialData }: Props) {
               <thead>
                 <tr>
                   <th>Email</th>
-                  <th>Статус</th>
-                  <th className="col-dates">Регистрация</th>
-                  <th className="col-dates">Активация</th>
+                  <th>{t("colStatus")}</th>
+                  <th className="col-dates">{t("colRegistered")}</th>
+                  <th className="col-dates">{t("colActivated")}</th>
                   <th style={{ textAlign: "right" }}>XP</th>
                 </tr>
               </thead>
@@ -359,11 +361,12 @@ export function ReferralsClient({ initialData }: Props) {
 }
 
 function StatusChip({ status }: { status: InviteStatus }) {
+  const t = useTranslations("dashboard.student.referrals")
   const label: Record<InviteStatus, string> = {
-    sent: "Отправлено",
-    registered: "Зарегистрирован",
-    activated: "Активирован",
-    expired: "Истёк",
+    sent: t("statusSent"),
+    registered: t("statusRegistered"),
+    activated: t("statusActivated"),
+    expired: t("statusExpired"),
   }
   return <span className={`chip chip--${status}`}>{label[status] ?? status}</span>
 }
