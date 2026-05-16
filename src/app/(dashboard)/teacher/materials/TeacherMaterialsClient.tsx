@@ -56,15 +56,8 @@ type TypeKey = "all" | "pdf" | "ppt" | "doc" | "video" | "audio" | "img" | "link
 type LevelKey = "all" | "A1-A2" | "B1" | "B2" | "C1+"
 type SortKey = "recent" | "popular" | "name" | "size"
 
-const TYPE_LABELS: Record<Exclude<TypeKey, "all">, string> = {
-  pdf: "PDF",
-  ppt: "Презентации",
-  doc: "Документы",
-  video: "Видео",
-  audio: "Аудио",
-  img: "Картинки",
-  link: "Ссылки",
-}
+// NOTE: dead — kept for callsite compatibility, type labels now come from typeLabel()/t().
+// Localized via t("typePdf") etc. inside the component.
 
 const BADGE_BY_TYPE: Record<string, string> = {
   pdf: "PDF",
@@ -102,29 +95,18 @@ function badgeForMaterial(m: Material): string {
   return BADGE_BY_TYPE[t] ?? "FILE"
 }
 
-function formatSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б"
+function formatSize(bytes: number, u: { b: string; kb: string; mb: string; gb: string } = { b: "B", kb: "KB", mb: "MB", gb: "GB" }): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return `0 ${u.b}`
   const GB = 1024 * 1024 * 1024
   const MB = 1024 * 1024
   const KB = 1024
-  if (bytes >= GB) return `${(bytes / GB).toFixed(1)} ГБ`
-  if (bytes >= MB) return `${(bytes / MB).toFixed(1)} МБ`
-  if (bytes >= KB) return `${(bytes / KB).toFixed(0)} КБ`
-  return `${bytes} Б`
+  if (bytes >= GB) return `${(bytes / GB).toFixed(1)} ${u.gb}`
+  if (bytes >= MB) return `${(bytes / MB).toFixed(1)} ${u.mb}`
+  if (bytes >= KB) return `${(bytes / KB).toFixed(0)} ${u.kb}`
+  return `${bytes} ${u.b}`
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return ""
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ""
-  const diffDays = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
-  if (diffDays <= 0) return "сегодня"
-  if (diffDays === 1) return "вчера"
-  if (diffDays < 30) {
-    return formatDistanceToNow(d, { addSuffix: false, locale: ru }) + " назад"
-  }
-  return format(d, "LLLL yyyy", { locale: ru })
-}
+// NOTE: dead — shadowed by locale-aware formatRelative inside the component.
 
 // --- SVG icon helpers ---
 function TypeIcon({ type }: { type: TypeKey }) {
@@ -174,7 +156,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
     if (diffDays <= 0) return t("today")
     if (diffDays === 1) return t("yesterday")
     if (diffDays < 30) {
-      return formatDistanceToNow(d, { addSuffix: false, locale: dateLocale }) + (locale === "ru" ? " назад" : " ago")
+      return formatDistanceToNow(d, { addSuffix: false, locale: dateLocale }) + ` ${t("units.ago")}`
     }
     return format(d, "LLLL yyyy", { locale: dateLocale })
   }
@@ -381,13 +363,13 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
         body: JSON.stringify(payload),
       })
       if (res.status === 404) {
-        toast.error("API подготавливается — попробуй через минуту")
+        toast.error(t("modal.errorApiUnavailable"))
         setApiMissing(true)
         return
       }
       if (!res.ok) {
         const text = await res.text().catch(() => "")
-        toast.error(`Не удалось сохранить${text ? `: ${text.slice(0, 120)}` : ""}`)
+        toast.error(`${t("modal.errorSavePrefix")}${text ? `: ${text.slice(0, 120)}` : ""}`)
         return
       }
       uploadedPath = null // metadata saved — don't rollback storage
@@ -411,7 +393,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
   }
 
   async function handleDelete(m: Material) {
-    const ok = typeof window !== "undefined" ? window.confirm(`Удалить материал «${m.title}»?`) : false
+    const ok = typeof window !== "undefined" ? window.confirm(t("modal.confirmDelete", { title: m.title })) : false
     if (!ok) return
     // optimistic
     setSnap((prev) => ({ ...prev, materials: prev.materials.filter((x) => x.id !== m.id) }))
@@ -643,7 +625,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
                 <div className="fp-name">{pendingFile.name}</div>
-                <div className="fp-size">{formatSize(pendingFile.size)}</div>
+                <div className="fp-size">{formatSize(pendingFile.size, { b: t("units.b"), kb: t("units.kb"), mb: t("units.mb"), gb: t("units.gb") })}</div>
               </div>
             ) : (
               <div

@@ -298,7 +298,19 @@
         "leaderboardTitleShort": "Лидерборд",
         "leaderboardAllShort": "Все",
         "leaderboardEmpty": "Лидерборд пуст",
-        "leaderboardYou": "{name} (ты)"
+        "leaderboardYou": "{name} (ты)",
+        "quickActions": {
+          "speakingClub": "Speaking Club",
+          "clubsWeek": "{count, plural, one {# клуб} few {# клуба} other {# клубов}} на этой неделе",
+          "clubsSchedule": "Расписание клубов",
+          "materials": "Материалы",
+          "materialsNew": "{count, plural, one {# новый урок} few {# новых урока} other {# новых уроков}}",
+          "materialsAll": "Все уроки",
+          "dailyChallenge": "Daily Challenge",
+          "dailyChallengeSub": "+15 XP",
+          "inviteFriend": "Пригласить друга",
+          "referralSub": "{activated}/{capMax} активировано · +100 XP"
+        }
       },
       "schedule": {
         "title": "Расписание",
@@ -380,7 +392,7 @@
         },
         "account": {
           "title": "Аккаунт",
-          "subtitle": "Личные данные и предпочтения",
+          "subtitle": "Основная информация профиля",
           "firstName": "Имя",
           "lastName": "Фамилия",
           "fullName": "Полное имя",
@@ -393,13 +405,24 @@
           "languageEn": "🇬🇧 English",
           "avatarUpload": "Загрузить",
           "avatarRemove": "Удалить",
-          "savedToast": "Сохранено"
+          "savedToast": "Сохранено",
+          "avatarAlt": "Аватар",
+          "uploading": "Загружаем…",
+          "uploadPhoto": "Загрузить фото",
+          "avatarHint": "JPG, PNG, WEBP до 5 МБ. Рекомендуем 400×400 px",
+          "emailDesc": "Используется для входа и уведомлений",
+          "phonePlaceholder": "+7 (999) 000-00-00",
+          "cityPlaceholder": "Москва"
         },
         "notifications": {
           "title": "Уведомления",
           "subtitle": "Настрой что и как хочешь получать",
           "lessonReminders": "Напоминание об уроке",
-          "lessonRemindersDesc": "За 30 мин до начала урока или клуба"
+          "lessonRemindersDesc": "За 30 мин до начала урока или клуба",
+          "channel": "Канал уведомлений",
+          "channelDesc": "Где получать напоминания",
+          "channelTelegram": "Telegram бот",
+          "channelEmail": "Email"
         },
         "privacy": {
           "title": "Безопасность",
@@ -410,21 +433,176 @@
         },
         "mfa": {
           "title": "Двухфакторная аутентификация",
-          "subtitle": "Защити аккаунт TOTP-кодом"
+          "subtitle": "Дополнительный код из приложения-аутентификатора при входе. Защищает аккаунт даже если пароль утёк.",
+          "requiredBanner": "Двухфакторная аутентификация обязательна для администраторов. Настрой TOTP, чтобы вернуться в админку.",
+          "loading": "Загружаем…",
+          "defaultName": "TOTP-аутентификатор",
+          "activeDesc": "Активен · приложение генерирует 6-значный код",
+          "unverifiedDesc": "Не подтверждён — удалите и попробуйте снова",
+          "disable": "Отключить",
+          "remove": "Удалить",
+          "connectTitle": "Подключить TOTP",
+          "connectDesc": "Google Authenticator, 1Password, Authy, Raivo — любое приложение-аутентификатор",
+          "addMore": "Добавить ещё",
+          "enable": "Включить",
+          "step1": "1. Открой приложение-аутентификатор",
+          "step2": "2. Отсканируй QR-код или введи секрет вручную",
+          "step3": "3. Введи 6-значный код, который покажет приложение",
+          "qrAlt": "QR-код для аутентификатора",
+          "secretHint": "Секрет (на случай если QR не считывается):",
+          "codePlaceholder": "123456",
+          "verifying": "Проверяем…",
+          "verify": "Подтвердить",
+          "cancel": "Отмена",
+          "errorSixDigits": "Введите 6 цифр",
+          "errorInvalidCode": "Неверный код — проверь, что время на устройстве синхронизировано",
+          "errorVerifyFail": "Не удалось подтвердить код",
+          "enrolledOk": "Двухфакторная аутентификация включена",
+          "confirmUnenroll": "Отключить двухфакторную аутентификацию?",
+          "unenrollFail": "Не удалось отключить фактор",
+          "factorDisabled": "Фактор отключён",
+          "loadFactorsFail": "Не удалось загрузить факторы",
+          "networkError": "Ошибка сети",
+          "enrollStartFail": "Не удалось начать настройку TOTP",
+          "friendlyNamePrefix": "TOTP"
         },
         "connected": {
-          "title": "Подключения",
-          "subtitle": "Google, Telegram, другие сервисы",
+          "title": "Подключённые аккаунты",
+          "subtitle": "Вход через соцсети и интеграции",
           "google": "Google",
           "telegram": "Telegram",
           "connect": "Подключить",
-          "disconnect": "Отключить"
+          "disconnect": "Отключить",
+          "connected": "Подключён",
+          "notConnected": "Не подключён"
         },
         "subscription": {
           "title": "Подписка",
           "tierFree": "Free",
           "tierPro": "Pro",
-          "until": "до {date}"
+          "until": "до {date}",
+          "subtitle": "Управление подпиской Raw Pro",
+          "currentPlan": "Текущий план",
+          "planPro": "Raw Pro · 1 490 ₽/мес",
+          "planFree": "Free · базовый доступ",
+          "active": "Активна",
+          "inactive": "Не активна",
+          "nextBilling": "Следующее списание",
+          "nextBillingValue": "{date} · 1 490 ₽",
+          "paymentMethod": "Способ оплаты",
+          "paymentMethodDesc": "Управляется через Yookassa",
+          "cancelSubscription": "Отменить подписку",
+          "cancelSubscriptionDesc": "Доступ сохранится до конца оплаченного периода",
+          "cancel": "Отменить",
+          "upgrade": "Апгрейд до Raw Pro",
+          "upgradeDesc": "Безлимитные клубы, расширенные материалы, приоритет в очереди",
+          "upgradeBtn": "Оформить",
+          "changePaymentBtn": "Изменить"
+        },
+        "pageTitleA": "Мои",
+        "pageTitleB": "настройки",
+        "loadingSettings": "Загружаем настройки…",
+        "saveBar": {
+          "hasChanges": "Есть несохранённые изменения",
+          "allSaved": "Все изменения сохранены",
+          "cancel": "Отменить",
+          "saving": "Сохраняем…",
+          "save": "Сохранить изменения"
+        },
+        "tz": {
+          "kaliningrad": "UTC+2 · Калининград",
+          "moscow": "UTC+3 · Москва",
+          "samara": "UTC+4 · Самара",
+          "yekaterinburg": "UTC+5 · Екатеринбург",
+          "omsk": "UTC+6 · Омск",
+          "krasnoyarsk": "UTC+7 · Красноярск",
+          "irkutsk": "UTC+8 · Иркутск",
+          "yakutsk": "UTC+9 · Якутск",
+          "vladivostok": "UTC+10 · Владивосток"
+        },
+        "appearance": {
+          "title": "Оформление",
+          "subtitle": "Внешний вид платформы",
+          "theme": "Тема",
+          "themeDesc": "Выбери светлую, тёмную или автоматическую",
+          "themeLight": "Светлая",
+          "themeDark": "Тёмная",
+          "themeAuto": "Авто",
+          "showXp": "Показывать XP на странице",
+          "showXpDesc": "Отображать прогресс-бар XP в верхней части",
+          "sounds": "Звуки достижений",
+          "soundsDesc": "Звуковой эффект при получении XP и достижений",
+          "confetti": "Конфетти при level up",
+          "confettiDesc": "Анимация конфетти при переходе на новый уровень"
+        },
+        "security": {
+          "title": "Безопасность",
+          "subtitle": "Пароль и настройки входа",
+          "changePassword": "Изменить пароль",
+          "changePasswordDesc": "Отправим письмо с ссылкой на восстановление",
+          "change": "Изменить",
+          "leaderboardPublic": "Видимость в лидерборде",
+          "leaderboardPublicDesc": "Показывать имя и прогресс другим участникам"
+        },
+        "danger": {
+          "title": "Опасная зона",
+          "subtitle": "Необратимые действия с аккаунтом",
+          "exportData": "Экспорт данных",
+          "exportDataDesc": "Скачать все свои данные: историю уроков, XP, достижения",
+          "exportBtn": "Экспортировать",
+          "resetProgress": "Сбросить прогресс",
+          "resetProgressDesc": "Обнулить XP, стрики и достижения. Уроки сохранятся.",
+          "resetBtn": "Сбросить",
+          "deleteAccount": "Удалить аккаунт",
+          "deleteAccountDesc": "Все данные будут удалены навсегда. Баланс не возвращается.",
+          "deleteBtn": "Удалить аккаунт"
+        },
+        "telegramModal": {
+          "title": "📱 Подключить Telegram",
+          "desc": "Получай уведомления об уроках, клубах, заявках и поддержке прямо в Telegram. Код действителен 10 минут.",
+          "openBot": "Открыть бот",
+          "copyCode": "Скопировать код",
+          "copied": "Код скопирован",
+          "howToTitle": "Как привязать:",
+          "step1": "1. Открой бот по кнопке выше",
+          "step2Prefix": "2. Нажми «Start» (если первый раз) или отправь",
+          "step3": "3. Окно закроется автоматически — придёт приветствие",
+          "waiting": "Ждём подтверждения от бота…"
+        },
+        "toasts": {
+          "loadFail": "Не удалось загрузить настройки",
+          "saveFail": "Не удалось сохранить",
+          "savedOk": "Настройки сохранены",
+          "networkError": "Ошибка сети",
+          "cancelled": "Изменения отменены",
+          "fileTooBig": "Файл больше 5 МБ",
+          "uploadError": "Ошибка загрузки: {message}",
+          "uploadErrorUnknown": "неизвестная",
+          "saveAvatarFail": "Не удалось сохранить ссылку на фото",
+          "saveAvatarFailWith": "Не удалось сохранить ссылку на фото: {error}",
+          "avatarUpdated": "Фото обновлено",
+          "avatarUploadFail": "Не удалось загрузить фото",
+          "tgConnected": "Telegram подключён",
+          "tgGenFail": "Не удалось сгенерировать код",
+          "tgRedirectGoogle": "Перенаправляем на Google — используй тот же email, что и сейчас",
+          "googleOpenFail": "Не удалось открыть Google",
+          "googleProviderOff": "Google провайдер не включён в Supabase",
+          "providerLinkFail": "Не удалось подключить аккаунт",
+          "tgDisconnectFail": "Не удалось отключить Telegram",
+          "tgDisconnected": "Telegram отключён",
+          "identitiesFail": "Не удалось получить идентичности",
+          "providerAlreadyOff": "Этот аккаунт уже не подключён",
+          "lastAuthMethod": "Нельзя отключить единственный способ входа",
+          "providerUnlinkFail": "Не удалось отключить аккаунт",
+          "googleDisconnected": "Google отключён",
+          "comingSoon": "{title} — скоро будет доступно",
+          "stubChangePassword": "Смена пароля",
+          "stubManageSessions": "Управление сессиями",
+          "stubChangePayment": "Изменение способа оплаты",
+          "stubCancelSubscription": "Отмена подписки",
+          "stubExportData": "Экспорт данных",
+          "stubResetProgress": "Сброс прогресса",
+          "stubDeleteAccount": "Удаление аккаунта"
         }
       },
       "errors": {
@@ -507,7 +685,72 @@
         "openCta": "Открыть",
         "viewSubmissionCta": "Посмотреть работу",
         "ctaHintReadOnly": "нельзя редактировать",
-        "submittedToast": "Работа отправлена преподавателю"
+        "submittedToast": "Работа отправлена преподавателю",
+        "humanDue": {
+          "submitted": "сдано",
+          "today": "сегодня",
+          "tomorrow": "завтра",
+          "yesterday": "вчера",
+          "daysOne": "1 день",
+          "daysFew": "{n} дня",
+          "daysMany": "{n} дней",
+          "agoFew": "-{n} дня",
+          "agoMany": "-{n} дней"
+        },
+        "statusPill": {
+          "overdue": "просрочено",
+          "soon": "⏱ срок скоро",
+          "submitted": "⏳ проверяется",
+          "graded": "✓ проверено",
+          "todo": "в работе"
+        },
+        "card": {
+          "toLessonWith": "К уроку с",
+          "from": "От",
+          "dueBy": "до {date}",
+          "fileOne": "1 файл",
+          "filesMany": "{count} файлов",
+          "xpAfterReview": "XP зачислится после проверки"
+        },
+        "modal": {
+          "submitTitle": "Сдать работу",
+          "answerLabel": "Ответ",
+          "answerPlaceholder": "Напиши ответ, пришли текст, ссылку на документ или расскажи, что сделал",
+          "attachFileLabel": "Прикрепить файл",
+          "uploadingShort": "Загружаю…",
+          "pickFileCta": "Выбрать файл",
+          "uploadingStatus": "Загружается {count}…",
+          "fileHint": "Фото, PDF, документы, аудио или видео · до 50 МБ",
+          "linkLabel": "Или прикрепить ссылку (Google Docs, сайт)",
+          "linkNamePlaceholder": "Название",
+          "linkUrlPlaceholder": "https://…",
+          "linkHint": "Можно добавить несколько ссылок",
+          "attachedLabel": "Что прикреплено",
+          "removeAria": "Убрать",
+          "cancelCta": "Отмена",
+          "submitCta": "Отправить",
+          "submittingCta": "Отправляю…",
+          "viewSubTemplate": "От {teacher} · до {date}",
+          "descriptionLabel": "Описание",
+          "teacherMaterialsLabel": "Материалы преподавателя",
+          "yourAnswerLabel": "Твой ответ",
+          "teacherFeedbackLabel": "Комментарий преподавателя",
+          "scoreLabel": "Оценка:",
+          "closeCta": "Закрыть",
+          "errorLinkFormat": "Ссылка должна начинаться с http(s)://",
+          "errorEmptyFile": "Файл «{name}» пуст",
+          "errorBigFile": "«{name}» больше 50 МБ",
+          "errorMimeUnsupported": "Формат «{mime}» не поддерживается",
+          "errorAuth": "Нужно войти в аккаунт",
+          "errorUploadFailed": "Не удалось загрузить «{name}»",
+          "errorSignedUrl": "Не удалось получить ссылку на файл",
+          "errorMultiUpload": "Сбой при загрузке файлов",
+          "errorBusy": "Подожди, файл ещё загружается",
+          "errorEmptySubmission": "Прикрепи файл, ссылку или напиши ответ",
+          "errorSubmitFailed": "Не удалось отправить задание",
+          "unitsKB": "КБ",
+          "unitsMB": "МБ"
+        }
       },
       "teachers": {
         "headingFind": "Найди своего",
@@ -610,6 +853,32 @@
         "statAchievements": "Достижений",
         "journeyTitle": "Мой путь прожарки",
         "journeyNow": "Сейчас",
+        "journey": {
+          "signup": {
+            "title": "Регистрация на платформе",
+            "desc": "Добро пожаловать в Raw English"
+          },
+          "first_lesson": {
+            "title": "Первый урок 1-on-1 📚",
+            "desc": "Начало пути"
+          },
+          "first_club": {
+            "title": "Первый Speaking Club 🎙",
+            "desc": "Первый шаг в коммьюнити"
+          },
+          "streak_7": {
+            "title": "{days}-дневный стрик 🔥",
+            "desc": "Рекорд постоянства"
+          },
+          "active": {
+            "title": "В пути к {nextLevel} ⚡",
+            "desc": "{totalXp, number} / {nextThreshold, number} XP · {progressPct}% прогресса"
+          },
+          "future": {
+            "title": "Цель: {nextLevel} 🎯",
+            "desc": "{cefr}"
+          }
+        },
         "aboutTitle": "О себе",
         "aboutCity": "Город",
         "aboutCityEmpty": "Не указан",
@@ -793,6 +1062,7 @@
         "title": "Рефералы",
         "titleEmoji": "👥",
         "heroTitle": "Пригласи друга — получи 100 XP",
+        "heroSub": "Другу +50 XP и бесплатный пробный урок, тебе +100 XP после его первого урока",
         "linkPlaceholder": "Загружаем ссылку…",
         "linkAria": "Твоя реферальная ссылка",
         "copyBtn": "Копировать",
@@ -1409,7 +1679,19 @@
         "errorLinkUnavailable": "Ссылка на файл недоступна",
         "errorDelete": "Не удалось удалить",
         "successUploaded": "Материал загружен",
-        "successDeleted": "Удалено"
+        "successDeleted": "Удалено",
+        "modal": {
+          "errorApiUnavailable": "API подготавливается — попробуй через минуту",
+          "errorSavePrefix": "Не удалось сохранить",
+          "confirmDelete": "Удалить материал «{title}»?"
+        },
+        "units": {
+          "b": "Б",
+          "kb": "КБ",
+          "mb": "МБ",
+          "gb": "ГБ",
+          "ago": "назад"
+        }
       },
       "homework": {
         "headingMy": "Моя",
@@ -1469,7 +1751,42 @@
         "errorDelete": "Не удалось удалить задание",
         "errorNetwork": "Сетевая ошибка",
         "successReminded": "Напоминание отправлено",
-        "successDeleted": "Удалено"
+        "successDeleted": "Удалено",
+        "modal": {
+          "title": "Новое домашнее задание",
+          "sub": "Выдай задание одному из своих учеников.",
+          "fieldStudent": "Ученик",
+          "studentSearchPlaceholder": "Поиск ученика...",
+          "studentPickerEmpty": "— выбери ученика —",
+          "studentLoading": "Загрузка...",
+          "studentNoneAvailable": "Нет учеников",
+          "studentNoName": "Без имени",
+          "studentHint": "Можно задавать ДЗ ученикам, с которыми уже был хотя бы один урок.",
+          "fieldTitle": "Тема задания",
+          "fieldTitlePlaceholder": "Past Perfect: 20 предложений + перевод текста",
+          "fieldDescription": "Описание / инструкция",
+          "fieldDescriptionPlaceholder": "Краткие инструкции, ссылки на материалы, требования к формату...",
+          "fieldDueDate": "Дедлайн — дата",
+          "fieldDueTime": "Дедлайн — время",
+          "fieldAttachments": "Вложения (ссылки)",
+          "attachNamePlaceholder": "Название файла (homework.pdf)",
+          "attachUrlPlaceholder": "https://...",
+          "attachAddCta": "+ Добавить вложение",
+          "attachRemoveAria": "Удалить",
+          "attachRemoveTitle": "Удалить",
+          "attachmentsHint": "Ссылки на материалы из Materials или любые внешние файлы. Загрузка файлов появится позже.",
+          "cancelCta": "Отмена",
+          "submitCta": "Выдать задание",
+          "submittingCta": "Создаю...",
+          "errorAttachFields": "Укажи название и ссылку",
+          "errorAttachUrlFormat": "Ссылка должна начинаться с http:// или https://",
+          "errorStudentMissing": "Выбери ученика",
+          "errorTitleMissing": "Укажи тему задания",
+          "errorDueMissing": "Укажи дедлайн",
+          "errorCreateFailed": "Не удалось создать задание",
+          "errorNetwork": "Сетевая ошибка",
+          "successCreated": "Задание выдано"
+        }
       },
       "clubs": {
         "headingTitle": "Speaking",

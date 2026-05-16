@@ -2,22 +2,13 @@
 
 // MFA TOTP enrollment section.
 //
-// Used inside the settings page (Безопасность) for users who want — or
+// Used inside the settings page (Security) for users who want — or
 // must — set up a second factor. Required for admins when
 // ENABLE_ADMIN_MFA_ENFORCE='1' (middleware redirects /admin/* until they
 // finish enrollment); optional for everyone else for now.
 //
-// Flow:
-//   1) "Включить" → supabase.auth.mfa.enroll({ factorType: 'totp' })
-//      → returns factorId + a `totp.qr_code` data URL + plain `totp.secret`
-//   2) User scans QR (or types secret) in their authenticator app
-//   3) User types the 6-digit code → mfa.challengeAndVerify({ factorId, code })
-//   4) On success — list verified factors with an "Отключить" button each.
-//
-// We deliberately keep this UI minimal and inline (no portals, no toasts of
-// our own, no animations) so it works the same in /student/settings,
-// /teacher/settings and /admin/settings — all three currently re-export
-// the same page.
+// Strings live in messages/{ru,en}.json under
+// `dashboard.student.settings.mfa.*` via next-intl.
 //
 // SECURITY NOTES:
 //   - We never display the TOTP secret in plaintext beyond the moment
@@ -30,6 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 
 type Factor = {
@@ -61,6 +53,8 @@ export function MfaTotpSection({
 }: {
   required?: boolean
 }) {
+  const t = useTranslations('dashboard.student.settings.mfa')
+  const locale = useLocale()
   const [factors, setFactors] = useState<Factor[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [enroll, setEnroll] = useState<EnrollState>({ phase: 'idle' })
@@ -71,14 +65,10 @@ export function MfaTotpSection({
       const supabase = createClient()
       const { data, error } = await supabase.auth.mfa.listFactors()
       if (error) {
-        setLoadError(error.message || 'Не удалось загрузить факторы')
+        setLoadError(error.message || t('loadFactorsFail'))
         return
       }
-      // We only care about TOTP factors here. Verified ones are the
-      // "active" set; unverified ones are stale enrollments that never
-      // completed — surface them too so the user can clean up.
       const all = [...(data.totp ?? []), ...(data.all ?? [])]
-      // Dedup by id in case both arrays returned the same factor.
       const byId = new Map<string, Factor>()
       for (const f of all) {
         if (f.factor_type !== 'totp') continue
@@ -91,9 +81,9 @@ export function MfaTotpSection({
       }
       setFactors([...byId.values()])
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Ошибка сети')
+      setLoadError(e instanceof Error ? e.message : t('networkError'))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void loadFactors()
@@ -101,15 +91,13 @@ export function MfaTotpSection({
 
   const startEnroll = useCallback(async () => {
     const supabase = createClient()
+    const dateLocale = locale === 'en' ? 'en-US' : 'ru-RU'
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
-      friendlyName: `TOTP · ${new Date().toLocaleDateString('ru-RU')}`,
+      friendlyName: `${t('friendlyNamePrefix')} · ${new Date().toLocaleDateString(dateLocale)}`,
     })
     if (error || !data) {
-      // Common case: a previous enrollment attempt is still pending.
-      // Supabase responds with 422 — refresh the list so the user can
-      // unenroll the stale factor and retry.
-      toast.error(error?.message || 'Не удалось начать настройку TOTP')
+      toast.error(error?.message || t('enrollStartFail'))
       await loadFactors()
       return
     }
@@ -122,12 +110,10 @@ export function MfaTotpSection({
       busy: false,
       error: null,
     })
-  }, [loadFactors])
+  }, [loadFactors, locale, t])
 
   const cancelEnroll = useCallback(async () => {
     if (enroll.phase !== 'enrolling') return
-    // Drop the pending unverified factor from auth.mfa_factors so it
-    // doesn't pile up. Errors here are non-fatal — we still reset UI.
     try {
       const supabase = createClient()
       await supabase.auth.mfa.unenroll({ factorId: enroll.factorId })
@@ -142,7 +128,7 @@ export function MfaTotpSection({
     if (enroll.phase !== 'enrolling') return
     const code = enroll.code.trim()
     if (!/^\d{6}$/.test(code)) {
-      setEnroll({ ...enroll, error: 'Введите 6 цифр' })
+      setEnroll({ ...enroll, error: t('errorSixDigits') })
       return
     }
     setEnroll({ ...enroll, busy: true, error: null })
@@ -156,29 +142,29 @@ export function MfaTotpSection({
         ...enroll,
         busy: false,
         error: error.message?.includes('Invalid')
-          ? 'Неверный код — проверь, что время на устройстве синхронизировано'
-          : error.message || 'Не удалось подтвердить код',
+          ? t('errorInvalidCode')
+          : error.message || t('errorVerifyFail'),
       })
       return
     }
     setEnroll({ phase: 'idle' })
-    toast.success('Двухфакторная аутентификация включена')
+    toast.success(t('enrolledOk'))
     void loadFactors()
-  }, [enroll, loadFactors])
+  }, [enroll, loadFactors, t])
 
   const unenroll = useCallback(
     async (factorId: string) => {
-      if (!confirm('Отключить двухфакторную аутентификацию?')) return
+      if (!confirm(t('confirmUnenroll'))) return
       const supabase = createClient()
       const { error } = await supabase.auth.mfa.unenroll({ factorId })
       if (error) {
-        toast.error(error.message || 'Не удалось отключить фактор')
+        toast.error(error.message || t('unenrollFail'))
         return
       }
-      toast.success('Фактор отключён')
+      toast.success(t('factorDisabled'))
       void loadFactors()
     },
-    [loadFactors],
+    [loadFactors, t],
   )
 
   const verified = (factors ?? []).filter((f) => f.status === 'verified')
@@ -187,11 +173,8 @@ export function MfaTotpSection({
   return (
     <div className="s-card" id="sec-mfa">
       <div className="s-card-head">
-        <h3>Двухфакторная аутентификация</h3>
-        <p>
-          Дополнительный код из приложения-аутентификатора при входе. Защищает
-          аккаунт даже если пароль утёк.
-        </p>
+        <h3>{t('title')}</h3>
+        <p>{t('subtitle')}</p>
       </div>
       <div className="s-card-body">
         {required && verified.length === 0 && (
@@ -209,8 +192,7 @@ export function MfaTotpSection({
               fontWeight: 600,
             }}
           >
-            Двухфакторная аутентификация обязательна для администраторов.
-            Настрой TOTP, чтобы вернуться в админку.
+            {t('requiredBanner')}
           </div>
         )}
 
@@ -222,7 +204,7 @@ export function MfaTotpSection({
 
         {factors === null ? (
           <div className="s-field" style={{ color: 'var(--muted)' }}>
-            Загружаем…
+            {t('loading')}
           </div>
         ) : (
           <>
@@ -230,18 +212,16 @@ export function MfaTotpSection({
               <div className="s-field" key={f.id}>
                 <div className="s-field-left">
                   <div className="s-field-label">
-                    {f.friendly_name || 'TOTP-аутентификатор'}
+                    {f.friendly_name || t('defaultName')}
                   </div>
-                  <div className="s-field-desc">
-                    Активен · приложение генерирует 6-значный код
-                  </div>
+                  <div className="s-field-desc">{t('activeDesc')}</div>
                 </div>
                 <button
                   type="button"
                   className="s-btn s-btn--danger"
                   onClick={() => void unenroll(f.id)}
                 >
-                  Отключить
+                  {t('disable')}
                 </button>
               </div>
             ))}
@@ -251,10 +231,10 @@ export function MfaTotpSection({
               <div className="s-field" key={f.id}>
                 <div className="s-field-left">
                   <div className="s-field-label">
-                    {f.friendly_name || 'TOTP-аутентификатор'}
+                    {f.friendly_name || t('defaultName')}
                   </div>
                   <div className="s-field-desc" style={{ color: 'var(--red)' }}>
-                    Не подтверждён — удалите и попробуйте снова
+                    {t('unverifiedDesc')}
                   </div>
                 </div>
                 <button
@@ -262,7 +242,7 @@ export function MfaTotpSection({
                   className="s-btn s-btn--outline"
                   onClick={() => void unenroll(f.id)}
                 >
-                  Удалить
+                  {t('remove')}
                 </button>
               </div>
             ))}
@@ -270,18 +250,15 @@ export function MfaTotpSection({
             {enroll.phase === 'idle' && (
               <div className="s-field">
                 <div className="s-field-left">
-                  <div className="s-field-label">Подключить TOTP</div>
-                  <div className="s-field-desc">
-                    Google Authenticator, 1Password, Authy, Raivo — любое
-                    приложение-аутентификатор
-                  </div>
+                  <div className="s-field-label">{t('connectTitle')}</div>
+                  <div className="s-field-desc">{t('connectDesc')}</div>
                 </div>
                 <button
                   type="button"
                   className="s-btn s-btn--red"
                   onClick={() => void startEnroll()}
                 >
-                  {verified.length > 0 ? 'Добавить ещё' : 'Включить'}
+                  {verified.length > 0 ? t('addMore') : t('enable')}
                 </button>
               </div>
             )}
@@ -297,14 +274,14 @@ export function MfaTotpSection({
                 }}
               >
                 <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                  1. Открой приложение-аутентификатор<br />
-                  2. Отсканируй QR-код или введи секрет вручную<br />
-                  3. Введи 6-значный код, который покажет приложение
+                  {t('step1')}<br />
+                  {t('step2')}<br />
+                  {t('step3')}
                 </div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                   <img
                     src={enroll.qrCodeDataUrl}
-                    alt="QR-код для аутентификатора"
+                    alt={t('qrAlt')}
                     width={180}
                     height={180}
                     style={{
@@ -316,7 +293,7 @@ export function MfaTotpSection({
                   />
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>
-                      Секрет (на случай если QR не считывается):
+                      {t('secretHint')}
                     </div>
                     <div
                       style={{
@@ -340,7 +317,7 @@ export function MfaTotpSection({
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder="123456"
+                    placeholder={t('codePlaceholder')}
                     maxLength={6}
                     value={enroll.code}
                     onChange={(e) =>
@@ -359,7 +336,7 @@ export function MfaTotpSection({
                     onClick={() => void submitCode()}
                     disabled={enroll.busy || enroll.code.length !== 6}
                   >
-                    {enroll.busy ? 'Проверяем…' : 'Подтвердить'}
+                    {enroll.busy ? t('verifying') : t('verify')}
                   </button>
                   <button
                     type="button"
@@ -367,7 +344,7 @@ export function MfaTotpSection({
                     onClick={() => void cancelEnroll()}
                     disabled={enroll.busy}
                   >
-                    Отмена
+                    {t('cancel')}
                   </button>
                 </div>
                 {enroll.error && (

@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 type Student = {
   id: string
@@ -34,6 +35,7 @@ function todayLocalYMD(offsetDays = 0): string {
 }
 
 export default function CreateHomeworkModal({ open, onClose, onCreated }: Props) {
+  const tm = useTranslations("dashboard.teacher.homework.modal")
   const [students, setStudents] = useState<Student[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
 
@@ -105,11 +107,11 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
     const name = attachName.trim()
     const url = attachUrl.trim()
     if (!name || !url) {
-      toast.error("Укажи название и ссылку")
+      toast.error(tm("errorAttachFields"))
       return
     }
     if (!/^https?:\/\//i.test(url)) {
-      toast.error("Ссылка должна начинаться с http:// или https://")
+      toast.error(tm("errorAttachUrlFormat"))
       return
     }
     setAttachments((prev) => [...prev, { name, url }])
@@ -123,15 +125,15 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
 
   async function submit() {
     if (!studentId) {
-      toast.error("Выбери ученика")
+      toast.error(tm("errorStudentMissing"))
       return
     }
     if (!title.trim()) {
-      toast.error("Укажи тему задания")
+      toast.error(tm("errorTitleMissing"))
       return
     }
     if (!dueDate) {
-      toast.error("Укажи дедлайн")
+      toast.error(tm("errorDueMissing"))
       return
     }
     // Compose ISO timestamp from date + time (local)
@@ -155,13 +157,13 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
       }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        toast.error(j?.error || "Не удалось создать задание")
+        toast.error(j?.error || tm("errorCreateFailed"))
         return
       }
-      toast.success("Задание выдано")
+      toast.success(tm("successCreated"))
       onCreated()
     } catch {
-      toast.error("Сетевая ошибка")
+      toast.error(tm("errorNetwork"))
     } finally {
       setSaving(false)
     }
@@ -177,13 +179,13 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
       }}
     >
       <div className="modal-card" role="dialog" aria-modal="true">
-        <h2>Новое домашнее задание</h2>
-        <div className="modal-sub">Выдай задание одному из своих учеников.</div>
+        <h2>{tm("title")}</h2>
+        <div className="modal-sub">{tm("sub")}</div>
 
         <div className="field">
-          <label>Ученик</label>
+          <label>{tm("fieldStudent")}</label>
           <input
-            placeholder="Поиск ученика..."
+            placeholder={tm("studentSearchPlaceholder")}
             value={studentSearch}
             onChange={(e) => setStudentSearch(e.target.value)}
             style={{ marginBottom: 8 }}
@@ -192,27 +194,27 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
             value={studentId}
             onChange={(e) => setStudentId(e.target.value)}
           >
-            <option value="">— выбери ученика —</option>
+            <option value="">{tm("studentPickerEmpty")}</option>
             {loadingStudents ? (
-              <option disabled>Загрузка...</option>
+              <option disabled>{tm("studentLoading")}</option>
             ) : filteredStudents.length === 0 ? (
-              <option disabled>Нет учеников</option>
+              <option disabled>{tm("studentNoneAvailable")}</option>
             ) : (
               filteredStudents.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.full_name || "Без имени"}
+                  {s.full_name || tm("studentNoName")}
                   {s.english_level ? ` · ${s.english_level}` : ""}
                 </option>
               ))
             )}
           </select>
-          <div className="hint">Можно задавать ДЗ ученикам, с которыми уже был хотя бы один урок.</div>
+          <div className="hint">{tm("studentHint")}</div>
         </div>
 
         <div className="field">
-          <label>Тема задания</label>
+          <label>{tm("fieldTitle")}</label>
           <input
-            placeholder="Past Perfect: 20 предложений + перевод текста"
+            placeholder={tm("fieldTitlePlaceholder")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
@@ -220,9 +222,9 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
         </div>
 
         <div className="field">
-          <label>Описание / инструкция</label>
+          <label>{tm("fieldDescription")}</label>
           <textarea
-            placeholder="Краткие инструкции, ссылки на материалы, требования к формату..."
+            placeholder={tm("fieldDescriptionPlaceholder")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={4000}
@@ -231,7 +233,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
 
         <div className="field-row">
           <div className="field">
-            <label>Дедлайн — дата</label>
+            <label>{tm("fieldDueDate")}</label>
             <input
               type="date"
               value={dueDate}
@@ -240,7 +242,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
             />
           </div>
           <div className="field">
-            <label>Дедлайн — время</label>
+            <label>{tm("fieldDueTime")}</label>
             <input
               type="time"
               value={dueTime}
@@ -250,15 +252,15 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
         </div>
 
         <div className="field">
-          <label>Вложения (ссылки)</label>
+          <label>{tm("fieldAttachments")}</label>
           <div className="field-row">
             <input
-              placeholder="Название файла (homework.pdf)"
+              placeholder={tm("attachNamePlaceholder")}
               value={attachName}
               onChange={(e) => setAttachName(e.target.value)}
             />
             <input
-              placeholder="https://..."
+              placeholder={tm("attachUrlPlaceholder")}
               value={attachUrl}
               onChange={(e) => setAttachUrl(e.target.value)}
             />
@@ -270,7 +272,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
               onClick={addAttachment}
               disabled={!attachName.trim() || !attachUrl.trim()}
             >
-              + Добавить вложение
+              {tm("attachAddCta")}
             </button>
           </div>
           {attachments.length > 0 ? (
@@ -282,8 +284,8 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
                     type="button"
                     className="rm"
                     onClick={() => removeAttachment(i)}
-                    aria-label="Удалить"
-                    title="Удалить"
+                    aria-label={tm("attachRemoveAria")}
+                    title={tm("attachRemoveTitle")}
                   >
                     ✕
                   </button>
@@ -292,7 +294,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
             </div>
           ) : null}
           <div className="hint">
-            Ссылки на материалы из Materials или любые внешние файлы. Загрузка файлов появится позже.
+            {tm("attachmentsHint")}
           </div>
         </div>
 
@@ -303,7 +305,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
             onClick={onClose}
             disabled={saving}
           >
-            Отмена
+            {tm("cancelCta")}
           </button>
           <button
             type="button"
@@ -311,7 +313,7 @@ export default function CreateHomeworkModal({ open, onClose, onCreated }: Props)
             onClick={submit}
             disabled={saving || !studentId || !title.trim()}
           >
-            {saving ? "Создаю..." : "Выдать задание"}
+            {saving ? tm("submittingCta") : tm("submitCta")}
           </button>
         </div>
       </div>
