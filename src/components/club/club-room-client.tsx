@@ -228,7 +228,9 @@ export function ClubRoomClient({
           hideDisplayName: true,
           // Make shared screens use the available height instead of sitting in
           // a small contained box with large black margins.
-          videoLayoutFit: "nocrop",
+          // disableLargeVideoCrop: false — пусть Jitsi сам выберет fit по
+          // viewport. Любой override (width/height/nocrop) даёт глитчи на
+          // одном из разрешений (macbook 1440x900 vs внешний моник).
           disableLargeVideoCrop: false,
         },
         interfaceConfigOverwrite: {
@@ -246,7 +248,6 @@ export function ClubRoomClient({
           RECENT_LIST_ENABLED: false,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
-          VIDEO_LAYOUT_FIT: "nocrop",
           DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
