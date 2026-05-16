@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { asTimeLocale, formatDayMonthYearLong, formatLessonDayLong, formatLessonDayShort } from "@/lib/time"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — aligned with GET /api/profile/me
@@ -54,6 +55,7 @@ type ProfileData = {
     title: string
     desc: string
     kind: "done" | "active" | "future"
+    meta?: Record<string, string | number>
   }>
   favorite_teacher: {
     id: string
@@ -221,18 +223,17 @@ function formatRub(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n)
 }
 
-const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
-const MONTHS_FULL = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
-
-function formatDate(iso: string | null, mode: "short" | "full" = "short"): string {
+function formatDate(iso: string | null, mode: "short" | "full" = "short", locale: "ru" | "en" = "ru"): string {
   if (!iso) return ""
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
-  const day = d.getDate()
-  const month = mode === "full" ? MONTHS_FULL[d.getMonth()] : MONTHS_SHORT[d.getMonth()]
-  const year = d.getFullYear()
   const now = new Date()
-  return mode === "full" && year !== now.getFullYear() ? `${day} ${month} ${year}` : `${day} ${month}`
+  if (mode === "full") {
+    return d.getFullYear() !== now.getFullYear()
+      ? formatDayMonthYearLong(d, locale)
+      : formatLessonDayLong(d, locale)
+  }
+  return formatLessonDayShort(d, locale)
 }
 
 function plural(n: number, forms: [string, string, string]): string {
@@ -249,6 +250,7 @@ function plural(n: number, forms: [string, string, string]): string {
 
 export default function StudentProfilePage() {
   const t = useTranslations("dashboard.student.profile")
+  const tl = asTimeLocale(useLocale())
   const [data, setData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -418,16 +420,29 @@ export default function StudentProfilePage() {
                     item.kind === "done" ? "j-dot--done" : item.kind === "active" ? "j-dot--active" : "j-dot--future"
                   const lineCls = showDoneLine ? "j-line--done" : ""
                   const itemCls = item.kind === "future" ? "j-item j-item--future" : "j-item"
+
+                  // i18n-перевод journey-карточки по key. Если ключ известен — берём
+                  // локализованный тайтл/описание; если нет — fallback на серверные
+                  // строки (на случай новых журнал-событий, которых ещё нет в json).
+                  const known = new Set(["signup", "first_lesson", "first_club", "streak_7", "active", "future"])
+                  let title = item.title
+                  let desc = item.desc
+                  if (known.has(item.key)) {
+                    const m = item.meta ?? {}
+                    title = t(`journey.${item.key}.title`, m as any)
+                    desc = t(`journey.${item.key}.desc`, m as any)
+                  }
+
                   return (
                     <div key={item.key} className={itemCls}>
                       <div className={`j-dot ${dotCls}`} />
                       {!isLast && <div className={`j-line ${lineCls}`} />}
                       <div className="j-content">
                         <div className="j-date">
-                          {item.kind === "active" ? t("journeyNow") : item.date ? formatDate(item.date, "full") : "—"}
+                          {item.kind === "active" ? t("journeyNow") : item.date ? formatDate(item.date, "full", tl) : "—"}
                         </div>
-                        <div className="j-title">{item.title}</div>
-                        <div className="j-desc">{item.desc}</div>
+                        <div className="j-title">{title}</div>
+                        <div className="j-desc">{desc}</div>
                       </div>
                     </div>
                   )

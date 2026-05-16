@@ -6,8 +6,8 @@ import "@/styles/dashboard/admin-clubs.css"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale } from "next-intl"
+import { asTimeLocale, formatLessonDateTimeShort } from "@/lib/time"
 
 type Participant = {
   id: string | null
@@ -102,6 +102,7 @@ export default function AdminClubsClient({
 }: {
   initial: { clubs: Club[]; teachers: TeacherOption[] }
 }) {
+  const tl = asTimeLocale(useLocale())
   const [clubs, setClubs] = useState<Club[]>(initial.clubs)
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -357,9 +358,7 @@ export default function AdminClubsClient({
                     📅{" "}
                     <b>
                       {c.scheduled_at
-                        ? format(new Date(c.scheduled_at), "d MMM, HH:mm", {
-                            locale: ru,
-                          })
+                        ? formatLessonDateTimeShort(c.scheduled_at, tl)
                         : "—"}
                     </b>
                   </span>

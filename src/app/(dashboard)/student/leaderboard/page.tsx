@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { useQuery, keepPreviousData } from "@tanstack/react-query"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { asTimeLocale, formatMonthYearLong } from "@/lib/time"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/leaderboard)
@@ -216,10 +217,8 @@ function formatXP(n: number): string {
   return new Intl.NumberFormat("ru-RU").format(n)
 }
 
-function currentMonthName(): string {
-  return new Date()
-    .toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
-    .replace(/(^|\s)./u, (c) => c.toUpperCase())
+function currentMonthName(locale: "ru" | "en"): string {
+  return formatMonthYearLong(new Date(), locale).replace(/(^|\s)./u, (c) => c.toUpperCase())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,6 +227,7 @@ function currentMonthName(): string {
 
 export default function StudentLeaderboardPage() {
   const tt = useTranslations("dashboard.student.leaderboard")
+  const tl = asTimeLocale(useLocale())
   const PERIOD_TABS: { key: Period; label: string }[] = [
     { key: "monthly", label: tt("periodMonthly") },
     { key: "weekly", label: tt("periodWeekly") },
@@ -280,7 +280,7 @@ export default function StudentLeaderboardPage() {
 
   const monthTitle =
     period === "monthly"
-      ? currentMonthName()
+      ? currentMonthName(tl)
       : period === "weekly"
         ? tt("periodHeaderWeek")
         : tt("periodHeaderAll")

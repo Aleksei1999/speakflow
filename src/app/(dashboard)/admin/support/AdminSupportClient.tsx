@@ -6,9 +6,9 @@ import "@/styles/dashboard/admin-support.css"
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
+import { asTimeLocale, formatLessonDateTimeShort } from "@/lib/time"
 
 type Thread = {
   id: string
@@ -81,6 +81,7 @@ export default function AdminSupportClient({
 }: {
   initial: Thread[]
 }) {
+  const tl = asTimeLocale(useLocale())
   const [threads, setThreads] = useState<Thread[]>(initial)
   const [filter, setFilter] = useState<FilterKey>("open")
   const [activeId, setActiveId] = useState<string | null>(
@@ -554,9 +555,7 @@ export default function AdminSupportClient({
                       <div>
                         <div className="msg-bubble">{m.body}</div>
                         <div className="msg-time">
-                          {format(new Date(m.created_at), "d MMM, HH:mm", {
-                            locale: ru,
-                          })}
+                          {formatLessonDateTimeShort(m.created_at, tl)}
                         </div>
                       </div>
                     </div>

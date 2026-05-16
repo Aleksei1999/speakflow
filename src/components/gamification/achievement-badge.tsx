@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils"
 import { Lock, Check } from "lucide-react"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { asTimeLocale, formatLessonDayShort, type TimeLocale } from "@/lib/time"
 
 interface AchievementBadgeProps {
   title: string
@@ -12,6 +11,11 @@ interface AchievementBadgeProps {
   progress?: number
   threshold?: number
   className?: string
+  /**
+   * Optional locale override. If omitted, falls back to "ru" — current callers
+   * are server components that render without an active i18n context.
+   */
+  locale?: TimeLocale | string
 }
 
 const iconMap: Record<string, string> = {
@@ -39,8 +43,10 @@ export function AchievementBadge({
   progress,
   threshold,
   className,
+  locale,
 }: AchievementBadgeProps) {
   const emoji = iconMap[icon] ?? "🏅"
+  const tl = asTimeLocale(locale)
 
   return (
     <div
@@ -79,7 +85,7 @@ export function AchievementBadge({
 
       {earned && earnedAt && (
         <p className="text-xs text-[#CC3A3A]">
-          Получено {format(new Date(earnedAt), "d MMM yyyy", { locale: ru })}
+          Получено {formatLessonDayShort(earnedAt, tl)}
         </p>
       )}
 

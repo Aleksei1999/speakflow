@@ -3,10 +3,14 @@
 import "@/styles/dashboard/student-materials.css"
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  asTimeLocale,
+  formatLessonDayLong,
+  formatMonthShort,
+  type TimeLocale,
+} from "@/lib/time"
 
 type Owner = {
   id?: string | null
@@ -121,7 +125,7 @@ function ownerInitials(name: string | null | undefined): string {
     .slice(0, 2) || "T"
 }
 
-function formatRelativeDay(iso: string): string {
+function formatRelativeDay(iso: string, tl: TimeLocale = "ru"): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
   const today = new Date()
@@ -130,7 +134,7 @@ function formatRelativeDay(iso: string): string {
   if (diffDays === 1) return "вчера"
   if (diffDays < 7) return `${diffDays} дн. назад`
   if (diffDays < 30) return `${diffDays} дн. назад`
-  return format(new Date(iso), "d MMMM", { locale: ru })
+  return formatLessonDayLong(iso, tl)
 }
 
 // ------- icons -------
@@ -158,6 +162,7 @@ function TypeIcon({ type }: { type: TypeKey }) {
 
 export default function StudentMaterialsClient({ initial }: { initial: Snapshot }) {
   const t = useTranslations("dashboard.student.materials")
+  const tl = asTimeLocale(useLocale())
   const [snap, setSnap] = useState<Snapshot>(initial)
   const [filter, setFilter] = useState<FilterKey>("all")
   const [search, setSearch] = useState("")
@@ -533,7 +538,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
                   <div className="pin-card-name">{m.title}</div>
                   <div className="pin-card-meta">
                     {formatSize(m.file_size) ? <><b>{formatSize(m.file_size)}</b>{" · "}</> : null}
-                    {formatRelativeDay(m.created_at)}
+                    {formatRelativeDay(m.created_at, tl)}
                   </div>
                 </button>
               )
@@ -575,9 +580,9 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           const first = g.items[0]
           const teacherName = first?.owner?.full_name || "Преподаватель"
           const dateObj = first?.created_at ? new Date(first.created_at) : new Date()
-          const day = format(dateObj, "dd", { locale: ru })
-          const mon = format(dateObj, "LLL", { locale: ru }).replace(".", "")
-          const relDay = formatRelativeDay(first?.created_at || new Date().toISOString())
+          const day = String(dateObj.getDate()).padStart(2, "0")
+          const mon = formatMonthShort(dateObj, tl).replace(".", "")
+          const relDay = formatRelativeDay(first?.created_at || new Date().toISOString(), tl)
           const level = first?.level || null
           return (
             <div key={g.key} className={`lesson-group${open ? " open" : ""}`}>
@@ -592,7 +597,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
                 </div>
                 <div className="lesson-info">
                   <div className="lesson-title">
-                    {g.lessonId ? `Урок от ${format(dateObj, "d MMMM", { locale: ru })}` : "Публичные и прочие материалы"}
+                    {g.lessonId ? `Урок от ${formatLessonDayLong(dateObj, tl)}` : "Публичные и прочие материалы"}
                   </div>
                   <div className="lesson-meta">
                     <span>{relDay}</span>

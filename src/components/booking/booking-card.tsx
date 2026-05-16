@@ -1,7 +1,7 @@
 'use client'
 
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import { asTimeLocale, formatWeekdayLongDayMonthYearLong } from '@/lib/time'
 import {
   Card,
   CardContent,
@@ -93,6 +93,7 @@ export function BookingCard({
   const statusConfig = STATUS_CONFIG[lesson.status]
   const scheduledDate = new Date(lesson.scheduledAt)
   const now = new Date()
+  const tl = asTimeLocale(useLocale())
 
   // Determine if join window is active (5 min before to end of lesson)
   const joinWindowStart = new Date(
@@ -148,7 +149,7 @@ export function BookingCard({
           <div className="flex items-center gap-2 text-sm">
             <CalendarDays className="size-3.5 text-muted-foreground" />
             <span>
-              {format(scheduledDate, 'd MMMM yyyy, EEEE', { locale: ru })}
+              {formatWeekdayLongDayMonthYearLong(scheduledDate, tl)}
             </span>
           </div>
 

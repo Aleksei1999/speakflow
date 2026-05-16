@@ -4,7 +4,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import {
+  asTimeLocale,
+  formatDayMonthYearLong,
+  formatWeekdayLongDayMonthYearLong,
+} from '@/lib/time'
 import {
   Card,
   CardContent,
@@ -68,6 +73,7 @@ export default function BookTeacherPage() {
   const params = useParams()
   const router = useRouter()
   const teacherId = params.teacherId as string
+  const tl = asTimeLocale(useLocale())
 
   // Teacher info
   const [teacher, setTeacher] = useState<TeacherInfo | null>(null)
@@ -414,7 +420,7 @@ export default function BookTeacherPage() {
           </CardTitle>
           {selectedDate && step !== 'date' && (
             <CardDescription>
-              {format(selectedDate, 'd MMMM yyyy, EEEE', { locale: ru })}
+              {formatWeekdayLongDayMonthYearLong(selectedDate, tl)}
             </CardDescription>
           )}
         </CardHeader>
@@ -561,7 +567,7 @@ export default function BookTeacherPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Дата</span>
                 <span className="font-medium">
-                  {format(selectedDate, 'd MMMM yyyy', { locale: ru })}
+                  {formatDayMonthYearLong(selectedDate, tl)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">

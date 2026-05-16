@@ -2,8 +2,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import {
+  asTimeLocale,
+  formatDayMonthYearLong,
+  formatDayMonthYearShort,
+  formatLessonTime,
+} from '@/lib/time'
 import {
   Search,
   MoreHorizontal,
@@ -97,6 +102,7 @@ function formatCurrency(kopecks: number): string {
 }
 
 function AdminPaymentsContent() {
+  const tl = asTimeLocale(useLocale())
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -520,9 +526,7 @@ function AdminPaymentsContent() {
                     {payment.payment_method ?? '---'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {format(new Date(payment.created_at), 'd MMM yyyy HH:mm', {
-                      locale: ru,
-                    })}
+                    {`${formatDayMonthYearShort(payment.created_at, tl)} ${formatLessonTime(payment.created_at, tl)}`}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -669,11 +673,7 @@ function AdminPaymentsContent() {
                   </p>
                   <p>
                     {selectedPayment.lesson_date
-                      ? format(
-                          new Date(selectedPayment.lesson_date),
-                          'd MMMM yyyy, HH:mm',
-                          { locale: ru }
-                        )
+                      ? `${formatDayMonthYearLong(selectedPayment.lesson_date, tl)}, ${formatLessonTime(selectedPayment.lesson_date, tl)}`
                       : '---'}
                   </p>
                 </div>
@@ -684,11 +684,7 @@ function AdminPaymentsContent() {
                     Дата создания
                   </p>
                   <p>
-                    {format(
-                      new Date(selectedPayment.created_at),
-                      'd MMMM yyyy, HH:mm',
-                      { locale: ru }
-                    )}
+                    {`${formatDayMonthYearLong(selectedPayment.created_at, tl)}, ${formatLessonTime(selectedPayment.created_at, tl)}`}
                   </p>
                 </div>
                 <div>
@@ -697,11 +693,7 @@ function AdminPaymentsContent() {
                   </p>
                   <p>
                     {selectedPayment.paid_at
-                      ? format(
-                          new Date(selectedPayment.paid_at),
-                          'd MMMM yyyy, HH:mm',
-                          { locale: ru }
-                        )
+                      ? `${formatDayMonthYearLong(selectedPayment.paid_at, tl)}, ${formatLessonTime(selectedPayment.paid_at, tl)}`
                       : '---'}
                   </p>
                 </div>
@@ -712,11 +704,7 @@ function AdminPaymentsContent() {
                     Дата возврата
                   </p>
                   <p>
-                    {format(
-                      new Date(selectedPayment.refunded_at),
-                      'd MMMM yyyy, HH:mm',
-                      { locale: ru }
-                    )}
+                    {`${formatDayMonthYearLong(selectedPayment.refunded_at, tl)}, ${formatLessonTime(selectedPayment.refunded_at, tl)}`}
                   </p>
                 </div>
               )}

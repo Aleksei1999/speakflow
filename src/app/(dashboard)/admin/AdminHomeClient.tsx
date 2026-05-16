@@ -5,8 +5,8 @@ import "@/styles/dashboard/admin-home.css"
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale } from "next-intl"
+import { asTimeLocale, formatWeekdayLongDayMonthLong } from "@/lib/time"
 
 type AdminStats = {
   students_active: number
@@ -154,6 +154,7 @@ type ServerTask = {
 
 export default function AdminHomeClient({ fullName, initial }: Props) {
   const stats = initial.stats
+  const tl = asTimeLocale(useLocale())
   // Реальные задачи из /api/admin/tasks. Локальный «done» — оптимистичный
   // dismiss (хранится в localStorage), серверу мы их пока не пишем.
   const [serverTasks, setServerTasks] = useState<ServerTask[]>([])
@@ -201,7 +202,7 @@ export default function AdminHomeClient({ fullName, initial }: Props) {
   const subLine = useMemo(() => {
     try {
       const now = new Date()
-      const day = format(now, "EEEE, d MMMM", { locale: ru })
+      const day = formatWeekdayLongDayMonthLong(now, tl)
       const parts = [day.charAt(0).toUpperCase() + day.slice(1)]
       if (stats.teacher_applications_new > 0)
         parts.push(`${stats.teacher_applications_new} заявок преподавателей`)
