@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import SupportClient from "./SupportClient"
 
@@ -24,7 +25,8 @@ export default async function StudentSupportPage() {
   if (profile.role === "teacher") redirect("/teacher/support")
   if (profile.role === "admin") redirect("/admin/support")
 
-  const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Ученик"
+  const t = await getTranslations("dashboard.student.support")
+  const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || t("fallbackUserName")
 
   return <SupportClient userId={user.id} userName={fullName} role="student" />
 }

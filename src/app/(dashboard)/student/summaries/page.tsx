@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { getLocale, getTranslations } from "next-intl/server"
 import { BookOpen } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent } from "@/components/ui/card"
@@ -19,6 +20,9 @@ function getInitials(name: string): string {
 
 export default async function StudentSummariesPage() {
   const supabase = await createClient()
+  const t = await getTranslations("dashboard.student.summaries")
+  const locale = await getLocale()
+  const dfLocale = locale === "en" ? enUS : ru
 
   const {
     data: { user },
@@ -75,9 +79,9 @@ export default async function StudentSummariesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI-<span className="gl">summary</span></h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("headingPrefix")}<span className="gl">{t("headingWord")}</span></h1>
         <p className="text-sm text-muted-foreground">
-          Автоматические резюме ваших уроков
+          {t("subtitle")}
         </p>
       </div>
 
@@ -86,7 +90,7 @@ export default async function StudentSummariesPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <BookOpen className="mb-3 size-12 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
-              AI-саммари появятся после первого урока
+              {t("emptyTitle")}
             </p>
           </CardContent>
         </Card>
@@ -94,7 +98,7 @@ export default async function StudentSummariesPage() {
         <div className="flex flex-col gap-4">
           {items.map((summary) => {
             const teacher = summary.lessons?.profiles
-            const teacherName = teacher?.full_name ?? "Преподаватель"
+            const teacherName = teacher?.full_name ?? t("fallbackTeacher")
             const vocabList = Array.isArray(summary.vocabulary)
               ? summary.vocabulary
               : []
@@ -141,7 +145,7 @@ export default async function StudentSummariesPage() {
                       <p className="text-sm font-medium">{teacherName}</p>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(summary.created_at), "d MMMM yyyy", {
-                          locale: ru,
+                          locale: dfLocale,
                         })}
                       </p>
                     </div>
@@ -149,7 +153,7 @@ export default async function StudentSummariesPage() {
                     <div className="flex items-center gap-2">
                       {vocabList.length > 0 && (
                         <Badge variant="secondary" className="text-xs">
-                          {vocabList.length} слов
+                          {t("vocabCount", { count: vocabList.length })}
                         </Badge>
                       )}
                       {summary.cefr_level && (

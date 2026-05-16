@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
+import { useTranslations } from "next-intl"
 import { Send, FileText, StickyNote, MessageSquare } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -29,6 +30,7 @@ export function LessonSidebar({
   userName,
   teacherName,
 }: LessonSidebarProps) {
+  const t = useTranslations("components.lesson.sidebar")
   const [tab, setTab] = useState<Tab>("chat")
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
@@ -135,28 +137,28 @@ export function LessonSidebar({
   }, [notes, lessonId])
 
   const tabs = [
-    { key: "chat" as Tab, label: "Чат", icon: MessageSquare },
-    { key: "materials" as Tab, label: "Материалы", icon: FileText },
-    { key: "notes" as Tab, label: "Заметки", icon: StickyNote },
+    { key: "chat" as Tab, label: t("tabChat"), icon: MessageSquare },
+    { key: "materials" as Tab, label: t("tabMaterials"), icon: FileText },
+    { key: "notes" as Tab, label: t("tabNotes"), icon: StickyNote },
   ]
 
   return (
     <div className="flex h-full flex-col bg-[#1E293B] text-white">
       {/* Tabs */}
       <div className="flex border-b border-white/10">
-        {tabs.map((t) => (
+        {tabs.map((item) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={item.key}
+            onClick={() => setTab(item.key)}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors",
-              tab === t.key
+              tab === item.key
                 ? "border-b-2 border-[#CC3A3A] text-white"
                 : "text-white/50 hover:text-white/80"
             )}
           >
-            <t.icon className="size-3.5" />
-            {t.label}
+            <item.icon className="size-3.5" />
+            {item.label}
           </button>
         ))}
       </div>
@@ -170,7 +172,7 @@ export function LessonSidebar({
               return (
                 <div key={msg.id}>
                   <div className={cn("text-xs font-medium mb-0.5", isMe ? "text-[#DFED8C]" : "text-[#CC3A3A]")}>
-                    {isMe ? "Вы" : teacherName}
+                    {isMe ? t("you") : teacherName}
                   </div>
                   <div className="text-sm text-white/90 leading-relaxed">
                     {msg.message}
@@ -186,7 +188,7 @@ export function LessonSidebar({
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Написать сообщение..."
+              placeholder={t("chatPlaceholder")}
               className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#CC3A3A]"
             />
             <button
@@ -203,7 +205,7 @@ export function LessonSidebar({
       {tab === "materials" && (
         <div className="flex-1 overflow-y-auto p-3">
           <p className="text-center text-sm text-white/40 py-8">
-            Материалы урока появятся здесь
+            {t("materialsEmpty")}
           </p>
         </div>
       )}
@@ -216,7 +218,7 @@ export function LessonSidebar({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               onBlur={saveNotes}
-              placeholder="Ваши заметки по уроку..."
+              placeholder={t("notesPlaceholder")}
               className="h-full w-full resize-none rounded-lg bg-white/10 p-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#CC3A3A]"
             />
           </div>
@@ -225,7 +227,7 @@ export function LessonSidebar({
               onClick={saveNotes}
               className="w-full rounded-lg bg-white/10 py-2 text-xs text-white/70 hover:bg-white/20"
             >
-              Сохранить заметки
+              {t("notesSave")}
             </button>
           </div>
         </div>

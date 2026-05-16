@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { ChevronDown, CheckCircle2, AlertCircle, BookOpen, PenLine, Lightbulb } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -47,6 +48,7 @@ export function SummaryExpandable({
   areasToImprove,
   quiz,
 }: SummaryExpandableProps) {
+  const t = useTranslations("dashboard.student.summaries")
   const strengthList = toList(strengths)
   const areasList = toList(areasToImprove)
   const [expanded, setExpanded] = useState(false)
@@ -77,7 +79,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <BookOpen className="size-4 text-[#CC3A3A]" />
-                  Резюме урока
+                  {t("summarySection")}
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {summaryText}
@@ -90,7 +92,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <PenLine className="size-4 text-[#CC3A3A]" />
-                  Словарь ({vocabulary.length})
+                  {t("vocabularySection", { count: vocabulary.length })}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {vocabulary.map((word: any, i: number) => {
@@ -120,7 +122,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <Lightbulb className="size-4 text-[#CC3A3A]" />
-                  Грамматика
+                  {t("grammarSection")}
                 </div>
                 <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
                   {grammarPoints.map((point: any, i: number) => (
@@ -138,7 +140,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <PenLine className="size-4 text-[#CC3A3A]" />
-                  Домашнее задание
+                  {t("homeworkSection")}
                 </div>
                 <p className="text-sm text-muted-foreground">{homework}</p>
               </div>
@@ -149,7 +151,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <CheckCircle2 className="size-4 text-green-500" />
-                  Сильные стороны
+                  {t("strengthsSection")}
                 </div>
                 <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
                   {strengthList.map((s, i) => (
@@ -167,7 +169,7 @@ export function SummaryExpandable({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <AlertCircle className="size-4 text-orange-500" />
-                  Области для улучшения
+                  {t("areasSection")}
                 </div>
                 <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
                   {areasList.map((s, i) => (

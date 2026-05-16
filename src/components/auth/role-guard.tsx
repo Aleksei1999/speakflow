@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useUser } from '@/hooks/use-user'
 
 interface RoleGuardProps {
@@ -21,6 +22,7 @@ export function RoleGuard({
 }: RoleGuardProps) {
   const { user, role, isLoading } = useUser()
   const router = useRouter()
+  const t = useTranslations('common')
 
   useEffect(() => {
     if (isLoading) return
@@ -45,7 +47,7 @@ export function RoleGuard({
             className="size-8 animate-spin rounded-full border-2 border-current border-t-transparent"
             style={{ color: '#CC3A3A' }}
           />
-          <p className="text-sm text-muted-foreground">Загрузка...</p>
+          <p className="text-sm text-muted-foreground">{t('loadingDot')}</p>
         </div>
       </div>
     )
