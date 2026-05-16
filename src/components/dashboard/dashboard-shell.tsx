@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useLocale, useTranslations } from "next-intl"
 import { createClient } from "@/lib/supabase/client"
 import { RawLogo } from "@/components/ui/raw-logo"
 import { Toaster } from "@/components/ui/sonner"
@@ -137,55 +138,67 @@ const icons = {
   clipboard: '<svg viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
 }
 
-type NavItem = { href: string; label: string; icon: string; badge?: string | number }
+// Each item carries a *label key* into the `nav.*` namespace (see
+// src/i18n/messages/{ru,en}.json). The actual rendered label is resolved
+// at render time via useTranslations('nav'). Keeping the arrays static
+// preserves identity across renders (good for the `useMemo` below).
+type NavItem = { href: string; labelKey: string; icon: string; badge?: string | number }
 
 const studentNav: NavItem[] = [
-  { href: "/student", label: "Dashboard", icon: icons.dashboard },
-  { href: "/student/schedule", label: "Расписание", icon: icons.calendar },
-  { href: "/student/balance", label: "Баланс", icon: icons.payment },
-  { href: "/student/homework", label: "Домашка", icon: icons.edit },
-  { href: "/student/clubs", label: "Speaking Clubs", icon: icons.mic },
-  { href: "/student/teachers", label: "Преподаватели", icon: icons.users },
-  { href: "/student/achievements", label: "Достижения", icon: icons.trophy },
-  { href: "/student/materials", label: "Материалы", icon: icons.book },
-  { href: "/student/leaderboard", label: "Лидерборд", icon: icons.leaderboard },
-  { href: "/student/referrals", label: "Рефералы", icon: icons.referrals },
-  { href: "/student/support", label: "Поддержка", icon: icons.support },
+  { href: "/student", labelKey: "dashboard", icon: icons.dashboard },
+  { href: "/student/schedule", labelKey: "schedule", icon: icons.calendar },
+  { href: "/student/balance", labelKey: "balance", icon: icons.payment },
+  { href: "/student/homework", labelKey: "homework", icon: icons.edit },
+  { href: "/student/clubs", labelKey: "clubs", icon: icons.mic },
+  { href: "/student/teachers", labelKey: "teachers", icon: icons.users },
+  { href: "/student/achievements", labelKey: "achievements", icon: icons.trophy },
+  { href: "/student/materials", labelKey: "materials", icon: icons.book },
+  { href: "/student/leaderboard", labelKey: "leaderboard", icon: icons.leaderboard },
+  { href: "/student/referrals", labelKey: "referrals", icon: icons.referrals },
+  { href: "/student/support", labelKey: "support", icon: icons.support },
 ]
 const studentBottom: NavItem[] = [
-  { href: "/student/profile", label: "Профиль", icon: icons.profile },
-  { href: "/student/settings", label: "Настройки", icon: icons.settings },
+  { href: "/student/profile", labelKey: "profile", icon: icons.profile },
+  { href: "/student/settings", labelKey: "settings", icon: icons.settings },
 ]
 
 const teacherNav: NavItem[] = [
-  { href: "/teacher", label: "Dashboard", icon: icons.dashboard },
-  { href: "/teacher/schedule", label: "Расписание", icon: icons.calendar },
-  { href: "/teacher/students", label: "Мои ученики", icon: icons.users },
-  { href: "/teacher/groups", label: "Группы", icon: icons.groups },
-  { href: "/teacher/clubs", label: "Speaking Clubs", icon: icons.mic },
-  { href: "/teacher/homework", label: "Домашние задания", icon: icons.edit },
-  { href: "/teacher/materials", label: "Материалы", icon: icons.book },
-  { href: "/teacher/payouts", label: "Выплаты", icon: icons.payment },
-  { href: "/teacher/support", label: "Поддержка", icon: icons.support },
+  { href: "/teacher", labelKey: "dashboard", icon: icons.dashboard },
+  { href: "/teacher/schedule", labelKey: "schedule", icon: icons.calendar },
+  { href: "/teacher/students", labelKey: "students", icon: icons.users },
+  { href: "/teacher/groups", labelKey: "groups", icon: icons.groups },
+  { href: "/teacher/clubs", labelKey: "clubs", icon: icons.mic },
+  { href: "/teacher/homework", labelKey: "homework", icon: icons.edit },
+  { href: "/teacher/materials", labelKey: "materials", icon: icons.book },
+  { href: "/teacher/payouts", labelKey: "payouts", icon: icons.payment },
+  { href: "/teacher/support", labelKey: "support", icon: icons.support },
 ]
 const teacherBottom: NavItem[] = [
-  { href: "/teacher/profile", label: "Профиль", icon: icons.profile },
-  { href: "/teacher/settings", label: "Настройки", icon: icons.settings },
+  { href: "/teacher/profile", labelKey: "profile", icon: icons.profile },
+  { href: "/teacher/settings", labelKey: "settings", icon: icons.settings },
 ]
 
 const adminNav: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: icons.dashboard },
-  { href: "/admin/students", label: "Ученики", icon: icons.users },
-  { href: "/admin/teachers", label: "Преподаватели", icon: icons.profile },
-  { href: "/admin/trial-requests", label: "Заявки", icon: icons.clipboard },
-  { href: "/admin/schedule", label: "Расписание", icon: icons.calendar },
-  { href: "/admin/clubs", label: "Speaking Clubs", icon: icons.mic },
-  { href: "/admin/support", label: "Поддержка", icon: icons.support },
+  { href: "/admin", labelKey: "dashboard", icon: icons.dashboard },
+  { href: "/admin/students", labelKey: "students", icon: icons.users },
+  { href: "/admin/teachers", labelKey: "teachers", icon: icons.profile },
+  // Admin-only label; English fallback below. We don't expose it in
+  // the `nav` namespace since admin UI is RU-first by spec.
+  { href: "/admin/trial-requests", labelKey: "_adminApplications", icon: icons.clipboard },
+  { href: "/admin/schedule", labelKey: "schedule", icon: icons.calendar },
+  { href: "/admin/clubs", labelKey: "clubs", icon: icons.mic },
+  { href: "/admin/support", labelKey: "support", icon: icons.support },
 ]
 const adminBottom: NavItem[] = [
-  { href: "/admin/reports", label: "Отчёты", icon: icons.reports },
-  { href: "/admin/settings", label: "Настройки", icon: icons.settings },
+  { href: "/admin/reports", labelKey: "_adminReports", icon: icons.reports },
+  { href: "/admin/settings", labelKey: "settings", icon: icons.settings },
 ]
+
+// Static fallbacks for admin-only labels (not in messages.json by design).
+const ADMIN_LABEL_FALLBACK: Record<string, { ru: string; en: string }> = {
+  _adminApplications: { ru: "Заявки", en: "Applications" },
+  _adminReports: { ru: "Отчёты", en: "Reports" },
+}
 
 function Icon({ svg }: { svg: string }) {
   return <span className="icon" dangerouslySetInnerHTML={{ __html: svg }} />
@@ -219,6 +232,20 @@ type Props = {
 export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamification, teacherStats, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  const tNav = useTranslations('nav')
+  const tShell = useTranslations('dashboard.shell')
+  const locale = useLocale() as 'ru' | 'en'
+
+  // Resolve a NavItem.labelKey to a localised string. Real keys hit the
+  // shared `nav.*` namespace; admin-only keys (prefixed with `_admin`)
+  // are not in messages.json and use ADMIN_LABEL_FALLBACK instead.
+  const labelFor = (key: string): string => {
+    if (key.startsWith('_admin')) {
+      const fb = ADMIN_LABEL_FALLBACK[key]
+      return fb ? (locale === 'en' ? fb.en : fb.ru) : key
+    }
+    try { return tNav(key as never) } catch { return key }
+  }
 
   // Track <img> load failures so we can fall back to initials. Reset whenever
   // the URL changes (e.g. user re-uploads avatar in /settings).
@@ -448,8 +475,14 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
   const bottomItems =
     currentRole === "admin" ? adminBottom : currentRole === "teacher" ? teacherBottom : studentBottom
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-  const roleLabel =
-    currentRole === "admin" ? "Админ" : currentRole === "teacher" ? "Преподаватель" : "Ученик"
+  // Role labels are short and contextual — we keep them inline rather than
+  // adding three more keys per language to messages.json.
+  const ROLE_LABEL: Record<'admin' | 'teacher' | 'student', { ru: string; en: string }> = {
+    admin: { ru: 'Админ', en: 'Admin' },
+    teacher: { ru: 'Преподаватель', en: 'Teacher' },
+    student: { ru: 'Ученик', en: 'Student' },
+  }
+  const roleLabel = ROLE_LABEL[currentRole][locale === 'en' ? 'en' : 'ru']
 
   // ---------------------------------------------------------------
   // Live overlay для XP/streak в шапке: пока студент работает в одной
@@ -502,7 +535,7 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
           />
         ) : null}
         <aside
-          aria-label="Боковая навигация"
+          aria-label={locale === 'en' ? 'Sidebar navigation' : 'Боковая навигация'}
           className={`sidebar${mobileOpen ? " mobile-open" : ""}`}
           onClickCapture={(e) => {
             // Close drawer when a navigation <a>/<Link> is clicked (mobile only).
@@ -541,7 +574,7 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
                   CSS-variables брендовые. */}
               {emailVerified ? (
                 <span className="profile-verified-badge" aria-hidden="false">
-                  <span className="sr-only">Подтверждённый аккаунт</span>
+                  <span className="sr-only">{locale === 'en' ? 'Verified account' : 'Подтверждённый аккаунт'}</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="22"
@@ -565,14 +598,14 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
                 </span>
               ) : null}
             </div>
-            <div className="profile-name">{fullName || "Пользователь"}</div>
+            <div className="profile-name">{fullName || (locale === 'en' ? 'User' : 'Пользователь')}</div>
             {effectiveGamification ? (
               <>
                 <div className="profile-level">🔥 {effectiveGamification.level} · {effectiveGamification.xp} XP</div>
                 {effectiveGamification.nextLevel ? (
                   <div className="profile-xp">
                     <div className="profile-xp-row">
-                      <span>До {effectiveGamification.nextLevel}</span>
+                      <span>{locale === 'en' ? `To ${effectiveGamification.nextLevel}` : `До ${effectiveGamification.nextLevel}`}</span>
                       <span>{xpProgressPct}%</span>
                     </div>
                     <div className="profile-xp-bar">
@@ -581,16 +614,38 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
                   </div>
                 ) : null}
                 {effectiveGamification.currentStreak > 0 ? (
-                  <div className="profile-streak">⚡ {effectiveGamification.currentStreak}-дневный стрик</div>
+                  <div className="profile-streak">
+                    ⚡ {effectiveGamification.currentStreak}
+                    {locale === 'en'
+                      ? `-day streak`
+                      : `-дневный стрик`}
+                  </div>
                 ) : null}
               </>
             ) : teacherStats ? (
               <>
                 <div className="profile-role">
-                  teacher{teacherStats.yearsExperience ? ` · ${teacherStats.yearsExperience} ${teacherStats.yearsExperience === 1 ? "год" : teacherStats.yearsExperience < 5 ? "года" : "лет"}` : ""}
+                  teacher{teacherStats.yearsExperience
+                    ? ` · ${teacherStats.yearsExperience} ${
+                        locale === 'en'
+                          ? teacherStats.yearsExperience === 1 ? 'year' : 'years'
+                          : teacherStats.yearsExperience === 1
+                            ? 'год'
+                            : teacherStats.yearsExperience < 5
+                              ? 'года'
+                              : 'лет'
+                      }`
+                    : ''}
                 </div>
                 <div className="profile-rating">
-                  ★ {teacherStats.rating.toFixed(1)} · {teacherStats.totalReviews} {teacherStats.totalReviews === 1 ? "отзыв" : teacherStats.totalReviews < 5 ? "отзыва" : "отзывов"}
+                  ★ {teacherStats.rating.toFixed(1)} · {teacherStats.totalReviews}{' '}
+                  {locale === 'en'
+                    ? teacherStats.totalReviews === 1 ? 'review' : 'reviews'
+                    : teacherStats.totalReviews === 1
+                      ? 'отзыв'
+                      : teacherStats.totalReviews < 5
+                        ? 'отзыва'
+                        : 'отзывов'}
                 </div>
               </>
             ) : (
@@ -602,27 +657,17 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
             {navItems.map((item) => {
               const isHome = item.href === `/${currentRole}`
               const isActive = pathname === item.href || (!isHome && pathname.startsWith(item.href))
-              // Слаг для data-onboarding (для якорей онбординг-тура) — на самой ссылке,
-              // а не на <li>, чтобы getBoundingClientRect возвращал реальный visual rect.
               const navSlug = item.href.split("/").filter(Boolean).pop() || "home"
+              const label = labelFor(item.labelKey)
               return (
-                <li key={item.href + item.label}>
-                  {/* Prefetch enabled (Next.js default): pre-warms the loading.tsx
-                     skeleton + RSC payload of the next dashboard tab on hover/visible,
-                     which is exactly the path that users walk. Без этого переход
-                     /student → /student/schedule блокируется на 300-800ms while
-                     auth check + layout cache + page query run from scratch.
-                     Раньше стоял prefetch={false} ради подавления dev-console
-                     warning'ов на force-dynamic роутах — теперь у нас есть
-                     loading.tsx у каждого раздела (task #71), prefetch ведёт себя
-                     корректно (грузит skeleton bundle, а не саму страницу). */}
+                <li key={item.href + item.labelKey}>
                   <Link
                     href={item.href}
                     className={isActive ? "active" : ""}
                     data-onboarding={`nav-${navSlug}`}
                   >
                     <Icon svg={item.icon} />
-                    {item.label}
+                    {label}
                     {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
                   </Link>
                 </li>
@@ -630,30 +675,27 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
             })}
           </ul>
 
-          <div className="nav-section">Аккаунт</div>
+          <div className="nav-section">{locale === 'en' ? 'Account' : 'Аккаунт'}</div>
           <ul className="nav">
             {bottomItems.map((item) => (
-              <li key={item.label}>
-                {/* prefetch включён (см. комментарий выше у nav-links): account-links
-                   (профиль/настройки/выход) — частые цели перехода с любого
-                   dashboard-раздела, prefetch'имся ради instant-navigation. */}
+              <li key={item.labelKey}>
                 <Link href={item.href}>
                   <Icon svg={item.icon} />
-                  {item.label}
+                  {labelFor(item.labelKey)}
                 </Link>
               </li>
             ))}
             <li>
               <a href="#" onClick={(e) => { e.preventDefault(); handleLogout() }}>
                 <Icon svg={icons.logout} />
-                Выйти
+                {tNav('logout')}
               </a>
             </li>
           </ul>
 
           <div className="sidebar-footer">
             <span className="dot"></span>
-            Онлайн{effectiveGamification ? ` · ${effectiveGamification.level}` : teacherStats ? " · Status: active" : ` · ${roleLabel}`}
+            {locale === 'en' ? 'Online' : 'Онлайн'}{effectiveGamification ? ` · ${effectiveGamification.level}` : teacherStats ? ` · ${locale === 'en' ? 'Active' : 'Активен'}` : ` · ${roleLabel}`}
           </div>
         </aside>
 
@@ -661,7 +703,7 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
           <button
             type="button"
             className="dash-burger"
-            aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-label={mobileOpen ? tShell('closeMenu') : tShell('openMenu')}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
           >

@@ -3,17 +3,20 @@ import Link from 'next/link'
 
 import { RawLogo } from '@/components/ui/raw-logo'
 import { Toaster } from '@/components/ui/sonner'
+import { getLocale } from '@/i18n/locale'
 
 export const metadata: Metadata = {
   title: 'RAW English — Авторизация',
   description: 'Вход и регистрация на платформе RAW English',
 }
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getLocale()
+  const closeLabel = locale === 'en' ? 'Close' : 'Закрыть'
   return (
     <>
       {/* Scoped design tokens for the (auth) section. Not touching globals.css. */}
@@ -175,7 +178,7 @@ export default function AuthLayout({
             <Link href="/" className="auth-logo" aria-label="Raw English">
               <RawLogo size={28} />
             </Link>
-            <Link href="/" className="auth-close" aria-label="Закрыть">
+            <Link href="/" className="auth-close" aria-label={closeLabel}>
               ✕
             </Link>
           </div>

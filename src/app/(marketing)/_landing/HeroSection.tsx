@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useEffect, useState } from "react"
 import styles from "../hero-copy/hero-copy.module.css"
 
@@ -64,6 +65,7 @@ const floatingWords: FloatingWord[] = [
 ]
 
 export default function HeroSection() {
+  const t = useTranslations("landing.hero")
   const [theme, setTheme] = useState<"dark" | "light">("dark")
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export default function HeroSection() {
     <section
       className={styles.hero}
       data-theme={theme}
-      aria-label="RAW English hero"
+      aria-label={t("ariaLabel")}
       data-level="1"
       data-xp="5"
     >
@@ -124,15 +126,15 @@ export default function HeroSection() {
       <div className={styles.heroGrid}>
         <div className={styles.leftPanel}>
           <h1>
-            <span>Make it</span>
-            <strong>well done.</strong>
+            <span>{t("headlineMakeIt")}</span>
+            <strong>{t("headlineWellDone")}</strong>
           </h1>
 
           <div className={styles.streakCard}>
             <div className={styles.streakBadge}>★</div>
             <div>
-              <b>Streak: 14 days</b>
-              <span>Just leveled up!</span>
+              <b>{t("streakTitle")}</b>
+              <span>{t("streakSub")}</span>
             </div>
           </div>
         </div>
@@ -140,7 +142,7 @@ export default function HeroSection() {
         <div className={styles.photoStage}>
           <Image
             src="/landing/raw-hero-teacher-reference.png"
-            alt="Преподаватель RAW English"
+            alt={t("teacherAlt")}
             width={1672}
             height={941}
             priority
@@ -151,23 +153,26 @@ export default function HeroSection() {
 
         <div className={styles.rightPanel}>
           <div className={styles.speechBubble}>
-            Уроки английского,
+            {t("speechBubbleLine1")}
             <br />
-            коммьюнити, лекции
-            <br />и speaking clubs
+            {t("speechBubbleLine2")}
+            <br />
+            {t("speechBubbleLine3")}
           </div>
 
           <h2>
-            Прожарь свой
+            {t("h2Line1")}
             <br />
-            английский от <span className={styles.h2Accent}>raw</span>
+            {t("h2Line2Pre")}
+            <span className={styles.h2Accent}>{t("h2Raw")}</span>
             <br />
-            до <span className={styles.h2Cursive}>well done.</span>
+            {t("h2Line3Pre")}
+            <span className={styles.h2Cursive}>{t("h2WellDone")}</span>
           </h2>
 
           <div className={styles.xpCard}>
-            <div className={styles.levelDot}>M</div>
-            <b>+50 XP за дебаты</b>
+            <div className={styles.levelDot}>{t("xpCardLevel")}</div>
+            <b>{t("xpCardText")}</b>
             <span>♟</span>
           </div>
         </div>
@@ -177,10 +182,10 @@ export default function HeroSection() {
         <div className={styles.ctaButtons}>
           <Link href="/register" className={styles.primaryCta}>
             <span>🔥</span>
-            Начать прохождение
+            {t("ctaPrimary")}
           </Link>
           <a href="#lvl4" className={styles.secondaryCta}>
-            Как это работает
+            {t("ctaSecondary")}
           </a>
         </div>
 
@@ -191,7 +196,7 @@ export default function HeroSection() {
             ))}
           </div>
           <p>
-            <b>500+</b> учеников уже играют
+            <b>{t("socialProofCount")}</b> {t("socialProofPrefix")}
           </p>
         </div>
       </div>

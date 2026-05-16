@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
+import { useTranslations } from 'next-intl'
 
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema } from '@/lib/validations'
@@ -24,6 +25,7 @@ function LoginPageContent() {
   const [oauthPending, setOauthPending] = useState(false)
   const [role, setRole] = useState<'student' | 'teacher'>(initialRole)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const t = useTranslations('auth.login')
 
   const {
     register,
@@ -48,7 +50,7 @@ function LoginPageContent() {
     })
 
     if (error) {
-      setServerError('Неверный email или пароль')
+      setServerError(t('errorGeneric'))
       return
     }
 
@@ -56,15 +58,23 @@ function LoginPageContent() {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
-      setServerError('Не удалось получить данные пользователя')
+      setServerError(t('errorGeneric'))
       return
     }
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, language')
       .eq('id', user.id)
-      .single<{ role: 'student' | 'teacher' | 'admin' | null }>()
+      .single<{ role: 'student' | 'teacher' | 'admin' | null; language: 'ru' | 'en' | null }>()
+
+    // Mirror UI language into the rwen_locale cookie so next-intl picks it up
+    // on the very next navigation (single-locale runtime, no /en/... prefix).
+    if (profile?.language === 'ru' || profile?.language === 'en') {
+      try {
+        document.cookie = `rwen_locale=${profile.language}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`
+      } catch { /* no-op */ }
+    }
 
     if (redirectTo && redirectTo.startsWith('/')) {
       router.push(redirectTo)
@@ -87,7 +97,7 @@ function LoginPageContent() {
     })
     if (error) {
       setOauthPending(false)
-      setServerError('Не удалось подключиться к Google. Попробуйте ещё раз.')
+      setServerError(t('errorGeneric'))
     }
   }
 
@@ -99,20 +109,18 @@ function LoginPageContent() {
         .role-toggle button.active{background:var(--auth-surface,#fff);color:var(--auth-text,#111);box-shadow:0 1px 3px rgba(0,0,0,.06)}
         .role-toggle button:hover:not(.active){color:var(--auth-text,#111)}
       `}</style>
-      <div className="role-toggle" role="tablist" aria-label="Тип аккаунта">
+      <div className="role-toggle" role="tablist" aria-label={t('chooseRole')}>
         <button
           type="button"
           role="tab"
           aria-selected={role === 'student'}
           className={role === 'student' ? 'active' : ''}
           onClick={() => {
-            // Сбрасываем ошибку при переключении таба: предыдущее «Неверный
-            // email или пароль» к новой роли уже не относится и только путает.
             setServerError(null)
             setRole('student')
           }}
         >
-          🎓 Ученик
+          🎓 {t('asStudent')}
         </button>
         <button
           type="button"
@@ -124,7 +132,7 @@ function LoginPageContent() {
             setRole('teacher')
           }}
         >
-          👨‍🏫 Преподаватель
+          👨‍🏫 {t('asTeacher')}
         </button>
       </div>
 
@@ -132,7 +140,7 @@ function LoginPageContent() {
         {serverError && <div className="auth-error">{serverError}</div>}
 
         <div className="field">
-          <div className="field-label">Email</div>
+          <div className="field-label">{t('email')}</div>
           <input
             className="field-input"
             type="email"
@@ -147,12 +155,12 @@ function LoginPageContent() {
         </div>
 
         <div className="field">
-          <div className="field-label">Пароль</div>
+          <div className="field-label">{t('password')}</div>
           <div className="pass-wrap">
             <input
               className="field-input"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Введите пароль"
+              placeholder={t('passwordPlaceholder')}
               autoComplete="current-password"
               aria-invalid={!!errors.password}
               {...register('password')}
@@ -160,7 +168,7 @@ function LoginPageContent() {
             <button
               type="button"
               className="pass-toggle"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((v) => !v)}
               style={showPassword ? { color: 'var(--auth-red)' } : undefined}
             >
@@ -183,7 +191,7 @@ function LoginPageContent() {
         </div>
 
         <Link href="/forgot-password" className="forgot-link">
-          Забыли пароль?
+          {t('forgot')}
         </Link>
 
         <div style={{ margin: '8px 0' }}>
@@ -198,11 +206,11 @@ function LoginPageContent() {
           {isSubmitting && (
             <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
           )}
-          Войти
+          {isSubmitting ? t('submitting') : t('submit')}
         </button>
 
         <div className="auth-divider">
-          <span>или</span>
+          <span>{t('orContinueWith')}</span>
         </div>
 
         {/*
@@ -231,9 +239,9 @@ function LoginPageContent() {
 
       <div className="auth-bottom">
         {role === 'teacher' ? (
-          <>Ещё не преподаёшь у нас? <Link href="/teach">Подать заявку</Link></>
+          <>{t('noAccount')} <Link href="/teach">{t('register')}</Link></>
         ) : (
-          <>Нет аккаунта? <Link href="/register">Зарегистрироваться</Link></>
+          <>{t('noAccount')} <Link href="/register">{t('register')}</Link></>
         )}
       </div>
     </div>
