@@ -1,6 +1,9 @@
-// Skeleton для /student/balance — balance hero (тёмная карточка), Pro/Free сравнение,
-// топап-тиры + история транзакций.
-export default function StudentBalanceLoading() {
+// Skeleton for /student/balance — balance hero (dark card), Pro/Free comparison,
+// top-up tiers + transaction history.
+import { getTranslations } from "next-intl/server"
+
+export default async function StudentBalanceLoading() {
+  const t = await getTranslations("dashboard.student.balance")
   return (
     <div
       className="dashboard-content"
@@ -15,7 +18,7 @@ export default function StudentBalanceLoading() {
         margin: "0 auto",
       }}
     >
-      <span className="sr-only">Загрузка баланса…</span>
+      <span className="sr-only">{t("loading")}</span>
 
       {/* Header */}
       <div className="skeleton-block" style={{ height: 56, maxWidth: 320 }} />
