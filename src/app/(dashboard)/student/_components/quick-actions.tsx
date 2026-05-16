@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 type Props = {
   clubsThisWeek: number
@@ -15,36 +16,47 @@ export function QuickActions({
   referralActivated,
   referralCapRemaining,
 }: Props) {
-  // Формируем текст карточки «Пригласить друга».
-  // Если API-данные пришли — показываем «N/10 активировано · +100 XP».
-  // Иначе — graceful fallback на "0/10 активировано".
+  const t = useTranslations("dashboard.student.home.quickActions")
+
   const activated = typeof referralActivated === "number" ? referralActivated : 0
   const capMax =
     typeof referralCapRemaining === "number"
       ? activated + referralCapRemaining
       : 10
-  const refSub = `${activated}/${capMax} активировано · +100 XP`
+  const refSub = t("referralSub", { activated, capMax })
+
+  // Куда вести «Speaking Club» — выбираем подзаголовок: либо счётчик клубов на неделе,
+  // либо обобщённый «Расписание клубов».
+  const clubSub =
+    clubsThisWeek > 0
+      ? t("clubsWeek", { count: clubsThisWeek })
+      : t("clubsSchedule")
+
+  const materialsSub =
+    newMaterials > 0
+      ? t("materialsNew", { count: newMaterials })
+      : t("materialsAll")
 
   return (
     <div className="quick-grid">
       <Link href="/student/clubs" className="quick-card quick-card--cta">
         <div className="qc-icon">🎙</div>
-        <div className="qc-text">Speaking Club</div>
-        <div className="qc-sub">{clubsThisWeek > 0 ? `${clubsThisWeek} клуб${clubsThisWeek === 1 ? "" : clubsThisWeek < 5 ? "а" : "ов"} на этой неделе` : "Расписание клубов"}</div>
+        <div className="qc-text">{t("speakingClub")}</div>
+        <div className="qc-sub">{clubSub}</div>
       </Link>
       <Link href="/student/materials" className="quick-card">
         <div className="qc-icon">📚</div>
-        <div className="qc-text">Материалы</div>
-        <div className="qc-sub">{newMaterials > 0 ? `${newMaterials} новых урока` : "Все уроки"}</div>
+        <div className="qc-text">{t("materials")}</div>
+        <div className="qc-sub">{materialsSub}</div>
       </Link>
       <Link href="/student/achievements" className="quick-card">
         <div className="qc-icon">⚡</div>
-        <div className="qc-text">Daily Challenge</div>
-        <div className="qc-sub">+15 XP</div>
+        <div className="qc-text">{t("dailyChallenge")}</div>
+        <div className="qc-sub">{t("dailyChallengeSub")}</div>
       </Link>
       <Link href="/student/referrals" className="quick-card">
         <div className="qc-icon">👥</div>
-        <div className="qc-text">Пригласить друга</div>
+        <div className="qc-text">{t("inviteFriend")}</div>
         <div className="qc-sub">{refSub}</div>
       </Link>
     </div>

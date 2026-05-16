@@ -7,8 +7,8 @@ import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { format, differenceInCalendarDays } from "date-fns"
-import { ru } from "date-fns/locale"
-import { useTranslations } from "next-intl"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { createSignedUrl } from "@/lib/supabase/signed-url"
 
@@ -56,9 +56,13 @@ type Snapshot = {
 
 type FilterKey = "all" | "todo" | "submitted" | "reviewed"
 
-const MONTH_SHORT = [
+const MONTH_SHORT_RU = [
   "янв", "фев", "мар", "апр", "май", "июн",
   "июл", "авг", "сен", "окт", "ноя", "дек",
+]
+const MONTH_SHORT_EN = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
 
 function initialsOf(name: string) {
@@ -71,27 +75,27 @@ function initialsOf(name: string) {
     .slice(0, 2)
 }
 
-function humanDueLabel(due: string, ui: string): string {
+function humanDueLabel(due: string, ui: string, tm: (k: string, p?: any) => string): string {
   const d = new Date(due)
   if (Number.isNaN(d.getTime())) return ""
-  if (ui === "submitted") return "сдано"
+  if (ui === "submitted") return tm("submitted")
   if (ui === "reviewed") {
     const days = Math.abs(differenceInCalendarDays(new Date(), d))
-    if (days === 0) return "сегодня"
-    if (days === 1) return "1 день"
-    if (days < 5) return `${days} дня`
-    return `${days} дней`
+    if (days === 0) return tm("today")
+    if (days === 1) return tm("daysOne")
+    if (days < 5) return tm("daysFew", { n: days })
+    return tm("daysMany", { n: days })
   }
   const days = differenceInCalendarDays(d, new Date())
   if (days < 0) {
     const n = Math.abs(days)
-    if (n === 1) return "вчера"
-    return `-${n} ${n < 5 ? "дня" : "дней"}`
+    if (n === 1) return tm("yesterday")
+    return n < 5 ? tm("agoFew", { n }) : tm("agoMany", { n })
   }
-  if (days === 0) return "сегодня"
-  if (days === 1) return "завтра"
-  if (days < 5) return `${days} дня`
-  return `${days} дней`
+  if (days === 0) return tm("today")
+  if (days === 1) return tm("tomorrow")
+  if (days < 5) return tm("daysFew", { n: days })
+  return tm("daysMany", { n: days })
 }
 
 function dateSquareClass(ui: string): string {
@@ -101,19 +105,19 @@ function dateSquareClass(ui: string): string {
   return ""
 }
 
-function statusPillLabel(ui: string): { cls: string; text: string } {
+function statusPillLabel(ui: string, tp: (k: string) => string): { cls: string; text: string } {
   switch (ui) {
     case "overdue":
-      return { cls: "overdue", text: "просрочено" }
+      return { cls: "overdue", text: tp("overdue") }
     case "soon":
-      return { cls: "soon", text: "⏱ срок скоро" }
+      return { cls: "soon", text: tp("soon") }
     case "submitted":
-      return { cls: "submitted", text: "⏳ проверяется" }
+      return { cls: "submitted", text: tp("submitted") }
     case "reviewed":
-      return { cls: "graded", text: "✓ проверено" }
+      return { cls: "graded", text: tp("graded") }
     case "todo":
     default:
-      return { cls: "todo", text: "в работе" }
+      return { cls: "todo", text: tp("todo") }
   }
 }
 
@@ -124,10 +128,10 @@ function gradeColorClass(score: number | null): string {
   return "low"
 }
 
-function formatDateInputLocal(iso: string | null): string {
+function formatDateInputLocal(iso: string | null, locale: string = "ru"): string {
   if (!iso) return ""
   try {
-    return format(new Date(iso), "d MMMM, HH:mm", { locale: ru })
+    return format(new Date(iso), "d MMMM, HH:mm", { locale: locale === "ru" ? ru : enUS })
   } catch {
     return ""
   }
@@ -450,12 +454,19 @@ function HwCard({
   onSubmit: () => void
   onOpen: () => void
 }) {
+  const tHw = useTranslations("dashboard.student.homework")
+  const tHd = useTranslations("dashboard.student.homework.humanDue")
+  const tSp = useTranslations("dashboard.student.homework.statusPill")
+  const tCard = useTranslations("dashboard.student.homework.card")
+  const locale = useLocale()
+  const MONTH_SHORT = locale === "ru" ? MONTH_SHORT_RU : MONTH_SHORT_EN
+  const dateLocale = locale === "ru" ? ru : enUS
   const due = new Date(item.due_date)
   const day = isNaN(due.getTime()) ? "–" : String(due.getDate()).padStart(2, "0")
   const mon = isNaN(due.getTime()) ? "" : MONTH_SHORT[due.getMonth()]
-  const dateStatus = humanDueLabel(item.due_date, item.ui_status)
+  const dateStatus = humanDueLabel(item.due_date, item.ui_status, tHd)
 
-  const pill = statusPillLabel(item.ui_status)
+  const pill = statusPillLabel(item.ui_status, tSp)
   const cardClass = ["hw-card"]
   if (item.ui_status === "overdue") cardClass.push("overdue")
   else if (item.ui_status === "soon") cardClass.push("soon")
@@ -481,12 +492,12 @@ function HwCard({
           <span className={`hw-status ${pill.cls}`}>{pill.text}</span>
           {item.lesson_at ? (
             <span className="hw-lesson-tag">
-              К уроку с <b>{item.teacher_name}</b> ·{" "}
-              {format(new Date(item.lesson_at), "d MMM", { locale: ru })}
+              {tCard("toLessonWith")} <b>{item.teacher_name}</b> ·{" "}
+              {format(new Date(item.lesson_at), "d MMM", { locale: dateLocale })}
             </span>
           ) : (
             <span className="hw-lesson-tag">
-              От <b>{item.teacher_name}</b>
+              {tCard("from")} <b>{item.teacher_name}</b>
             </span>
           )}
         </div>
@@ -498,7 +509,7 @@ function HwCard({
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            <b>до {formatDateInputLocal(item.due_date)}</b>
+            <b>{tCard("dueBy", { date: formatDateInputLocal(item.due_date, locale) })}</b>
           </span>
           {item.attachments.length > 0 ? (
             <span className="m-item">
@@ -507,12 +518,12 @@ function HwCard({
                 <polyline points="14 2 14 8 20 8" />
               </svg>
               {item.attachments.length === 1
-                ? "1 файл"
-                : `${item.attachments.length} файлов`}
+                ? tCard("fileOne")
+                : tCard("filesMany", { count: item.attachments.length })}
             </span>
           ) : null}
           {item.ui_status === "submitted" ? (
-            <span className="m-item">XP зачислится после проверки</span>
+            <span className="m-item">{tCard("xpAfterReview")}</span>
           ) : null}
         </div>
 
@@ -545,18 +556,18 @@ function HwCard({
                 className={item.ui_status === "overdue" ? "btn btn-red" : "btn btn-dark"}
                 onClick={onSubmit}
               >
-                Сдать работу
+                {tHw("submitCta")}
               </button>
               <button type="button" className="btn btn-outline btn-sm" onClick={onOpen}>
-                Открыть
+                {tHw("openCta")}
               </button>
             </>
           ) : (
             <>
               <button type="button" className="btn btn-outline" onClick={onOpen}>
-                Посмотреть работу
+                {tHw("viewSubmissionCta")}
               </button>
-              <span className="hw-cta-hint">нельзя редактировать</span>
+              <span className="hw-cta-hint">{tHw("ctaHintReadOnly")}</span>
             </>
           )}
         </div>
@@ -602,11 +613,11 @@ function safeFileName(name: string): string {
   return base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
 }
 
-function formatBytes(bytes: number | undefined): string {
+function formatBytes(bytes: number | undefined, kbLabel = "KB", mbLabel = "MB"): string {
   if (!bytes || bytes <= 0) return ""
   if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${kbLabel}`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ${mbLabel}`
 }
 
 function SubmitModal({
@@ -622,6 +633,7 @@ function SubmitModal({
   onClose: () => void
   onSubmitted: () => void
 }) {
+  const tm = useTranslations("dashboard.student.homework.modal")
   const [text, setText] = useState(item.submission_text || "")
   const [linkName, setLinkName] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
@@ -633,7 +645,7 @@ function SubmitModal({
     const url = linkUrl.trim()
     if (!url) return
     if (!/^https?:\/\//i.test(url)) {
-      toast.error("Ссылка должна начинаться с http(s)://")
+      toast.error(tm("errorLinkFormat"))
       return
     }
     const name = linkName.trim() || url.replace(/^https?:\/\//i, "").slice(0, 60)
@@ -644,16 +656,16 @@ function SubmitModal({
 
   async function uploadSingleFile(file: File): Promise<Attachment | null> {
     if (file.size === 0) {
-      toast.error(`Файл «${file.name}» пуст`)
+      toast.error(tm("errorEmptyFile", { name: file.name }))
       return null
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error(`«${file.name}» больше 50 МБ`)
+      toast.error(tm("errorBigFile", { name: file.name }))
       return null
     }
     const mime = file.type || "application/octet-stream"
     if (!isAcceptableMime(mime)) {
-      toast.error(`Формат «${mime}» не поддерживается`)
+      toast.error(tm("errorMimeUnsupported", { mime }))
       return null
     }
 
@@ -663,7 +675,7 @@ function SubmitModal({
       error: userErr,
     } = await supabase.auth.getUser()
     if (userErr || !user) {
-      toast.error("Нужно войти в аккаунт")
+      toast.error(tm("errorAuth"))
       return null
     }
 
@@ -678,8 +690,8 @@ function SubmitModal({
         upsert: false,
       })
     if (upErr) {
-      console.error("Ошибка загрузки файла:", upErr)
-      toast.error(upErr.message || `Не удалось загрузить «${file.name}»`)
+      console.error("File upload error:", upErr)
+      toast.error(upErr.message || tm("errorUploadFailed", { name: file.name }))
       return null
     }
 
@@ -691,7 +703,7 @@ function SubmitModal({
     if (signErr || !signedUrl) {
       // Best-effort cleanup
       await supabase.storage.from(HOMEWORK_BUCKET).remove([storagePath])
-      toast.error("Не удалось получить ссылку на файл")
+      toast.error(tm("errorSignedUrl"))
       return null
     }
 
@@ -721,7 +733,7 @@ function SubmitModal({
       }
     } catch (err) {
       console.error(err)
-      toast.error("Сбой при загрузке файлов")
+      toast.error(tm("errorMultiUpload"))
       setUploading(0)
     }
   }
@@ -734,11 +746,11 @@ function SubmitModal({
   async function submit() {
     if (busy) return
     if (uploading > 0) {
-      toast.error("Подожди, файл ещё загружается")
+      toast.error(tm("errorBusy"))
       return
     }
     if (!text.trim() && attachments.length === 0) {
-      toast.error("Прикрепи файл, ссылку или напиши ответ")
+      toast.error(tm("errorEmptySubmission"))
       return
     }
     setBusy(true)
@@ -753,7 +765,7 @@ function SubmitModal({
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(j?.error || "Не удалось отправить задание")
+        toast.error(j?.error || tm("errorSubmitFailed"))
         return
       }
       onSubmitted()
@@ -765,21 +777,21 @@ function SubmitModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>Сдать работу</h2>
+        <h2>{tm("submitTitle")}</h2>
         <div className="modal-sub">{item.title}</div>
 
         <div className="field">
-          <label>Ответ</label>
+          <label>{tm("answerLabel")}</label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Напиши ответ, пришли текст, ссылку на документ или расскажи, что сделал"
+            placeholder={tm("answerPlaceholder")}
             rows={6}
           />
         </div>
 
         <div className="field">
-          <label>Прикрепить файл</label>
+          <label>{tm("attachFileLabel")}</label>
           <div className="upload-row">
             <button
               type="button"
@@ -799,16 +811,16 @@ function SubmitModal({
               >
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
               </svg>
-              {uploading > 0 ? "Загружаю…" : "Выбрать файл"}
+              {uploading > 0 ? tm("uploadingShort") : tm("pickFileCta")}
             </button>
             {uploading > 0 ? (
               <span className="upload-status">
                 <span className="spin" />
-                Загружается {uploading}…
+                {tm("uploadingStatus", { count: uploading })}
               </span>
             ) : (
               <span className="upload-status">
-                Фото, PDF, документы, аудио или видео · до 50 МБ
+                {tm("fileHint")}
               </span>
             )}
           </div>
@@ -823,17 +835,17 @@ function SubmitModal({
         </div>
 
         <div className="field">
-          <label>Или прикрепить ссылку (Google Docs, сайт)</label>
+          <label>{tm("linkLabel")}</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
             <input
               type="text"
-              placeholder="Название"
+              placeholder={tm("linkNamePlaceholder")}
               value={linkName}
               onChange={(e) => setLinkName(e.target.value)}
             />
             <input
               type="url"
-              placeholder="https://…"
+              placeholder={tm("linkUrlPlaceholder")}
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
             />
@@ -841,23 +853,23 @@ function SubmitModal({
               +
             </button>
           </div>
-          <div className="hint">Можно добавить несколько ссылок</div>
+          <div className="hint">{tm("linkHint")}</div>
         </div>
 
         {attachments.length > 0 ? (
           <div className="field">
-            <label>Что прикреплено</label>
+            <label>{tm("attachedLabel")}</label>
             {attachments.map((a, i) => (
               <div className="attach-row" key={i}>
                 <span className="nm">{a.name}</span>
-                {a.size ? <span className="sz">{formatBytes(a.size)}</span> : null}
+                {a.size ? <span className="sz">{formatBytes(a.size, tm("unitsKB"), tm("unitsMB"))}</span> : null}
                 <button
                   type="button"
                   className="rm"
                   onClick={() =>
                     setAttachments((prev) => prev.filter((_, j) => j !== i))
                   }
-                  aria-label="Убрать"
+                  aria-label={tm("removeAria")}
                 >
                   ×
                 </button>
@@ -868,7 +880,7 @@ function SubmitModal({
 
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={onClose}>
-            Отмена
+            {tm("cancelCta")}
           </button>
           <button
             type="button"
@@ -876,7 +888,7 @@ function SubmitModal({
             onClick={submit}
             disabled={busy || uploading > 0}
           >
-            {busy ? "Отправляю…" : "Отправить"}
+            {busy ? tm("submittingCta") : tm("submitCta")}
           </button>
         </div>
       </div>
@@ -885,17 +897,22 @@ function SubmitModal({
 }
 
 function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
+  const tm = useTranslations("dashboard.student.homework.modal")
+  const locale = useLocale()
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <h2>{item.title}</h2>
         <div className="modal-sub">
-          От {item.teacher_name} · до {formatDateInputLocal(item.due_date)}
+          {tm("viewSubTemplate", {
+            teacher: item.teacher_name,
+            date: formatDateInputLocal(item.due_date, locale),
+          })}
         </div>
 
         {item.description ? (
           <div className="field">
-            <label>Описание</label>
+            <label>{tm("descriptionLabel")}</label>
             <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
               {item.description}
             </div>
@@ -904,7 +921,7 @@ function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
 
         {item.attachments.length > 0 ? (
           <div className="field">
-            <label>Материалы преподавателя</label>
+            <label>{tm("teacherMaterialsLabel")}</label>
             {item.attachments.map((a, i) => (
               <div className="attach-row" key={i}>
                 <span className="nm">
@@ -919,7 +936,7 @@ function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
 
         {item.submission_text ? (
           <div className="field">
-            <label>Твой ответ</label>
+            <label>{tm("yourAnswerLabel")}</label>
             <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
               {item.submission_text}
             </div>
@@ -928,7 +945,7 @@ function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
 
         {item.ui_status === "reviewed" && item.teacher_feedback ? (
           <div className="field">
-            <label>Комментарий преподавателя</label>
+            <label>{tm("teacherFeedbackLabel")}</label>
             <div
               style={{
                 fontSize: 14,
@@ -950,7 +967,7 @@ function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
                   fontWeight: 700,
                 }}
               >
-                Оценка: <b style={{ color: "var(--text)" }}>{item.score_10}/10</b>
+                {tm("scoreLabel")} <b style={{ color: "var(--text)" }}>{item.score_10}/10</b>
               </div>
             ) : null}
           </div>
@@ -958,7 +975,7 @@ function ViewModal({ item, onClose }: { item: HwItem; onClose: () => void }) {
 
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={onClose}>
-            Закрыть
+            {tm("closeCta")}
           </button>
         </div>
       </div>

@@ -136,12 +136,15 @@ export async function GET(_req: NextRequest) {
     const cefr = getLevelCEFR(level_name)
 
     // Journey — derived from real signals only; no fake entries.
+    // Поля title/desc оставляем как fallback (на случай если клиент не знает i18n-ключ).
+    // Клиент при наличии key переопределяет тексты через next-intl + meta.
     const journey: Array<{
       key: string
       date: string | null
       title: string
       desc: string
       kind: 'done' | 'active' | 'future'
+      meta?: Record<string, string | number>
     }> = []
 
     if (profile.created_at) {
@@ -185,6 +188,7 @@ export async function GET(_req: NextRequest) {
         title: `${progress.longest_streak}-day streak 🔥`,
         desc: 'Рекорд постоянства',
         kind: 'done',
+        meta: { days: progress.longest_streak },
       })
     }
 
@@ -195,6 +199,12 @@ export async function GET(_req: NextRequest) {
       title: `В пути к ${next_level_name} ⚡`,
       desc: `${total_xp.toLocaleString('ru-RU')} / ${nextThreshold.toLocaleString('ru-RU')} XP · ${level_progress_pct}% прогресса`,
       kind: 'active',
+      meta: {
+        nextLevel: next_level_name,
+        totalXp: total_xp,
+        nextThreshold,
+        progressPct: level_progress_pct,
+      },
     })
 
     // Future — next level goal
@@ -205,6 +215,10 @@ export async function GET(_req: NextRequest) {
         title: `Цель: ${next_level_name} 🎯`,
         desc: getLevelCEFR(bucket.nextLevel) ?? '',
         kind: 'future',
+        meta: {
+          nextLevel: next_level_name,
+          cefr: getLevelCEFR(bucket.nextLevel) ?? '',
+        },
       })
     }
 

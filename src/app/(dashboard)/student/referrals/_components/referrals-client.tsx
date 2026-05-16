@@ -230,7 +230,7 @@ export function ReferralsClient({ initialData }: Props) {
           <div>
             <div className="hero-title">{t("heroTitle")}</div>
             <div className="hero-sub">
-              Другу +50 XP и бесплатный пробный урок, тебе +100 XP после его первого урока
+              {t("heroSub")}
             </div>
           </div>
         </div>
