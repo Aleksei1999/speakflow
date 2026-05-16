@@ -475,7 +475,7 @@ export function ClubRoomClient({
           <div className={`lb ${sidebarOn ? "" : "no-sidebar"}`}>
             <div className="stage">
               <div className="va">
-                <div className={`vm ${!isModerator ? "no-jitsi-clicks" : ""}`}>
+                <div className="vm">
                   <div className="jitsi-mount" ref={jitsiRef} />
                   <div className="live-badge">
                     <span className="blink" />
