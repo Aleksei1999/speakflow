@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
+import { asTimeLocale, formatWeekdayShortDayMonthShort } from '@/lib/time'
 
 // Mirror of the slot algorithm from src/app/api/booking/slots/route.ts:
 // 50-minute duration, 25-minute granularity cursor, 5-minute buffer, subtract
@@ -63,6 +63,9 @@ export async function GET(
       )
     }
     const { days, limit } = parsed.data
+    // next-intl `getLocale()` works inside API routes — falls back to default
+    // locale if no NEXT_LOCALE cookie / Accept-Language match was found.
+    const tl = asTimeLocale(await getLocale())
 
     // Verify teacher exists and is listed.
     const { data: teacher, error: teacherErr } = (await supabase
@@ -193,7 +196,7 @@ export async function GET(
           slots.push({
             starts_at: startsAtISO,
             ends_at: endsAtISO,
-            day_label: format(day, 'EE, d MMM', { locale: ru }),
+            day_label: formatWeekdayShortDayMonthShort(day, tl),
             time_label: `${pad2(sh)}:${pad2(sm)}`,
           })
 

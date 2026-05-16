@@ -1,9 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { format, differenceInMinutes, isPast } from "date-fns"
-import { ru } from "date-fns/locale"
+import { differenceInMinutes, isPast } from "date-fns"
+import { useLocale } from "next-intl"
 import { Calendar, Clock, Video } from "lucide-react"
+import {
+  asTimeLocale,
+  formatLessonTime,
+  formatWeekdayLongDayMonthLong,
+} from "@/lib/time"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -69,6 +74,7 @@ export function UpcomingLessons({
 }: UpcomingLessonsProps) {
   const defaultHref =
     userRole === "teacher" ? "/teacher/schedule" : "/student/schedule"
+  const tl = asTimeLocale(useLocale())
 
   return (
     <Card>
@@ -124,8 +130,8 @@ export function UpcomingLessons({
                 <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                   <p className="text-sm font-medium truncate">{personName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(scheduledDate, "d MMMM, EEEE", { locale: ru })}{" "}
-                    {format(scheduledDate, "HH:mm")}{" "}
+                    {formatWeekdayLongDayMonthLong(scheduledDate, tl)}{" "}
+                    {formatLessonTime(scheduledDate, tl)}{" "}
                     <span className="text-muted-foreground/70">
                       ({lesson.duration_minutes} мин)
                     </span>

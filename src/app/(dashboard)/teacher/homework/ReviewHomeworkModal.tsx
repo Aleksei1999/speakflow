@@ -3,8 +3,13 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale } from "next-intl"
+import {
+  asTimeLocale,
+  formatDayMonthLongTime,
+  formatDayMonthYearLong,
+  formatLessonTime,
+} from "@/lib/time"
 
 type Attachment = { name: string; url: string; size?: number; mime?: string }
 
@@ -46,6 +51,7 @@ type Props = {
 const SCORE_PRESETS = [10, 9, 8.5, 8, 7, 6, 5]
 
 export default function ReviewHomeworkModal({ homeworkId, open, onClose, onUpdated }: Props) {
+  const tl = asTimeLocale(useLocale())
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hw, setHw] = useState<Homework | null>(null)
@@ -189,7 +195,7 @@ export default function ReviewHomeworkModal({ homeworkId, open, onClose, onUpdat
               {hw.student?.full_name || "Ученик"}
               {hw.student?.english_level ? ` · ${hw.student.english_level}` : ""}
               {" · выдано "}
-              {format(new Date(hw.created_at), "d MMMM yyyy", { locale: ru })}
+              {formatDayMonthYearLong(hw.created_at, tl)}
             </div>
 
             {hw.description ? (
@@ -224,7 +230,7 @@ export default function ReviewHomeworkModal({ homeworkId, open, onClose, onUpdat
             <div className="field">
               <label>Дедлайн</label>
               <div className="submission-box" style={{ fontSize: 13 }}>
-                {format(new Date(hw.due_date), "d MMMM yyyy, HH:mm", { locale: ru })}
+                {`${formatDayMonthYearLong(hw.due_date, tl)}, ${formatLessonTime(hw.due_date, tl)}`}
                 {hw.reminders_count > 0 ? ` · напоминаний: ${hw.reminders_count}` : ""}
               </div>
             </div>
@@ -234,7 +240,7 @@ export default function ReviewHomeworkModal({ homeworkId, open, onClose, onUpdat
                 <label>
                   Ответ ученика
                   {hw.submitted_at
-                    ? ` · сдано ${format(new Date(hw.submitted_at), "d MMMM, HH:mm", { locale: ru })}`
+                    ? ` · сдано ${formatDayMonthLongTime(hw.submitted_at, tl)}`
                     : ""}
                 </label>
                 <div className="submission-box">{hw.submission_text}</div>

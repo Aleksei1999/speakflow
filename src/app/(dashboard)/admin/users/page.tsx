@@ -2,8 +2,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import { asTimeLocale, formatDayMonthYearShort } from '@/lib/time'
 import {
   Search,
   MoreHorizontal,
@@ -88,6 +88,7 @@ function getInitials(name: string): string {
 }
 
 function AdminUsersContent() {
+  const tl = asTimeLocale(useLocale())
   const [users, setUsers] = useState<Profile[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -345,9 +346,7 @@ function AdminUsersContent() {
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {format(new Date(user.created_at), 'd MMM yyyy', {
-                      locale: ru,
-                    })}
+                    {formatDayMonthYearShort(user.created_at, tl)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

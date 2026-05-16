@@ -12,9 +12,16 @@ import {
   isTomorrow,
   startOfWeek,
 } from "date-fns"
-import { ru } from "date-fns/locale"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  asTimeLocale,
+  formatDayMonthYearLong,
+  formatDayOfMonth,
+  formatLessonDayShort,
+  formatWeekdayLongDayMonthLong,
+  formatWeekdayNarrow,
+} from "@/lib/time"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/clubs and /api/clubs/stats response shapes)
@@ -174,10 +181,10 @@ function getInitials(name: string | null | undefined): string {
   )
 }
 
-function dayLabel(starts: Date, now: Date): string {
+function dayLabel(starts: Date, now: Date, locale: "ru" | "en"): string {
   if (isSameDay(starts, now)) return "сегодня"
   if (isTomorrow(starts)) return "завтра"
-  return format(starts, "d MMM", { locale: ru })
+  return formatLessonDayShort(starts, locale)
 }
 
 function weekdayIdx(d: Date): number {
@@ -190,6 +197,7 @@ function weekdayIdx(d: Date): number {
 
 export default function StudentClubsPage() {
   const t = useTranslations("dashboard.student.clubs")
+  const tl = asTimeLocale(useLocale())
   const [clubs, setClubs] = useState<Club[]>([])
   const [stats, setStats] = useState<ClubsStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -410,7 +418,7 @@ export default function StudentClubsPage() {
     return CALENDAR_HOURS.length - 1
   }
 
-  const weekTitle = `${format(weekStart, "d", { locale: ru })} — ${format(addDays(weekStart, 6), "d MMMM yyyy", { locale: ru })}`
+  const weekTitle = `${formatDayOfMonth(weekStart, tl)} — ${formatDayMonthYearLong(addDays(weekStart, 6), tl)}`
 
   function goPrev() { setWeekCursor((c) => addWeeks(c, -1)) }
   function goNext() { setWeekCursor((c) => addWeeks(c, 1)) }
@@ -473,7 +481,7 @@ export default function StudentClubsPage() {
           </div>
           <div className="st-sub">
             {stats?.nextClub
-              ? `${categoryTag(stats.nextClub.club_type)} · ${dayLabel(new Date(stats.nextClub.starts_at), now)}`
+              ? `${categoryTag(stats.nextClub.club_type)} · ${dayLabel(new Date(stats.nextClub.starts_at), now, tl)}`
               : t("statNextEmpty")}
           </div>
         </div>
@@ -507,8 +515,8 @@ export default function StudentClubsPage() {
             <div className="cg-corner" />
             {weekDays.map((d) => (
               <div key={d.toISOString()} className={`cg-dh${isSameDay(d, now) ? " cg-dh--today" : ""}`}>
-                <div className="cg-dn">{format(d, "EEEEEE", { locale: ru })}</div>
-                <div className="cg-dd">{format(d, "d")}</div>
+                <div className="cg-dn">{formatWeekdayNarrow(d, tl)}</div>
+                <div className="cg-dd">{formatDayOfMonth(d, tl)}</div>
               </div>
             ))}
 
@@ -556,7 +564,7 @@ export default function StudentClubsPage() {
                 className="sec-title"
                 style={i === 0 ? undefined : { marginTop: 16 }}
               >
-                {format(d, "EEEE, d MMMM", { locale: ru })}
+                {formatWeekdayLongDayMonthLong(d, tl)}
                 {today ? <span className="badge badge--today">{t("todayBadge")}</span> : null}
                 {tomorrow ? <span className="badge badge--tm">{t("tomorrowBadge")}</span> : null}
               </div>

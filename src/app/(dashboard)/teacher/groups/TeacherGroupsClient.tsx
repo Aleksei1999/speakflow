@@ -2,10 +2,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { asTimeLocale, formatDayMonthYearShort } from "@/lib/time"
 
 type Group = {
   id: string
@@ -55,6 +54,7 @@ function pluralMem(n: number) {
 
 export default function TeacherGroupsClient() {
   const t = useTranslations("dashboard.teacher.groups")
+  const tl = asTimeLocale(useLocale())
   const [groups, setGroups] = useState<Group[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -351,7 +351,7 @@ export default function TeacherGroupsClient() {
                     </span>
                   </td>
                   <td style={{ color: "var(--muted)", fontSize: 12 }}>
-                    {g.created_at ? format(new Date(g.created_at), "d MMM yyyy", { locale: ru }) : "—"}
+                    {g.created_at ? formatDayMonthYearShort(g.created_at, tl) : "—"}
                   </td>
                   <td>
                     <div className="g-actions">

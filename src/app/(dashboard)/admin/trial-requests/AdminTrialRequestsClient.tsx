@@ -4,8 +4,8 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale } from "next-intl"
+import { asTimeLocale, formatLessonDateTimeShort } from "@/lib/time"
 
 const CSS = `
 .adm-apps{max-width:1200px;margin:0 auto}
@@ -78,6 +78,7 @@ export default function AdminTrialRequestsClient({
 }: {
   initial: Application[]
 }) {
+  const tl = asTimeLocale(useLocale())
   const [items, setItems] = useState<Application[]>(initial)
   const [tab, setTab] = useState<"all" | Application["status"]>("new")
   const [refreshing, setRefreshing] = useState(false)
@@ -256,9 +257,7 @@ export default function AdminTrialRequestsClient({
             const fullName = `${it.first_name} ${it.last_name}`.trim()
             const when = (() => {
               try {
-                return format(new Date(it.created_at), "d MMM, HH:mm", {
-                  locale: ru,
-                })
+                return formatLessonDateTimeShort(it.created_at, tl)
               } catch {
                 return ""
               }

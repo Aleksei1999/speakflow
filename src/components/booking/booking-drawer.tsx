@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { ru, enUS } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import { asTimeLocale, formatLessonDayLong } from '@/lib/time'
 import {
   ArrowLeft,
   CalendarDays,
@@ -94,6 +96,7 @@ export function BookingDrawer({
 }: BookingDrawerProps) {
   const [step, setStep] = useState<Step>('teacher')
   const [search, setSearch] = useState('')
+  const tl = asTimeLocale(useLocale())
 
   // Teachers
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
@@ -363,7 +366,7 @@ export function BookingDrawer({
                   Дата
                 </span>
                 <span className="font-medium">
-                  {format(selectedDate, 'd MMMM', { locale: ru })}
+                  {formatLessonDayLong(selectedDate, tl)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -526,6 +529,7 @@ function DetailsStep({
   onSlotSelect,
   price,
 }: DetailsStepProps) {
+  const tl = asTimeLocale(useLocale())
   const today = useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -594,7 +598,7 @@ function DetailsStep({
             selected={selectedDate}
             onSelect={(d) => d && onDateChange(d)}
             disabled={(d) => d < today}
-            locale={ru}
+            locale={tl === 'en' ? enUS : ru}
             className="mx-auto"
           />
         </div>

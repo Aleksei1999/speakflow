@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { CalendarDays, Clock, CreditCard, Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
+import { asTimeLocale, formatWeekdayLongDayMonthYearLong } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 interface BookingModalProps {
@@ -67,6 +67,7 @@ export function BookingModal({
   const endHours = Math.floor(endMinutes / 60)
   const endMins = endMinutes % 60
   const endTimeStr = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
+  const tl = asTimeLocale(useLocale())
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -101,7 +102,7 @@ export function BookingModal({
               <CalendarDays className="size-4 text-[#CC3A3A]" />
               <span className="text-muted-foreground">Дата:</span>
               <span className="font-medium">
-                {format(date, 'd MMMM yyyy, EEEE', { locale: ru })}
+                {formatWeekdayLongDayMonthYearLong(date, tl)}
               </span>
             </div>
 

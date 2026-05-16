@@ -1,14 +1,20 @@
 // @ts-nocheck
 import "@/styles/dashboard/teacher-home.css"
 import { redirect } from "next/navigation"
-import { format, addDays, isSameDay, startOfMonth, endOfMonth } from "date-fns"
-import { ru } from "date-fns/locale"
+import { addDays, isSameDay, startOfMonth, endOfMonth } from "date-fns"
 import { getTranslations, getLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import Link from "next/link"
 import { LEVEL_XP_THRESHOLDS, getLevelCEFR, xpToRoastLevel, type RoastLevel } from "@/lib/level-utils"
-import { formatLessonTime, formatLessonDayShort, isMoscowToday, isMoscowTomorrow } from "@/lib/time"
+import {
+  formatLessonTime,
+  formatLessonDayShort,
+  formatLessonDayLong,
+  formatWeekdayLongDayMonthLong,
+  isMoscowToday,
+  isMoscowTomorrow,
+} from "@/lib/time"
 import { LessonRowClient } from "@/components/lesson/lesson-row-client"
 import { ClubRowClient } from "@/components/lesson/club-row-client"
 // import OnboardingLauncher from "@/components/onboarding/OnboardingLauncher"
@@ -237,19 +243,10 @@ export default async function TeacherDashboardPage() {
   const greeting = t(greetingKeyByHour(now.getHours()))
   const todayCount = todayLessons.length
   const lessonsWord = t(pluralLessonsKey(todayCount))
-  const headerDate = locale === "en"
-    ? new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(now)
-    : format(now, "EEEE, d MMMM", { locale: ru })
-
-  const upcomingFromLabel = locale === "en"
-    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(now)
-    : format(now, "d MMM", { locale: ru })
-  const upcomingToLabel = locale === "en"
-    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(addDays(now, 13))
-    : format(addDays(now, 13), "d MMM", { locale: ru })
-  const payoutDate = locale === "en"
-    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(new Date(now.getFullYear(), now.getMonth(), 15))
-    : format(new Date(now.getFullYear(), now.getMonth(), 15), "d MMMM", { locale: ru })
+  const headerDate = formatWeekdayLongDayMonthLong(now, timeLocale)
+  const upcomingFromLabel = formatLessonDayShort(now, timeLocale)
+  const upcomingToLabel = formatLessonDayShort(addDays(now, 13), timeLocale)
+  const payoutDate = formatLessonDayLong(new Date(now.getFullYear(), now.getMonth(), 15), timeLocale)
 
   function formatNextLesson(date: Date): string {
     if (isMoscowToday(date)) return t("todayRelative", { time: formatLessonTime(date, timeLocale) })
@@ -355,9 +352,7 @@ export default async function TeacherDashboardPage() {
                   if (isSameDay(dt0, now)) dayLabel = t("today")
                   else if (isSameDay(dt0, addDays(now, 1))) dayLabel = t("tomorrow")
                   else
-                    dayLabel = locale === "en"
-                      ? new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(dt0)
-                      : format(dt0, "EEEE, d MMMM", { locale: ru })
+                    dayLabel = formatWeekdayLongDayMonthLong(dt0, timeLocale)
                 }
                 return [
                   !sameDayAsPrev ? (
