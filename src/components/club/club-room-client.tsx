@@ -228,7 +228,7 @@ export function ClubRoomClient({
           hideDisplayName: true,
           // Make shared screens use the available height instead of sitting in
           // a small contained box with large black margins.
-          videoLayoutFit: "width",
+          videoLayoutFit: "nocrop",
           disableLargeVideoCrop: false,
         },
         interfaceConfigOverwrite: {
@@ -246,7 +246,7 @@ export function ClubRoomClient({
           RECENT_LIST_ENABLED: false,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
-          VIDEO_LAYOUT_FIT: "width",
+          VIDEO_LAYOUT_FIT: "nocrop",
           DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
