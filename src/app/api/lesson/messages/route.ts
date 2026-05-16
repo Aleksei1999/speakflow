@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     const lessonId: string | undefined = body?.lessonId
     const rawMessage: unknown = body?.message
 
-    const gate = await requireLessonParticipant(lessonId)
+    // WRITE: запрещаем чат после отмены / завершения урока.
+    const gate = await requireLessonParticipant(lessonId, { requireActive: true })
     if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
     if (typeof rawMessage !== 'string') {

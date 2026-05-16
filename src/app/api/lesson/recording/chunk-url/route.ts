@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unsupported mime type" }, { status: 400 })
   }
 
-  const gate = await requireLessonParticipant(lessonId)
+  // WRITE: чанки записи не принимаем после отмены / завершения урока.
+  // Если cron успел перевести в completed до последнего чанка — расширим
+  // окно в cron (минимум 15 мин после scheduled_end), пока chunk пишется.
+  const gate = await requireLessonParticipant(lessonId, { requireActive: true })
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   // Rate-limit: 200 chunks/min — chunks идут пачкой (несколько штук в

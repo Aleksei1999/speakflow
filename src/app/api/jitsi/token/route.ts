@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateJitsiToken } from '@/lib/jitsi/jwt'
 import { JITSI_CONFIG } from '@/lib/jitsi/config'
+import { getJitsiRoomName } from '@/lib/jitsi/room'
 import { LESSON_JOIN_WINDOW, LESSON_POST_WINDOW } from '@/lib/constants'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
@@ -165,7 +166,9 @@ export async function POST(request: NextRequest) {
       .single<{ full_name: string | null; email: string | null; avatar_url: string | null }>()
 
     // --- 8. Генерация JWT ---
-    const roomName = lesson.jitsi_room_name ?? lessonId
+    // ВАЖНО: имя комнаты ДОЛЖНО совпадать с тем, что SSR монтирует в iframe.
+    // Используем единый helper, чтобы не было room mismatch (см. lib/jitsi/room.ts).
+    const roomName = getJitsiRoomName(lesson)
 
     const token = await generateJitsiToken(roomName, {
       id: user.id,

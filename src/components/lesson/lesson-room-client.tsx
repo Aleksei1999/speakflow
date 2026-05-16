@@ -7,6 +7,7 @@ import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
 import { useModalA11y } from "@/hooks/use-modal-a11y"
 import { useLessonChat } from "@/hooks/use-lesson-chat"
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog"
+import { LESSON_POST_WINDOW } from "@/lib/constants"
 
 interface Props {
   lessonId: string
@@ -232,6 +233,28 @@ export function LessonRoomClient({
   const mm = String(Math.floor(remaining/60)).padStart(2,"0")
   const ss = String(remaining%60).padStart(2,"0")
 
+  // Конец окна доступа (scheduled + duration + LESSON_POST_WINDOW).
+  // Совпадает с серверным closeAtMs из computeLessonAccess — после
+  // этого момента SSR уже не пустит, но клиент висит в открытой
+  // конференции навсегда без принудительного hangup.
+  const closeAtMs = new Date(scheduledAt).getTime()
+    + durationMinutes * 60 * 1000
+    + LESSON_POST_WINDOW * 60 * 1000
+
+  // Auto-hangup на конце окна. +1s buffer чтобы не воевать с серверным
+  // округлением. cleanup нужен на случай если scheduledAt/duration
+  // перерендерится (вряд ли, но React-strict mode и hot-reload).
+  useEffect(() => {
+    if (!closeAtMs) return
+    const ms = closeAtMs - Date.now()
+    if (ms <= 0) return
+    const id = setTimeout(() => {
+      try { jitsiApi.current?.executeCommand("hangup") } catch { /* noop */ }
+      router.push(isTeacher ? "/teacher/schedule" : "/student/schedule")
+    }, ms + 1000)
+    return () => clearTimeout(id)
+  }, [closeAtMs, router, isTeacher])
+
   // Jitsi
   useEffect(() => {
     if (!jitsiRef.current) return
@@ -243,6 +266,12 @@ export function LessonRoomClient({
         })
       }
       if (disposed||!jitsiRef.current) return
+      // Студент управляет всем через свой bottom bar (toolbar пустой).
+      // Преподавателю нужен доступ к moderator-only действиям —
+      // kick/mute participant находятся в participants-pane.
+      const toolbarForRole: string[] = isTeacher
+        ? ["participants-pane", "select-background", "tileview"]
+        : []
       const api = new window.JitsiMeetExternalAPI(jitsiDomain, {
         roomName: jitsiRoom, parentNode: jitsiRef.current, width:"100%", height:"100%",
         ...(jitsiToken?{jwt:jitsiToken}:{}),
@@ -251,8 +280,8 @@ export function LessonRoomClient({
           disableDeepLinking:true,
           hideConferenceSubject:true,
           disableInviteFunctions:true,
-          // Пустой toolbar — управляем через executeCommand из своего bottom bar.
-          toolbarButtons:[],
+          // teacher: минимальный набор для модерирования; student: пусто.
+          toolbarButtons: toolbarForRole,
           notifications:[],
           disableThirdPartyRequests:true,
           hideConferenceTimer:true,
@@ -271,14 +300,15 @@ export function LessonRoomClient({
           DISABLE_FOCUS_INDICATOR:true,
           VERTICAL_FILMSTRIP:false,
           TILE_VIEW_MAX_COLUMNS:2,
-          TOOLBAR_BUTTONS:[],
+          TOOLBAR_BUTTONS: toolbarForRole,
           CONNECTION_INDICATOR_DISABLED:true,
           VIDEO_QUALITY_LABEL_DISABLED:true,
           DISABLE_DOMINANT_SPEAKER_INDICATOR:true,
           DISABLE_VIDEO_BACKGROUND:true,
           RECENT_LIST_ENABLED:false,
         },
-        userInfo:{displayName:userName},
+        // userInfo НЕ передаём: JWT context.user.name — единственный источник имени.
+        // Иначе клиент мог бы подменить displayName через iframe options в обход JWT.
       })
       jitsiApi.current = api
       setJitsiApiState(api)
@@ -324,10 +354,19 @@ export function LessonRoomClient({
       })
       // safety на случай если listeners не сработали
       setTimeout(forceTile, 1500)
+
+      // Leave/kick/close → redirect, иначе пользователь стрянет
+      // в чёрном iframe без выхода (например модератор кикнул студента).
+      const onLeave = () => {
+        router.push(isTeacher ? "/teacher/schedule" : "/student/schedule")
+      }
+      jitsiApi.current?.addListener("videoConferenceLeft", onLeave)
+      jitsiApi.current?.addListener("readyToClose", onLeave)
+      jitsiApi.current?.addListener("participantKickedOut", onLeave)
     }
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
-  }, [jitsiDomain,jitsiRoom,jitsiToken,userName])
+  }, [jitsiDomain,jitsiRoom,jitsiToken,userName,isTeacher,router])
 
   // Pre-call hint про слабую сеть. navigator.connection — Chromium-only.
   useEffect(() => {
