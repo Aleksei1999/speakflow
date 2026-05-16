@@ -216,6 +216,11 @@ export function ClubRoomClient({
           notifications: [],
           toolbarButtons: [],
           connectionIndicators: { autoHide: true, disabled: true },
+          // Start clubs in grid mode so in 1:1 the local self-view is visible too.
+          // During screen share we temporarily leave tile view below.
+          startWithTileView: true,
+          disableTileView: false,
+          disableSelfView: false,
           // filmstrip must stay enabled — screen-share tracks live in it,
           // disabling it hides remote screen-share entirely.
           disableSelfViewSettings: true,
@@ -281,6 +286,13 @@ export function ClubRoomClient({
           displayName: e.displayName || userName,
           avatarURL: e.avatarURL ?? null,
         })
+        // Keep 1:1 calls in grid mode; otherwise Jitsi's default stage layout
+        // shows only the remote camera and hides local self-view.
+        setTimeout(() => {
+          try {
+            api.executeCommand("setTileView", true)
+          } catch {}
+        }, 200)
       })
       api.addListener?.("participantJoined", (e: any) => {
         upsert(e.id, {
@@ -299,19 +311,24 @@ export function ClubRoomClient({
       api.addListener?.("videoConferenceLeft", () => {
         setLiveParticipants([])
       })
-      // When anyone starts sharing their screen, force their share to be
-      // the large video so viewers actually see it.
+      // When anyone starts sharing their screen, leave tile view and force the
+      // desktop track into the large video. Important: without the second
+      // argument Jitsi defaults to the sharer's camera track, which looks like
+      // "screen share disappeared and only one camera remains".
       api.addListener?.("contentSharingParticipantsChanged", (e: any) => {
         const ids: string[] =
           (Array.isArray(e?.data) && e.data) ||
           (Array.isArray(e?.participants) && e.participants) ||
           []
         const sharerId = ids[0]
-        if (sharerId) {
-          try {
-            api.executeCommand("setLargeVideoParticipant", sharerId)
-          } catch {}
-        }
+        try {
+          if (sharerId) {
+            api.executeCommand("setTileView", false)
+            api.executeCommand("setLargeVideoParticipant", sharerId, "desktop")
+          } else {
+            api.executeCommand("setTileView", true)
+          }
+        } catch {}
       })
     }
     init().catch(() => {})

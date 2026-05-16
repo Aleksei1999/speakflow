@@ -348,6 +348,25 @@ export function LessonRoomClient({
       jitsiApi.current?.addListener("participantJoined", () => {
         setTimeout(forceTileIfNoShare, 100)
       })
+      // Remote screen-share is reported here. `screenSharingStatusChanged`
+      // below is local-only, so without this a viewer can keep forcing tile
+      // view and Jitsi will show only a camera instead of the desktop track.
+      jitsiApi.current?.addListener("contentSharingParticipantsChanged", (e: any) => {
+        const ids: string[] =
+          (Array.isArray(e?.data) && e.data) ||
+          (Array.isArray(e?.participants) && e.participants) ||
+          []
+        const sharerId = ids[0]
+        screenShareActive = !!sharerId
+        try {
+          if (sharerId) {
+            jitsiApi.current?.executeCommand("setTileView", false)
+            jitsiApi.current?.executeCommand("setLargeVideoParticipant", sharerId, "desktop")
+          } else {
+            setTimeout(forceTileIfNoShare, 100)
+          }
+        } catch {}
+      })
       jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
         screenShareActive = !!e?.on
         if (screenShareActive) {
