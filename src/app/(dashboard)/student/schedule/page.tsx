@@ -14,10 +14,18 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
+import {
+  formatLessonTime,
+  formatLessonDayShort,
+  formatLessonDayLong,
+  formatWeekdayShort,
+  formatWeekdayLong,
+  type TimeLocale,
+} from "@/lib/time"
 
 // LessonBookingModal — большой компонент (~800 строк + supabase realtime канал).
 // Открывается по клику на «Забронировать» / по тапу в weekly grid — на первый
@@ -55,6 +63,9 @@ function weekdayIdx(d: Date): number {
 }
 
 export default function StudentSchedulePage() {
+  const t = useTranslations("dashboard.student.schedule")
+  const rawLocale = useLocale()
+  const locale: TimeLocale = rawLocale === "en" ? "en" : "ru"
   // mounted guard: страница time-зависимая (now / weekCursor / format(...)
   // в JSX), при SSR initial state new Date() != client new Date(), что
   // даёт React error #418. Из-за этого после bail-out клик на «Записаться»
@@ -163,18 +174,18 @@ export default function StudentSchedulePage() {
       ])
 
       const tset = new Set<string>()
-      for (const t of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
-        if (t.assigned_lesson_id) tset.add(t.assigned_lesson_id)
+      for (const tt of (trials ?? []) as Array<{ assigned_lesson_id: string | null }>) {
+        if (tt.assigned_lesson_id) tset.add(tt.assigned_lesson_id)
       }
       setTrialIds(tset)
 
       if ((teachersRaw ?? []).length > 0) {
         const teachers = (teachersRaw ?? []) as Array<{ id: string; user_id: string; user: any }>
         const nextMap: Record<string, TeacherMapEntry> = {}
-        for (const t of teachers) {
-          const p = Array.isArray(t.user) ? t.user[0] : t.user
+        for (const tt of teachers) {
+          const p = Array.isArray(tt.user) ? tt.user[0] : tt.user
           const fullName = (p?.full_name ?? null) as string | null
-          nextMap[t.id] = {
+          nextMap[tt.id] = {
             full_name: fullName,
             initials: getInitials(fullName),
             avatar_url: (p?.avatar_url ?? null) as string | null,
@@ -197,9 +208,10 @@ export default function StudentSchedulePage() {
     const dt = new Date(scheduledAt)
     const hoursLeft = (dt.getTime() - Date.now()) / 3_600_000
     const hint = hoursLeft < 24
-      ? "До урока меньше 24 часов — возврат не положен по оферте."
-      : "Возврат на баланс будет начислен автоматически."
-    if (!confirm(`Отменить урок на ${format(dt, "EEEE, d MMMM HH:mm", { locale: ru })}?\n\n${hint}`)) return
+      ? t("cancelHintNoRefund")
+      : t("cancelHintRefund")
+    const whenLabel = `${formatWeekdayLong(dt, locale)}, ${formatLessonDayLong(dt, locale)} ${formatLessonTime(dt, locale)}`
+    if (!confirm(t("cancelConfirm", { when: whenLabel, hint }))) return
     setCancellingId(lessonId)
     try {
       const r = await fetch("/api/booking/cancel", {
@@ -209,18 +221,18 @@ export default function StudentSchedulePage() {
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) {
-        alert(j?.error ?? "Не удалось отменить урок")
+        alert(j?.error ?? t("cancelFailed"))
         return
       }
       const ws = startOfWeek(weekCursor, { weekStartsOn: 1 })
       const we = endOfWeek(weekCursor, { weekStartsOn: 1 })
       await fetchLessons(ws, we, { silent: true })
     } catch (e: any) {
-      alert(e?.message ?? "Ошибка сети")
+      alert(e?.message ?? t("cancelNetworkError"))
     } finally {
       setCancellingId(null)
     }
-  }, [weekCursor, fetchLessons])
+  }, [weekCursor, fetchLessons, t, locale])
 
   useEffect(() => {
     fetchLessons(weekStart, weekEnd)
@@ -302,9 +314,13 @@ export default function StudentSchedulePage() {
   }, [lessons])
 
   function weekTitle(): string {
-    const from = format(weekStart, "d", { locale: ru })
-    const to = format(addDays(weekStart, 6), "d MMMM yyyy", { locale: ru })
-    return `${from} — ${to}`
+    // "23 — 29 апреля 2026" / "Apr 23 — Apr 29, 2026" — locale-aware.
+    const from = weekStart
+    const to = addDays(weekStart, 6)
+    const intlLocale = locale === "en" ? "en-US" : "ru-RU"
+    const fromLabel = new Intl.DateTimeFormat(intlLocale, { day: "numeric", month: locale === "en" ? "short" : undefined }).format(from)
+    const toLabel = new Intl.DateTimeFormat(intlLocale, { day: "numeric", month: locale === "en" ? "short" : "long", year: "numeric" }).format(to)
+    return `${fromLabel} — ${toLabel}`
   }
 
   function goPrev() {
@@ -324,7 +340,7 @@ export default function StudentSchedulePage() {
     return (
       <div className="stu-schedule">
         <div className="hdr">
-          <h1>Моё <span className="gl">schedule</span></h1>
+          <h1>{t("headingMy")} <span className="gl">{t("headingScheduleWord")}</span></h1>
         </div>
         <div className="loading"><div className="spinner" /></div>
       </div>
@@ -334,7 +350,7 @@ export default function StudentSchedulePage() {
   return (
     <div className="stu-schedule">
       <div className="hdr">
-        <h1>Моё <span className="gl">schedule</span></h1>
+        <h1>{t("headingMy")} <span className="gl">{t("headingScheduleWord")}</span></h1>
         <div className="hdr-right">
           <button
             className="btn btn-dark"
@@ -344,54 +360,60 @@ export default function StudentSchedulePage() {
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Записаться
+            {t("bookCtaShort")}
           </button>
         </div>
       </div>
 
       <div className="stats">
         <div className="st st--red">
-          <div className="st-label">Эта неделя</div>
+          <div className="st-label">{t("statWeek")}</div>
           <div className="st-val">{weekCount}</div>
-          <div className="st-sub">{weekCount === 0 ? "нет занятий" : weekCount === 1 ? "занятие запланировано" : weekCount < 5 ? "занятия запланировано" : "занятий запланировано"}</div>
+          <div className="st-sub">{t("statWeekSub", { count: weekCount })}</div>
         </div>
         <div className="st">
-          <div className="st-label">Завершено</div>
+          <div className="st-label">{t("statCompleted")}</div>
           <div className="st-val">{completedCount}</div>
-          <div className="st-sub">уроков за неделю</div>
+          <div className="st-sub">{t("statCompletedSub")}</div>
         </div>
         <div className={`st ${nextLesson ? "st--lime" : ""}`}>
-          <div className="st-label">Следующее</div>
+          <div className="st-label">{t("statNext")}</div>
           <div className="st-val">
-            {nextLesson ? <span className="gl">{format(new Date(nextLesson.scheduled_at), "HH:mm")}</span> : "—"}
+            {nextLesson ? <span className="gl">{formatLessonTime(nextLesson.scheduled_at, locale)}</span> : "—"}
           </div>
           <div className="st-sub">
             {nextLesson
-              ? `Урок · ${isToday(new Date(nextLesson.scheduled_at)) ? "сегодня" : isTomorrow(new Date(nextLesson.scheduled_at)) ? "завтра" : format(new Date(nextLesson.scheduled_at), "d MMM", { locale: ru })}`
-              : "ничего не запланировано"}
+              ? t("statNextSubWith", {
+                  when: isToday(new Date(nextLesson.scheduled_at))
+                    ? t("todayBadge")
+                    : isTomorrow(new Date(nextLesson.scheduled_at))
+                      ? t("tomorrowBadge")
+                      : formatLessonDayShort(nextLesson.scheduled_at, locale),
+                })
+              : t("statNextSubEmpty")}
           </div>
         </div>
         <div className="st">
-          <div className="st-label">XP за неделю</div>
+          <div className="st-label">{t("statXpWeek")}</div>
           <div className="st-val">+{weekXp}</div>
-          <div className="st-sub">за завершённые уроки</div>
+          <div className="st-sub">{t("statXpSub")}</div>
         </div>
       </div>
 
       <div className="cal-card">
         <div className="cal-top">
           <div className="cal-top-nav">
-            <button className="cal-nav-btn" onClick={goPrev} aria-label="Предыдущая неделя">←</button>
+            <button className="cal-nav-btn" onClick={goPrev} aria-label={t("prevWeekAria")}>←</button>
             <div className="cal-top-title">{weekTitle()}</div>
-            <button className="cal-nav-btn" onClick={goNext} aria-label="Следующая неделя">→</button>
+            <button className="cal-nav-btn" onClick={goNext} aria-label={t("nextWeekAria")}>→</button>
           </div>
-          <button className="cal-today-btn" onClick={goToday}>Сегодня</button>
+          <button className="cal-today-btn" onClick={goToday}>{t("todayBtn")}</button>
         </div>
 
         <div className="cal-legend">
-          <div className="leg"><div className="leg-dot leg-dot--l"></div>Урок 1-on-1</div>
-          <div className="leg"><div className="leg-dot leg-dot--done"></div>Завершён</div>
-          <div className="leg"><div className="leg-dot leg-dot--cancel"></div>Отменён</div>
+          <div className="leg"><div className="leg-dot leg-dot--l"></div>{t("legendLesson")}</div>
+          <div className="leg"><div className="leg-dot leg-dot--done"></div>{t("legendDone")}</div>
+          <div className="leg"><div className="leg-dot leg-dot--cancel"></div>{t("legendCancel")}</div>
         </div>
 
         <div className="cg-wrap">
@@ -401,8 +423,8 @@ export default function StudentSchedulePage() {
               const today = isSameDay(d, now)
               return (
                 <div key={d.toISOString()} className={`cg-dh${today ? " cg-dh--today" : ""}`}>
-                  <div className="cg-dn">{format(d, "EEEEEE", { locale: ru })}</div>
-                  <div className="cg-dd">{format(d, "d")}</div>
+                  <div className="cg-dn">{formatWeekdayShort(d, locale)}</div>
+                  <div className="cg-dd">{d.getDate()}</div>
                 </div>
               )
             })}
@@ -424,6 +446,8 @@ export default function StudentSchedulePage() {
                 isHappeningNow={isHappeningNow}
                 teacherMap={teacherMap}
                 trialIds={trialIds}
+                locale={locale}
+                t={t}
               />
             ))}
           </div>
@@ -433,7 +457,7 @@ export default function StudentSchedulePage() {
       {isLoading ? (
         <div className="loading"><div className="spinner" /></div>
       ) : lessons.length === 0 ? (
-        <div className="empty">На этой неделе занятий нет. Забронируй слот через кнопку выше ↑</div>
+        <div className="empty">{t("weekEmpty")}</div>
       ) : (
         weekDays.map((d) => {
           const key = format(d, "yyyy-MM-dd")
@@ -441,12 +465,13 @@ export default function StudentSchedulePage() {
           if (dayLessons.length === 0) return null
           const today = isSameDay(d, now)
           const tomorrow = isTomorrow(d)
+          const dayLabel = `${formatWeekdayLong(d, locale)}, ${formatLessonDayLong(d, locale)}`
           return (
             <div key={key}>
               <div className="list-title" style={today ? undefined : { marginTop: 20 }}>
-                {format(d, "EEEE, d MMMM", { locale: ru })}
-                {today ? <span className="ltb ltb--today">Сегодня</span> : null}
-                {tomorrow ? <span className="ltb ltb--tm">Завтра</span> : null}
+                {dayLabel}
+                {today ? <span className="ltb ltb--today">{t("todayBadge")}</span> : null}
+                {tomorrow ? <span className="ltb ltb--tm">{t("tomorrowBadge")}</span> : null}
               </div>
 
               {dayLessons.map((lesson) => {
@@ -461,57 +486,58 @@ export default function StudentSchedulePage() {
                 const teacher = lesson.teacher_id ? teacherMap[lesson.teacher_id] : null
                 const rowCls = `lc${happening ? " lc--now" : ""}${isDone || expired ? " lc--done" : ""}${isCancel ? " lc--cancel" : ""}${isMissed ? " lc--missed" : ""}`
                 const stripCls = `lc-strip${isDone || expired ? " lc-strip--done" : ""}${isCancel ? " lc-strip--cancel" : ""}${isMissed ? " lc-strip--missed" : ""}`
+                const xpAmount = lesson.duration_minutes === 25 ? 25 : 50
                 return (
                   <div key={lesson.id} className={rowCls}>
                     <div className={stripCls} />
                     <div className="lc-time">
-                      <div className="lc-time-val">{format(dt, "HH:mm")}</div>
-                      <div className="lc-time-dur">{lesson.duration_minutes} мин</div>
-                      {!isCancel && !isMissed && !expired ? <div className="lc-time-xp">+{lesson.duration_minutes === 25 ? 25 : 50} XP</div> : null}
+                      <div className="lc-time-val">{formatLessonTime(dt, locale)}</div>
+                      <div className="lc-time-dur">{t("minutesShort", { count: lesson.duration_minutes })}</div>
+                      {!isCancel && !isMissed && !expired ? <div className="lc-time-xp">{t("xpReward", { xp: xpAmount })}</div> : null}
                     </div>
                     <div className="lc-body">
                       <div className="lc-name">
-                        {trialIds.has(lesson.id) ? "🎯 Пробный урок" : "Урок 1-on-1"}
+                        {trialIds.has(lesson.id) ? t("trialLesson") : t("oneOnOneLesson")}
                       </div>
                       <div className="lc-desc">
-                        {format(dt, "HH:mm")}–{format(end, "HH:mm")}
-                        {trialIds.has(lesson.id) ? " · бесплатно" : ""}
-                        {isDone ? " · ✓ завершён" : ""}
-                        {expired && !isDone ? " · время прошло" : ""}
-                        {isCancel ? " · отменён" : ""}
-                        {isMissed ? " · пропущен" : ""}
+                        {formatLessonTime(dt, locale)}–{formatLessonTime(end, locale)}
+                        {trialIds.has(lesson.id) ? t("freeNote") : ""}
+                        {isDone ? t("doneNote") : ""}
+                        {expired && !isDone ? t("expiredNote") : ""}
+                        {isCancel ? t("cancelledNote") : ""}
+                        {isMissed ? t("missedNote") : ""}
                       </div>
                     </div>
                     <div className="lc-teacher">
                       <div className="lc-tch-ava">{teacher?.initials ?? "??"}</div>
                       <div>
-                        <div className="lc-tch-name">{teacher?.full_name ?? "Преподаватель"}</div>
-                        <div className="lc-tch-role">1-on-1</div>
+                        <div className="lc-tch-name">{teacher?.full_name ?? t("teacherFallback")}</div>
+                        <div className="lc-tch-role">{t("teacherRole")}</div>
                       </div>
                     </div>
                     <div className="lc-action">
                       {isDone ? (
-                        <span className="lc-btn lc-btn--done">✓ Завершён</span>
+                        <span className="lc-btn lc-btn--done">{t("btnDone")}</span>
                       ) : isCancel ? (
-                        <span className="lc-btn lc-btn--cancelled">Отменён</span>
+                        <span className="lc-btn lc-btn--cancelled">{t("btnCancelled")}</span>
                       ) : isMissed ? (
-                        <span className="lc-btn lc-btn--missed">Пропущен</span>
+                        <span className="lc-btn lc-btn--missed">{t("btnMissed")}</span>
                       ) : expired ? (
-                        <span className="lc-btn lc-btn--cancelled">Урок завершён</span>
+                        <span className="lc-btn lc-btn--cancelled">{t("btnExpired")}</span>
                       ) : joinable && lesson.status === "in_progress" ? (
-                        <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--live">● Идёт сейчас</Link>
+                        <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--live">{t("btnLive")}</Link>
                       ) : joinable ? (
-                        <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--join">▶ Зайти в урок</Link>
+                        <Link href={`/student/lesson/${lesson.id}`} className="lc-btn lc-btn--join">{t("btnJoin")}</Link>
                       ) : (
                         <div className="lc-action-stack">
-                          <span className="lc-btn lc-btn--wait">Запланирован</span>
+                          <span className="lc-btn lc-btn--wait">{t("btnPlanned")}</span>
                           <button
                             type="button"
                             className="lc-btn lc-btn--cancel-link"
                             disabled={cancellingId === lesson.id}
                             onClick={() => cancelLesson(lesson.id, lesson.scheduled_at)}
                           >
-                            {cancellingId === lesson.id ? "Отменяю..." : "Отменить"}
+                            {cancellingId === lesson.id ? t("btnCancelling") : t("btnCancel")}
                           </button>
                         </div>
                       )}
@@ -552,6 +578,8 @@ function RowFragment({
   isHappeningNow,
   teacherMap,
   trialIds,
+  locale,
+  t,
 }: {
   hour: number
   weekDays: Date[]
@@ -565,6 +593,8 @@ function RowFragment({
   isHappeningNow: (l: LessonRow) => boolean
   teacherMap: Record<string, TeacherMapEntry>
   trialIds: Set<string>
+  locale: TimeLocale
+  t: ReturnType<typeof useTranslations>
 }) {
   const label = `${String(hour).padStart(2, "0")}:00`
   return (
@@ -583,7 +613,7 @@ function RowFragment({
             onClick={first ? undefined : () => onCellClick(day, label)}
           >
             {first ? (
-              <EventChip lesson={first} now={now} isHappeningNow={isHappeningNow} teacherName={first.teacher_id ? teacherMap[first.teacher_id]?.full_name ?? null : null} isTrial={trialIds.has(first.id)} />
+              <EventChip lesson={first} now={now} isHappeningNow={isHappeningNow} teacherName={first.teacher_id ? teacherMap[first.teacher_id]?.full_name ?? null : null} isTrial={trialIds.has(first.id)} locale={locale} t={t} />
             ) : null}
           </div>
         )
@@ -598,12 +628,16 @@ function EventChip({
   isHappeningNow,
   teacherName,
   isTrial,
+  locale,
+  t,
 }: {
   lesson: LessonRow
   now: Date
   isHappeningNow: (l: LessonRow) => boolean
   teacherName: string | null
   isTrial?: boolean
+  locale: TimeLocale
+  t: ReturnType<typeof useTranslations>
 }) {
   const start = new Date(lesson.scheduled_at)
   const end = new Date(start.getTime() + lesson.duration_minutes * 60_000)
@@ -615,10 +649,16 @@ function EventChip({
   return (
     <div className={cls} style={{ height }}>
       <div className="ev-t">
-        {happening ? "⚡ Сейчас" : isTrial ? "🎯 Пробный" : shortName ? `Урок · ${shortName}` : "Урок 1-on-1"}
+        {happening
+          ? t("chipNow")
+          : isTrial
+            ? t("chipTrial")
+            : shortName
+              ? t("chipLessonWith", { name: shortName })
+              : t("chipLesson")}
       </div>
       <div className="ev-s">
-        {format(start, "HH:mm")}–{format(end, "HH:mm")}{isDone ? " ✓" : ""}
+        {formatLessonTime(start, locale)}–{formatLessonTime(end, locale)}{isDone ? " ✓" : ""}
       </div>
     </div>
   )

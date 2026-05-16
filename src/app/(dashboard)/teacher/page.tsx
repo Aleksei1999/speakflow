@@ -3,6 +3,7 @@ import "@/styles/dashboard/teacher-home.css"
 import { redirect } from "next/navigation"
 import { format, addDays, isSameDay, startOfMonth, endOfMonth } from "date-fns"
 import { ru } from "date-fns/locale"
+import { getTranslations, getLocale } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import Link from "next/link"
@@ -20,25 +21,19 @@ import { getCachedTeacherDashboard } from "@/lib/dashboard/teacher"
 // свежестью «количество уроков сегодня» в шапке и нагрузкой на БД.
 export const revalidate = 30
 
-function greetingByHour(h: number) {
-  if (h < 6) return "Доброй ночи"
-  if (h < 12) return "Доброе утро"
-  if (h < 18) return "Добрый день"
-  return "Добрый вечер"
+function greetingKeyByHour(h: number): "greetingNight" | "greetingMorning" | "greetingDay" | "greetingEvening" {
+  if (h < 6) return "greetingNight"
+  if (h < 12) return "greetingMorning"
+  if (h < 18) return "greetingDay"
+  return "greetingEvening"
 }
 
-function pluralLessons(n: number) {
+function pluralLessonsKey(n: number): "lessonsOne" | "lessonsFew" | "lessonsMany" {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "урок"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "урока"
-  return "уроков"
-}
-
-function formatNextLesson(date: Date): string {
-  if (isMoscowToday(date)) return `сегодня, ${formatLessonTime(date)}`
-  if (isMoscowTomorrow(date)) return `завтра, ${formatLessonTime(date)}`
-  return `${formatLessonDayShort(date)}, ${formatLessonTime(date)}`
+  if (mod10 === 1 && mod100 !== 11) return "lessonsOne"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "lessonsFew"
+  return "lessonsMany"
 }
 
 function avatarVariant(idx: number): "v1" | "v2" | "v3" {
@@ -65,6 +60,10 @@ export default async function TeacherDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
+  const t = await getTranslations("dashboard.teacher.home")
+  const locale = (await getLocale()) as "ru" | "en"
+  const timeLocale = locale === "en" ? "en" : "ru"
+
   // ─────────────────────────────────────────────────────────────
   // ① Один RPC вместо ~10 параллельных запросов.
   // Возвращает: profile / teacher_profile / today (lessons + clubs) /
@@ -81,11 +80,10 @@ export default async function TeacherDashboardPage() {
     return (
       <div style={{ padding: 24, maxWidth: 720, margin: "40px auto" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          Не удалось загрузить дашборд
+          {t("loadFailedTitle")}
         </h1>
         <p style={{ color: "var(--muted)" }}>
-          Возможно временная проблема с базой. Обновите страницу через
-          минуту. Если повторяется — напишите в поддержку.
+          {t("loadFailedBody")}
         </p>
       </div>
     )
@@ -208,6 +206,7 @@ export default async function TeacherDashboardPage() {
   ).length
 
   // Build student table rows — sorted by next upcoming date, then by lessonsCount desc
+  const studentFallbackName = t("fallbackStudent")
   const rows = (studentProfilesRaw ?? [])
     .map((p: any) => {
       const info = byStudent.get(p.id)!
@@ -215,7 +214,7 @@ export default async function TeacherDashboardPage() {
       const level = prog?.level ?? "Raw"
       return {
         id: p.id,
-        name: p.full_name || "Ученик",
+        name: p.full_name || studentFallbackName,
         email: p.email ?? "",
         avatarUrl: p.avatar_url ?? null,
         lessonsCount: info.lessonsCount,
@@ -233,10 +232,33 @@ export default async function TeacherDashboardPage() {
       return b.lessonsCount - a.lessonsCount
     })
 
-  const firstName = profile.full_name?.split(" ")[0] ?? "Преподаватель"
+  const firstName = profile.full_name?.split(" ")[0] ?? t("fallbackTeacher")
   const initials = initialsFrom(profile.full_name)
-  const greeting = greetingByHour(now.getHours())
+  const greeting = t(greetingKeyByHour(now.getHours()))
   const todayCount = todayLessons.length
+  const lessonsWord = t(pluralLessonsKey(todayCount))
+  const headerDate = locale === "en"
+    ? new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(now)
+    : format(now, "EEEE, d MMMM", { locale: ru })
+
+  const upcomingFromLabel = locale === "en"
+    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(now)
+    : format(now, "d MMM", { locale: ru })
+  const upcomingToLabel = locale === "en"
+    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short" }).format(addDays(now, 13))
+    : format(addDays(now, 13), "d MMM", { locale: ru })
+  const payoutDate = locale === "en"
+    ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(new Date(now.getFullYear(), now.getMonth(), 15))
+    : format(new Date(now.getFullYear(), now.getMonth(), 15), "d MMMM", { locale: ru })
+
+  function formatNextLesson(date: Date): string {
+    if (isMoscowToday(date)) return t("todayRelative", { time: formatLessonTime(date, timeLocale) })
+    if (isMoscowTomorrow(date)) return t("tomorrowRelative", { time: formatLessonTime(date, timeLocale) })
+    return t("dayRelative", {
+      day: formatLessonDayShort(date, timeLocale),
+      time: formatLessonTime(date, timeLocale),
+    })
+  }
 
   return (
     <div className="tch-home">
@@ -247,11 +269,11 @@ export default async function TeacherDashboardPage() {
         <div>
           <h1>{greeting}, {firstName}! <span className="gl">👋</span></h1>
           <div className="sub">
-            {format(now, "EEEE, d MMMM", { locale: ru })} · {todayCount} {pluralLessons(todayCount)} сегодня
+            {t("headerSubtitle", { date: headerDate, count: todayCount, lessonsWord })}
           </div>
         </div>
         <div className="user-menu">
-          <Link href="/teacher/settings" className="icon-btn" aria-label="Настройки">
+          <Link href="/teacher/settings" className="icon-btn" aria-label={t("settingsAria")}>
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.26.46.4.97.41 1.51"/></svg>
           </Link>
           <div className="user-avatar">{initials}</div>
@@ -261,28 +283,37 @@ export default async function TeacherDashboardPage() {
       {/* Stats */}
       <div className="stats-grid">
         <div className="stat-card" data-onboarding="tch-stat-month">
-          <div className="label">Уроков в месяце</div>
+          <div className="label">{t("statMonthLabel")}</div>
           <div className="value">{monthCount ?? 0}</div>
           <div className={`change ${monthDelta != null && monthDelta >= 0 ? "positive" : ""}`}>
-            {monthDelta == null ? "нет данных" : monthDelta >= 0 ? `↑ +${monthDelta}% к прошлому` : `↓ ${monthDelta}% к прошлому`}
+            {monthDelta == null
+              ? t("statMonthNoData")
+              : monthDelta >= 0
+                ? t("statMonthDeltaUp", { delta: monthDelta })
+                : t("statMonthDeltaDown", { delta: monthDelta })}
           </div>
         </div>
         <div className="stat-card accent">
-          <div className="label">Активных учеников</div>
+          <div className="label">{t("statStudentsLabel")}</div>
           <div className="value">{studentIds.length}</div>
           <div className={`change ${newThisMonth > 0 ? "positive" : ""}`}>
-            {newThisMonth > 0 ? `↑ +${newThisMonth} ${newThisMonth === 1 ? "новый" : "новых"}` : "новых пока нет"}
+            {newThisMonth > 0
+              ? t("statStudentsNew", {
+                  count: newThisMonth,
+                  word: newThisMonth === 1 ? t("statStudentsNewOne") : t("statStudentsNewMany"),
+                })
+              : t("statStudentsNoNew")}
           </div>
         </div>
         <div className="stat-card">
-          <div className="label">Рейтинг</div>
+          <div className="label">{t("statRatingLabel")}</div>
           <div className="value">{Number(teacherProfile?.rating ?? 0).toFixed(1)} <small>★</small></div>
-          <div className="change">Из {teacherProfile?.total_reviews ?? 0} отзывов</div>
+          <div className="change">{t("statRatingFromReviews", { count: teacherProfile?.total_reviews ?? 0 })}</div>
         </div>
         <div className="stat-card dark">
-          <div className="label">Заработано</div>
-          <div className="value">{earningsRub.toLocaleString("ru-RU")}<small>₽</small></div>
-          <div className="change">Выплата {format(new Date(now.getFullYear(), now.getMonth(), 15), "d MMMM", { locale: ru })}</div>
+          <div className="label">{t("statEarningsLabel")}</div>
+          <div className="value">{earningsRub.toLocaleString(locale === "en" ? "en-US" : "ru-RU")}<small>₽</small></div>
+          <div className="change">{t("statEarningsPayout", { date: payoutDate })}</div>
         </div>
       </div>
 
@@ -290,12 +321,12 @@ export default async function TeacherDashboardPage() {
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 13), "d MMM", { locale: ru })}</h3>
-            <Link href="/teacher/schedule" className="btn btn-sm btn-secondary">Полное расписание</Link>
+            <h3>{t("upcomingHeader", { from: upcomingFromLabel, to: upcomingToLabel })}</h3>
+            <Link href="/teacher/schedule" className="btn btn-sm btn-secondary">{t("fullSchedule")}</Link>
           </div>
           <div className="card-body">
             {upcomingLessons.length === 0 && todayClubs.length === 0 ? (
-              <div className="schedule-empty">На ближайшую неделю уроков нет.</div>
+              <div className="schedule-empty">{t("weekEmpty")}</div>
             ) : null}
             {todayClubs.length > 0 ? (
               <>
@@ -321,9 +352,12 @@ export default async function TeacherDashboardPage() {
                 const sameDayAsPrev = prev && isSameDay(new Date(prev.scheduled_at), dt0)
                 let dayLabel = ""
                 if (!sameDayAsPrev) {
-                  if (isSameDay(dt0, now)) dayLabel = "Сегодня"
-                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = "Завтра"
-                  else dayLabel = format(dt0, "EEEE, d MMMM", { locale: ru })
+                  if (isSameDay(dt0, now)) dayLabel = t("today")
+                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = t("tomorrow")
+                  else
+                    dayLabel = locale === "en"
+                      ? new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long" }).format(dt0)
+                      : format(dt0, "EEEE, d MMMM", { locale: ru })
                 }
                 return [
                   !sameDayAsPrev ? (
@@ -344,7 +378,7 @@ export default async function TeacherDashboardPage() {
                     </div>
                   ) : null,
                   ((l) => {
-                    const studentName = l.student_name ?? "Ученик"
+                    const studentName = l.student_name ?? t("fallbackStudent")
                     const isTrial = !!l.is_trial
                     // Всю time-dependent логику (access window, CTA, .active-подсветка,
                     // <Link>/<div>) делегируем client-row. Это позволяет странице
@@ -374,49 +408,49 @@ export default async function TeacherDashboardPage() {
 
         <div className="right-col">
           <div className="card">
-            <div className="card-header"><h3>Быстрые действия</h3></div>
+            <div className="card-header"><h3>{t("quickActionsTitle")}</h3></div>
             <div className="card-body">
               <div className="quick-actions">
                 <Link href="/teacher/schedule" className="primary">
                   <div className="ico">
                     <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
                   </div>
-                  Управление слотами
+                  {t("quickSlots")}
                 </Link>
                 <Link href="/teacher/homework">
                   <div className="ico">
                     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="9" x2="15" y1="15" y2="15"/></svg>
                   </div>
-                  Создать задание
+                  {t("quickHomework")}
                 </Link>
                 <Link href="/teacher/materials">
                   <div className="ico">
                     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                   </div>
-                  Отправить материалы
+                  {t("quickMaterials")}
                 </Link>
               </div>
             </div>
           </div>
 
           <div className="card">
-            <div className="card-header"><h3>Статистика за неделю</h3></div>
+            <div className="card-header"><h3>{t("weekStatsTitle")}</h3></div>
             <div className="card-body">
               <div className="week-stats">
                 <div className="week-stat">
-                  <div className="row"><span>Проведено уроков</span><strong>{weekCompleted} / {weekTotal || 0}</strong></div>
+                  <div className="row"><span>{t("weekStatsCompleted")}</span><strong>{weekCompleted} / {weekTotal || 0}</strong></div>
                   <div className="progress-bar">
                     <div className="progress-fill" style={{ width: `${weekTotal ? Math.round((weekCompleted / weekTotal) * 100) : 0}%` }} />
                   </div>
                 </div>
                 <div className="week-stat">
-                  <div className="row"><span>Запланировано</span><strong>{weekTotal}</strong></div>
+                  <div className="row"><span>{t("weekStatsScheduled")}</span><strong>{weekTotal}</strong></div>
                   <div className="progress-bar">
                     <div className="progress-fill lime" style={{ width: `${Math.min(100, weekTotal * 10)}%` }} />
                   </div>
                 </div>
                 <div className="week-stat">
-                  <div className="row"><span>Отменено учениками</span><strong>{weekCancelled}</strong></div>
+                  <div className="row"><span>{t("weekStatsCancelled")}</span><strong>{weekCancelled}</strong></div>
                   <div className="progress-bar">
                     <div
                       className="progress-fill red"
@@ -433,21 +467,21 @@ export default async function TeacherDashboardPage() {
       {/* Students */}
       <div className="card">
         <div className="card-header">
-          <h3>Мои ученики</h3>
-          <Link href="/teacher/students" className="btn btn-sm btn-secondary">Все ученики</Link>
+          <h3>{t("studentsTitle")}</h3>
+          <Link href="/teacher/students" className="btn btn-sm btn-secondary">{t("studentsAll")}</Link>
         </div>
         <div className="card-body" style={{ padding: "0 22px 8px" }}>
           {rows.length === 0 ? (
-            <div className="empty-row">Учеников пока нет</div>
+            <div className="empty-row">{t("studentsEmpty")}</div>
           ) : (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Ученик</th>
-                  <th>Уровень</th>
-                  <th>Уроков</th>
-                  <th>Следующий</th>
-                  <th>Прогресс</th>
+                  <th>{t("tableStudent")}</th>
+                  <th>{t("tableLevel")}</th>
+                  <th>{t("tableLessons")}</th>
+                  <th>{t("tableNext")}</th>
+                  <th>{t("tableProgress")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -476,7 +510,7 @@ export default async function TeacherDashboardPage() {
                         server и client рендерят в разные моменты, near-midnight
                         возможен mismatch. suppressHydrationWarning подавляет ошибку,
                         клиентский результат всегда корректнее. */}
-                    <td suppressHydrationWarning>{r.nextAt ? formatNextLesson(r.nextAt) : "—"}</td>
+                    <td suppressHydrationWarning>{r.nextAt ? formatNextLesson(r.nextAt) : t("tableNone")}</td>
                     <td>
                       <div className="progress-bar" style={{ width: 100 }}>
                         <div className="progress-fill" style={{ width: `${r.progress}%` }} />
@@ -487,7 +521,7 @@ export default async function TeacherDashboardPage() {
                         href={`/teacher/students/${r.id}`}
                         className="btn btn-sm btn-secondary"
                       >
-                        Профиль
+                        {t("openProfile")}
                       </Link>
                     </td>
                   </tr>

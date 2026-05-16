@@ -8,6 +8,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { format, differenceInCalendarDays } from "date-fns"
 import { ru } from "date-fns/locale"
+import { useTranslations } from "next-intl"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { createSignedUrl } from "@/lib/supabase/signed-url"
 
@@ -133,6 +134,7 @@ function formatDateInputLocal(iso: string | null): string {
 }
 
 export default function StudentHomeworkClient({ initial }: { initial: Snapshot }) {
+  const t = useTranslations("dashboard.student.homework")
   const [filter, setFilter] = useState<FilterKey>("all")
   const [items, setItems] = useState<HwItem[]>(initial.homework)
   const [counts, setCounts] = useState(initial.counts)
@@ -194,12 +196,12 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
         <div className="sh-hdr">
           <div>
             <h1>
-              Моя <span className="gl">homework</span>
+              {t("headingMy")} <span className="gl">{t("headingWord")}</span>
             </h1>
             <div className="sub">
-              {counts.todo > 0 ? `${counts.todo} ждут тебя` : "свободно"}
-              {counts.submitted > 0 ? ` · ${counts.submitted} проверяется` : ""}
-              {counts.reviewed > 0 ? ` · ${counts.reviewed} разобрано` : ""}
+              {counts.todo > 0 ? t("subWaiting", { count: counts.todo }) : t("subFree")}
+              {counts.submitted > 0 ? t("subInReview", { count: counts.submitted }) : ""}
+              {counts.reviewed > 0 ? t("subReviewed", { count: counts.reviewed }) : ""}
             </div>
           </div>
         </div>
@@ -221,15 +223,15 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
                 <div className="uh-label">
                   <span className="pulse"></span>
                   {urgent.ui_status === "overdue"
-                    ? "просрочено — надо срочно"
-                    : `ближайший дедлайн · ${humanDueLabel(urgent.due_date, urgent.ui_status)}`}
+                    ? t("urgentOverdue")
+                    : t("urgentNearestDeadline", { when: humanDueLabel(urgent.due_date, urgent.ui_status) })}
                 </div>
                 <div className="uh-title">{urgent.title}</div>
                 <div className="uh-sub">
                   {urgent.description
                     ? String(urgent.description).slice(0, 160) +
                       (String(urgent.description).length > 160 ? "…" : "")
-                    : `Сдать до ${formatDateInputLocal(urgent.due_date)}`}
+                    : t("urgentDueLine", { date: formatDateInputLocal(urgent.due_date) })}
                 </div>
               </div>
             </div>
@@ -242,7 +244,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
                   if (target) setSubmitFor(target)
                 }}
               >
-                Сдать работу
+                {t("urgentSubmitCta")}
               </button>
             </div>
           </div>
@@ -259,7 +261,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             </div>
             <div>
               <div className="h-stat-val">{stats.waiting}</div>
-              <div className="h-stat-lbl">Ждут тебя</div>
+              <div className="h-stat-lbl">{t("statWaiting")}</div>
             </div>
           </div>
           <div className="h-stat">
@@ -273,7 +275,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
               <div className="h-stat-val" style={{ color: "#F59E0B" }}>
                 {stats.in_review}
               </div>
-              <div className="h-stat-lbl">На проверке</div>
+              <div className="h-stat-lbl">{t("statInReview")}</div>
             </div>
           </div>
           <div className="h-stat">
@@ -284,7 +286,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             </div>
             <div>
               <div className="h-stat-val">{stats.reviewed_lifetime}</div>
-              <div className="h-stat-lbl">Проверено</div>
+              <div className="h-stat-lbl">{t("statReviewed")}</div>
             </div>
           </div>
           <div className="h-stat">
@@ -297,7 +299,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
               <div className="h-stat-val">
                 <span className="gl">+{stats.xp_this_month}</span> XP
               </div>
-              <div className="h-stat-lbl">За этот месяц</div>
+              <div className="h-stat-lbl">{t("statXpMonth")}</div>
             </div>
           </div>
         </div>
@@ -308,34 +310,34 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             className={filter === "all" ? "active" : ""}
             onClick={() => changeFilter("all")}
           >
-            Все <span className="count-dot">{counts.all}</span>
+            {t("tabAll")} <span className="count-dot">{counts.all}</span>
           </button>
           <button
             className={filter === "todo" ? "active" : ""}
             onClick={() => changeFilter("todo")}
           >
             {counts.todo > 0 ? <span className="pulse-dot"></span> : null}
-            Надо сделать <span className="count-dot">{counts.todo}</span>
+            {t("tabTodo")} <span className="count-dot">{counts.todo}</span>
           </button>
           <button
             className={filter === "submitted" ? "active" : ""}
             onClick={() => changeFilter("submitted")}
           >
-            На проверке <span className="count-dot">{counts.submitted}</span>
+            {t("tabSubmitted")} <span className="count-dot">{counts.submitted}</span>
           </button>
           <button
             className={filter === "reviewed" ? "active" : ""}
             onClick={() => changeFilter("reviewed")}
           >
-            Проверенные <span className="count-dot">{counts.reviewed}</span>
+            {t("tabReviewed")} <span className="count-dot">{counts.reviewed}</span>
           </button>
         </div>
 
         {/* Empty state */}
         {totalVisible === 0 ? (
           <div className="empty-state">
-            <b>Здесь пусто</b>
-            Когда преподаватель выдаст задание — оно появится тут.
+            <b>{t("emptyTitle")}</b>
+            {t("emptyHint")}
           </div>
         ) : null}
 
@@ -345,10 +347,10 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             <div className="section-head">
               <div>
                 <div className="section-title">
-                  Надо <span className="gl">to do</span>
+                  {t("sectionTodoTitle")} <span className="gl">{t("sectionTodoWord")}</span>
                 </div>
                 <div className="section-sub">
-                  Сделай эти задания — преподаватель ждёт
+                  {t("sectionTodoSub")}
                 </div>
               </div>
             </div>
@@ -371,10 +373,10 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             <div className="section-head">
               <div>
                 <div className="section-title">
-                  На <span className="gl">review</span>
+                  {t("sectionSubmittedTitle")} <span className="gl">{t("sectionSubmittedWord")}</span>
                 </div>
                 <div className="section-sub">
-                  Ты сдал — ждём фидбэк. Обычно это 1–2 дня
+                  {t("sectionSubmittedSub")}
                 </div>
               </div>
             </div>
@@ -397,10 +399,10 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             <div className="section-head">
               <div>
                 <div className="section-title">
-                  <span className="gl">Reviewed</span> — с фидбэком
+                  <span className="gl">{t("sectionReviewedWord")}</span>{t("sectionReviewedTitle")}
                 </div>
                 <div className="section-sub">
-                  Преподаватель разобрал твои работы — посмотри комментарии
+                  {t("sectionReviewedSub")}
                 </div>
               </div>
             </div>
@@ -425,7 +427,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
             onSubmitted={async () => {
               setSubmitFor(null)
               await reload()
-              toast.success("Работа отправлена преподавателю")
+              toast.success(t("submittedToast"))
             }}
             setBusy={setBusy}
           />

@@ -2,8 +2,10 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { addMonths, differenceInDays, endOfMonth, format, isFuture, startOfMonth, subMonths } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
+import { getLocale } from "@/i18n/locale"
 
 const CSS = `
 .tch-pay{max-width:1200px;margin:0 auto}
@@ -143,20 +145,20 @@ function formatRub(kopecks: number): string {
   return rub.toLocaleString("ru-RU")
 }
 
-function pluralLessons(n: number) {
+function pluralLessonsKey(n: number): "lessonsOne" | "lessonsFew" | "lessonsMany" {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "урок"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "урока"
-  return "уроков"
+  if (mod10 === 1 && mod100 !== 11) return "lessonsOne"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "lessonsFew"
+  return "lessonsMany"
 }
 
-function pluralDays(n: number) {
+function pluralDaysKey(n: number): "daysOne" | "daysFew" | "daysMany" {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "день"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "дня"
-  return "дней"
+  if (mod10 === 1 && mod100 !== 11) return "daysOne"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "daysFew"
+  return "daysMany"
 }
 
 function avatarVariant(idx: number): "v1" | "v2" | "v3" {
@@ -191,6 +193,10 @@ export default async function TeacherPayoutsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
+
+  const t = await getTranslations("dashboard.teacher.payouts")
+  const locale = (await getLocale()) as "ru" | "en"
+  const dfLocale = locale === "en" ? enUS : ru
 
   const { data: profile } = await (supabase as any).from("profiles").select("*").eq("id", user.id).single()
   if (!profile || profile.role !== "teacher") redirect("/student")
@@ -288,7 +294,7 @@ export default async function TeacherPayoutsPage() {
     monthBuckets.push({
       key: format(ms, "yyyy-MM"),
       date: ms,
-      label: format(ms, "LLL", { locale: ru }),
+      label: format(ms, "LLL", { locale: dfLocale }),
       lessons: monthLessonsInBucket.length,
       grossKopecks: gross,
       studentCount: distinctStudents,
@@ -319,7 +325,7 @@ export default async function TeacherPayoutsPage() {
   const students = Array.from(byStudent.entries())
     .map(([id, v]) => ({
       id,
-      name: profileMap.get(id) ?? "Ученик",
+      name: profileMap.get(id) ?? t("fallbackStudent"),
       level: levelMap.get(id) ?? null,
       lessons: v.lessons,
       grossKopecks: v.grossKopecks,
@@ -329,7 +335,7 @@ export default async function TeacherPayoutsPage() {
   // Payout day = 15th of next month (payment for current month's completed lessons)
   const nextPayoutDate = new Date(now.getFullYear(), now.getMonth() + 1, 15)
   const daysUntilPayout = Math.max(0, differenceInDays(nextPayoutDate, now))
-  const nextPayoutLabel = format(nextPayoutDate, "d MMMM", { locale: ru })
+  const nextPayoutLabel = format(nextPayoutDate, "d MMMM", { locale: dfLocale })
 
   // Build history rows: monthBuckets in reverse (newest first), + current month as "scheduled"
   type HistoryRow = {
@@ -345,7 +351,10 @@ export default async function TeacherPayoutsPage() {
   history.push({
     key: "scheduled",
     dateLabel: nextPayoutLabel,
-    subLabel: daysUntilPayout > 0 ? `через ${daysUntilPayout} ${pluralDays(daysUntilPayout)}` : "сегодня",
+    subLabel:
+      daysUntilPayout > 0
+        ? t("subInDays", { count: daysUntilPayout, word: t(pluralDaysKey(daysUntilPayout)) })
+        : t("subToday"),
     kopecks: nextPayoutKopecks,
     lessons: monthLessonCount,
     status: "scheduled",
@@ -361,8 +370,11 @@ export default async function TeacherPayoutsPage() {
     const net = Math.max(0, b.grossKopecks - historicalCommission)
     history.push({
       key: b.key,
-      dateLabel: format(paidDate, "d MMMM", { locale: ru }),
-      subLabel: daysAgo <= 60 ? `${daysAgo} ${pluralDays(daysAgo)} назад` : "",
+      dateLabel: format(paidDate, "d MMMM", { locale: dfLocale }),
+      subLabel:
+        daysAgo <= 60
+          ? t("subDays", { count: daysAgo, word: t(pluralDaysKey(daysAgo)) })
+          : "",
       kopecks: net,
       lessons: b.lessons,
       status: "paid",
@@ -373,7 +385,7 @@ export default async function TeacherPayoutsPage() {
     ? Math.round(monthBuckets.reduce((s, b) => s + b.grossKopecks, 0) / monthBuckets.length)
     : 0
   const bestMonth = monthBuckets.reduce((best, b) => b.grossKopecks > (best?.grossKopecks ?? -1) ? b : best, null as typeof monthBuckets[number] | null)
-  const bestMonthLabel = bestMonth ? format(bestMonth.date, "LLLL", { locale: ru }) : "—"
+  const bestMonthLabel = bestMonth ? format(bestMonth.date, "LLLL", { locale: dfLocale }) : "—"
 
   return (
     <>
@@ -381,10 +393,14 @@ export default async function TeacherPayoutsPage() {
       <div className="tch-pay">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">payouts</span></h1>
+            <h1>{t("headingPrefix")} <span className="gl">{t("headingHighlight")}</span></h1>
             <div className="sub">
-              Ближайшая: {nextPayoutLabel} · {monthLessonCount} {pluralLessons(monthLessonCount)} в этом месяце
-              {rating > 0 ? ` · рейтинг ${rating.toFixed(1)} ★` : ""}
+              {t("subUpcoming", {
+                date: nextPayoutLabel,
+                count: monthLessonCount,
+                word: t(pluralLessonsKey(monthLessonCount)),
+              })}
+              {rating > 0 ? t("subRating", { value: rating.toFixed(1) }) : ""}
             </div>
           </div>
         </div>
@@ -392,41 +408,47 @@ export default async function TeacherPayoutsPage() {
         {/* NEXT PAYOUT HERO */}
         <div className="next-payout">
           <div>
-            <div className="np-label">⏱ ближайшая выплата · {nextPayoutLabel}</div>
+            <div className="np-label">{t("nextLabel", { date: nextPayoutLabel })}</div>
             <div className="np-amount">{formatRub(nextPayoutKopecks)}<small>₽</small></div>
             <div className="np-when">
               {daysUntilPayout > 0 ? (
-                <>через <b>{daysUntilPayout} {pluralDays(daysUntilPayout)}</b> · автоматически на карту по умолчанию</>
+                t.rich("nextInDays", {
+                  count: daysUntilPayout,
+                  word: t(pluralDaysKey(daysUntilPayout)),
+                  b: (chunks) => <b>{chunks}</b>,
+                })
               ) : (
-                <><b>сегодня</b> · автоматически на карту по умолчанию</>
+                t.rich("nextToday", {
+                  b: (chunks) => <b>{chunks}</b>,
+                })
               )}
             </div>
             <div className="np-actions">
-              <button className="btn btn-lime" disabled>Запросить раньше</button>
-              <Link href="/teacher/settings" className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff" }}>Сменить способ</Link>
+              <button className="btn btn-lime" disabled>{t("btnRequestEarly")}</button>
+              <Link href="/teacher/settings" className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff" }}>{t("btnChangeMethod")}</Link>
             </div>
           </div>
           <div className="np-details">
             <div className="np-det-row">
-              <span className="np-det-k">Уроков проведено</span>
+              <span className="np-det-k">{t("detailLessons")}</span>
               <span className="np-det-v">{monthLessonCount}</span>
             </div>
             <div className="np-det-row">
-              <span className="np-det-k">Ставка за урок (средняя)</span>
+              <span className="np-det-k">{t("detailAvgRate")}</span>
               <span className="np-det-v">{formatRub(monthAvgPriceKopecks)} ₽</span>
             </div>
             {ratingBonusKopecks > 0 ? (
               <div className="np-det-row">
-                <span className="np-det-k">Бонус за рейтинг {rating.toFixed(1)}★</span>
+                <span className="np-det-k">{t("detailRatingBonus", { value: rating.toFixed(1) })}</span>
                 <span className="np-det-v">+ {formatRub(ratingBonusKopecks)} ₽</span>
               </div>
             ) : null}
             <div className="np-det-row">
-              <span className="np-det-k">Комиссия платформы</span>
+              <span className="np-det-k">{t("detailCommission")}</span>
               <span className="np-det-v">− {formatRub(commissionKopecks)} ₽</span>
             </div>
             <div className="np-det-total">
-              <span>Итого к выплате</span>
+              <span>{t("detailTotal")}</span>
               <span className="v">{formatRub(nextPayoutKopecks)} ₽</span>
             </div>
           </div>
@@ -435,47 +457,47 @@ export default async function TeacherPayoutsPage() {
         {/* STATS */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="label">Заработано за месяц</div>
+            <div className="label">{t("statMonth")}</div>
             <div className="value">{formatRub(monthGrossKopecks - commissionKopecks + ratingBonusKopecks)}<small>₽</small></div>
             <div className={`change ${monthDeltaPct !== null && monthDeltaPct >= 0 ? "positive" : ""}`}>
               {monthDeltaPct === null
-                ? "нет данных за март"
+                ? t("statMonthNoData")
                 : monthDeltaPct >= 0
-                ? `↑ +${monthDeltaPct}% к прошлому месяцу`
-                : `↓ ${monthDeltaPct}% к прошлому месяцу`}
+                ? t("statMonthUp", { delta: monthDeltaPct })
+                : t("statMonthDown", { delta: Math.abs(monthDeltaPct) })}
             </div>
           </div>
           <div className="stat-card accent">
-            <div className="label">Всего за год</div>
+            <div className="label">{t("statYear")}</div>
             <div className="value">{formatRub(yearGrossKopecks)}<small>₽</small></div>
-            <div className="change">с января {now.getFullYear()}</div>
+            <div className="change">{t("statYearSince", { year: now.getFullYear() })}</div>
           </div>
           <div className="stat-card">
-            <div className="label">Средний чек / урок</div>
+            <div className="label">{t("statAvg")}</div>
             <div className="value">{formatRub(avgPerLessonKopecks)}<small>₽</small></div>
-            <div className="change">по {yearLessonCount} {pluralLessons(yearLessonCount)}</div>
+            <div className="change">{t("statAvgSub", { count: yearLessonCount, word: t(pluralLessonsKey(yearLessonCount)) })}</div>
           </div>
           <div className="stat-card">
-            <div className="label">Уроков за год</div>
+            <div className="label">{t("statYearLessons")}</div>
             <div className="value">{yearLessonCount}</div>
-            <div className="change">≈ {Math.round(yearLessonCount / Math.max(now.getMonth() + 1, 1))} / месяц</div>
+            <div className="change">{t("statYearAvg", { count: Math.round(yearLessonCount / Math.max(now.getMonth() + 1, 1)) })}</div>
           </div>
         </div>
 
         {/* CHART */}
         <div className="card">
           <div className="card-header">
-            <h3>Заработок по месяцам</h3>
+            <h3>{t("chartTitle")}</h3>
           </div>
           <div className="chart-pad">
             <div className="chart-top">
               <div>
                 <div className="chart-total">
                   {formatRub(monthBuckets.reduce((s, b) => s + b.grossKopecks, 0))}
-                  <small>₽ за 12 месяцев</small>
+                  <small>{t("chart12Months")}</small>
                 </div>
                 <div className="chart-period" style={{ marginTop: 4 }}>
-                  средний доход: {formatRub(avgMonthGrossKopecks)} ₽ / месяц · лучший: {bestMonthLabel}
+                  {t("chartAvg", { value: formatRub(avgMonthGrossKopecks), best: bestMonthLabel })}
                 </div>
               </div>
             </div>
@@ -497,19 +519,19 @@ export default async function TeacherPayoutsPage() {
         {/* HISTORY */}
         <div className="card">
           <div className="card-header">
-            <h3>История выплат</h3>
+            <h3>{t("historyTitle")}</h3>
           </div>
           {history.length === 0 ? (
-            <div className="empty">Пока нет выплат</div>
+            <div className="empty">{t("historyEmpty")}</div>
           ) : (
             <table className="payouts-table">
               <thead>
                 <tr>
-                  <th>Дата</th>
-                  <th>Сумма</th>
-                  <th>Уроков</th>
-                  <th>Способ</th>
-                  <th>Статус</th>
+                  <th>{t("thDate")}</th>
+                  <th>{t("thAmount")}</th>
+                  <th>{t("thLessons")}</th>
+                  <th>{t("thMethod")}</th>
+                  <th>{t("thStatus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -526,14 +548,14 @@ export default async function TeacherPayoutsPage() {
                     <td>
                       <span className="pt-method">
                         <span className="pt-method-ico">—</span>
-                        не настроен
+                        {t("methodNone")}
                       </span>
                     </td>
                     <td>
                       {row.status === "scheduled" ? (
-                        <span className="pt-status pt-status-scheduled">запланировано</span>
+                        <span className="pt-status pt-status-scheduled">{t("statusScheduled")}</span>
                       ) : (
-                        <span className="pt-status pt-status-paid">✓ выплачено</span>
+                        <span className="pt-status pt-status-paid">{t("statusPaid")}</span>
                       )}
                     </td>
                   </tr>
@@ -546,11 +568,11 @@ export default async function TeacherPayoutsPage() {
         {/* STUDENTS BREAKDOWN */}
         <div className="card">
           <div className="card-header">
-            <h3>Откуда выручка · {format(now, "LLLL", { locale: ru })}</h3>
-            <Link href="/teacher/students" className="btn btn-sm btn-secondary">Все ученики</Link>
+            <h3>{t("studentsTitle", { month: format(now, "LLLL", { locale: dfLocale }) })}</h3>
+            <Link href="/teacher/students" className="btn btn-sm btn-secondary">{t("studentsAll")}</Link>
           </div>
           {students.length === 0 ? (
-            <div className="empty">В этом месяце ещё нет завершённых уроков</div>
+            <div className="empty">{t("studentsEmpty")}</div>
           ) : (
             <div className="sb-list">
               {students.map((s, idx) => (
@@ -560,7 +582,7 @@ export default async function TeacherPayoutsPage() {
                     <div className="sb-name">{s.name}</div>
                     <div className="sb-meta">{getLevelShort(s.level)}</div>
                   </div>
-                  <div className="sb-lessons"><b>{s.lessons}</b> {pluralLessons(s.lessons)}</div>
+                  <div className="sb-lessons"><b>{s.lessons}</b> {t(pluralLessonsKey(s.lessons))}</div>
                   <div className="sb-amount">{formatRub(s.grossKopecks)} ₽</div>
                 </div>
               ))}
@@ -571,11 +593,17 @@ export default async function TeacherPayoutsPage() {
         {/* PAYMENT METHODS */}
         <div className="card">
           <div className="card-header">
-            <h3>Способы получения</h3>
-            <Link href="/teacher/settings" className="btn btn-sm btn-secondary">+ Добавить</Link>
+            <h3>{t("methodsTitle")}</h3>
+            <Link href="/teacher/settings" className="btn btn-sm btn-secondary">{t("methodsAdd")}</Link>
           </div>
           <div className="methods-empty">
-            Способы выплат пока не настроены. Зайди в <Link href="/teacher/settings" style={{ color: "var(--text)", fontWeight: 700 }}>Настройки</Link>, чтобы привязать карту или криптокошелёк.
+            {t.rich("methodsEmpty", {
+              link: (chunks) => (
+                <Link href="/teacher/settings" style={{ color: "var(--text)", fontWeight: 700 }}>
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
         </div>
       </div>

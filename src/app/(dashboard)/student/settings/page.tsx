@@ -249,6 +249,12 @@ export default function StudentSettingsPage() {
       toast.success("Настройки сохранены")
       setOriginal(JSON.parse(JSON.stringify(data)))
       if (body.ui?.theme) applyTheme(body.ui.theme)
+      // Language change → server PATCH already set rwen_locale cookie.
+      // router.refresh() re-renders the dashboard layout (server) so
+      // NextIntlClientProvider picks up the new messages on the next paint.
+      if (body.account?.language && body.account.language !== original.account.language) {
+        router.refresh()
+      }
     } catch {
       toast.error("Ошибка сети")
     } finally {

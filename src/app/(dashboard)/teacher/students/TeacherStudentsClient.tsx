@@ -4,8 +4,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
+import { formatLessonTime, formatWeekdayShort } from "@/lib/time"
 
 type StudentItem = {
   id: string
@@ -36,14 +36,6 @@ type Snapshot = {
 }
 
 type LevelFilterKey = "all" | "A1-A2" | "B1" | "B2" | "C1+"
-
-const LEVEL_FILTERS: { key: LevelFilterKey; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "A1-A2", label: "A1-A2" },
-  { key: "B1", label: "B1" },
-  { key: "B2", label: "B2" },
-  { key: "C1+", label: "C1+" },
-]
 
 // Maps a UI-level tab to the set of CEFR levels it represents
 const LEVEL_FILTER_MAP: Record<LevelFilterKey, string[]> = {
@@ -97,7 +89,7 @@ function levelPillClass(level: string | null): string {
   }
 }
 
-function levelPillLabel(level: string | null): string {
+function levelPillLabel(level: string | null, none: string): string {
   switch (level) {
     case "A1":
       return "Rare · A1"
@@ -112,7 +104,7 @@ function levelPillLabel(level: string | null): string {
     case "C2":
       return "Well-done · C2"
     default:
-      return "Не указан"
+      return none
   }
 }
 
@@ -124,7 +116,11 @@ function isSameCalendarDay(a: Date, b: Date) {
   )
 }
 
-function formatNextLesson(iso: string | null): {
+function formatNextLesson(
+  iso: string | null,
+  locale: "ru" | "en",
+  labels: { today: (time: string) => string; tomorrow: (time: string) => string; dow: (day: string, time: string) => string }
+): {
   primary: string
   today: boolean
 } {
@@ -134,14 +130,14 @@ function formatNextLesson(iso: string | null): {
   const now = new Date()
   const tomorrow = new Date(now)
   tomorrow.setDate(now.getDate() + 1)
-  const hhmm = format(d, "HH:mm", { locale: ru })
+  const hhmm = formatLessonTime(d, locale)
   if (isSameCalendarDay(d, now)) {
-    return { primary: `Сегодня, ${hhmm}`, today: true }
+    return { primary: labels.today(hhmm), today: true }
   }
   if (isSameCalendarDay(d, tomorrow)) {
-    return { primary: `Завтра, ${hhmm}`, today: false }
+    return { primary: labels.tomorrow(hhmm), today: false }
   }
-  return { primary: format(d, "EEEEEE, HH:mm", { locale: ru }), today: false }
+  return { primary: labels.dow(formatWeekdayShort(d, locale), hhmm), today: false }
 }
 
 // --- Icons (inline SVG; no lucide to keep scoped to .tch-std) ---
@@ -213,6 +209,15 @@ function StudentAvatar({
 }
 
 export default function TeacherStudentsClient({ initial }: { initial: Snapshot }) {
+  const t = useTranslations("dashboard.teacher.students")
+  const locale = useLocale() === "en" ? "en" : "ru"
+  const LEVEL_FILTERS: { key: LevelFilterKey; label: string }[] = [
+    { key: "all", label: t("filterAll") },
+    { key: "A1-A2", label: "A1-A2" },
+    { key: "B1", label: "B1" },
+    { key: "B2", label: "B2" },
+    { key: "C1+", label: "C1+" },
+  ]
   const [data, setData] = useState<Snapshot>(initial)
   const [levelFilter, setLevelFilter] = useState<LevelFilterKey>("all")
   const [search, setSearch] = useState("")
@@ -244,7 +249,7 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
         }
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
-          toast.error(j?.error || "Не удалось загрузить учеников")
+          toast.error(j?.error || t("errLoad"))
           return
         }
         const json = await res.json()
@@ -269,7 +274,7 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
           },
         })
       } catch {
-        toast.error("Сетевая ошибка")
+        toast.error(t("errNetwork"))
       } finally {
         if (!silent) setLoading(false)
       }
@@ -311,7 +316,7 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
   const s = data.stats
 
   function handleAddStudent() {
-    toast("Скоро", { description: "Добавление учеников появится в ближайшее время." })
+    toast(t("addStudentToast"), { description: t("addStudentToastDesc") })
   }
 
   return (
@@ -319,32 +324,32 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
       {/* STATS */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="label">Всего учеников</div>
+          <div className="label">{t("statTotalLabel")}</div>
           <div className="value">{s.total}</div>
-          <div className="change">{s.total === 0 ? "пока никого" : "активных"}</div>
+          <div className="change">{s.total === 0 ? t("statTotalNone") : t("statTotalActive")}</div>
         </div>
         <div className="stat-card accent">
-          <div className="label">Активных сегодня</div>
+          <div className="label">{t("statTodayLabel")}</div>
           <div className="value">{s.active_today}</div>
           <div className="change">
             {s.active_today > 0
-              ? `${s.active_today} уроков сегодня`
-              : "нет уроков сегодня"}
+              ? t("statTodayLessons", { count: s.active_today })
+              : t("statTodayEmpty")}
           </div>
         </div>
         <div className="stat-card">
-          <div className="label">Средний прогресс</div>
+          <div className="label">{t("statProgressLabel")}</div>
           <div className="value">
             {s.avg_progress}
             <small>%</small>
           </div>
-          <div className="change">по всем ученикам</div>
+          <div className="change">{t("statProgressSub")}</div>
         </div>
         <div className="stat-card">
-          <div className="label">Нужно внимание</div>
+          <div className="label">{t("statAttentionLabel")}</div>
           <div className="value">{s.needs_attention}</div>
           <div className={`change${s.needs_attention > 0 ? " warning" : " positive"}`}>
-            {s.needs_attention > 0 ? "пропустили уроки" : "всё в порядке"}
+            {s.needs_attention > 0 ? t("statAttentionWarn") : t("statAttentionOk")}
           </div>
         </div>
       </div>
@@ -354,7 +359,7 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
         <input
           type="text"
           className="search-input"
-          placeholder="Поиск по имени или email..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -374,47 +379,47 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
           ))}
         </div>
         <button type="button" className="btn btn-primary" onClick={handleAddStudent}>
-          + Добавить ученика
+          {t("addStudent")}
         </button>
       </div>
 
       {/* LIST */}
       {loading && filteredStudents.length === 0 ? (
         <div className="empty-state">
-          <b>Загрузка...</b>
+          <b>{t("loading")}</b>
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="empty-state">
           <b>
             {levelFilter === "all" && !debouncedSearch
-              ? "У вас пока нет учеников"
-              : "Никого не найдено"}
+              ? t("emptyTitleNone")
+              : t("emptyTitleNoMatch")}
           </b>
           {levelFilter === "all" && !debouncedSearch
-            ? "Ученики появятся здесь после первого общего урока."
-            : "Попробуйте изменить фильтры или поиск."}
+            ? t("emptyDescNone")
+            : t("emptyDescNoMatch")}
         </div>
       ) : (
         <div className="card">
           <div className="card-header">
-            <h3>Список учеников</h3>
-            <div className="sort-label">Сортировка: по ближайшему уроку ↑</div>
+            <h3>{t("cardTitle")}</h3>
+            <div className="sort-label">{t("sortLabel")}</div>
           </div>
           <div className="card-body">
             <table className="students-table">
               <thead>
                 <tr>
-                  <th>Ученик</th>
-                  <th>Уровень</th>
-                  <th>Прогресс курса</th>
-                  <th>Серия</th>
-                  <th>Ближайший урок</th>
-                  <th style={{ textAlign: "right" }}>Действия</th>
+                  <th>{t("thStudent")}</th>
+                  <th>{t("thLevel")}</th>
+                  <th>{t("thProgress")}</th>
+                  <th>{t("thStreak")}</th>
+                  <th>{t("thNext")}</th>
+                  <th style={{ textAlign: "right" }}>{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.map((st) => (
-                  <StudentRow key={st.id} student={st} />
+                  <StudentRow key={st.id} student={st} t={t} locale={locale} />
                 ))}
               </tbody>
             </table>
@@ -425,9 +430,21 @@ export default function TeacherStudentsClient({ initial }: { initial: Snapshot }
   )
 }
 
-function StudentRow({ student }: { student: StudentItem }) {
+function StudentRow({
+  student,
+  t,
+  locale,
+}: {
+  student: StudentItem
+  t: ReturnType<typeof useTranslations>
+  locale: "ru" | "en"
+}) {
   const avClass = avatarClass(student.full_name)
-  const nextLesson = formatNextLesson(student.next_lesson_at)
+  const nextLesson = formatNextLesson(student.next_lesson_at, locale, {
+    today: (time) => t("nextToday", { time }),
+    tomorrow: (time) => t("nextTomorrow", { time }),
+    dow: (day, time) => t("nextDow", { day, time }),
+  })
 
   // Progress-fill: use .lime accent for low progress (under 50%) like prototype
   const progressClass = student.course_progress_pct < 50 ? "progress-fill lime" : "progress-fill"
@@ -440,8 +457,14 @@ function StudentRow({ student }: { student: StudentItem }) {
 
   // Mailto for message button
   const mailtoHref = student.email
-    ? `mailto:${student.email}?subject=${encodeURIComponent("Сообщение от преподавателя")}`
+    ? `mailto:${student.email}?subject=${encodeURIComponent(t("messageSubject"))}`
     : undefined
+
+  // Topic fallback (server may set it to "Урок" RU literal)
+  const topic =
+    !student.next_lesson_topic || student.next_lesson_topic === "Урок"
+      ? t("fallbackLessonTopic")
+      : student.next_lesson_topic
 
   return (
     <tr>
@@ -461,7 +484,7 @@ function StudentRow({ student }: { student: StudentItem }) {
       </td>
       <td>
         <span className={levelPillClass(student.english_level)}>
-          {levelPillLabel(student.english_level)}
+          {levelPillLabel(student.english_level, t("levelNone"))}
         </span>
       </td>
       <td>
@@ -491,7 +514,7 @@ function StudentRow({ student }: { student: StudentItem }) {
         {nextLesson.primary ? (
           <div className={`next-lesson${nextLesson.today ? " today" : ""}`}>
             <strong>{nextLesson.primary}</strong>
-            <span>{student.next_lesson_topic}</span>
+            <span>{topic}</span>
           </div>
         ) : (
           <span className="muted-dash">—</span>
@@ -503,7 +526,7 @@ function StudentRow({ student }: { student: StudentItem }) {
             <Link
               className={`action-btn${nextLesson.today ? " primary" : ""}`}
               href={playHref}
-              title="Начать урок"
+              title={t("actionStartLesson")}
             >
               <PlayIcon />
             </Link>
@@ -511,7 +534,7 @@ function StudentRow({ student }: { student: StudentItem }) {
             <button
               type="button"
               className="action-btn disabled"
-              title="Нет запланированного урока"
+              title={t("actionNoLesson")}
               aria-disabled
             >
               <PlayIcon />
@@ -521,7 +544,7 @@ function StudentRow({ student }: { student: StudentItem }) {
             <a
               className={`action-btn${student.needs_attention ? " primary" : ""}`}
               href={mailtoHref}
-              title="Написать"
+              title={t("actionMessage")}
             >
               <MessageIcon />
             </a>
@@ -529,7 +552,7 @@ function StudentRow({ student }: { student: StudentItem }) {
             <button
               type="button"
               className="action-btn disabled"
-              title="Нет email"
+              title={t("actionNoEmail")}
               aria-disabled
             >
               <MessageIcon />
@@ -538,7 +561,7 @@ function StudentRow({ student }: { student: StudentItem }) {
           <Link
             href={`/teacher/students/${student.id}`}
             className="action-btn"
-            title="Профиль"
+            title={t("actionProfile")}
           >
             <DotsIcon />
           </Link>

@@ -2,7 +2,8 @@
 import "@/styles/dashboard/student-home.css"
 import { redirect } from "next/navigation"
 import { format, startOfDay, subDays, addDays, isSameDay } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { getLocale, getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { BookingLauncher } from "./_components/booking-launcher"
@@ -15,6 +16,7 @@ import { getCachedStudentDashboard } from "@/lib/dashboard/student"
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { getQueryClient } from "@/lib/query/client"
 import { STUDENT_DASHBOARD_QUERY_KEY } from "@/hooks/use-student-dashboard"
+import { formatLessonDayShort } from "@/lib/time"
 
 // Раньше стоял force-dynamic — из-за SSR-side computeLessonAccess (now=new Date())
 // внутри рендера каждой строки урока. Теперь строки рендерит client-side
@@ -33,16 +35,63 @@ const LEVEL_SHORT: Record<string, string> = {
   "Well Done": "Well Done",
 }
 
+function pickStreakLabel(t: (k: string, v?: any) => string, count: number): string {
+  // RU plural: 1 → день, 2-4 → дня, 5+ → дней. EN messages игнорят count для plural.
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return t("subStreakDayOne", { count })
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t("subStreakDayFew", { count })
+  return t("subStreakDayMany", { count })
+}
+
+function pickLessonsLabel(t: (k: string, v?: any) => string, count: number): string {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return t("subTodayLessonsOne", { count })
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t("subTodayLessonsFew", { count })
+  return t("subTodayLessonsMany", { count })
+}
+
+function pickStreakDayWord(t: (k: string, v?: any) => string, count: number): string {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return t("statStreakDayOne")
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t("statStreakDayFew")
+  return t("statStreakDayMany")
+}
+
+function pickXpHeroStreak(t: (k: string, v?: any) => string, count: number): string {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return t("xpHeroStreakOne", { count })
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t("xpHeroStreakFew", { count })
+  return t("xpHeroStreakMany", { count })
+}
+
 export default async function StudentDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
+  const t = await getTranslations("dashboard.student.home")
+  const locale = await getLocale()
+  const dfLocale = locale === "en" ? enUS : ru
+  const timeLocale = locale === "en" ? "en" : "ru"
+  const numberLocale = locale === "en" ? "en-US" : "ru-RU"
+
   const now = new Date()
 
   // Day of week index (0=Mon .. 6=Sun) — российская неделя
   const weekdayIdx = (d: Date) => (d.getDay() + 6) % 7
-  const weekdayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+  const weekdayLabels = [
+    t("weekdayMon"),
+    t("weekdayTue"),
+    t("weekdayWed"),
+    t("weekdayThu"),
+    t("weekdayFri"),
+    t("weekdaySat"),
+    t("weekdaySun"),
+  ]
   const todayIdx = weekdayIdx(now)
 
   // ============================================================
@@ -81,7 +130,7 @@ export default async function StudentDashboardPage() {
   const leaderboard = dashboard.leaderboard_weekly
   const xpDaily = dashboard.xp_events_week
 
-  const fullName = profile?.full_name ?? "Ученик"
+  const fullName = profile?.full_name ?? t("studentFallback")
   const firstName = fullName.split(" ")[0]
 
   const totalLessonsCount = dashboard.stats.total_lessons
@@ -153,14 +202,14 @@ export default async function StudentDashboardPage() {
 
       <div className="main-header">
         <div>
-          <h1>Привет, {firstName}! <span className="gl">🔥</span></h1>
+          <h1>{t("greeting", { name: firstName })} <span className="gl">🔥</span></h1>
           <div className="sub">
-            {format(now, "EEEE, d MMMM", { locale: ru })} · Стрик: {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"}
-            {todayLessons.length > 0 ? ` · ${todayLessons.length} занят${todayLessons.length === 1 ? "ие" : todayLessons.length < 5 ? "ия" : "ий"} сегодня` : ""}
+            {format(now, "EEEE, d MMMM", { locale: dfLocale })} · {pickStreakLabel(t, currentStreak)}
+            {todayLessons.length > 0 ? pickLessonsLabel(t, todayLessons.length) : ""}
           </div>
         </div>
         <div className="header-actions">
-          <Link href="/student/settings" className="icon-btn" aria-label="Настройки">
+          <Link href="/student/settings" className="icon-btn" aria-label={t("settingsAria")}>
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.26.46.4.97.41 1.51"/></svg>
           </Link>
         </div>
@@ -179,16 +228,16 @@ export default async function StudentDashboardPage() {
           <div className="xp-hero-emoji">🔥</div>
           <div>
             <div className="xp-hero-level">{level}</div>
-            <div className="xp-hero-sub">Уровень прожарки</div>
+            <div className="xp-hero-sub">{t("xpHeroSub")}</div>
           </div>
         </div>
         <div className="xp-hero-bar"><div className="xp-hero-fill" style={{ width: `${xpPct}%` }} /></div>
         <div className="xp-hero-right">
           <div className="xp-hero-count">
-            <b>{xpInLevel.toLocaleString("ru-RU")}</b> / {thresholds.next === null ? "∞" : xpLevelSpan.toLocaleString("ru-RU")} XP
+            <b>{xpInLevel.toLocaleString(numberLocale)}</b> / {thresholds.next === null ? "∞" : xpLevelSpan.toLocaleString(numberLocale)} XP
           </div>
           {currentStreak > 0 ? (
-            <div className="xp-hero-streak">🔥 {currentStreak} {currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"} подряд</div>
+            <div className="xp-hero-streak">{pickXpHeroStreak(t, currentStreak)}</div>
           ) : null}
         </div>
       </div>
@@ -196,24 +245,24 @@ export default async function StudentDashboardPage() {
       {/* Stats */}
       <div className="stats">
         <div className="stat">
-          <div className="stat-label">Текущий уровень</div>
+          <div className="stat-label">{t("statCurrentLevel")}</div>
           <div className="stat-val stat-val--red"><span className="gl">{LEVEL_SHORT[level]}</span></div>
-          <div className="stat-change">≈ {getLevelCEFR(level)}</div>
+          <div className="stat-change">{t("statLevelApprox", { cefr: getLevelCEFR(level) })}</div>
         </div>
         <div className="stat stat--lime">
-          <div className="stat-label">Стрик</div>
-          <div className="stat-val">{currentStreak} <small style={{ fontSize: 14, fontWeight: 600 }}>{currentStreak === 1 ? "день" : currentStreak < 5 ? "дня" : "дней"}</small></div>
-          <div className="stat-change">🔥 Рекорд: {longestStreak}</div>
+          <div className="stat-label">{t("statStreak")}</div>
+          <div className="stat-val">{currentStreak} <small style={{ fontSize: 14, fontWeight: 600 }}>{pickStreakDayWord(t, currentStreak)}</small></div>
+          <div className="stat-change">{t("statStreakRecord", { count: longestStreak })}</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Уроков за месяц</div>
+          <div className="stat-label">{t("statMonthLessons")}</div>
           <div className="stat-val">{monthLessonsCount}</div>
-          <div className="stat-change">{completedMonthCount} завершено</div>
+          <div className="stat-change">{t("statMonthCompleted", { count: completedMonthCount })}</div>
         </div>
         <div className="stat stat--dark">
-          <div className="stat-label">Рейтинг</div>
+          <div className="stat-label">{t("statRating")}</div>
           <div className="stat-val">{myRank ? `#${myRank}` : "—"}</div>
-          <div className="stat-change" style={{ color: "#A0A09A" }}>{totalOnLb > 0 ? `из ${totalOnLb}+ учеников` : "нет данных"}</div>
+          <div className="stat-change" style={{ color: "#A0A09A" }}>{totalOnLb > 0 ? t("statRatingOf", { count: totalOnLb }) : t("statRatingEmpty")}</div>
         </div>
       </div>
 
@@ -221,15 +270,15 @@ export default async function StudentDashboardPage() {
       <div className="main-grid">
         <div className="card">
           <div className="card-head">
-            <h3>Ближайшие уроки · {format(now, "d MMM", { locale: ru })}–{format(addDays(now, 13), "d MMM", { locale: ru })}</h3>
+            <h3>{t("upcomingHeader", { from: formatLessonDayShort(now, timeLocale), to: formatLessonDayShort(addDays(now, 13), timeLocale) })}</h3>
             <div style={{ display: "flex", gap: 6 }}>
-              <Link href="/student/schedule" className="btn btn-sm btn-outline">Всё расписание</Link>
-              <BookingLauncher className="btn btn-sm btn-red">+ Записаться</BookingLauncher>
+              <Link href="/student/schedule" className="btn btn-sm btn-outline">{t("fullSchedule")}</Link>
+              <BookingLauncher className="btn btn-sm btn-red">{t("bookCta")}</BookingLauncher>
             </div>
           </div>
           <div className="card-body">
             {upcomingLessons.length === 0 ? (
-              <div className="sch-empty">На ближайшую неделю уроков нет. Запишись на следующий слот 👆</div>
+              <div className="sch-empty">{t("weekEmpty")}</div>
             ) : (
               upcomingLessons.map((l, idx) => {
                 // Заголовок-разделитель «Сегодня / Завтра / Сб 3 мая» перед первой
@@ -239,9 +288,9 @@ export default async function StudentDashboardPage() {
                 const sameDayAsPrev = prev && isSameDay(new Date(prev.scheduled_at), dt0)
                 let dayLabel = ""
                 if (!sameDayAsPrev) {
-                  if (isSameDay(dt0, now)) dayLabel = "Сегодня"
-                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = "Завтра"
-                  else dayLabel = format(dt0, "EEEE, d MMMM", { locale: ru })
+                  if (isSameDay(dt0, now)) dayLabel = t("todayLabel")
+                  else if (isSameDay(dt0, addDays(now, 1))) dayLabel = t("tomorrowLabel")
+                  else dayLabel = format(dt0, "EEEE, d MMMM", { locale: dfLocale })
                 }
                 return [
                   !sameDayAsPrev ? (
@@ -293,7 +342,7 @@ export default async function StudentDashboardPage() {
 
         <div className="right-col">
           <div className="card">
-            <div className="card-head"><h3>Быстрые действия</h3></div>
+            <div className="card-head"><h3>{t("quickActionsTitle")}</h3></div>
             <div className="card-body">
               <QuickActions
                 clubsThisWeek={0}
@@ -305,7 +354,7 @@ export default async function StudentDashboardPage() {
           </div>
 
           <div className="card">
-            <div className="card-head"><h3>Стрик этой недели</h3></div>
+            <div className="card-head"><h3>{t("weekStreakTitle")}</h3></div>
             <div className="card-body">
               <div className="streak-cal">
                 {weekdayLabels.map((lbl, idx) => {
@@ -336,7 +385,7 @@ export default async function StudentDashboardPage() {
       {/* Bottom grid */}
       <div className="bottom-grid">
         <div className="card">
-          <div className="card-head"><h3>Прогресс прожарки</h3></div>
+          <div className="card-head"><h3>{t("roastProgressTitle")}</h3></div>
           <div className="card-body">
             <div className="level-progress">
               <div className="lp-track">
@@ -353,7 +402,9 @@ export default async function StudentDashboardPage() {
             </div>
             <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                {thresholds.nextLevel ? `${xpInLevel.toLocaleString("ru-RU")} / ${xpLevelSpan.toLocaleString("ru-RU")} XP до ${thresholds.nextLevel}` : "Максимальный уровень 🏆"}
+                {thresholds.nextLevel
+                  ? t("roastUntilNext", { current: xpInLevel.toLocaleString(numberLocale), total: xpLevelSpan.toLocaleString(numberLocale), nextLevel: thresholds.nextLevel })
+                  : t("roastMaxLevel")}
               </span>
               <span className="btn btn-sm btn-lime">{xpPct}%</span>
             </div>
@@ -361,10 +412,10 @@ export default async function StudentDashboardPage() {
         </div>
 
         <div className="card">
-          <div className="card-head"><h3>Достижения</h3><Link href="/student/achievements" className="btn btn-sm btn-outline">Все</Link></div>
+          <div className="card-head"><h3>{t("achievementsTitle")}</h3><Link href="/student/achievements" className="btn btn-sm btn-outline">{t("achievementsAllShort")}</Link></div>
           <div className="card-body">
             {achDefs.length === 0 ? (
-              <div className="sch-empty">Пока нет достижений</div>
+              <div className="sch-empty">{t("achievementsEmpty")}</div>
             ) : (
               <div className="ach-grid">
                 {achDefs.map((a) => {
@@ -382,10 +433,10 @@ export default async function StudentDashboardPage() {
         </div>
 
         <div className="card">
-          <div className="card-head"><h3>Лидерборд</h3><Link href="/student/leaderboard" className="btn btn-sm btn-outline">Все</Link></div>
+          <div className="card-head"><h3>{t("leaderboardTitleShort")}</h3><Link href="/student/leaderboard" className="btn btn-sm btn-outline">{t("leaderboardAllShort")}</Link></div>
           <div className="card-body">
             {leaderboard.length === 0 ? (
-              <div className="sch-empty">Лидерборд пуст</div>
+              <div className="sch-empty">{t("leaderboardEmpty")}</div>
             ) : (
               leaderboard.map((r, i) => {
                 const isMe = r.out_user_id === user.id
@@ -398,8 +449,8 @@ export default async function StudentDashboardPage() {
                     <div className={`lb-avatar ${avCls}`}>
                       {r.out_avatar_url ? <img src={r.out_avatar_url} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials || "?"}
                     </div>
-                    <div className="lb-name">{isMe ? `${name.split(" ")[0]} (ты)` : name}</div>
-                    <div className="lb-xp">{r.out_xp.toLocaleString("ru-RU")}</div>
+                    <div className="lb-name">{isMe ? t("leaderboardYou", { name: name.split(" ")[0] }) : name}</div>
+                    <div className="lb-xp">{r.out_xp.toLocaleString(numberLocale)}</div>
                   </div>
                 )
               })

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 type TeacherProfileData = {
   profile: {
@@ -122,6 +123,7 @@ function formatRub(kopecks: number): string {
 }
 
 export default function TeacherProfilePage() {
+  const t = useTranslations("dashboard.teacher.profile")
   const [data, setData] = useState<TeacherProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -150,7 +152,7 @@ export default function TeacherProfilePage() {
         const res = await fetch("/api/teacher/profile/me", { cache: "no-store" })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
-          throw new Error(body?.error ?? "Не удалось загрузить профиль")
+          throw new Error(body?.error ?? t("errLoad"))
         }
         const json = (await res.json()) as TeacherProfileData
         if (cancelled) return
@@ -170,7 +172,7 @@ export default function TeacherProfilePage() {
         setIsListed(json.teacher?.is_listed ?? true)
         setCertsRaw((json.teacher?.certificates ?? []).join("\n"))
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Ошибка загрузки")
+        if (!cancelled) setError(e?.message ?? t("errLoadShort"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -233,11 +235,11 @@ export default function TeacherProfilePage() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось сохранить")
+        throw new Error(body?.error ?? t("saveError"))
       }
-      toast.success("Профиль обновлён")
+      toast.success(t("saved"))
     } catch (e: any) {
-      toast.error(e?.message ?? "Ошибка сохранения")
+      toast.error(e?.message ?? t("saveFailedFallback"))
     } finally {
       setSaving(false)
     }
@@ -255,8 +257,8 @@ export default function TeacherProfilePage() {
       <>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="teach-profile">
-          <h1>Мой <span className="gl">profile</span></h1>
-          <div className="loading">Загружаем профиль…</div>
+          <h1>{t("headingPrefix")} <span className="gl">{t("headingHighlight")}</span></h1>
+          <div className="loading">{t("loading")}</div>
         </div>
       </>
     )
@@ -267,8 +269,8 @@ export default function TeacherProfilePage() {
       <>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="teach-profile">
-          <h1>Мой <span className="gl">profile</span></h1>
-          <div className="err">{error ?? "Профиль недоступен"}</div>
+          <h1>{t("headingPrefix")} <span className="gl">{t("headingHighlight")}</span></h1>
+          <div className="err">{error ?? t("errFallback")}</div>
         </div>
       </>
     )
@@ -278,39 +280,39 @@ export default function TeacherProfilePage() {
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="teach-profile">
-        <h1>Мой <span className="gl">profile</span></h1>
-        <div className="sub">Заполни данные — они видны ученикам в каталоге преподавателей и на странице записи.</div>
+        <h1>{t("headingPrefix")} <span className="gl">{t("headingHighlight")}</span></h1>
+        <div className="sub">{t("subtitle")}</div>
 
         {/* Stats */}
         <div className="stats">
           <div className="st">
-            <div className="st-label">Завершено уроков</div>
+            <div className="st-label">{t("statCompleted")}</div>
             <div className="st-val">{data.stats.completed_lessons}</div>
-            <div className="st-sub">за всё время</div>
+            <div className="st-sub">{t("statCompletedSub")}</div>
           </div>
           <div className="st">
-            <div className="st-label">Часов в эфире</div>
+            <div className="st-label">{t("statHours")}</div>
             <div className="st-val">{data.stats.total_hours}</div>
-            <div className="st-sub">из завершённых уроков</div>
+            <div className="st-sub">{t("statHoursSub")}</div>
           </div>
           <div className="st">
-            <div className="st-label">Рейтинг</div>
+            <div className="st-label">{t("statRating")}</div>
             <div className="st-val">{data.stats.rating?.toFixed(1) || "—"}</div>
-            <div className="st-sub">{data.stats.total_reviews} отзывов</div>
+            <div className="st-sub">{t("statRatingSub", { count: data.stats.total_reviews })}</div>
           </div>
           <div className="st">
-            <div className="st-label">Статус</div>
+            <div className="st-label">{t("statStatus")}</div>
             <div className="st-val" style={{ fontSize: "1rem" }}>
-              {data.stats.is_verified ? "✓ Верифицирован" : "Без верификации"}
+              {data.stats.is_verified ? t("statStatusVerified") : t("statStatusUnverified")}
             </div>
-            <div className="st-sub">{data.stats.is_listed ? "В каталоге" : "Скрыт"}</div>
+            <div className="st-sub">{data.stats.is_listed ? t("statStatusListed") : t("statStatusHidden")}</div>
           </div>
         </div>
 
         {/* Personal */}
         <div className="card">
-          <h3>Личные данные</h3>
-          <div className="h-sub">Имя и фамилия отображаются ученикам как ваши данные при записи.</div>
+          <h3>{t("personalTitle")}</h3>
+          <div className="h-sub">{t("personalSub")}</div>
 
           <div className="ava-wrap" style={{ marginBottom: 18 }}>
             <div className="ava">
@@ -326,22 +328,22 @@ export default function TeacherProfilePage() {
 
           <div className="row">
             <div className="field">
-              <label>Имя</label>
+              <label>{t("fieldFirstName")}</label>
               <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </div>
             <div className="field">
-              <label>Фамилия</label>
+              <label>{t("fieldLastName")}</label>
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
 
           <div className="row">
             <div className="field">
-              <label>Телефон</label>
+              <label>{t("fieldPhone")}</label>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 …" />
             </div>
             <div className="field">
-              <label>Город</label>
+              <label>{t("fieldCity")}</label>
               <input value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
           </div>
@@ -349,17 +351,17 @@ export default function TeacherProfilePage() {
 
         {/* About */}
         <div className="card">
-          <h3>О себе</h3>
-          <div className="h-sub">Этот текст ученики увидят в каталоге и в модалке записи. Без воды — кто ты, как преподаёшь, для кого.</div>
+          <h3>{t("aboutTitle")}</h3>
+          <div className="h-sub">{t("aboutSub")}</div>
           <div className="row row--single">
             <div className="field">
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={6} placeholder="Например: преподаю взрослым с уровня A1, готовлю к IELTS, провожу разговорные клубы по средам…" />
-              <div className="field-help">{bio.length} / 2000</div>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={6} placeholder={t("bioPlaceholder")} />
+              <div className="field-help">{t("bioCounter", { count: bio.length })}</div>
             </div>
           </div>
           <div className="row">
             <div className="field">
-              <label>Опыт, лет</label>
+              <label>{t("fieldExperience")}</label>
               <input
                 type="number"
                 min={0}
@@ -369,22 +371,22 @@ export default function TeacherProfilePage() {
               />
             </div>
             <div className="field">
-              <label>Видео-визитка (URL)</label>
+              <label>{t("fieldVideo")}</label>
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtu.be/…" />
             </div>
           </div>
           <div className="row row--single">
             <div className="field">
-              <label>Образование</label>
-              <textarea value={education} onChange={(e) => setEducation(e.target.value)} rows={3} placeholder="МГЛУ, факультет английского языка (2018)…" />
+              <label>{t("fieldEducation")}</label>
+              <textarea value={education} onChange={(e) => setEducation(e.target.value)} rows={3} placeholder={t("educationPlaceholder")} />
             </div>
           </div>
         </div>
 
         {/* Specializations */}
         <div className="card">
-          <h3>Специализации</h3>
-          <div className="h-sub">Выбери до 8. По ним ученики фильтруют преподавателей в каталоге.</div>
+          <h3>{t("specsTitle")}</h3>
+          <div className="h-sub">{t("specsSub")}</div>
           <div className="chips">
             {SPECIALIZATIONS_PRESET.map((s) => (
               <button key={s} type="button" className={`chip${specs.includes(s) ? " active" : ""}`} onClick={() => toggleSpec(s)}>
@@ -396,8 +398,8 @@ export default function TeacherProfilePage() {
 
         {/* Languages */}
         <div className="card">
-          <h3>Языки преподавания</h3>
-          <div className="h-sub">Минимум один. Используются при подборе пробного урока.</div>
+          <h3>{t("langsTitle")}</h3>
+          <div className="h-sub">{t("langsSub")}</div>
           <div className="chips">
             {LANGUAGES_PRESET.map((l) => (
               <button key={l} type="button" className={`chip${langs.includes(l) ? " active" : ""}`} onClick={() => toggleLang(l)}>
@@ -409,22 +411,22 @@ export default function TeacherProfilePage() {
 
         {/* Certificates */}
         <div className="card">
-          <h3>Сертификаты</h3>
-          <div className="h-sub">По одному в строке. Например: CELTA (2020), IELTS Trainer Course (2022).</div>
+          <h3>{t("certsTitle")}</h3>
+          <div className="h-sub">{t("certsSub")}</div>
           <div className="row row--single">
             <div className="field">
-              <textarea value={certsRaw} onChange={(e) => setCertsRaw(e.target.value)} rows={4} placeholder="CELTA · 2020&#10;IELTS Trainer Course · 2022" />
+              <textarea value={certsRaw} onChange={(e) => setCertsRaw(e.target.value)} rows={4} placeholder={t("certsPlaceholder")} />
             </div>
           </div>
         </div>
 
         {/* Pricing */}
         <div className="card">
-          <h3>Стоимость уроков</h3>
-          <div className="h-sub">В рублях за час. На демо платежи отключены, но цены отображаются ученикам в каталоге.</div>
+          <h3>{t("pricingTitle")}</h3>
+          <div className="h-sub">{t("pricingSub")}</div>
           <div className="row">
             <div className="field">
-              <label>Час 1-on-1, ₽</label>
+              <label>{t("pricingHourly")}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -432,38 +434,44 @@ export default function TeacherProfilePage() {
                 onChange={(e) => setHourlyRateRub(e.target.value.replace(/\D/g, ""))}
                 placeholder="1000"
               />
-              <div className="field-help">сейчас в БД: {data.teacher ? `${formatRub(data.teacher.hourly_rate)} ₽/час` : "—"}</div>
+              <div className="field-help">
+                {t("pricingHourlyHint", {
+                  value: data.teacher
+                    ? t("pricingHourlyValue", { value: formatRub(data.teacher.hourly_rate) })
+                    : t("pricingHourlyNone"),
+                })}
+              </div>
             </div>
             <div className="field">
-              <label>Пробный урок, ₽ (опционально)</label>
+              <label>{t("pricingTrial")}</label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={trialRateRub}
                 onChange={(e) => setTrialRateRub(e.target.value.replace(/\D/g, ""))}
-                placeholder="0 — бесплатно"
+                placeholder={t("pricingTrialPlaceholder")}
               />
-              <div className="field-help">оставь пустым — пробный бесплатный</div>
+              <div className="field-help">{t("pricingTrialHint")}</div>
             </div>
           </div>
         </div>
 
         {/* Visibility */}
         <div className="card">
-          <h3>Видимость в каталоге</h3>
-          <div className="h-sub">Когда выключено — твоя карточка скрыта от учеников и пробный flow тебя не подбирает.</div>
+          <h3>{t("visibilityTitle")}</h3>
+          <div className="h-sub">{t("visibilitySub")}</div>
           <label className="visibility">
             <input type="checkbox" checked={isListed} onChange={(e) => setIsListed(e.target.checked)} />
             <div className="visibility-text">
-              <b>{isListed ? "В каталоге" : "Скрыт из каталога"}</b>
-              <span>Можно временно отключить, если уходишь в отпуск или закрыл слоты</span>
+              <b>{isListed ? t("visibilityOn") : t("visibilityOff")}</b>
+              <span>{t("visibilityHint")}</span>
             </div>
           </label>
         </div>
 
         <div className="actions">
           <button className="btn btn--primary" disabled={saving} onClick={handleSave}>
-            {saving ? "Сохраняем…" : "Сохранить профиль"}
+            {saving ? t("saving") : t("save")}
           </button>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
+import { getLocale } from "@/i18n/locale"
 import {
   loadTeacherStudentProfile,
   type StudentProfilePayload,
@@ -134,47 +136,62 @@ function initialsOf(name: string): string {
     .slice(0, 2)
 }
 
-const LESSON_STATUS_LABELS: Record<string, string> = {
-  pending_payment: "Ожидает оплаты",
-  booked: "Запланирован",
-  scheduled: "Запланирован",
-  confirmed: "Подтверждён",
-  in_progress: "Идёт сейчас",
-  completed: "Завершён",
-  cancelled: "Отменён",
-  no_show: "Не пришёл",
+const LESSON_STATUS_KEYS: Record<string, string> = {
+  pending_payment: "lessonStatusPendingPayment",
+  booked: "lessonStatusBooked",
+  scheduled: "lessonStatusScheduled",
+  confirmed: "lessonStatusConfirmed",
+  in_progress: "lessonStatusInProgress",
+  completed: "lessonStatusCompleted",
+  cancelled: "lessonStatusCancelled",
+  no_show: "lessonStatusNoShow",
 }
 
-function lessonStatusLabel(status: string): string {
-  return LESSON_STATUS_LABELS[status] || status
+function lessonStatusLabel(
+  status: string,
+  t: Awaited<ReturnType<typeof getTranslations>>
+): string {
+  const key = LESSON_STATUS_KEYS[status]
+  return key ? t(key) : status
 }
 
-const HW_STATUS_LABELS: Record<string, string> = {
-  pending: "Ожидает",
-  in_progress: "В работе",
-  submitted: "Сдана",
-  reviewed: "Проверена",
-  overdue: "Просрочена",
+const HW_STATUS_KEYS: Record<string, string> = {
+  pending: "hwStatusPending",
+  in_progress: "hwStatusInProgress",
+  submitted: "hwStatusSubmitted",
+  reviewed: "hwStatusReviewed",
+  overdue: "hwStatusOverdue",
 }
 
-function hwStatusLabel(status: string): string {
-  return HW_STATUS_LABELS[status] || status
+function hwStatusLabel(
+  status: string,
+  t: Awaited<ReturnType<typeof getTranslations>>
+): string {
+  const key = HW_STATUS_KEYS[status]
+  return key ? t(key) : status
 }
 
 // Важно: timeZone обязателен. Без него Node (UTC) и браузер (Moscow)
 // рендерят разные дни для near-midnight created_at — React ловит как
 // hydration mismatch (#418).
-const REGISTERED_DATE_FMT = new Intl.DateTimeFormat("ru-RU", {
+const REGISTERED_DATE_FMT_RU = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+})
+const REGISTERED_DATE_FMT_EN = new Intl.DateTimeFormat("en-US", {
   timeZone: "Europe/Moscow",
   day: "numeric",
   month: "long",
   year: "numeric",
 })
 
-function formatRegisteredDate(iso: string | null): string {
+function formatRegisteredDate(iso: string | null, locale: "ru" | "en"): string {
   if (!iso) return "—"
   try {
-    return REGISTERED_DATE_FMT.format(new Date(iso))
+    const fmt = locale === "en" ? REGISTERED_DATE_FMT_EN : REGISTERED_DATE_FMT_RU
+    return fmt.format(new Date(iso))
   } catch {
     return "—"
   }
@@ -243,6 +260,9 @@ export default async function TeacherStudentProfilePage({
   const data: StudentProfilePayload = result.data
   const s = data.stats
   const stu = data.student
+  const t = await getTranslations("dashboard.teacher.studentDetail")
+  const locale = (await getLocale()) as "ru" | "en"
+  const timeLocale = locale === "en" ? "en" : "ru"
 
   return (
     <>
@@ -260,7 +280,7 @@ export default async function TeacherStudentProfilePage({
             <path d="M19 12H5" />
             <path d="m12 19-7-7 7-7" />
           </svg>
-          К списку учеников
+          {t("back")}
         </Link>
 
         {/* HERO */}
@@ -281,7 +301,7 @@ export default async function TeacherStudentProfilePage({
             <h1 className="hero-name">
               {stu.full_name}{" "}
               <span className="gl" style={{ fontWeight: 700 }}>
-                profile
+                {t("headingSuffix")}
               </span>
             </h1>
             {stu.email ? <div className="hero-email">{stu.email}</div> : null}
@@ -292,13 +312,13 @@ export default async function TeacherStudentProfilePage({
               <span className="hero-pill dark">{stu.level}</span>
               <span className="hero-pill">
                 🔥 {stu.streak}{" "}
-                <span style={{ opacity: 0.7, fontWeight: 600 }}>дней</span>
+                <span style={{ opacity: 0.7, fontWeight: 600 }}>{t("metaDays")}</span>
               </span>
               <span className="hero-pill">
-                {stu.total_xp.toLocaleString("ru-RU")} XP
+                {stu.total_xp.toLocaleString(locale === "en" ? "en-US" : "ru-RU")} XP
               </span>
-              <span className="hero-pill" title="Дата регистрации">
-                с {formatRegisteredDate(stu.created_at)}
+              <span className="hero-pill">
+                {t("metaSince", { date: formatRegisteredDate(stu.created_at, locale) })}
               </span>
             </div>
             <div className="hero-xp">
@@ -309,7 +329,7 @@ export default async function TeacherStudentProfilePage({
                 />
               </div>
               <div className="hero-xp-label">
-                {stu.level_progress_pct}% до следующего уровня
+                {t("metaXpProgress", { pct: stu.level_progress_pct })}
               </div>
             </div>
           </div>
@@ -318,28 +338,28 @@ export default async function TeacherStudentProfilePage({
         {/* STATS */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="label">Всего уроков</div>
+            <div className="label">{t("statTotalLabel")}</div>
             <div className="value">{s.total_lessons}</div>
-            <div className="change">за всё время</div>
+            <div className="change">{t("statTotalSub")}</div>
           </div>
           <div className="stat-card">
-            <div className="label">Завершено</div>
+            <div className="label">{t("statCompletedLabel")}</div>
             <div className="value">{s.completed}</div>
             <div className="change positive">
               {s.upcoming_count > 0
-                ? `${s.upcoming_count} впереди`
-                : "нет запланированных"}
+                ? t("statCompletedAhead", { count: s.upcoming_count })
+                : t("statCompletedNone")}
             </div>
           </div>
           <div className="stat-card">
-            <div className="label">Отменено / no-show</div>
+            <div className="label">{t("statCancelledLabel")}</div>
             <div className="value">{s.cancelled + s.no_show}</div>
             <div className={`change${s.no_show > 0 ? " warning" : ""}`}>
-              {s.cancelled} отмен · {s.no_show} пропусков
+              {t("statCancelledSub", { cancelled: s.cancelled, noShow: s.no_show })}
             </div>
           </div>
           <div className="stat-card">
-            <div className="label">Средняя оценка</div>
+            <div className="label">{t("statRatingLabel")}</div>
             <div className="value">
               {s.average_rating !== null ? s.average_rating.toFixed(1) : "—"}
               {s.average_rating !== null ? <small>/5</small> : null}
@@ -347,7 +367,7 @@ export default async function TeacherStudentProfilePage({
             <div
               className={`change${s.needs_attention ? " warning" : " positive"}`}
             >
-              {s.needs_attention ? "нужно внимание" : "всё в порядке"}
+              {s.needs_attention ? t("statRatingWarn") : t("statRatingOk")}
             </div>
           </div>
         </div>
@@ -355,30 +375,30 @@ export default async function TeacherStudentProfilePage({
         {/* UPCOMING */}
         <div className="card">
           <div className="card-header">
-            <h3>Ближайшие уроки</h3>
-            <div className="meta">{s.upcoming_count} запланировано</div>
+            <h3>{t("upcomingTitle")}</h3>
+            <div className="meta">{t("upcomingMeta", { count: s.upcoming_count })}</div>
           </div>
           <div className="card-body">
             {data.upcoming.length === 0 ? (
-              <div className="empty">Нет запланированных уроков</div>
+              <div className="empty">{t("upcomingEmpty")}</div>
             ) : (
               data.upcoming.map((l) => (
                 <div key={l.id} className="lesson-row">
                   <div className="lesson-when">
                     <strong>
-                      {formatLessonDayShort(l.scheduled_at)},{" "}
-                      {formatLessonTime(l.scheduled_at)}
+                      {formatLessonDayShort(l.scheduled_at, timeLocale)},{" "}
+                      {formatLessonTime(l.scheduled_at, timeLocale)}
                     </strong>
-                    <span>{l.duration_minutes} мин</span>
+                    <span>{t("minutesShort", { count: l.duration_minutes })}</span>
                   </div>
                   <span className={`lesson-status ${l.status}`}>
-                    {lessonStatusLabel(l.status)}
+                    {lessonStatusLabel(l.status, t)}
                   </span>
                   <Link
                     href={`/teacher/lesson/${l.id}`}
                     className="lesson-cta"
                   >
-                    Открыть
+                    {t("open")}
                   </Link>
                 </div>
               ))
@@ -389,29 +409,29 @@ export default async function TeacherStudentProfilePage({
         {/* HISTORY */}
         <div className="card">
           <div className="card-header">
-            <h3>История уроков</h3>
-            <div className="meta">последние {data.recent.length}</div>
+            <h3>{t("historyTitle")}</h3>
+            <div className="meta">{t("historyMeta", { count: data.recent.length })}</div>
           </div>
           <div className="card-body">
             {data.recent.length === 0 ? (
-              <div className="empty">Прошедших уроков ещё не было</div>
+              <div className="empty">{t("historyEmpty")}</div>
             ) : (
               <table className="hist-table">
                 <thead>
                   <tr>
-                    <th>Когда</th>
-                    <th>Длительность</th>
-                    <th>Статус</th>
+                    <th>{t("thWhen")}</th>
+                    <th>{t("thDuration")}</th>
+                    <th>{t("thStatus")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.recent.map((l) => (
                     <tr key={l.id}>
-                      <td>{formatLessonDateTimeShort(l.scheduled_at)}</td>
-                      <td>{l.duration_minutes} мин</td>
+                      <td>{formatLessonDateTimeShort(l.scheduled_at, timeLocale)}</td>
+                      <td>{t("minutesShort", { count: l.duration_minutes })}</td>
                       <td>
                         <span className={`lesson-status ${l.status}`}>
-                          {lessonStatusLabel(l.status)}
+                          {lessonStatusLabel(l.status, t)}
                         </span>
                       </td>
                     </tr>
@@ -425,23 +445,21 @@ export default async function TeacherStudentProfilePage({
         {/* MATERIALS */}
         <div className="card">
           <div className="card-header">
-            <h3>Материалы</h3>
-            <div className="meta">{data.materials.length} расшарено</div>
+            <h3>{t("materialsTitle")}</h3>
+            <div className="meta">{t("materialsMeta", { count: data.materials.length })}</div>
           </div>
           <div className="card-body">
             {data.materials.length === 0 ? (
-              <div className="empty">
-                Вы ещё не делились материалами с этим учеником
-              </div>
+              <div className="empty">{t("materialsEmpty")}</div>
             ) : (
               data.materials.map((m) => (
                 <div key={m.id} className="mat-row">
                   <div className="mat-info">
                     <strong>{m.title}</strong>
-                    <span>{m.type || "файл"}</span>
+                    <span>{m.type || t("materialsType")}</span>
                   </div>
                   <div className="mat-shared">
-                    отправлен {formatLessonDayShort(m.shared_at)}
+                    {t("materialsShared", { date: formatLessonDayShort(m.shared_at, timeLocale) })}
                   </div>
                 </div>
               ))
@@ -452,27 +470,27 @@ export default async function TeacherStudentProfilePage({
         {/* HOMEWORK */}
         <div className="card">
           <div className="card-header">
-            <h3>Домашка</h3>
-            <div className="meta">последние {data.homework.length}</div>
+            <h3>{t("homeworkTitle")}</h3>
+            <div className="meta">{t("homeworkMeta", { count: data.homework.length })}</div>
           </div>
           <div className="card-body">
             {data.homework.length === 0 ? (
-              <div className="empty">Домашних заданий не было</div>
+              <div className="empty">{t("homeworkEmpty")}</div>
             ) : (
               data.homework.map((h) => (
                 <div key={h.id} className="hw-row">
                   <div className="hw-info">
                     <strong>{h.title}</strong>
                     <span>
-                      срок: {formatLessonDayShort(h.due_at)}
+                      {t("homeworkDue", { date: formatLessonDayShort(h.due_at, timeLocale) })}
                       {h.submitted_at
-                        ? ` · сдано ${formatLessonDayShort(h.submitted_at)}`
+                        ? t("homeworkSubmitted", { date: formatLessonDayShort(h.submitted_at, timeLocale) })
                         : ""}
                     </span>
                   </div>
                   <div className="hw-meta">
                     <span className={`lesson-status ${h.status}`}>
-                      {hwStatusLabel(h.status)}
+                      {hwStatusLabel(h.status, t)}
                     </span>
                     {h.grade !== null ? (
                       <span
@@ -491,12 +509,12 @@ export default async function TeacherStudentProfilePage({
         {/* ACHIEVEMENTS */}
         <div className="card">
           <div className="card-header">
-            <h3>Достижения</h3>
-            <div className="meta">{data.achievements.length} заработано</div>
+            <h3>{t("achievementsTitle")}</h3>
+            <div className="meta">{t("achievementsMeta", { count: data.achievements.length })}</div>
           </div>
           <div className="card-body">
             {data.achievements.length === 0 ? (
-              <div className="empty">Достижений пока нет</div>
+              <div className="empty">{t("achievementsEmpty")}</div>
             ) : (
               <div className="ach-grid">
                 {data.achievements.map((a) => (
@@ -511,7 +529,7 @@ export default async function TeacherStudentProfilePage({
                     </div>
                     <div className="ach-title">{a.title}</div>
                     <div className="ach-when">
-                      {formatLessonDayShort(a.earned_at)}
+                      {formatLessonDayShort(a.earned_at, timeLocale)}
                     </div>
                   </div>
                 ))}
