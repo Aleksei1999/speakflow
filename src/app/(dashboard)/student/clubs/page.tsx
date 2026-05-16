@@ -14,6 +14,7 @@ import {
 } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirror of /api/clubs and /api/clubs/stats response shapes)
@@ -188,6 +189,7 @@ function weekdayIdx(d: Date): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentClubsPage() {
+  const t = useTranslations("dashboard.student.clubs")
   const [clubs, setClubs] = useState<Club[]>([])
   const [stats, setStats] = useState<ClubsStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -229,7 +231,7 @@ export default function StudentClubsPage() {
         const data = (await clubsRes.json()) as { clubs: Club[] }
         setClubs(data.clubs ?? [])
       } else {
-        toast.error("Не удалось загрузить клубы")
+        toast.error(t("loadFailed"))
       }
       if (statsRes.ok) {
         const data = (await statsRes.json()) as ClubsStats
@@ -238,7 +240,7 @@ export default function StudentClubsPage() {
       // stats may 401 for anon users; silently ignore.
     } catch (err) {
       console.error("[clubs page] load error:", err)
-      toast.error("Не удалось загрузить данные")
+      toast.error(t("dataFailed"))
     } finally {
       setIsLoading(false)
     }
@@ -422,9 +424,9 @@ export default function StudentClubsPage() {
     return (
       <div className="clubs-page">
         <div className="hdr">
-          <h1>Speaking <span className="gl">Clubs</span></h1>
+          <h1>{t("headingMain")} <span className="gl">{t("headingHighlight")}</span></h1>
         </div>
-        <div className="hdr-sub">Загружаем клубы…</div>
+        <div className="hdr-sub">{t("loading")}</div>
       </div>
     )
   }
@@ -433,35 +435,35 @@ export default function StudentClubsPage() {
     <div className="clubs-page">
 
       <div className="hdr">
-        <h1>Speaking <span className="gl">Clubs</span></h1>
+        <h1>{t("headingMain")} <span className="gl">{t("headingHighlight")}</span></h1>
       </div>
-      <div className="hdr-sub">Все доступные клубы на платформе. Выбери тему — запишись — заговори.</div>
+      <div className="hdr-sub">{t("subtitle")}</div>
 
       {/* Filter pills */}
-      <div className="filters" role="tablist" aria-label="Фильтр клубов">
-        <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>Все</FilterPill>
+      <div className="filters" role="tablist" aria-label={t("filterAria")}>
+        <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>{t("filterAll")}</FilterPill>
         <FilterPill active={filter === "speaking"} onClick={() => setFilter("speaking")}>🎙 Speaking</FilterPill>
         <FilterPill active={filter === "debate"} onClick={() => setFilter("debate")}>⚡ Debate</FilterPill>
         <FilterPill active={filter === "wine"} onClick={() => setFilter("wine")}>🍷 Wine</FilterPill>
         <FilterPill active={filter === "niche"} onClick={() => setFilter("niche")}>🎯 Niche</FilterPill>
-        <FilterPill active={filter === "raw-rare"} onClick={() => setFilter("raw-rare")}>Raw–Rare</FilterPill>
-        <FilterPill active={filter === "medium-plus"} onClick={() => setFilter("medium-plus")}>Medium+</FilterPill>
+        <FilterPill active={filter === "raw-rare"} onClick={() => setFilter("raw-rare")}>{t("filterRawRare")}</FilterPill>
+        <FilterPill active={filter === "medium-plus"} onClick={() => setFilter("medium-plus")}>{t("filterMediumPlus")}</FilterPill>
       </div>
 
       {/* Stats */}
       <div className="stats">
         <div className="st st--red">
-          <div className="st-label">Эта неделя</div>
+          <div className="st-label">{t("statWeek")}</div>
           <div className="st-val">{stats?.weekCount ?? (isLoading ? "…" : 0)}</div>
-          <div className="st-sub">клубов доступно</div>
+          <div className="st-sub">{t("statWeekSub")}</div>
         </div>
         <div className="st">
-          <div className="st-label">Ты посетил</div>
+          <div className="st-label">{t("statAttended")}</div>
           <div className="st-val">{stats?.attendedThisMonth ?? (isLoading ? "…" : 0)}</div>
-          <div className="st-sub">клубов за месяц</div>
+          <div className="st-sub">{t("statAttendedSub")}</div>
         </div>
         <div className={`st ${stats?.nextClub ? "st--lime" : ""}`}>
-          <div className="st-label">Ближайший</div>
+          <div className="st-label">{t("statNext")}</div>
           <div className="st-val">
             {stats?.nextClub ? (
               <span className="gl">{format(new Date(stats.nextClub.starts_at), "HH:mm")}</span>
@@ -472,13 +474,13 @@ export default function StudentClubsPage() {
           <div className="st-sub">
             {stats?.nextClub
               ? `${categoryTag(stats.nextClub.club_type)} · ${dayLabel(new Date(stats.nextClub.starts_at), now)}`
-              : "нет записей"}
+              : t("statNextEmpty")}
           </div>
         </div>
         <div className="st st--dark">
-          <div className="st-label">XP за клубы</div>
+          <div className="st-label">{t("statXp")}</div>
           <div className="st-val">+{stats?.xpThisMonth ?? 0}</div>
-          <div className="st-sub">за этот месяц</div>
+          <div className="st-sub">{t("statXpSub")}</div>
         </div>
       </div>
 
@@ -486,11 +488,11 @@ export default function StudentClubsPage() {
       <div className="cal">
         <div className="cal-head">
           <div className="cal-nav">
-            <button type="button" className="cal-arr" onClick={goPrev} aria-label="Предыдущая неделя">←</button>
+            <button type="button" className="cal-arr" onClick={goPrev} aria-label={t("prevWeekAria")}>←</button>
             <div className="cal-title">{weekTitle}</div>
-            <button type="button" className="cal-arr" onClick={goNext} aria-label="Следующая неделя">→</button>
+            <button type="button" className="cal-arr" onClick={goNext} aria-label={t("nextWeekAria")}>→</button>
           </div>
-          <button type="button" className="cal-today" onClick={goToday}>Сегодня</button>
+          <button type="button" className="cal-today" onClick={goToday}>{t("todayBtn")}</button>
         </div>
 
         <div className="cal-legend">
@@ -529,7 +531,7 @@ export default function StudentClubsPage() {
       {/* List by days */}
       {isLoading ? (
         <>
-          <div className="sec-title">Загрузка…</div>
+          <div className="sec-title">{t("loadingShort")}</div>
           <div className="skeleton skel-card" />
           <div className="skeleton skel-card" />
           <div className="skeleton skel-card" />
@@ -537,9 +539,9 @@ export default function StudentClubsPage() {
       ) : upcomingFromNow.length === 0 ? (
         <div className="empty">
           <span className="empty-emoji">🎙</span>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Пока нет ни одного клуба</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("emptyTitle")}</div>
           <div style={{ fontSize: ".78rem" }}>
-            Попробуй убрать фильтры или загляни позже — расписание обновляется каждую неделю.
+            {t("emptyBody")}
           </div>
         </div>
       ) : (
@@ -555,8 +557,8 @@ export default function StudentClubsPage() {
                 style={i === 0 ? undefined : { marginTop: 16 }}
               >
                 {format(d, "EEEE, d MMMM", { locale: ru })}
-                {today ? <span className="badge badge--today">Сегодня</span> : null}
-                {tomorrow ? <span className="badge badge--tm">Завтра</span> : null}
+                {today ? <span className="badge badge--today">{t("todayBadge")}</span> : null}
+                {tomorrow ? <span className="badge badge--tm">{t("tomorrowBadge")}</span> : null}
               </div>
               {dayClubs.map((c) => (
                 <ClubCard
@@ -692,6 +694,7 @@ function ClubCard({
   onToggle: () => void
   highlight: boolean
 }) {
+  const t = useTranslations("dashboard.student.clubs")
   const group = categoryGroup(club.category)
   const dt = new Date(club.starts_at)
   const dotCount = Math.max(club.max_seats, 1)
@@ -718,13 +721,13 @@ function ClubCard({
         className="cc-btn cc-btn--book"
         style={{ textAlign: "center" }}
       >
-        🎙 Зайти в клуб
+        {t("joinClub")}
       </a>
     )
   } else if (club.is_user_registered && isExpired) {
     btn = (
       <button type="button" className="cc-btn cc-btn--full" disabled>
-        Завершён
+        {t("ended")}
       </button>
     )
   } else if (club.is_user_registered) {
@@ -734,15 +737,15 @@ function ClubCard({
         className="cc-btn cc-btn--joined"
         onClick={onToggle}
         disabled={busy}
-        aria-label="Отменить запись"
+        aria-label={t("cancelAria")}
       >
-        {busy ? "…" : "✓ Записан!"}
+        {busy ? "…" : t("registered")}
       </button>
     )
   } else if (club.is_full) {
     btn = (
       <button type="button" className="cc-btn cc-btn--full" disabled>
-        Мест нет
+        {t("soldOut")}
       </button>
     )
   } else {
@@ -753,7 +756,7 @@ function ClubCard({
         onClick={onToggle}
         disabled={busy}
       >
-        {busy ? "…" : "Записаться"}
+        {busy ? "…" : t("register")}
       </button>
     )
   }
@@ -793,8 +796,8 @@ function ClubCard({
             )}
           </div>
           <div>
-            <div className="cc-hn">{host.full_name ?? "Ведущий"}</div>
-            <div className="cc-hr">{role ?? "Ведущий"}</div>
+            <div className="cc-hn">{host.full_name ?? t("hostFallback")}</div>
+            <div className="cc-hr">{role ?? t("hostFallback")}</div>
           </div>
         </div>
       ) : null}

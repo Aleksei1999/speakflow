@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { format, formatDistanceToNow } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import dynamic from "next/dynamic"
 
 // Модалки открываются по клику — для initial render списка ДЗ не нужны.
@@ -59,14 +60,6 @@ type Snapshot = {
 
 type FilterKey = "all" | "submitted" | "assigned" | "overdue" | "reviewed"
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "submitted", label: "На проверке" },
-  { key: "assigned", label: "Выдано" },
-  { key: "overdue", label: "Просрочено" },
-  { key: "reviewed", label: "Проверено" },
-]
-
 function initialsOf(name: string) {
   return (name || "")
     .split(" ")
@@ -88,36 +81,46 @@ function avatarClass(id: string): string {
   return ""
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return ""
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ""
-  const diffMs = Date.now() - d.getTime()
-  if (Math.abs(diffMs) < 60 * 1000) return "только что"
-  return formatDistanceToNow(d, { addSuffix: true, locale: ru })
+function makeFormatRelative(t: (k: string) => string, dateLocale: Locale) {
+  return (iso: string | null): string => {
+    if (!iso) return ""
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ""
+    const diffMs = Date.now() - d.getTime()
+    if (Math.abs(diffMs) < 60 * 1000) return t("justNow")
+    return formatDistanceToNow(d, { addSuffix: true, locale: dateLocale })
+  }
 }
 
-function formatDueMeta(iso: string, ui: string): { text: string; tone: "normal" | "warn" | "over" } {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return { text: "", tone: "normal" }
-  const now = Date.now()
-  const diffMs = d.getTime() - now
-  const dayMs = 24 * 60 * 60 * 1000
-  if (ui === "overdue") {
-    const days = Math.max(1, Math.floor(-diffMs / dayMs))
-    return { text: `Просрочено на ${days} ${days === 1 ? "день" : days < 5 ? "дня" : "дней"}`, tone: "over" }
+function makeFormatDueMeta(
+  t: (k: string, vars?: Record<string, any>) => string,
+  pluralDay: (n: number) => string,
+  dateLocale: Locale,
+  localeStr: string,
+) {
+  return (iso: string, ui: string): { text: string; tone: "normal" | "warn" | "over" } => {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return { text: "", tone: "normal" }
+    const now = Date.now()
+    const diffMs = d.getTime() - now
+    const dayMs = 24 * 60 * 60 * 1000
+    if (ui === "overdue") {
+      const days = Math.max(1, Math.floor(-diffMs / dayMs))
+      return { text: t("deadlineOverdue", { days, word: pluralDay(days) }), tone: "over" }
+    }
+    if (diffMs < 0) {
+      const dateStr = format(d, localeStr === "ru" ? "d MMMM" : "MMMM d", { locale: dateLocale })
+      return { text: dateStr, tone: "normal" }
+    }
+    if (diffMs < dayMs) {
+      return { text: t("deadlineToday"), tone: "warn" }
+    }
+    if (diffMs < 2 * dayMs) {
+      return { text: t("deadlineTomorrow"), tone: "warn" }
+    }
+    const days = Math.ceil(diffMs / dayMs)
+    return { text: t("deadlineIn", { days, word: pluralDay(days) }), tone: "normal" }
   }
-  if (diffMs < 0) {
-    return { text: `Дедлайн был ${format(d, "d MMMM", { locale: ru })}`, tone: "normal" }
-  }
-  if (diffMs < dayMs) {
-    return { text: "Дедлайн сегодня", tone: "warn" }
-  }
-  if (diffMs < 2 * dayMs) {
-    return { text: "Дедлайн завтра", tone: "warn" }
-  }
-  const days = Math.ceil(diffMs / dayMs)
-  return { text: `Дедлайн через ${days} ${days === 1 ? "день" : days < 5 ? "дня" : "дней"}`, tone: "normal" }
 }
 
 function PaperclipIcon() {
@@ -130,6 +133,22 @@ function PaperclipIcon() {
 }
 
 export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }) {
+  const t = useTranslations("dashboard.teacher.homework")
+  const locale = useLocale()
+  const dateLocale = locale === "ru" ? ru : enUS
+  const pluralDay = (n: number): string => {
+    if (locale === "ru") return n === 1 ? t("dayOne") : n < 5 ? t("dayFew") : t("dayMany")
+    return n === 1 ? t("dayOne") : t("dayMany")
+  }
+  const formatRelative = makeFormatRelative(t as any, dateLocale)
+  const formatDueMeta = makeFormatDueMeta(t as any, pluralDay, dateLocale, locale)
+  const FILTERS: { key: FilterKey; label: string }[] = [
+    { key: "all", label: t("tabAll") },
+    { key: "submitted", label: t("tabSubmitted") },
+    { key: "assigned", label: t("tabAssigned") },
+    { key: "overdue", label: t("tabOverdue") },
+    { key: "reviewed", label: t("tabReviewed") },
+  ]
   const [data, setData] = useState<Snapshot>(initial)
   const [filter, setFilter] = useState<FilterKey>("all")
   const [search, setSearch] = useState("")
@@ -167,7 +186,7 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
         }
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
-          toast.error(j?.error || "Не удалось загрузить задания")
+          toast.error(j?.error || t("errorLoad"))
           return
         }
         const json = await res.json()
@@ -183,7 +202,7 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
           },
         })
       } catch (err) {
-        toast.error("Сетевая ошибка")
+        toast.error(t("errorNetwork"))
       } finally {
         if (!silent) setLoading(false)
       }
@@ -242,18 +261,18 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
       }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        toast.error(j?.error || "Не удалось отправить напоминание")
+        toast.error(j?.error || t("errorRemind"))
         return
       }
-      toast.success("Напоминание отправлено")
+      toast.success(t("successReminded"))
       reload(true)
     } catch {
-      toast.error("Сетевая ошибка")
+      toast.error(t("errorNetwork"))
     }
   }
 
   async function deleteHomework(hwId: string) {
-    if (!confirm("Удалить задание?")) return
+    if (!confirm(t("confirmDelete"))) return
     try {
       const res = await fetch(`/api/teacher/homework/${hwId}`, {
         method: "DELETE",
@@ -264,13 +283,13 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
       }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        toast.error(j?.error || "Не удалось удалить задание")
+        toast.error(j?.error || t("errorDelete"))
         return
       }
-      toast.success("Удалено")
+      toast.success(t("successDeleted"))
       reload(true)
     } catch {
-      toast.error("Сетевая ошибка")
+      toast.error(t("errorNetwork"))
     }
   }
 
@@ -281,32 +300,32 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
       {/* STATS */}
       <div className="stats-grid">
         <div className="stat-card accent">
-          <div className="label">Требуют проверки</div>
+          <div className="label">{t("statNeedReview")}</div>
           <div className="value">{c.submitted || 0}</div>
           <div className="change">
             {submittedToday > 0
-              ? `${submittedToday} сдан${submittedToday === 1 ? "о" : "ы"} сегодня`
-              : "новых за сегодня нет"}
+              ? (submittedToday === 1 ? t("statSubmittedTodayOne", { count: submittedToday }) : t("statSubmittedTodayMany", { count: submittedToday }))
+              : t("statSubmittedTodayNone")}
           </div>
         </div>
         <div className="stat-card">
-          <div className="label">Выдано активно</div>
+          <div className="label">{t("statActive")}</div>
           <div className="value">{c.assigned || 0}</div>
           <div className="change">
             {avgDaysToSubmit !== null
-              ? `средн. срок: ${avgDaysToSubmit} ${avgDaysToSubmit === 1 ? "день" : avgDaysToSubmit < 5 ? "дня" : "дней"}`
-              : "без активных"}
+              ? t("statActiveAvg", { days: avgDaysToSubmit, word: pluralDay(avgDaysToSubmit) })
+              : t("statActiveNone")}
           </div>
         </div>
         <div className="stat-card">
-          <div className="label">Просрочено</div>
+          <div className="label">{t("statOverdue")}</div>
           <div className="value">{c.overdue || 0}</div>
           <div className={`change${(c.overdue || 0) > 0 ? " warning" : ""}`}>
-            {(c.overdue || 0) > 0 ? "требуют напоминания" : "всё в порядке"}
+            {(c.overdue || 0) > 0 ? t("statOverdueNeedNudge") : t("statOverdueOk")}
           </div>
         </div>
         <div className="stat-card dark">
-          <div className="label">Средний балл</div>
+          <div className="label">{t("statAvgScore")}</div>
           <div className="value">
             {data.stats.avg_score_10 !== null
               ? data.stats.avg_score_10.toString().replace(".", ",")
@@ -314,7 +333,7 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
             <small>/10</small>
           </div>
           <div className="change">
-            {data.stats.avg_score_10 !== null ? "по проверенным" : "пока нет оценок"}
+            {data.stats.avg_score_10 !== null ? t("statAvgScoreFrom") : t("statAvgScoreEmpty")}
           </div>
         </div>
       </div>
@@ -324,7 +343,7 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
         <input
           type="text"
           className="search-input"
-          placeholder="Поиск по ученику или теме..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -348,27 +367,27 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
           className="btn btn-primary"
           onClick={() => setCreateOpen(true)}
         >
-          + Создать задание
+          + {locale === "ru" ? "Создать задание" : "New assignment"}
         </button>
       </div>
 
       {/* LIST */}
       {loading && items.length === 0 ? (
-        <div className="empty-state"><b>Загрузка...</b></div>
+        <div className="empty-state"><b>{t("loadingCard")}</b></div>
       ) : items.length === 0 ? (
         <div className="empty-state">
           <b>
             {filter === "all"
-              ? "Пока нет заданий"
+              ? t("emptyAll")
               : filter === "submitted"
-              ? "Ничего не ждёт проверки"
+              ? t("emptySubmitted")
               : filter === "assigned"
-              ? "Нет активных заданий"
+              ? t("emptyAssigned")
               : filter === "overdue"
-              ? "Нет просроченных заданий"
-              : "Нет проверенных заданий"}
+              ? t("emptyOverdue")
+              : t("emptyReviewed")}
           </b>
-          Нажмите «Создать задание», чтобы выдать ДЗ ученику.
+          {locale === "ru" ? "Нажмите «Создать задание», чтобы выдать ДЗ ученику." : "Hit \"New assignment\" to send homework to a student."}
         </div>
       ) : (
         <div className="hw-list">
@@ -377,6 +396,11 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
               key={h.id}
               hw={h}
               mounted={mounted}
+              t={t}
+              locale={locale}
+              dateLocale={dateLocale}
+              formatRelative={formatRelative}
+              formatDueMeta={formatDueMeta}
               onReview={() => setReviewId(h.id)}
               onRemind={() => remindStudent(h.id)}
               onDelete={() => deleteHomework(h.id)}
@@ -418,16 +442,15 @@ export default function TeacherHomeworkClient({ initial }: { initial: Snapshot }
 function HomeworkCard({
   hw,
   mounted,
+  t,
+  locale,
+  dateLocale,
+  formatRelative,
+  formatDueMeta,
   onReview,
   onRemind,
   onDelete,
-}: {
-  hw: HomeworkItem
-  mounted: boolean
-  onReview: () => void
-  onRemind: () => void
-  onDelete: () => void
-}) {
+}: any) {
   const cardClass =
     hw.ui_status === "submitted"
       ? "pending"
@@ -468,13 +491,13 @@ function HomeworkCard({
         <div className="hw-meta">
           {hw.ui_status === "submitted" && hw.submitted_at ? (
             <span>
-              <b>Сдано</b> {mounted ? formatRelative(hw.submitted_at) : ""}
+              <b>{t("submittedAt")}</b> {mounted ? formatRelative(hw.submitted_at) : ""}
             </span>
           ) : null}
           {hw.ui_status === "reviewed" && hw.reviewed_at ? (
             <span>
-              <b>Проверено</b>{" "}
-              {format(new Date(hw.reviewed_at), "d MMMM", { locale: ru })}
+              <b>{t("reviewedAt")}</b>{" "}
+              {format(new Date(hw.reviewed_at), locale === "ru" ? "d MMMM" : "MMMM d", { locale: dateLocale })}
             </span>
           ) : null}
           {dueMeta.text && hw.ui_status !== "reviewed" ? (
@@ -496,14 +519,14 @@ function HomeworkCard({
           ) : null}
           {hw.ui_status === "assigned" && hw.created_at ? (
             <span>
-              Выдано {mounted ? formatRelative(hw.created_at) : ""}
+              {locale === "ru" ? "Выдано" : "Assigned"} {mounted ? formatRelative(hw.created_at) : ""}
             </span>
           ) : null}
           {hw.ui_status === "reviewed" && hw.teacher_feedback ? (
-            <span>Фидбэк оставлен</span>
+            <span>{t("feedbackGiven")}</span>
           ) : null}
           {hw.reminders_count > 0 && hw.ui_status !== "reviewed" ? (
-            <span>Напоминаний: {hw.reminders_count}</span>
+            <span>{t("remindersCount", { count: hw.reminders_count })}</span>
           ) : null}
         </div>
         {hw.attachments && hw.attachments.length > 0 ? (
@@ -531,16 +554,16 @@ function HomeworkCard({
       <div className="hw-actions">
         {hw.ui_status === "submitted" ? (
           <>
-            <span className="hw-status hw-status-pending">на проверке</span>
+            <span className="hw-status hw-status-pending">{t("statusPending")}</span>
             <button type="button" className="btn btn-red" onClick={onReview}>
-              Проверить
+              {locale === "ru" ? "Проверить" : "Review"}
             </button>
           </>
         ) : hw.ui_status === "overdue" ? (
           <>
-            <span className="hw-status hw-status-overdue">просрочено</span>
+            <span className="hw-status hw-status-overdue">{t("statusOverdue")}</span>
             <button type="button" className="btn btn-secondary btn-sm" onClick={onRemind}>
-              Напомнить
+              {locale === "ru" ? "Напомнить" : "Remind"}
             </button>
           </>
         ) : hw.ui_status === "reviewed" ? (
@@ -550,16 +573,16 @@ function HomeworkCard({
                 <strong>
                   {Number.isInteger(score) ? score : score.toFixed(1).replace(".", ",")}/10
                 </strong>
-                <span>оценка</span>
+                <span>{t("score")}</span>
               </div>
             ) : null}
-            <span className="hw-status hw-status-graded">✓ проверено</span>
+            <span className="hw-status hw-status-graded">✓ {locale === "ru" ? "проверено" : "reviewed"}</span>
           </>
         ) : (
           <>
-            <span className="hw-status hw-status-assigned">выдано</span>
+            <span className="hw-status hw-status-assigned">{t("statusAssigned")}</span>
             <button type="button" className="btn btn-secondary btn-sm" onClick={onReview}>
-              Открыть
+              {locale === "ru" ? "Открыть" : "Open"}
             </button>
           </>
         )}
@@ -567,7 +590,7 @@ function HomeworkCard({
           <button
             type="button"
             className="btn btn-danger btn-sm"
-            title="Удалить"
+            title={t("deleteTitle")}
             onClick={onDelete}
           >
             ✕

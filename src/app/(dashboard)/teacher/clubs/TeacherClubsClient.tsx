@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import { computeLessonAccess } from "@/lib/lesson-access"
 import { formatTimeUntil } from "@/lib/format-time-until"
 
@@ -86,26 +87,28 @@ type Club = {
   participants: Participant[]
 }
 
-function statusLabel(s: string): string {
-  switch (s) {
-    case "published":
-      return "опубликован"
-    case "draft":
-      return "черновик"
-    case "cancelled":
-      return "отменён"
-    case "completed":
-      return "завершён"
-    default:
-      return s
-  }
-}
-
 export default function TeacherClubsClient({
   initial,
 }: {
   initial: { clubs: Club[]; unread_count: number }
 }) {
+  const t = useTranslations("dashboard.teacher.clubs")
+  const locale = useLocale()
+  const dateLocale = locale === "ru" ? ru : enUS
+  const statusLabel = (s: string): string => {
+    switch (s) {
+      case "published":
+        return t("statusPublished")
+      case "draft":
+        return t("statusDraft")
+      case "cancelled":
+        return t("statusCancelled")
+      case "completed":
+        return t("statusCompleted")
+      default:
+        return s
+    }
+  }
   const [clubs, setClubs] = useState<Club[]>(initial.clubs)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [tick, setTick] = useState(0)
@@ -146,29 +149,29 @@ export default function TeacherClubsClient({
 
       <div className="page-hdr">
         <div>
-          <h1>Speaking <span className="gl">Clubs</span></h1>
+          <h1>{t("headingTitle")} <span className="gl">{t("headingWord")}</span></h1>
           <div className="sub">
-            Клубы, где ты ведущий — всего {clubs.length}
+            {t("subCount", { count: clubs.length })}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link href="/teacher" className="btn btn-sm btn-secondary">
-            ← На главную
+            {t("backHome")}
           </Link>
           <button
             type="button"
             className="btn btn-sm btn-secondary"
             onClick={() => void refresh()}
           >
-            ⟳ Обновить
+            {t("refresh")}
           </button>
         </div>
       </div>
 
       {clubs.length === 0 ? (
         <div className="empty">
-          <b>Назначений пока нет</b>
-          Когда админ выберет тебя ведущим — клуб появится здесь.
+          <b>{t("emptyTitle")}</b>
+          {t("emptyHint")}
         </div>
       ) : (
         <div className="clubs-grid">
@@ -213,7 +216,7 @@ export default function TeacherClubsClient({
                       marginBottom: 4,
                     }}
                   >
-                    Участники: {c.registered_count}/{c.capacity}
+                    {t("participantsLine", { registered: c.registered_count, capacity: c.capacity })}
                   </div>
                   <div className="capacity-bar">
                     <div
@@ -227,14 +230,14 @@ export default function TeacherClubsClient({
                     📅{" "}
                     <b>
                       {c.scheduled_at
-                        ? format(new Date(c.scheduled_at), "d MMM, HH:mm", {
-                            locale: ru,
+                        ? format(new Date(c.scheduled_at), locale === "ru" ? "d MMM, HH:mm" : "MMM d, HH:mm", {
+                            locale: dateLocale,
                           })
                         : "—"}
                     </b>
                   </span>
                   <span>
-                    ⏱️ <b>{c.duration_minutes} мин</b>
+                    ⏱️ <b>{t("durationMinutes", { minutes: c.duration_minutes })}</b>
                   </span>
                 </div>
                 {(() => {
@@ -256,7 +259,7 @@ export default function TeacherClubsClient({
                           href={`/club/${c.id}/room`}
                           className="join-btn live"
                         >
-                          🎙 Зайти в клуб
+                          {t("ctaJoin")}
                         </Link>
                       </div>
                     )
@@ -269,7 +272,7 @@ export default function TeacherClubsClient({
                     return (
                       <div className="join-row">
                         <button type="button" className="join-btn waiting" disabled>
-                          ⏳ Откроется через {formatTimeUntil(minutesLeft)}
+                          {t("ctaWaitingPrefix")} {formatTimeUntil(minutesLeft)}
                         </button>
                       </div>
                     )
@@ -278,7 +281,7 @@ export default function TeacherClubsClient({
                     return (
                       <div className="join-row">
                         <button type="button" className="join-btn expired" disabled>
-                          Отменён
+                          {t("ctaCancelled")}
                         </button>
                       </div>
                     )
@@ -286,7 +289,7 @@ export default function TeacherClubsClient({
                   return (
                     <div className="join-row">
                       <button type="button" className="join-btn expired" disabled>
-                        Завершён
+                        {t("ctaCompleted")}
                       </button>
                     </div>
                   )
@@ -301,8 +304,7 @@ export default function TeacherClubsClient({
                           setExpanded((e) => ({ ...e, [c.id]: !e[c.id] }))
                         }
                       >
-                        {expanded[c.id] ? "▾" : "▸"} Участники (
-                        {c.participants.length})
+                        {expanded[c.id] ? "▾" : "▸"} {t("participantsToggle", { count: c.participants.length })}
                       </button>
                       {expanded[c.id] ? (
                         <div className="parts-list">
@@ -343,7 +345,7 @@ export default function TeacherClubsClient({
                       ) : null}
                     </>
                   ) : (
-                    <div className="parts-empty">Пока никто не записался</div>
+                    <div className="parts-empty">{t("participantsEmpty")}</div>
                   )}
                 </div>
               </div>

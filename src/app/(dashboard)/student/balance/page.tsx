@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   TOPUP_TIERS,
   PRO_FEATURES_YES,
@@ -195,6 +196,7 @@ function renderBold(text: string): React.ReactNode[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentBalancePage() {
+  const t = useTranslations("dashboard.student.balance")
   const [data, setData] = useState<BalanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -236,9 +238,9 @@ export default function StudentBalancePage() {
         <style dangerouslySetInnerHTML={{ __html: BALANCE_CSS }} />
         <div className="balance-page">
           <h1>
-            Мой <span className="gl">balance</span>
+            {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
           </h1>
-          <div className="bal-loading">Загружаем баланс…</div>
+          <div className="bal-loading">{t("loading")}</div>
         </div>
       </>
     )
@@ -250,9 +252,9 @@ export default function StudentBalancePage() {
         <style dangerouslySetInnerHTML={{ __html: BALANCE_CSS }} />
         <div className="balance-page">
           <h1>
-            Мой <span className="gl">balance</span>
+            {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
           </h1>
-          <div className="bal-error">{error ?? "Баланс недоступен"}</div>
+          <div className="bal-error">{error ?? t("errorFallback")}</div>
         </div>
       </>
     )
@@ -280,13 +282,13 @@ export default function StudentBalancePage() {
           Мой <span className="gl">balance</span>
         </h1>
         <div className="page-sub">
-          Пополняй баланс, оплачивай уроки и клубы, отслеживай историю платежей.
+          {t("subtitle")}
         </div>
 
         {/* BALANCE */}
         <div className="bal-card">
           <div className="bal-top">
-            <div className="bal-label">Баланс</div>
+            <div className="bal-label">{t("label")}</div>
           </div>
           <div className="bal-amount">
             {formatRub(profile.balance_rub ?? 0)} <span>₽</span>
@@ -298,51 +300,51 @@ export default function StudentBalancePage() {
               type="button"
               onClick={() => document.getElementById("topup")?.scrollIntoView({ behavior: "smooth" })}
             >
-              Пополнить баланс
+              {t("topUp")}
             </button>
             <button
               className="bal-btn bal-btn--ghost"
               type="button"
               onClick={() => document.getElementById("history")?.scrollIntoView({ behavior: "smooth" })}
             >
-              История платежей
+              {t("historyTitle")}
             </button>
           </div>
         </div>
 
         {/* TOPUP */}
         <div id="topup">
-          <div className="section-title">Пополнить баланс</div>
+          <div className="section-title">{t("topUp")}</div>
           <div className="section-sub">
             Баланс используется для оплаты уроков и клубов. Чем больше пополняешь — тем выгоднее.
           </div>
         </div>
 
         <div className="topup-grid">
-          {TOPUP_TIERS.map((t) => {
+          {TOPUP_TIERS.map((tier) => {
             const cls =
-              t.badge === "popular" ? "topup topup--popular" : t.badge === "best" ? "topup topup--best" : "topup"
+              tier.badge === "popular" ? "topup topup--popular" : tier.badge === "best" ? "topup topup--best" : "topup"
             const btnCls =
-              t.btnVariant === "red" ? "topup-btn topup-btn--red" : t.btnVariant === "lime" ? "topup-btn topup-btn--lime" : "topup-btn topup-btn--default"
+              tier.btnVariant === "red" ? "topup-btn topup-btn--red" : tier.btnVariant === "lime" ? "topup-btn topup-btn--lime" : "topup-btn topup-btn--default"
             return (
-              <div key={t.amount} className={cls} onClick={() => handleTopup(t.amount)}>
+              <div key={tier.amount} className={cls} onClick={() => handleTopup(tier.amount)}>
                 <div className="topup-body">
-                  <div className="topup-amount">{formatRub(t.amount)} ₽</div>
+                  <div className="topup-amount">{formatRub(tier.amount)} ₽</div>
                   <div className="topup-lessons">
-                    ≈ <b>{t.lessons}</b> {plural(t.lessons, ["урок", "урока", "уроков"])}
+                    ≈ <b>{tier.lessons}</b> {plural(tier.lessons, ["урок", "урока", "уроков"])}
                   </div>
-                  {t.bonus && <div className="topup-bonus">{t.bonus}</div>}
-                  {t.save && <div className="topup-save">{t.save}</div>}
-                  <div className="topup-perprice">{formatRub(t.perPrice)} ₽ / урок</div>
+                  {tier.bonus && <div className="topup-bonus">{tier.bonus}</div>}
+                  {tier.save && <div className="topup-save">{tier.save}</div>}
+                  <div className="topup-perprice">{formatRub(tier.perPrice)} ₽ / урок</div>
                   <button
                     className={btnCls}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleTopup(t.amount)
+                      handleTopup(tier.amount)
                     }}
                   >
-                    {t.btnLabel}
+                    {tier.btnLabel}
                   </button>
                 </div>
               </div>
@@ -352,7 +354,7 @@ export default function StudentBalancePage() {
 
         {/* SUBSCRIPTION */}
         <div className="sub-section">
-          <div className="section-title">Подписка на платформу</div>
+          <div className="section-title">{t("subscriptionTitle")}</div>
           <div className="section-sub">
             Подписка открывает геймификацию, клубы, достижения и призы. Уроки оплачиваются отдельно с баланса.
           </div>
@@ -360,10 +362,10 @@ export default function StudentBalancePage() {
           <div className="sub-grid">
             <div className="sub-card">
               <div className="sub-head">
-                <div className="sub-name">Без подписки</div>
+                <div className="sub-name">{t("subNoneTitle")}</div>
                 <div className="sub-price">
                   <div className="sub-price-val sub-price--free">0 ₽</div>
-                  <div className="sub-price-per">бесплатно</div>
+                  <div className="sub-price-per">{t("subNonePrice")}</div>
                 </div>
               </div>
               <div className="sub-features">
@@ -382,7 +384,7 @@ export default function StudentBalancePage() {
                 <button
                   className="sub-btn sub-btn--current"
                   type="button"
-                  onClick={() => window.alert("Для отмены подписки напишите в поддержку.")}
+                  onClick={() => window.alert(t("cancelSubInfo"))}
                 >
                   Перейти на бесплатный
                 </button>
@@ -400,10 +402,10 @@ export default function StudentBalancePage() {
                 </div>
               </div>
               <div className="sub-features">
-                {PRO_FEATURES_YES.map((t, i) => (
+                {PRO_FEATURES_YES.map((feature, i) => (
                   <div key={i} className="sf">
                     <div className="sf-icon sf-icon--yes">✓</div>
-                    <div className="sf-text">{renderBold(t)}</div>
+                    <div className="sf-text">{renderBold(feature)}</div>
                   </div>
                 ))}
               </div>
@@ -432,16 +434,16 @@ export default function StudentBalancePage() {
         {/* HISTORY */}
         <div className="history" id="history">
           <div className="history-head">
-            <h3>История платежей</h3>
+            <h3>{t("historyTitle")}</h3>
           </div>
           <div className="h-row h-head">
-            <div>Дата</div>
-            <div>Описание</div>
-            <div style={{ textAlign: "right" }}>Сумма</div>
-            <div style={{ textAlign: "right" }}>Статус</div>
+            <div>{t("colDate")}</div>
+            <div>{t("colDesc")}</div>
+            <div style={{ textAlign: "right" }}>{t("colAmount")}</div>
+            <div style={{ textAlign: "right" }}>{t("colStatus")}</div>
           </div>
           {history.length === 0 ? (
-            <div className="h-empty">История пока пуста</div>
+            <div className="h-empty">{t("historyEmpty")}</div>
           ) : (
             history.map((h) => {
               const isPlus = h.kind === "credit" || h.kind === "xp"
@@ -449,7 +451,7 @@ export default function StudentBalancePage() {
               const sign = isPlus ? "+" : "−"
               const badgeCls = h.status === "ok" ? "h-badge h-badge--ok" : "h-badge h-badge--pending"
               const badgeText =
-                h.status === "pending" ? "В ожидании" : h.kind === "credit" ? "Зачислено" : h.kind === "xp" ? "Начислено" : "Оплачено"
+                h.status === "pending" ? t("statusPending") : h.kind === "credit" ? t("statusCredited") : h.kind === "xp" ? t("statusXp") : t("statusPaid")
               const displayAmount =
                 h.currency === "XP" ? `${sign}${formatRub(Math.abs(h.amount))} XP` : `${sign}${formatRub(Math.abs(h.amount))} ₽`
               return (

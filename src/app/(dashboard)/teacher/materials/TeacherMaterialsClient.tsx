@@ -3,7 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import dynamic from "next/dynamic"
 
@@ -151,6 +152,32 @@ const TYPE_ORDER: Array<TypeKey> = ["all", "pdf", "ppt", "doc", "video", "audio"
 const LEVEL_ORDER: Array<LevelKey> = ["A1-A2", "B1", "B2", "C1+"]
 
 export default function TeacherMaterialsClient({ initial }: { initial: Snapshot }) {
+  const t = useTranslations("dashboard.teacher.materials")
+  const locale = useLocale()
+  const dateLocale = locale === "ru" ? ru : enUS
+  const typeLabel = (k: Exclude<TypeKey, "all">): string => {
+    switch (k) {
+      case "pdf": return t("typePdf")
+      case "ppt": return t("typePpt")
+      case "doc": return t("typeDoc")
+      case "video": return t("typeVideo")
+      case "audio": return t("typeAudio")
+      case "img": return t("typeImg")
+      case "link": return t("typeLink")
+    }
+  }
+  const formatRelative = (iso: string | null): string => {
+    if (!iso) return ""
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ""
+    const diffDays = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays <= 0) return t("today")
+    if (diffDays === 1) return t("yesterday")
+    if (diffDays < 30) {
+      return formatDistanceToNow(d, { addSuffix: false, locale: dateLocale }) + (locale === "ru" ? " назад" : " ago")
+    }
+    return format(d, "LLLL yyyy", { locale: dateLocale })
+  }
   const [snap, setSnap] = useState<Snapshot>(initial)
   const [typeFilter, setTypeFilter] = useState<TypeKey>("all")
   const [levelFilter, setLevelFilter] = useState<LevelKey>("all")
@@ -291,11 +318,11 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
 
   async function submitUpload() {
     if (!pendingFile || !uTitle.trim()) {
-      toast.error("Выбери файл и укажи название")
+      toast.error(t("errorPickFile"))
       return
     }
     if (pendingFile.size > MAX_MATERIAL_SIZE) {
-      toast.error("Файл больше 50 МБ")
+      toast.error(t("errorTooBig"))
       return
     }
     setIsUploading(true)
@@ -307,7 +334,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
         error: userErr,
       } = await supabase.auth.getUser()
       if (userErr || !user) {
-        toast.error("Нужно войти в аккаунт")
+        toast.error(t("errorAuth"))
         return
       }
 
@@ -325,7 +352,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
         })
       if (upErr) {
         console.error("storage.upload error:", upErr)
-        toast.error(upErr.message || "Не удалось загрузить файл в хранилище")
+        toast.error(upErr.message || t("errorUpload"))
         return
       }
       uploadedPath = storagePath
@@ -333,7 +360,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
       // 2) Metadata → our API (small JSON body, safe for Vercel).
       const tagsArr = uTags
         .split(",")
-        .map((t) => t.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
       const payload = {
         title: uTitle.trim(),
@@ -364,12 +391,12 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
         return
       }
       uploadedPath = null // metadata saved — don't rollback storage
-      toast.success("Материал загружен")
+      toast.success(t("successUploaded"))
       setModalOpen(false)
       setPendingFile(null)
       reload()
     } catch (err: any) {
-      toast.error(err?.message ?? "Ошибка загрузки")
+      toast.error(err?.message ?? t("errorGeneric"))
     } finally {
       // If metadata insert failed, remove the orphan blob.
       if (uploadedPath) {
@@ -391,10 +418,10 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
     try {
       const res = await fetch(`/api/teacher/materials/${encodeURIComponent(m.id)}`, { method: "DELETE" })
       if (!res.ok) throw new Error("HTTP " + res.status)
-      toast.success("Удалено")
+      toast.success(t("successDeleted"))
       reload({ silent: true })
     } catch {
-      toast.error("Не удалось удалить")
+      toast.error(t("errorDelete"))
       reload()
     }
   }
@@ -410,7 +437,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
     if (m.signed_url) {
       window.open(m.signed_url, "_blank", "noopener,noreferrer")
     } else {
-      toast.error("Ссылка на файл недоступна")
+      toast.error(t("errorLinkUnavailable"))
     }
     // optimistic bump
     setSnap((prev) => ({
@@ -448,30 +475,30 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
       <div className="materials-grid">
         {/* CATEGORIES SIDEBAR */}
         <aside className="cat-side">
-          <div className="cat-title">Типы файлов</div>
+          <div className="cat-title">{t("categoryTypes")}</div>
           <div className="cat-list">
-            {TYPE_ORDER.map((t) => (
+            {TYPE_ORDER.map((tk) => (
               <button
-                key={t}
-                className={`cat-item${typeFilter === t ? " active" : ""}`}
-                onClick={() => setTypeFilter(t)}
+                key={tk}
+                className={`cat-item${typeFilter === tk ? " active" : ""}`}
+                onClick={() => setTypeFilter(tk)}
               >
                 <span className="cat-icon" aria-hidden>
-                  <TypeIcon type={t} />
+                  <TypeIcon type={tk} />
                 </span>
-                {t === "all" ? "Все" : TYPE_LABELS[t]}
-                <span className="cat-count">{counts[t] ?? 0}</span>
+                {tk === "all" ? t("filterAll") : typeLabel(tk)}
+                <span className="cat-count">{counts[tk] ?? 0}</span>
               </button>
             ))}
           </div>
 
-          <div className="cat-title" style={{ marginTop: 16 }}>Уровни</div>
+          <div className="cat-title" style={{ marginTop: 16 }}>{t("categoryLevels")}</div>
           <div className="cat-list">
             <button
               className={`cat-item${levelFilter === "all" ? " active" : ""}`}
               onClick={() => setLevelFilter("all")}
             >
-              Все уровни
+              {t("filterAll")}
               <span className="cat-count">{counts.all ?? 0}</span>
             </button>
             {LEVEL_ORDER.map((lvl) => (
@@ -503,8 +530,8 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
             <div className="up-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
             </div>
-            <div className="up-text">Загрузить файл</div>
-            <div className="up-sub">или перетащи сюда</div>
+            <div className="up-text">{t("uploadCta")}</div>
+            <div className="up-sub">{t("uploadHint")}</div>
           </div>
           <input
             ref={fileInputRef}
@@ -520,7 +547,7 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
             <input
               type="text"
               className="search-input"
-              placeholder="Поиск материалов..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -529,54 +556,58 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
             >
-              <option value="recent">Недавно добавленные</option>
-              <option value="popular">Часто используемые</option>
-              <option value="name">По названию</option>
-              <option value="size">По размеру</option>
+              <option value="recent">{t("sortRecent")}</option>
+              <option value="popular">{t("sortPopular")}</option>
+              <option value="name">{t("sortName")}</option>
+              <option value="size">{t("sortSize")}</option>
             </select>
             <div className="view-toggle">
               <button
                 className={`view-btn${viewMode === "grid" ? " active" : ""}`}
                 onClick={() => setViewMode("grid")}
-                aria-label="Сетка"
+                aria-label={t("viewGridAria")}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               </button>
               <button
                 className={`view-btn${viewMode === "list" ? " active" : ""}`}
                 onClick={() => setViewMode("list")}
-                aria-label="Список"
+                aria-label={t("viewListAria")}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
             </div>
-            <button className="btn btn-primary" onClick={() => openUploadModal(null)}>+ Загрузить</button>
+            <button className="btn btn-primary" onClick={() => openUploadModal(null)}>+ {t("uploadCta")}</button>
           </div>
 
           {apiMissing ? (
             <div className="empty-state">
-              <b>API подготавливается</b>
-              Эндпоинт /api/teacher/materials ещё не задеплоен — обнови страницу через минуту.
+              <b>{t("emptyTitle")}</b>
+              {t("emptyHint")}
             </div>
           ) : snap.materials.length === 0 ? (
             <div className="empty-state">
-              <b>Пока нет материалов</b>
-              Загрузи первый файл — он появится здесь и будет доступен в уроках.
+              <b>{t("emptyTitle")}</b>
+              {t("emptyHint")}
             </div>
           ) : splitSections ? (
             <>
-              <div className="section-heading">Недавние <span className="line" /></div>
+              <div className="section-heading">{t("sectionRecent")} <span className="line" /></div>
               <MaterialsContainer
                 viewMode={viewMode}
                 items={recentItems}
+                t={t}
+                formatRelative={formatRelative}
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 onAttach={handleAttach}
               />
-              <div className="section-heading">Популярные <span className="line" /></div>
+              <div className="section-heading">{t("sectionPopular")} <span className="line" /></div>
               <MaterialsContainer
                 viewMode={viewMode}
                 items={popularItems}
+                t={t}
+                formatRelative={formatRelative}
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 onAttach={handleAttach}
@@ -586,6 +617,8 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
             <MaterialsContainer
               viewMode={viewMode}
               items={snap.materials}
+              t={t}
+              formatRelative={formatRelative}
               onDelete={handleDelete}
               onDownload={handleDownload}
               onAttach={handleAttach}
@@ -601,8 +634,8 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
           onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false) }}
         >
           <div className="modal-card" role="dialog" aria-modal="true">
-            <h2>Загрузить материал</h2>
-            <div className="modal-sub">Добавь файл в библиотеку — он сразу станет доступен при планировании уроков.</div>
+            <h2>{t("modalUploadTitle")}</h2>
+            <div className="modal-sub">{t("modalUploadSub")}</div>
 
             {pendingFile ? (
               <div className="file-pill">
@@ -618,23 +651,23 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
                 style={{ marginTop: 0, marginBottom: 16 }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className="up-text">Выбрать файл</div>
-                <div className="up-sub">нажми, чтобы открыть диалог</div>
+                <div className="up-text">{t("modalPickFile")}</div>
+                <div className="up-sub">{t("modalPickFileHint")}</div>
               </div>
             )}
 
             <div className="field">
-              <label>Название</label>
-              <input value={uTitle} onChange={(e) => setUTitle(e.target.value)} placeholder="Напр.: Past Perfect — упражнения" />
+              <label>{t("fieldTitle")}</label>
+              <input value={uTitle} onChange={(e) => setUTitle(e.target.value)} placeholder={t("fieldTitlePlaceholder")} />
             </div>
 
             <div className="field">
-              <label>Описание</label>
-              <textarea value={uDesc} onChange={(e) => setUDesc(e.target.value)} placeholder="Короткая заметка для самого себя" />
+              <label>{t("fieldDesc")}</label>
+              <textarea value={uDesc} onChange={(e) => setUDesc(e.target.value)} placeholder={t("fieldDescPlaceholder")} />
             </div>
 
             <div className="field">
-              <label>Уровень</label>
+              <label>{t("fieldLevel")}</label>
               <select value={uLevel} onChange={(e) => setULevel(e.target.value as LevelKey)}>
                 <option value="A1-A2">A1-A2</option>
                 <option value="B1">B1</option>
@@ -644,13 +677,13 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
             </div>
 
             <div className="field">
-              <label>Теги (через запятую)</label>
+              <label>{t("fieldTags")}</label>
               <input value={uTags} onChange={(e) => setUTags(e.target.value)} placeholder="Grammar, IELTS, Vocabulary" />
             </div>
 
             <div className="field">
-              <label>ID урока (необязательно)</label>
-              <input value={uLessonId} onChange={(e) => setULessonId(e.target.value)} placeholder="Если нужно привязать к уроку" />
+              <label>{t("fieldLessonId")}</label>
+              <input value={uLessonId} onChange={(e) => setULessonId(e.target.value)} placeholder={t("fieldLessonIdPlaceholder")} />
             </div>
 
             <div className="toggle-row">
@@ -658,17 +691,17 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
                 type="button"
                 className={`toggle-sw${uPublic ? " on" : ""}`}
                 onClick={() => setUPublic(!uPublic)}
-                aria-label="Публичный доступ"
+                aria-label={t("togglePublicAria")}
               />
-              <span className="toggle-lbl">Доступен всем ученикам</span>
+              <span className="toggle-lbl">{t("togglePublicLabel")}</span>
             </div>
 
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={isUploading}>
-                Отмена
+                {t("cancelCta")}
               </button>
               <button className="btn btn-primary" onClick={submitUpload} disabled={isUploading || !pendingFile || !uTitle.trim()}>
-                {isUploading ? "Загрузка..." : "Загрузить"}
+                {isUploading ? t("uploadingCta") : t("uploadCtaConfirm")}
               </button>
             </div>
           </div>
@@ -691,23 +724,19 @@ export default function TeacherMaterialsClient({ initial }: { initial: Snapshot 
 function MaterialsContainer({
   viewMode,
   items,
+  t,
+  formatRelative,
   onDelete,
   onDownload,
   onAttach,
-}: {
-  viewMode: "grid" | "list"
-  items: Material[]
-  onDelete: (m: Material) => void
-  onDownload: (m: Material) => void
-  onAttach: (m: Material) => void
-}) {
+}: any) {
   if (items.length === 0) {
-    return <div className="empty-state" style={{ padding: "30px 22px" }}><b>Ничего не найдено</b>Попробуй изменить фильтры или поисковый запрос.</div>
+    return <div className="empty-state" style={{ padding: "30px 22px" }}><b>{t("noMatchTitle")}</b>{t("noMatchHint")}</div>
   }
   return (
     <div className={viewMode === "grid" ? "mat-grid" : "mat-list"}>
-      {items.map((m) => (
-        <MatCard key={m.id} m={m} onDelete={onDelete} onDownload={onDownload} onAttach={onAttach} />
+      {items.map((m: Material) => (
+        <MatCard key={m.id} m={m} t={t} formatRelative={formatRelative} onDelete={onDelete} onDownload={onDownload} onAttach={onAttach} />
       ))}
     </div>
   )
@@ -715,15 +744,12 @@ function MaterialsContainer({
 
 function MatCard({
   m,
+  t,
+  formatRelative,
   onDelete,
   onDownload,
   onAttach,
-}: {
-  m: Material
-  onDelete: (m: Material) => void
-  onDownload: (m: Material) => void
-  onAttach: (m: Material) => void
-}) {
+}: any) {
   const type = mimeToType(m.mime_type, m.file_type)
   const badge = badgeForMaterial(m)
   const sizeLabel = type === "link" ? hostnameOf(m.signed_url ?? m.storage_path ?? "") : formatSize(m.file_size)
@@ -743,8 +769,8 @@ function MatCard({
         </div>
         <div className="mat-tags">
           {m.level ? <span className="mat-tag level">{m.level}</span> : null}
-          {(m.tags ?? []).slice(0, 2).map((t) => (
-            <span key={t} className="mat-tag">{t}</span>
+          {(m.tags ?? []).slice(0, 2).map((tag: string) => (
+            <span key={tag} className="mat-tag">{tag}</span>
           ))}
         </div>
         <div className="mat-footer">
@@ -753,17 +779,17 @@ function MatCard({
             {m.use_count ?? 0}×
           </span>
           <div className="mat-actions">
-            <button className="mat-btn primary" title="Прикрепить к уроку" onClick={(e) => { e.stopPropagation(); onAttach(m) }}>
+            <button className="mat-btn primary" title={t("actionAttachTitle")} onClick={(e: any) => { e.stopPropagation(); onAttach(m) }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>
-            <button className="mat-btn" title={type === "link" ? "Открыть" : "Скачать"} onClick={(e) => { e.stopPropagation(); onDownload(m) }}>
+            <button className="mat-btn" title={type === "link" ? t("actionOpenTitle") : t("actionDownloadTitle")} onClick={(e: any) => { e.stopPropagation(); onDownload(m) }}>
               {type === "link" ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 L17 7 M7 7 h10 v10"/></svg>
               ) : (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
               )}
             </button>
-            <button className="mat-btn danger" title="Удалить" onClick={(e) => { e.stopPropagation(); onDelete(m) }}>
+            <button className="mat-btn danger" title={t("actionDeleteTitle")} onClick={(e: any) => { e.stopPropagation(); onDelete(m) }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>

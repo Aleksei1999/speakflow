@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 type Group = {
   id: string
@@ -53,6 +54,7 @@ function pluralMem(n: number) {
 }
 
 export default function TeacherGroupsClient() {
+  const t = useTranslations("dashboard.teacher.groups")
   const [groups, setGroups] = useState<Group[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,7 +147,7 @@ export default function TeacherGroupsClient() {
 
   async function saveGroup() {
     if (!mName.trim()) {
-      toast.error("Введи название группы")
+      toast.error(t("toastNameRequired"))
       return
     }
     setSaving(true)
@@ -162,7 +164,7 @@ export default function TeacherGroupsClient() {
         })
         if (res.status === 401) return handle401()
         if (!res.ok) {
-          toast.error("Не удалось сохранить")
+          toast.error(t("toastSaveFailed"))
           return
         }
         // Sync members (replace): fetch current, diff, add/remove
@@ -187,7 +189,7 @@ export default function TeacherGroupsClient() {
             })
           }
         } catch {}
-        toast.success("Группа обновлена")
+        toast.success(t("toastUpdated"))
       } else {
         const res = await fetch("/api/teacher/groups", {
           method: "POST",
@@ -200,15 +202,15 @@ export default function TeacherGroupsClient() {
         })
         if (res.status === 401) return handle401()
         if (!res.ok) {
-          toast.error("Не удалось создать группу")
+          toast.error(t("toastCreateFailed"))
           return
         }
-        toast.success("Группа создана")
+        toast.success(t("toastCreated"))
       }
       setModalOpen(false)
       loadGroups()
     } catch {
-      toast.error("Сетевая ошибка")
+      toast.error(t("toastNetworkError"))
     } finally {
       setSaving(false)
     }
@@ -223,9 +225,9 @@ export default function TeacherGroupsClient() {
       const res = await fetch(`/api/teacher/groups/${encodeURIComponent(g.id)}`, { method: "DELETE" })
       if (res.status === 401) return handle401()
       if (!res.ok) throw new Error("failed")
-      toast.success("Группа удалена")
+      toast.success(t("toastDeleted"))
     } catch {
-      toast.error("Не удалось удалить")
+      toast.error(t("toastDeleteFailed"))
       setGroups(prev)
     }
   }
@@ -257,11 +259,11 @@ export default function TeacherGroupsClient() {
       )
       if (r.status === 401) return handle401()
       if (!r.ok) throw new Error("failed")
-      toast.success("Удалён из группы")
+      toast.success(t("toastRemoved"))
       // refresh list count
       loadGroups()
     } catch {
-      toast.error("Не удалось удалить")
+      toast.error(t("toastRemoveFailed"))
       setDetailMembers(prev)
     }
   }
@@ -294,10 +296,10 @@ export default function TeacherGroupsClient() {
           },
         ])
       }
-      toast.success("Добавлен в группу")
+      toast.success(t("toastAdded"))
       loadGroups()
     } catch {
-      toast.error("Не удалось добавить")
+      toast.error(t("toastAddFailed"))
     }
   }
 
@@ -305,7 +307,7 @@ export default function TeacherGroupsClient() {
     <>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
         <button className="btn btn-primary" onClick={openCreate} type="button">
-          + Создать группу
+          {t("createBtn")}
         </button>
       </div>
 
@@ -316,20 +318,20 @@ export default function TeacherGroupsClient() {
             Эндпоинт /api/teacher/groups ещё не задеплоен — обнови страницу через минуту.
           </div>
         ) : loading ? (
-          <div className="g-empty">Загрузка...</div>
+          <div className="g-empty">{t("loading")}</div>
         ) : groups.length === 0 ? (
           <div className="g-empty">
-            <b>Групп пока нет</b>
-            Создай первую группу, чтобы удобно делиться материалами сразу с несколькими учениками.
+            <b>{t("emptyTitle")}</b>
+            {t("emptyBody")}
           </div>
         ) : (
           <table className="g-tbl">
             <thead>
               <tr>
-                <th>Название</th>
-                <th>Участники</th>
-                <th>Создана</th>
-                <th style={{ textAlign: "right" }}>Действия</th>
+                <th>{t("colName")}</th>
+                <th>{t("colMembers")}</th>
+                <th>{t("colCreated")}</th>
+                <th style={{ textAlign: "right" }}>{t("colActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -361,7 +363,7 @@ export default function TeacherGroupsClient() {
                         }}
                         type="button"
                       >
-                        Редактировать
+                        {t("actionEdit")}
                       </button>
                       <button
                         className="btn btn-danger btn-sm"
@@ -371,7 +373,7 @@ export default function TeacherGroupsClient() {
                         }}
                         type="button"
                       >
-                        Удалить
+                        {t("actionDelete")}
                       </button>
                     </div>
                   </td>
@@ -389,31 +391,31 @@ export default function TeacherGroupsClient() {
           onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false) }}
         >
           <div className="modal-card" role="dialog" aria-modal="true">
-            <h2>{editingGroup ? "Редактировать группу" : "Новая группа"}</h2>
+            <h2>{editingGroup ? t("modalEditTitle") : t("modalCreateTitle")}</h2>
             <div className="modal-sub">
-              {editingGroup ? "Обнови название и состав" : "Задай название и выбери участников"}
+              {editingGroup ? t("modalEditSub") : t("modalCreateSub")}
             </div>
 
             <div className="field">
-              <label>Название</label>
+              <label>{t("fieldName")}</label>
               <input
                 value={mName}
                 onChange={(e) => setMName(e.target.value)}
-                placeholder="Напр. B2 Morning"
+                placeholder={t("namePlaceholder")}
               />
             </div>
 
             <div className="field">
-              <label>Описание</label>
+              <label>{t("fieldDescription")}</label>
               <textarea
                 value={mDesc}
                 onChange={(e) => setMDesc(e.target.value)}
-                placeholder="Короткая заметка для себя"
+                placeholder={t("descriptionPlaceholder")}
               />
             </div>
 
             <div className="field">
-              <label>Участники ({mMembers.size})</label>
+              <label>{t("membersLabel")} ({mMembers.size})</label>
               <div className="mem-list">
                 {students.length === 0 ? (
                   <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
@@ -436,7 +438,7 @@ export default function TeacherGroupsClient() {
                         ) : (
                           <div className="av">{initialsOf(s.full_name) || "?"}</div>
                         )}
-                        <div className="nm">{s.full_name || "Без имени"}</div>
+                        <div className="nm">{s.full_name || t("studentFallback")}</div>
                         {s.english_level ? <span className="lvl">{s.english_level}</span> : null}
                       </div>
                     )
@@ -452,7 +454,7 @@ export default function TeacherGroupsClient() {
                 disabled={saving}
                 type="button"
               >
-                Отмена
+                {t("cancelBtn")}
               </button>
               <button
                 className="btn btn-primary"
@@ -460,7 +462,7 @@ export default function TeacherGroupsClient() {
                 disabled={saving || !mName.trim()}
                 type="button"
               >
-                {saving ? "Сохраняю..." : editingGroup ? "Сохранить" : "Создать"}
+                {saving ? t("savingBtn") : editingGroup ? t("saveBtn") : t("createBtnShort")}
               </button>
             </div>
           </div>
@@ -476,19 +478,19 @@ export default function TeacherGroupsClient() {
           <div className="modal-card" role="dialog" aria-modal="true">
             <h2>{detailGroup.name}</h2>
             <div className="modal-sub">
-              {detailGroup.description || "Участники группы"}
+              {detailGroup.description || t("detailMembersTitle")}
             </div>
 
             <div className="field">
-              <label>Участники ({detailMembers.length})</label>
+              <label>{t("membersLabel")} ({detailMembers.length})</label>
               <div className="mem-list">
                 {detailLoading ? (
                   <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
-                    Загрузка...
+                    {t("loading")}
                   </div>
                 ) : detailMembers.length === 0 ? (
                   <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
-                    Пока никого нет
+                    {t("emptyTitle")}
                   </div>
                 ) : (
                   detailMembers.map((m) => (
@@ -506,7 +508,7 @@ export default function TeacherGroupsClient() {
                         type="button"
                         style={{ marginLeft: 8 }}
                       >
-                        Убрать
+                        {t("actionDelete")}
                       </button>
                     </div>
                   ))
@@ -516,7 +518,7 @@ export default function TeacherGroupsClient() {
 
             {notInGroup.length > 0 && (
               <div className="field">
-                <label>Добавить</label>
+                <label>{t("addLabel")}</label>
                 <div className="mem-list" style={{ maxHeight: 160 }}>
                   {notInGroup.map((s) => (
                     <div key={s.id} className="mem-item" onClick={() => addMemberToDetail(s.id)}>
@@ -540,7 +542,7 @@ export default function TeacherGroupsClient() {
                 onClick={() => setDetailOpen(false)}
                 type="button"
               >
-                Закрыть
+                {t("cancelBtn")}
               </button>
               <button
                 className="btn btn-primary"
@@ -550,7 +552,7 @@ export default function TeacherGroupsClient() {
                 }}
                 type="button"
               >
-                Редактировать
+                {t("actionEdit")}
               </button>
             </div>
           </div>

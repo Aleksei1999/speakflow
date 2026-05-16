@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, isSameDay, isBefore, startOfDay } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonsRealtime } from "@/hooks/use-lessons-realtime"
@@ -109,6 +110,10 @@ import { useModalA11y } from "@/hooks/use-modal-a11y"
 
 export function LessonBookingModal({ open, onOpenChange, initialDate, initialTime, initialTeacherProfileId, onBooked }: Props) {
   const router = useRouter()
+  const t = useTranslations("components.bookingModal")
+  const locale = useLocale()
+  const dateLocale = locale === "ru" ? ru : enUS
+  const WEEKDAYS_I18N = [t("weekdayMon"), t("weekdayTue"), t("weekdayWed"), t("weekdayThu"), t("weekdayFri"), t("weekdaySat"), t("weekdaySun")]
   const modalRef = useModalA11y(open, () => onOpenChange(false))
   const [step, setStep] = useState<"teacher" | "calendar">("teacher")
   const [teachers, setTeachers] = useState<TeacherOption[]>([])
@@ -208,7 +213,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
         if (cancelled) return
         if (tpErr) {
           console.error("[booking] teacher_profiles load failed:", tpErr)
-          toast.error("Не удалось загрузить преподавателей")
+          toast.error(t("errorLoadTeachers"))
           setTeachers([])
           setTeachersLoading(false)
           return
@@ -243,7 +248,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
           return {
             teacherProfileId: row.id,
             userId: row.user_id,
-            name: prof?.full_name ?? "Преподаватель",
+            name: prof?.full_name ?? t("fallbackTeacherName"),
             avatarUrl: prof?.avatar_url ?? null,
             hourlyRate: row.hourly_rate ?? 0,
             rating: row.rating,
@@ -271,7 +276,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
       } catch (e) {
         if (!cancelled) {
           console.error("[booking] teachers fetch crashed:", e)
-          toast.error("Ошибка соединения с сервером")
+          toast.error(t("errorNetwork"))
           setTeachers([])
         }
       } finally {
@@ -291,7 +296,7 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
       const res = await fetch(`/api/booking/slots?teacherId=${teacherUserId}&date=${dateStr}&duration=${dur}`)
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data?.error ?? "Ошибка загрузки слотов")
+        toast.error(data?.error ?? t("errorLoadSlots"))
         setSlots([])
         return
       }
@@ -410,23 +415,23 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
       })
       const data = await res.json()
       if (res.status === 409) {
-        toast.error("Слот только что занят, выберите другой")
+        toast.error(t("errorSlotTaken"))
         if (selectedDate) loadSlots(selectedTeacher.userId, selectedDate, duration, selectedTeacher.teacherProfileId)
         setBookingLoading(false)
         return
       }
       if (!res.ok) {
-        toast.error(data?.error ?? "Ошибка бронирования")
+        toast.error(data?.error ?? t("errorBooking"))
         setBookingLoading(false)
         return
       }
       // Показываем success-toast ДО navigation — Sonner живёт в layout
       // и переживает router.push (но не window.location.href).
-      toast.success("Ты записан на урок!", {
+      toast.success(t("successTitle"), {
         description: format(
           new Date(selectedSlot),
-          "d MMMM в HH:mm",
-          { locale: ru }
+          locale === "ru" ? "d MMMM в HH:mm" : "MMMM d 'at' HH:mm",
+          { locale: dateLocale }
         ),
         duration: 4000,
       })
@@ -472,32 +477,32 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
   if (!open) return null
 
   const ctaLabel = (() => {
-    if (bookingLoading) return "Бронирование..."
-    if (!selectedDate) return "Выбери день"
-    if (!selectedSlot) return "Выбери время"
+    if (bookingLoading) return t("ctaBooking")
+    if (!selectedDate) return t("ctaPickDay")
+    if (!selectedSlot) return t("ctaPickTime")
     // TEMP: disabled until Yookassa integration is live — a2a0600
     // return `Забронировать · ${formatPrice(price)}`
-    return `Записаться бесплатно`
+    return t("ctaBookFree")
   })()
 
   return (
     <>
       <div className={`cal-overlay ${open ? "open visible" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false) }}>
-        <div ref={modalRef} className={step === "teacher" ? "tch-modal" : "cal-modal"} role="dialog" aria-modal="true" aria-label="Бронирование урока">
+        <div ref={modalRef} className={step === "teacher" ? "tch-modal" : "cal-modal"} role="dialog" aria-modal="true" aria-label={t("ariaLabel")}>
           {step === "teacher" ? (
             <>
               <div className="tch-header">
-                <h3>Выбор преподавателя</h3>
-                <button className="cal-close" onClick={() => onOpenChange(false)} aria-label="Закрыть">✕</button>
+                <h3>{t("teacherStepTitle")}</h3>
+                <button className="cal-close" onClick={() => onOpenChange(false)} aria-label={t("closeAria")}>✕</button>
               </div>
               <div className="tch-body">
                 <div className="tch-filters">
                   {[
-                    { k: "all", label: "Все" },
-                    { k: "native", label: "Native" },
-                    { k: "general", label: "General" },
-                    { k: "business", label: "Business" },
-                    { k: "ielts", label: "IELTS / FCE" },
+                    { k: "all", label: t("filterAll") },
+                    { k: "native", label: t("filterNative") },
+                    { k: "general", label: t("filterGeneral") },
+                    { k: "business", label: t("filterBusiness") },
+                    { k: "ielts", label: t("filterIelts") },
                   ].map((f) => (
                     <button
                       key={f.k}
@@ -509,29 +514,29 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                   ))}
                 </div>
                 {teachersLoading ? (
-                  <div className="tch-empty">Загружаем преподавателей...</div>
+                  <div className="tch-empty">{t("loadingTeachers")}</div>
                 ) : filteredTeachers.length === 0 ? (
-                  <div className="tch-empty">Преподаватели не найдены</div>
+                  <div className="tch-empty">{t("noTeachers")}</div>
                 ) : (
                   <div className="tch-list">
-                    {filteredTeachers.map((t) => (
+                    {filteredTeachers.map((tc) => (
                       <button
-                        key={t.teacherProfileId}
+                        key={tc.teacherProfileId}
                         className="tch-card"
                         onClick={() => {
-                          setSelectedTeacher(t)
+                          setSelectedTeacher(tc)
                           setStep("calendar")
                           if (!selectedDate) setSelectedDate(today)
                         }}
                       >
                         <div
                           className="tch-avatar"
-                          style={!t.avatarUrl ? { background: colorFromName(t.name) } : undefined}
+                          style={!tc.avatarUrl ? { background: colorFromName(tc.name) } : undefined}
                         >
-                          {t.avatarUrl ? (
+                          {tc.avatarUrl ? (
                             <img
-                              src={t.avatarUrl}
-                              alt={t.name}
+                              src={tc.avatarUrl}
+                              alt={tc.name}
                               onError={(e) => {
                                 // Если файл недоступен (например удалён из Storage)
                                 // — прячем картинку, инициалы покажутся из span ниже.
@@ -540,32 +545,32 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                                 const span = img.nextElementSibling as HTMLElement | null
                                 if (span) span.style.display = "flex"
                                 const card = img.closest(".tch-avatar") as HTMLElement | null
-                                if (card) card.style.background = colorFromName(t.name)
+                                if (card) card.style.background = colorFromName(tc.name)
                               }}
                             />
                           ) : null}
-                          <span style={{ display: t.avatarUrl ? "none" : "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
-                            {getInitials(t.name)}
+                          <span style={{ display: tc.avatarUrl ? "none" : "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}>
+                            {getInitials(tc.name)}
                           </span>
                         </div>
                         <div className="tch-info">
-                          <div className="tch-name">{t.name}</div>
+                          <div className="tch-name">{tc.name}</div>
                           <div className="tch-spec">
-                            {[t.specializations.slice(0, 3).join(" · "), t.experienceYears ? `${t.experienceYears} лет опыта` : null]
+                            {[tc.specializations.slice(0, 3).join(" · "), tc.experienceYears ? t("experienceYears", { years: tc.experienceYears }) : null]
                               .filter(Boolean)
-                              .join(" · ") || "Преподаватель английского"}
+                              .join(" · ") || t("fallbackTeacherSpec")}
                           </div>
                         </div>
                         <div className="tch-right">
-                          {t.rating != null && (
+                          {tc.rating != null && (
                             <div className="tch-rating">
                               <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                              {t.rating.toFixed(1)}
+                              {tc.rating.toFixed(1)}
                             </div>
                           )}
                           {/* TEMP: disabled until Yookassa integration is live — a2a0600 */}
-                          {/* <div className="tch-price"><b>{formatPrice(t.hourlyRate)}</b> / час</div> */}
-                          <div className="tch-price"><b>Пробный</b> · 0 ₽</div>
+                          {/* <div className="tch-price"><b>{formatPrice(tc.hourlyRate)}</b> / час</div> */}
+                          <div className="tch-price"><b>{t("trialBadge")}</b> · 0 ₽</div>
                         </div>
                       </button>
                     ))}
@@ -577,13 +582,13 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
             <>
               <div className="cal-header">
                 <div className="cal-header-left">
-                  <button className="cal-back" onClick={() => setStep("teacher")} aria-label="Назад">←</button>
+                  <button className="cal-back" onClick={() => setStep("teacher")} aria-label={t("backAria")}>←</button>
                   <div>
-                    <h3>Записаться на занятие</h3>
+                    <h3>{t("calendarStepTitle")}</h3>
                     <div className="cal-sub">{selectedTeacher?.name}</div>
                   </div>
                 </div>
-                <button className="cal-close" onClick={() => onOpenChange(false)} aria-label="Закрыть">✕</button>
+                <button className="cal-close" onClick={() => onOpenChange(false)} aria-label={t("closeAria")}>✕</button>
               </div>
               <div className="cal-body">
                 <div className="cal-dur">
@@ -593,19 +598,19 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                       className={`cal-dur-btn${duration === d ? " active" : ""}`}
                       onClick={() => setDuration(d)}
                     >
-                      {d} мин
+                      {t("durationMinutes", { minutes: d })}
                     </button>
                   ))}
                 </div>
 
                 <div className="cal-month">
-                  <button className="cal-month-btn" onClick={() => setViewMonth((m) => subMonths(m, 1))} aria-label="Предыдущий месяц">←</button>
-                  <div className="cal-month-name">{format(viewMonth, "LLLL yyyy", { locale: ru })}</div>
-                  <button className="cal-month-btn" onClick={() => setViewMonth((m) => addMonths(m, 1))} aria-label="Следующий месяц">→</button>
+                  <button className="cal-month-btn" onClick={() => setViewMonth((m) => subMonths(m, 1))} aria-label={t("prevMonthAria")}>←</button>
+                  <div className="cal-month-name">{format(viewMonth, "LLLL yyyy", { locale: dateLocale })}</div>
+                  <button className="cal-month-btn" onClick={() => setViewMonth((m) => addMonths(m, 1))} aria-label={t("nextMonthAria")}>→</button>
                 </div>
 
                 <div className="cal-grid">
-                  {WEEKDAYS.map((d) => <div key={d} className="cal-day-head">{d}</div>)}
+                  {WEEKDAYS_I18N.map((d) => <div key={d} className="cal-day-head">{d}</div>)}
                   {monthDays.map((d, i) => {
                     if (!d) return <div key={`e${i}`} className="cal-day cal-day--empty" />
                     const past = isBefore(d, today)
@@ -631,14 +636,14 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                 {selectedDate && (
                   <>
                     <div className="cal-slots-title">
-                      Доступные слоты — {format(selectedDate, "d MMMM", { locale: ru })}
+                      {t("slotsHeading", { date: format(selectedDate, locale === "ru" ? "d MMMM" : "MMMM d", { locale: dateLocale }) })}
                     </div>
                     {slotsLoading ? (
                       <div className="cal-slots">
                         {Array.from({ length: 6 }).map((_, i) => <div key={i} className="cal-slot cal-slot--skeleton" />)}
                       </div>
                     ) : slotsView.length === 0 ? (
-                      <div className="cal-empty">Нет слотов на этот день</div>
+                      <div className="cal-empty">{t("noSlots")}</div>
                     ) : (
                       <div className="cal-slots">
                         {slotsView.map((s) => {
@@ -654,14 +659,14 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                               className={cls.join(" ")}
                               disabled={!s.available}
                               onClick={() => s.available && setSelectedSlot(s.startTime)}
-                              title={isAuto ? "Твоё обычное время — предложили автоматически" : undefined}
+                              title={isAuto ? t("preferredSlotTitle") : undefined}
                             >
                               <div className="cal-slot-time">
                                 {isAuto ? "🔁 " : ""}
                                 {formatTimeMoscow(s.startTime)}
                               </div>
                               <div className="cal-slot-dur">
-                                {isAuto ? "обычное время" : s.available ? `${duration} мин · МСК` : "Занято"}
+                                {isAuto ? t("preferredSlotSub") : s.available ? t("slotMscSuffix", { minutes: duration }) : t("slotTaken")}
                               </div>
                             </button>
                           )
@@ -693,9 +698,9 @@ export function LessonBookingModal({ open, onOpenChange, initialDate, initialTim
                     style={{ accentColor: "#B63F37" }}
                   />
                   <span>
-                    🔁 Закрепить за собой это время
+                    {t("pinSlotLabel")}
                     <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 6 }}>
-                      (будем напоминать про повторную запись)
+                      {t("pinSlotHint")}
                     </span>
                   </span>
                 </label>
