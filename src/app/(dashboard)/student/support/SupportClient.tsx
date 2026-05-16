@@ -3,7 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ru } from "date-fns/locale"
+import { ru, enUS } from "date-fns/locale"
+import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { TurnstileWidget } from "@/components/auth/turnstile-widget"
@@ -144,6 +145,9 @@ export default function SupportClient({
   role: Role
 }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const t = useTranslations("dashboard.student.support")
+  const locale = useLocale()
+  const dfLocale = locale === "en" ? enUS : ru
 
   const [threads, setThreads] = useState<Thread[]>([])
   const [loadingThreads, setLoadingThreads] = useState(true)
@@ -293,13 +297,13 @@ export default function SupportClient({
       // Refresh thread list last_message preview
       loadThreads()
     } catch {
-      toast.error("Не удалось отправить сообщение")
+      toast.error(t("errorSend"))
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       setDraft(body)
     } finally {
       setSending(false)
     }
-  }, [draft, activeId, sending, userId, role, loadThreads])
+  }, [draft, activeId, sending, userId, role, loadThreads, t])
 
   const handleCreate = useCallback(async () => {
     const s = subject.trim()
@@ -314,27 +318,27 @@ export default function SupportClient({
       })
       if (!res.ok) throw new Error("failed")
       const json = await res.json()
-      const t = json?.thread as Thread | undefined
-      toast.success("Обращение создано")
+      const created = json?.thread as Thread | undefined
+      toast.success(t("successCreated"))
       setModalOpen(false)
       setSubject("")
       setFirstBody("")
       await loadThreads()
-      if (t?.id) setActiveId(t.id)
+      if (created?.id) setActiveId(created.id)
     } catch {
-      toast.error("Не удалось создать обращение")
+      toast.error(t("errorCreate"))
     } finally {
       setCreating(false)
     }
-  }, [subject, firstBody, creating, loadThreads])
+  }, [subject, firstBody, creating, loadThreads, t])
 
   const filteredThreads = useMemo(() => {
     if (!search.trim()) return threads
     const q = search.trim().toLowerCase()
     return threads.filter(
-      (t) =>
-        (t.subject ?? "").toLowerCase().includes(q) ||
-        (t.last_message ?? "").toLowerCase().includes(q)
+      (th) =>
+        (th.subject ?? "").toLowerCase().includes(q) ||
+        (th.last_message ?? "").toLowerCase().includes(q)
     )
   }, [threads, search])
 
@@ -345,15 +349,15 @@ export default function SupportClient({
       const d = new Date(m.created_at)
       const key = format(d, "yyyy-MM-dd")
       if (key !== lastKey) {
-        groups.push({ dateLabel: format(d, "d MMMM yyyy", { locale: ru }), items: [] })
+        groups.push({ dateLabel: format(d, "d MMMM yyyy", { locale: dfLocale }), items: [] })
         lastKey = key
       }
       groups[groups.length - 1].items.push(m)
     }
     return groups
-  }, [messages])
+  }, [messages, dfLocale])
 
-  const roleLabel = role === "teacher" ? "преподавателя" : "ученика"
+  const emptyThreadsCopy = role === "teacher" ? t("emptyThreadsTeacher") : t("emptyThreadsStudent")
 
   return (
     <>
@@ -362,10 +366,10 @@ export default function SupportClient({
         <div className="sp-hdr">
           <div>
             <h1>
-              Центр <span className="gl">support</span>
+              {t("headingPrefix")} <span className="gl">{t("headingWord")}</span>
             </h1>
             <div className="sub">
-              Напишите нам, если что-то не работает или нужен совет. Мы отвечаем в течение рабочего дня.
+              {t("subtitle")}
             </div>
           </div>
           <button
@@ -373,7 +377,7 @@ export default function SupportClient({
             className="btn btn-red"
             onClick={() => setModalOpen(true)}
           >
-            + Новый обращение
+            {t("newThread")}
           </button>
         </div>
 
@@ -381,15 +385,15 @@ export default function SupportClient({
           {/* LIST */}
           <aside className="sp-list">
             <div className="sp-list-head">
-              <h3>Мои обращения</h3>
+              <h3>{t("myThreads")}</h3>
               <span className="count">
-                {threads.length > 0 ? `${threads.length} шт.` : "0 шт."}
+                {t("countLabel", { count: threads.length })}
               </span>
             </div>
             <div className="sp-search">
               <input
                 type="text"
-                placeholder="Поиск по теме"
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -407,43 +411,41 @@ export default function SupportClient({
                 </>
               ) : filteredThreads.length === 0 ? (
                 <div className="sp-empty">
-                  {search
-                    ? "По запросу ничего не найдено."
-                    : `Пока нет обращений. Создайте обращение, чтобы связаться с поддержкой ${roleLabel}.`}
+                  {search ? t("emptySearch") : emptyThreadsCopy}
                 </div>
               ) : (
-                filteredThreads.map((t) => {
-                  const timeLabel = t.last_message_at
-                    ? formatDistanceToNow(new Date(t.last_message_at), {
+                filteredThreads.map((row) => {
+                  const timeLabel = row.last_message_at
+                    ? formatDistanceToNow(new Date(row.last_message_at), {
                         addSuffix: false,
-                        locale: ru,
+                        locale: dfLocale,
                       })
                     : ""
                   return (
                     <button
-                      key={t.id}
+                      key={row.id}
                       type="button"
-                      className={`sp-thread${activeId === t.id ? " active" : ""}`}
-                      onClick={() => setActiveId(t.id)}
+                      className={`sp-thread${activeId === row.id ? " active" : ""}`}
+                      onClick={() => setActiveId(row.id)}
                     >
                       <div className="sp-thread-top">
-                        <span className="sp-thread-subj">{t.subject || "Без темы"}</span>
+                        <span className="sp-thread-subj">{row.subject || t("untitled")}</span>
                         {timeLabel ? <span className="sp-thread-time">{timeLabel}</span> : null}
                       </div>
-                      {t.last_message ? (
-                        <div className="sp-thread-preview">{t.last_message}</div>
+                      {row.last_message ? (
+                        <div className="sp-thread-preview">{row.last_message}</div>
                       ) : null}
                       <div className="sp-thread-meta">
-                        <span className={`pill ${t.status ?? "open"}`}>
-                          {t.status === "closed"
-                            ? "Закрыт"
-                            : t.status === "pending"
-                              ? "Ждёт ответа"
-                              : "Открыт"}
+                        <span className={`pill ${row.status ?? "open"}`}>
+                          {row.status === "closed"
+                            ? t("statusClosed")
+                            : row.status === "pending"
+                              ? t("statusPending")
+                              : t("statusOpen")}
                         </span>
-                        {t.priority && t.priority !== "normal" && t.priority !== "low" ? (
-                          <span className={`pill ${t.priority}`}>
-                            {t.priority === "urgent" ? "Срочно" : "Приоритет"}
+                        {row.priority && row.priority !== "normal" && row.priority !== "low" ? (
+                          <span className={`pill ${row.priority}`}>
+                            {row.priority === "urgent" ? t("priorityUrgent") : t("priorityHigh")}
                           </span>
                         ) : null}
                       </div>
@@ -463,17 +465,16 @@ export default function SupportClient({
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                 </div>
-                <h3>Выберите обращение</h3>
+                <h3>{t("blankTitle")}</h3>
                 <p>
-                  Откройте существующее обращение слева или создайте новое, чтобы начать переписку с командой
-                  поддержки.
+                  {t("blankBody")}
                 </p>
                 <button
                   type="button"
                   className="btn btn-dark"
                   onClick={() => setModalOpen(true)}
                 >
-                  + Новый обращение
+                  {t("newThread")}
                 </button>
               </div>
             ) : (
@@ -481,24 +482,25 @@ export default function SupportClient({
                 <div className="sp-chat-head">
                   <div className="sp-chat-title">
                     <span className="sp-chat-subj">
-                      {activeThread?.subject ?? "Загрузка..."}
+                      {activeThread?.subject ?? t("loadingThread")}
                     </span>
                     <span className="sp-chat-meta">
                       {activeThread?.status ? (
                         <span className={`pill ${activeThread.status}`}>
                           {activeThread.status === "closed"
-                            ? "Закрыт"
+                            ? t("statusClosed")
                             : activeThread.status === "pending"
-                              ? "Ждёт ответа"
-                              : "Открыт"}
+                              ? t("statusPending")
+                              : t("statusOpen")}
                         </span>
                       ) : null}
                       {activeThread?.last_message_at ? (
                         <span>
-                          Обновлён{" "}
-                          {formatDistanceToNow(new Date(activeThread.last_message_at), {
-                            addSuffix: true,
-                            locale: ru,
+                          {t("updatedAt", {
+                            when: formatDistanceToNow(new Date(activeThread.last_message_at), {
+                              addSuffix: true,
+                              locale: dfLocale,
+                            }),
                           })}
                         </span>
                       ) : null}
@@ -509,11 +511,11 @@ export default function SupportClient({
                 <div className="sp-chat-body" ref={bodyRef}>
                   {loadingMessages ? (
                     <div className="sp-empty" style={{ margin: "auto" }}>
-                      Загружаю сообщения...
+                      {t("loadingMessages")}
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="sp-empty" style={{ margin: "auto" }}>
-                      Здесь пока нет сообщений.
+                      {t("noMessages")}
                     </div>
                   ) : (
                     messagesGrouped.map((group) => (
@@ -525,14 +527,14 @@ export default function SupportClient({
                           const cls = system ? "system" : mine ? "mine" : "theirs"
                           const time = format(new Date(m.created_at), "HH:mm")
                           const authorLabel = system
-                            ? "Система"
+                            ? t("authorSystem")
                             : m.author_role === "admin"
-                              ? "Поддержка"
+                              ? t("authorSupport")
                               : m.author_role === "teacher"
-                                ? "Преподаватель"
+                                ? t("authorTeacher")
                                 : mine
-                                  ? "Вы"
-                                  : "Собеседник"
+                                  ? t("authorYou")
+                                  : t("authorPeer")
                           return (
                             <div key={m.id} className={`sp-msg ${cls}`}>
                               <div className="sp-bubble">{m.body}</div>
@@ -557,8 +559,8 @@ export default function SupportClient({
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder={
                         activeThread?.status === "closed"
-                          ? "Обращение закрыт. Создайте новый, чтобы продолжить."
-                          : "Напишите сообщение..."
+                          ? t("composerClosed")
+                          : t("composerPlaceholder")
                       }
                       disabled={activeThread?.status === "closed" || sending}
                       rows={1}
@@ -578,7 +580,7 @@ export default function SupportClient({
                         sending ||
                         activeThread?.status === "closed"
                       }
-                      aria-label="Отправить"
+                      aria-label={t("sendAria")}
                     >
                       <svg viewBox="0 0 24 24">
                         <line x1="22" y1="2" x2="11" y2="13" />
@@ -601,26 +603,26 @@ export default function SupportClient({
           }}
         >
           <div className="m-card">
-            <h2>Новый обращение</h2>
+            <h2>{t("modalTitle")}</h2>
             <p className="sub">
-              Опишите вопрос как можно подробнее — так мы ответим быстрее и точнее.
+              {t("modalSub")}
             </p>
 
-            <label htmlFor="sp-subj">Тема</label>
+            <label htmlFor="sp-subj">{t("subjectLabel")}</label>
             <input
               id="sp-subj"
               type="text"
-              placeholder="Например: не получается забронировать урок"
+              placeholder={t("subjectPlaceholder")}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               maxLength={140}
               disabled={creating}
             />
 
-            <label htmlFor="sp-body">Сообщение</label>
+            <label htmlFor="sp-body">{t("bodyLabel")}</label>
             <textarea
               id="sp-body"
-              placeholder="Что случилось, какие шаги вы уже попробовали, какой ожидали результат?"
+              placeholder={t("bodyPlaceholder")}
               value={firstBody}
               onChange={(e) => setFirstBody(e.target.value)}
               disabled={creating}
@@ -637,7 +639,7 @@ export default function SupportClient({
                 onClick={() => setModalOpen(false)}
                 disabled={creating}
               >
-                Отмена
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -645,7 +647,7 @@ export default function SupportClient({
                 onClick={handleCreate}
                 disabled={!subject.trim() || !firstBody.trim() || creating}
               >
-                {creating ? "Отправка..." : "Создать обращение"}
+                {creating ? t("creating") : t("createCta")}
               </button>
             </div>
           </div>

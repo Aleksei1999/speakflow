@@ -1,5 +1,8 @@
 // Skeleton для /student/support — раньше 5+ сек белого экрана на мобиле.
-export default function StudentSupportLoading() {
+import { getTranslations } from "next-intl/server"
+
+export default async function StudentSupportLoading() {
+  const t = await getTranslations("dashboard.student.support")
   return (
     <div
       className="dashboard-content"
@@ -7,7 +10,7 @@ export default function StudentSupportLoading() {
       aria-live="polite"
       style={{ display: "flex", flexDirection: "column", gap: 16, padding: 4 }}
     >
-      <span className="sr-only">Загрузка обращений…</span>
+      <span className="sr-only">{t("loadingLabel")}</span>
       <div className="skeleton-block" style={{ height: 56, maxWidth: 320 }} />
       <div className="skeleton-block" style={{ height: 120 }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

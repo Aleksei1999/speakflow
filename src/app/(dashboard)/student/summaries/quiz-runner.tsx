@@ -6,6 +6,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { CheckCircle2, XCircle, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -40,6 +41,7 @@ type Result = {
 
 export function QuizRunner({ quizId, questions, previous }: Props) {
   const router = useRouter()
+  const t = useTranslations("dashboard.student.summaries")
   const [chosen, setChosen] = useState<number[]>(() =>
     questions.map((_, i) =>
       previous ? previous.answers[i]?.chosen_index ?? -1 : -1
@@ -63,7 +65,7 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
 
   async function submit() {
     if (!allAnswered) {
-      setError("Ответь на все вопросы")
+      setError(t("quizErrorAll"))
       return
     }
     setSubmitting(true)
@@ -76,7 +78,7 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok && r.status !== 409) {
-        setError(j?.error ?? "Не удалось отправить")
+        setError(j?.error ?? t("quizErrorSubmit"))
         setSubmitting(false)
         return
       }
@@ -93,7 +95,7 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
       // questions с correct_index/explanation (раньше скрытые, security MED).
       router.refresh()
     } catch (e: any) {
-      setError(e?.message ?? "Ошибка сети")
+      setError(e?.message ?? t("quizErrorNetwork"))
     } finally {
       setSubmitting(false)
     }
@@ -103,7 +105,7 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
     <div className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-4">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Sparkles className="size-4 text-[#CC3A3A]" />
-        Тест по уроку ({questions.length} вопросов)
+        {t("quizTitle", { count: questions.length })}
       </div>
 
       {result && (
@@ -117,11 +119,11 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
                 : "bg-red-500/10 text-red-700"
           )}
         >
-          Результат: {result.score} / {result.total}
+          {t("quizResult", { score: result.score, total: result.total })}
           {result.xpAwarded > 0 && (
             <span className="ml-2">+{result.xpAwarded} XP</span>
           )}
-          {result.perfect && " · идеально!"}
+          {result.perfect && t("quizPerfect")}
         </div>
       )}
 
@@ -217,10 +219,10 @@ export function QuizRunner({ quizId, questions, previous }: Props) {
           >
             {submitting ? (
               <>
-                <Loader2 className="mr-2 size-4 animate-spin" /> Отправка...
+                <Loader2 className="mr-2 size-4 animate-spin" /> {t("quizSubmitting")}
               </>
             ) : (
-              "Отправить ответы"
+              t("quizSubmit")
             )}
           </Button>
         </div>
