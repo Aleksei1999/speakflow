@@ -267,12 +267,11 @@ export function LessonRoomClient({
         })
       }
       if (disposed||!jitsiRef.current) return
-      // Студент управляет всем через свой bottom bar (toolbar пустой).
-      // Преподавателю нужен доступ к moderator-only действиям —
-      // kick/mute participant находятся в participants-pane.
-      const toolbarForRole: string[] = isTeacher
-        ? ["participants-pane", "select-background", "tileview"]
-        : []
+      // В 1-on-1 уроке нечего модерировать (двое участников всегда в tile).
+      // Управление mic/cam/share/leave у обоих через наш bottom bar.
+      // Для speaking-clubs (>2 чел) moderator toolbar остаётся в
+      // club-room-client.tsx с host-кнопками.
+      const toolbarForRole: string[] = []
       const api = new window.JitsiMeetExternalAPI(jitsiDomain, {
         roomName: jitsiRoom, parentNode: jitsiRef.current, width:"100%", height:"100%",
         ...(jitsiToken?{jwt:jitsiToken}:{}),
