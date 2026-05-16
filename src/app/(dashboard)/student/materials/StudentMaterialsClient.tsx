@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 type Owner = {
   id?: string | null
@@ -156,6 +157,7 @@ function TypeIcon({ type }: { type: TypeKey }) {
 // ------- component -------
 
 export default function StudentMaterialsClient({ initial }: { initial: Snapshot }) {
+  const t = useTranslations("dashboard.student.materials")
   const [snap, setSnap] = useState<Snapshot>(initial)
   const [filter, setFilter] = useState<FilterKey>("all")
   const [search, setSearch] = useState("")
@@ -338,7 +340,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer")
     } else {
-      toast.error("Ссылка на файл недоступна")
+      toast.error(t("linkUnavailable"))
     }
   }
 
@@ -362,11 +364,11 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
     return {
       count: g.items.length,
       teacherName,
-      title: first?.title || "Свежие материалы",
-      description: first?.description || "Изучи, что добавил преподаватель после урока",
+      title: first?.title || t("freshFallbackTitle"),
+      description: first?.description || t("freshFallbackDesc"),
       groupKey: g.key,
     }
-  }, [groups])
+  }, [groups, t])
 
   const counts = {
     all: (snap.materials || []).length,
@@ -380,8 +382,8 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
 
       <div className="main-header">
         <div>
-          <h1>Мои <span className="gl">materials</span></h1>
-          <div className="sub">Всё, что твои преподаватели добавляют после уроков: шаблоны, видео, упражнения для закрепления</div>
+          <h1>{t("headingMy")} <span className="gl">{t("headingWord")}</span></h1>
+          <div className="sub">{t("subtitle")}</div>
         </div>
       </div>
 
@@ -394,10 +396,10 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
             <div className="ft-info">
               <div className="ft-label">
                 <span className="pulse" />
-                после урока{hero.teacherName ? ` · добавил(а) ${hero.teacherName}` : ""}
+                {hero.teacherName ? t("afterTeacherWho", { name: hero.teacherName }) : t("afterTeacherLabel")}
               </div>
               <div className="ft-title">
-                Закрепи тему <span className="gl">{hero.title}</span>
+                {t("ftPinTitle")} <span className="gl">{hero.title}</span>
               </div>
               <div className="ft-sub">{hero.description}</div>
             </div>
@@ -410,9 +412,9 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
                 setOpenGroups(new Set([hero.groupKey]))
               }}
             >
-              Открыть всё
+              {t("ftCtaOpen")}
             </button>
-            <button className="btn btn-ghost-dark" onClick={() => setFilter("all")}>Позже</button>
+            <button className="btn btn-ghost-dark" onClick={() => setFilter("all")}>{t("ftCtaLater")}</button>
           </div>
         </div>
       ) : null}
@@ -425,7 +427,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           </div>
           <div>
             <div className="m-stat-val">{stats.total}</div>
-            <div className="m-stat-lbl">Всего материалов</div>
+            <div className="m-stat-lbl">{t("statTotal")}</div>
           </div>
         </div>
         <div className="m-stat">
@@ -434,7 +436,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           </div>
           <div>
             <div className="m-stat-val" style={{ color: "var(--red)" }}>{stats.newCount}</div>
-            <div className="m-stat-lbl">Новых, посмотреть</div>
+            <div className="m-stat-lbl">{t("statNew")}</div>
           </div>
         </div>
         <div className="m-stat">
@@ -443,7 +445,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           </div>
           <div>
             <div className="m-stat-val">{stats.studied}</div>
-            <div className="m-stat-lbl">Уже изучил(а)</div>
+            <div className="m-stat-lbl">{t("statStudied")}</div>
           </div>
         </div>
         <div className="m-stat">
@@ -452,7 +454,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           </div>
           <div>
             <div className="m-stat-val"><span className="gl">+{stats.xpEarned}</span> XP</div>
-            <div className="m-stat-lbl">Получил(а) за изучение</div>
+            <div className="m-stat-lbl">{t("statXpEarned")}</div>
           </div>
         </div>
       </div>
@@ -464,7 +466,7 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
           <input
             type="text"
             className="search-input"
-            placeholder="Найти материал..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -474,33 +476,33 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
             className={filter === "all" ? "active" : ""}
             onClick={() => setFilter("all")}
           >
-            Все <span className="count-dot">{counts.all}</span>
+            {t("tabAll")} <span className="count-dot">{counts.all}</span>
           </button>
           <button
             className={filter === "new" ? "active" : ""}
             onClick={() => setFilter("new")}
           >
-            <span className="new-dot" />Новые <span className="count-dot">{counts.new}</span>
+            <span className="new-dot" />{t("tabNew")} <span className="count-dot">{counts.new}</span>
           </button>
           <button
             className={filter === "saved" ? "active" : ""}
             onClick={() => setFilter("saved")}
           >
-            ⭐ Сохранённые <span className="count-dot">{counts.saved}</span>
+            {t("tabSaved")} <span className="count-dot">{counts.saved}</span>
           </button>
           <button
             className={filter === "unseen" ? "active" : ""}
             onClick={() => setFilter("unseen")}
           >
-            Не посмотрел(а) <span className="count-dot">{counts.unseen}</span>
+            {t("tabUnseen")} <span className="count-dot">{counts.unseen}</span>
           </button>
         </div>
       </div>
 
       {apiMissing ? (
         <div className="empty-state">
-          <b>API подготавливается</b>
-          Эндпоинт /api/student/materials ещё не задеплоен — обнови страницу через минуту.
+          <b>{t("apiPreparingTitle")}</b>
+          {t("apiPreparingHint")}
         </div>
       ) : null}
 
@@ -509,8 +511,8 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
         <div className="section">
           <div className="section-head">
             <div>
-              <div className="section-title">⭐ Сохранил(а) для себя</div>
-              <div className="section-sub" style={{ marginTop: 4 }}>Материалы, к которым возвращаешься чаще всего</div>
+              <div className="section-title">{t("pinnedTitle")}</div>
+              <div className="section-sub" style={{ marginTop: 4 }}>{t("pinnedSub")}</div>
             </div>
           </div>
           <div className="pin-grid">
@@ -545,26 +547,26 @@ export default function StudentMaterialsClient({ initial }: { initial: Snapshot 
         <div className="section-head">
           <div>
             <div className="section-title">
-              После <span className="gl">lesson</span>
-              {counts.new > 0 ? <span className="new-pill">{counts.new} НОВ.</span> : null}
+              {t("byLessonTitle")} <span className="gl">{t("byLessonWord")}</span>
+              {counts.new > 0 ? <span className="new-pill">{t("byLessonNewPill", { count: counts.new })}</span> : null}
             </div>
             <div className="section-sub" style={{ marginTop: 4 }}>
-              Материалы от преподавателей сгруппированы по занятиям
+              {t("byLessonSub")}
             </div>
           </div>
         </div>
 
         {groups.length === 0 && !apiMissing && !loaded ? (
           <div className="empty-state">
-            <b>Загружаем материалы…</b>
-            Это займёт пару секунд.
+            <b>{t("loadingTitle")}</b>
+            {t("loadingHint")}
           </div>
         ) : null}
 
         {groups.length === 0 && !apiMissing && loaded ? (
           <div className="empty-state">
-            <b>Пока нет материалов</b>
-            Твои преподаватели ещё не поделились материалами. Они появятся здесь, как только учитель их пришлёт.
+            <b>{t("emptyTitle")}</b>
+            {t("emptyHint")}
           </div>
         ) : null}
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — aligned with GET /api/profile/me
@@ -247,6 +248,7 @@ function plural(n: number, forms: [string, string, string]): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentProfilePage() {
+  const t = useTranslations("dashboard.student.profile")
   const [data, setData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -256,7 +258,7 @@ export default function StudentProfilePage() {
     const res = await fetch("/api/profile/me", { cache: "no-store" })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
-      throw new Error(body?.error ?? "Не удалось загрузить профиль")
+      throw new Error(body?.error ?? t("loadFailed"))
     }
     return (await res.json()) as ProfileData
   }
@@ -268,7 +270,7 @@ export default function StudentProfilePage() {
         const json = await loadProfile()
         if (!cancelled) setData(json)
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Ошибка загрузки")
+        if (!cancelled) setError(e?.message ?? t("loadFailed"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -302,7 +304,7 @@ export default function StudentProfilePage() {
       <>
         <style dangerouslySetInnerHTML={{ __html: PROFILE_CSS }} />
         <div className="profile-page">
-          <div className="prof-loading">Загружаем профиль…</div>
+          <div className="prof-loading">{t("loading")}</div>
         </div>
       </>
     )
@@ -313,14 +315,14 @@ export default function StudentProfilePage() {
       <>
         <style dangerouslySetInnerHTML={{ __html: PROFILE_CSS }} />
         <div className="profile-page">
-          <div className="prof-error">{error ?? "Профиль недоступен"}</div>
+          <div className="prof-error">{error ?? t("errorFallback")}</div>
         </div>
       </>
     )
   }
 
   const { profile, progress, stats, journey, favorite_teacher } = data
-  const displayName = profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || "Без имени"
+  const displayName = profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || t("displayNameFallback")
   const isPro = profile.subscription_tier === "pro"
 
   const contactLine = [profile.email, profile.phone].filter(Boolean).join(" · ")
@@ -343,13 +345,13 @@ export default function StudentProfilePage() {
                 // Подпись «текущий» отделяет это число от соседнего «N дней
                 // на платформе» в карточке статистики — иначе пользователи
                 // путают streak и общее время в проекте.
-                <span className="prof-badge pb--streak">⚡ {progress.current_streak}-day streak (текущий)</span>
+                <span className="prof-badge pb--streak">⚡ {t("badgeStreakSuffix", { count: progress.current_streak })}</span>
               )}
-              {isPro && <span className="prof-badge pb--sub">👑 Pro Member</span>}
+              {isPro && <span className="prof-badge pb--sub">{t("badgePro")}</span>}
             </div>
           </div>
           <button className="prof-edit" type="button" onClick={() => setEditOpen(true)}>
-            Редактировать
+            {t("editBtn")}
           </button>
         </div>
 
@@ -358,44 +360,44 @@ export default function StudentProfilePage() {
           <div className="ps">
             <div className="ps-icon">📅</div>
             <div>
-              <div className="ps-val">{stats.platform_days} {plural(stats.platform_days, ["день", "дня", "дней"])}</div>
+              <div className="ps-val">{stats.platform_days} {plural(stats.platform_days, [t("statDaysOne"), t("statDaysFew"), t("statDaysMany")])}</div>
               {/* Уточняем что это не streak — пользователи путают эти два числа. */}
-              <div className="ps-label">Дней на платформе</div>
+              <div className="ps-label">{t("statPlatformDays")}</div>
             </div>
           </div>
           <div className="ps">
             <div className="ps-icon">📚</div>
             <div>
               <div className="ps-val">{stats.lessons_completed}</div>
-              <div className="ps-label">Уроков пройдено</div>
+              <div className="ps-label">{t("statLessonsCompleted")}</div>
             </div>
           </div>
           <div className="ps">
             <div className="ps-icon">🎙</div>
             <div>
               <div className="ps-val">{stats.clubs_attended}</div>
-              <div className="ps-label">Клубов посещено</div>
+              <div className="ps-label">{t("statClubsAttended")}</div>
             </div>
           </div>
           <div className="ps">
             <div className="ps-icon">⏱</div>
             <div>
-              <div className="ps-val">{stats.hours_total} {plural(Math.round(stats.hours_total), ["час", "часа", "часов"])}</div>
-              <div className="ps-label">Время на англ.</div>
+              <div className="ps-val">{stats.hours_total} {plural(Math.round(stats.hours_total), [t("statHoursOne"), t("statHoursFew"), t("statHoursMany")])}</div>
+              <div className="ps-label">{t("statHoursTotal")}</div>
             </div>
           </div>
           <div className="ps">
             <div className="ps-icon">⚡</div>
             <div>
               <div className="ps-val ps-val--red">{formatRub(stats.total_xp)} XP</div>
-              <div className="ps-label">Всего XP</div>
+              <div className="ps-label">{t("statTotalXp")}</div>
             </div>
           </div>
           <div className="ps">
             <div className="ps-icon">🏆</div>
             <div>
               <div className="ps-val">{stats.achievements_earned}</div>
-              <div className="ps-label">Достижений</div>
+              <div className="ps-label">{t("statAchievements")}</div>
             </div>
           </div>
         </div>
@@ -405,7 +407,7 @@ export default function StudentProfilePage() {
           {/* Journey */}
           <div className="card">
             <div className="card-head">
-              <h3>Мой путь прожарки</h3>
+              <h3>{t("journeyTitle")}</h3>
             </div>
             <div className="card-body">
               <div className="journey">
@@ -422,7 +424,7 @@ export default function StudentProfilePage() {
                       {!isLast && <div className={`j-line ${lineCls}`} />}
                       <div className="j-content">
                         <div className="j-date">
-                          {item.kind === "active" ? "Сейчас" : item.date ? formatDate(item.date, "full") : "—"}
+                          {item.kind === "active" ? t("journeyNow") : item.date ? formatDate(item.date, "full") : "—"}
                         </div>
                         <div className="j-title">{item.title}</div>
                         <div className="j-desc">{item.desc}</div>
@@ -438,42 +440,42 @@ export default function StudentProfilePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card">
               <div className="card-head">
-                <h3>О себе</h3>
+                <h3>{t("aboutTitle")}</h3>
                 <button className="card-edit" type="button" onClick={() => setEditOpen(true)}>
                   ✏️
                 </button>
               </div>
               <div className="card-body">
                 <div className="about-field">
-                  <div className="af-label">Город</div>
+                  <div className="af-label">{t("aboutCity")}</div>
                   <div className={profile.city ? "af-val" : "af-val af-val--empty"}>
-                    {profile.city || "Не указан"}
+                    {profile.city || t("aboutCityEmpty")}
                   </div>
                 </div>
                 <div className="about-field">
-                  <div className="af-label">Профессия</div>
+                  <div className="af-label">{t("aboutOccupation")}</div>
                   <div className={profile.occupation ? "af-val" : "af-val af-val--empty"}>
-                    {profile.occupation || "Не указана"}
+                    {profile.occupation || t("aboutOccupationEmpty")}
                   </div>
                 </div>
                 <div className="about-field">
-                  <div className="af-label">Зачем учу английский</div>
+                  <div className="af-label">{t("aboutGoal")}</div>
                   <div className={profile.english_goal ? "af-val" : "af-val af-val--empty"}>
-                    {profile.english_goal || "Цель пока не указана"}
+                    {profile.english_goal || t("aboutGoalEmpty")}
                   </div>
                 </div>
                 <div className="about-field">
-                  <div className="af-label">Любимые темы для разговора</div>
+                  <div className="af-label">{t("aboutInterests")}</div>
                   {profile.interests && profile.interests.length > 0 ? (
                     <div className="af-tags">
-                      {profile.interests.map((t) => (
-                        <span key={t} className="af-tag">
-                          {t}
+                      {profile.interests.map((tag) => (
+                        <span key={tag} className="af-tag">
+                          {tag}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="af-val af-val--empty">Пока пусто — расскажите о себе в «Редактировать»</div>
+                    <div className="af-val af-val--empty">{t("aboutInterestsEmpty")}</div>
                   )}
                 </div>
               </div>
@@ -481,12 +483,12 @@ export default function StudentProfilePage() {
 
             <div className="card">
               <div className="card-head">
-                <h3>Мои цели</h3>
+                <h3>{t("goalsTitle")}</h3>
               </div>
               <div className="card-body">
                 <div className="goal">
                   <div className="goal-top">
-                    <div className="goal-name">Достичь {progress.next_level_name}</div>
+                    <div className="goal-name">{t("goalReachLevel", { level: progress.next_level_name })}</div>
                     <div className="goal-pct">{progress.level_progress_pct}%</div>
                   </div>
                   <div className="goal-bar">
@@ -495,7 +497,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div className="goal">
                   <div className="goal-top">
-                    <div className="goal-name">30-дневный стрик</div>
+                    <div className="goal-name">{t("goalStreak")}</div>
                     <div className="goal-pct">{streakGoalPct}%</div>
                   </div>
                   <div className="goal-bar">
@@ -504,7 +506,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div className="goal">
                   <div className="goal-top">
-                    <div className="goal-name">Посетить 25 клубов</div>
+                    <div className="goal-name">{t("goalClubs")}</div>
                     <div className="goal-pct">{clubsGoalPct}%</div>
                   </div>
                   <div className="goal-bar">
@@ -516,7 +518,7 @@ export default function StudentProfilePage() {
 
             <div className="card">
               <div className="card-head">
-                <h3>Мой преподаватель</h3>
+                <h3>{t("favTeacherTitle")}</h3>
               </div>
               <div className="card-body">
                 {favorite_teacher ? (
@@ -529,7 +531,7 @@ export default function StudentProfilePage() {
                       )}
                     </div>
                     <div className="fav-info">
-                      <div className="fav-name">{favorite_teacher.full_name || "Преподаватель"}</div>
+                      <div className="fav-name">{favorite_teacher.full_name || t("favTeacherFallback")}</div>
                       <div className="fav-role">
                         {[
                           favorite_teacher.specialization,
@@ -537,16 +539,19 @@ export default function StudentProfilePage() {
                           favorite_teacher.country,
                         ]
                           .filter(Boolean)
-                          .join(" · ") || "Профиль преподавателя"}
+                          .join(" · ") || t("favTeacherRoleFallback")}
                       </div>
                       <div className="fav-stats">
-                        {favorite_teacher.lessons_count} {plural(favorite_teacher.lessons_count, ["урок", "урока", "уроков"])} пройдено
+                        {t("favLessonsCount", {
+                          count: favorite_teacher.lessons_count,
+                          word: plural(favorite_teacher.lessons_count, [t("favLessonsOne"), t("favLessonsFew"), t("favLessonsMany")]),
+                        })}
                         {favorite_teacher.rating ? ` · ★ ${favorite_teacher.rating.toFixed(1)}` : ""}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="fav-empty">Пока не занимался с одним преподавателем регулярно</div>
+                  <div className="fav-empty">{t("favEmpty")}</div>
                 )}
               </div>
             </div>
@@ -584,6 +589,7 @@ function EditAboutModal({
   onClose: () => void
   onSaved: () => void | Promise<void>
 }) {
+  const t = useTranslations("dashboard.student.profile")
   const [firstName, setFirstName] = useState(initial.first_name ?? "")
   const [lastName, setLastName] = useState(initial.last_name ?? "")
   const [phone, setPhone] = useState(initial.phone ?? "")
@@ -606,11 +612,11 @@ function EditAboutModal({
     const raw = tagDraft.trim()
     if (!raw) return
     if (interests.length >= 12) {
-      toast.error("Можно добавить до 12 тем")
+      toast.error(t("editTooManyTags"))
       return
     }
     if (raw.length > 40) {
-      toast.error("Тема слишком длинная (макс 40 символов)")
+      toast.error(t("editTagTooLong"))
       return
     }
     if (interests.some((t) => t.toLowerCase() === raw.toLowerCase())) {
@@ -627,7 +633,7 @@ function EditAboutModal({
 
   const handleSave = async () => {
     if (!firstName.trim()) {
-      toast.error("Имя обязательно")
+      toast.error(t("editFirstNameRequired"))
       return
     }
     setSaving(true)
@@ -648,12 +654,12 @@ function EditAboutModal({
       })
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
-        throw new Error(errBody?.error ?? "Не удалось сохранить")
+        throw new Error(errBody?.error ?? t("editSaveFailed"))
       }
-      toast.success("Профиль обновлён")
+      toast.success(t("editSaved"))
       await onSaved()
     } catch (e: any) {
-      toast.error(e?.message ?? "Не удалось сохранить")
+      toast.error(e?.message ?? t("editSaveFailed"))
     } finally {
       setSaving(false)
     }
@@ -670,75 +676,75 @@ function EditAboutModal({
     >
       <div className="pe-modal">
         <div className="pe-head">
-          <div className="pe-title">Редактировать профиль</div>
-          <button className="pe-close" type="button" onClick={onClose} aria-label="Закрыть">
+          <div className="pe-title">{t("editTitle")}</div>
+          <button className="pe-close" type="button" onClick={onClose} aria-label={t("modalCloseAria")}>
             ✕
           </button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div className="pe-field">
-            <label className="pe-label">Имя *</label>
+            <label className="pe-label">{t("editFirstName")}</label>
             <input className="pe-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={60} />
           </div>
           <div className="pe-field">
-            <label className="pe-label">Фамилия</label>
+            <label className="pe-label">{t("editLastName")}</label>
             <input className="pe-input" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={60} />
           </div>
         </div>
 
         <div className="pe-field">
-          <label className="pe-label">Телефон</label>
+          <label className="pe-label">{t("editPhone")}</label>
           <input
             className="pe-input"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+7 (999) 123-45-67"
+            placeholder={t("editPhonePlaceholder")}
             maxLength={60}
           />
         </div>
 
         <div className="pe-field">
-          <label className="pe-label">Город</label>
+          <label className="pe-label">{t("editCity")}</label>
           <input
             className="pe-input"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="Москва, Россия"
+            placeholder={t("editCityPlaceholder")}
             maxLength={120}
           />
         </div>
 
         <div className="pe-field">
-          <label className="pe-label">Профессия</label>
+          <label className="pe-label">{t("editOccupation")}</label>
           <input
             className="pe-input"
             value={occupation}
             onChange={(e) => setOccupation(e.target.value)}
-            placeholder="UX-дизайнер"
+            placeholder={t("editOccupationPlaceholder")}
             maxLength={120}
           />
         </div>
 
         <div className="pe-field">
-          <label className="pe-label">Зачем учу английский</label>
+          <label className="pe-label">{t("editGoal")}</label>
           <textarea
             className="pe-textarea"
             value={englishGoal}
             onChange={(e) => setEnglishGoal(e.target.value)}
-            placeholder="Работа в международной компании, путешествия, сериалы…"
+            placeholder={t("editGoalPlaceholder")}
             maxLength={500}
           />
-          <div className="pe-hint">До 500 символов</div>
+          <div className="pe-hint">{t("editGoalHint")}</div>
         </div>
 
         <div className="pe-field">
-          <label className="pe-label">Любимые темы для разговора</label>
+          <label className="pe-label">{t("editInterests")}</label>
           <div className="pe-tags">
-            {interests.map((t) => (
-              <span key={t} className="pe-tag">
-                {t}
-                <button className="pe-tag-x" type="button" onClick={() => removeTag(t)} aria-label={`Удалить ${t}`}>
+            {interests.map((tag) => (
+              <span key={tag} className="pe-tag">
+                {tag}
+                <button className="pe-tag-x" type="button" onClick={() => removeTag(tag)} aria-label={t("editRemoveTagAria", { tag })}>
                   ✕
                 </button>
               </span>
@@ -758,18 +764,18 @@ function EditAboutModal({
                 }
               }}
               onBlur={() => tagDraft.trim() && addTag()}
-              placeholder={interests.length === 0 ? "Добавь тему и нажми Enter" : "+ ещё"}
+              placeholder={interests.length === 0 ? t("editTagsAddPlaceholder") : t("editTagsMorePlaceholder")}
             />
           </div>
-          <div className="pe-hint">Нажми Enter или запятую, чтобы добавить. До 12 тем.</div>
+          <div className="pe-hint">{t("editInterestsHint")}</div>
         </div>
 
         <div className="pe-actions">
           <button className="pe-btn pe-btn--ghost" type="button" onClick={onClose} disabled={saving}>
-            Отмена
+            {t("editCancel")}
           </button>
           <button className="pe-btn pe-btn--primary" type="button" onClick={handleSave} disabled={saving}>
-            {saving ? "Сохраняем…" : "Сохранить"}
+            {saving ? t("editSaving") : t("editSave")}
           </button>
         </div>
       </div>

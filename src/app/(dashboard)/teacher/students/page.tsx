@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedTeacherStudents } from "@/lib/cache/dashboard"
 import TeacherStudentsClient from "./TeacherStudentsClient"
@@ -338,20 +339,20 @@ function buildSnapshot(cached: {
   }
 }
 
-function pluralStudent(n: number): string {
+function pluralStudentKey(n: number): "studentOne" | "studentFew" | "studentMany" {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "ученик"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "ученика"
-  return "учеников"
+  if (mod10 === 1 && mod100 !== 11) return "studentOne"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "studentFew"
+  return "studentMany"
 }
 
-function pluralLesson(n: number): string {
+function pluralLessonKey(n: number): "lessonsOne" | "lessonsFew" | "lessonsMany" {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return "урок"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "урока"
-  return "уроков"
+  if (mod10 === 1 && mod100 !== 11) return "lessonsOne"
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "lessonsFew"
+  return "lessonsMany"
 }
 
 export default async function TeacherStudentsPage() {
@@ -360,6 +361,8 @@ export default async function TeacherStudentsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
+
+  const t = await getTranslations("dashboard.teacher.students")
 
   let snap: InitialSnapshot
   try {
@@ -374,15 +377,27 @@ export default async function TeacherStudentsPage() {
   }
   const s = snap.stats
   const subParts: string[] = []
-  subParts.push(`${s.total} активных`)
+  subParts.push(t("subActiveCount", { count: s.total }))
   if (s.active_today > 0) {
-    subParts.push(`${s.active_today} ${pluralLesson(s.active_today)} сегодня`)
+    subParts.push(
+      t("subTodayCount", {
+        count: s.active_today,
+        word: t(pluralLessonKey(s.active_today)),
+      })
+    )
   }
   if (s.needs_attention > 0) {
-    subParts.push(`${s.needs_attention} требуют внимания`)
+    subParts.push(t("subNeedAttention", { count: s.needs_attention }))
   }
   if (s.total === 0) {
-    subParts.splice(0, subParts.length, `Пока ${s.total} ${pluralStudent(s.total)}`)
+    subParts.splice(
+      0,
+      subParts.length,
+      t("subNoStudents", {
+        count: s.total,
+        word: t(pluralStudentKey(s.total)),
+      })
+    )
   }
 
   return (
@@ -391,7 +406,10 @@ export default async function TeacherStudentsPage() {
       <div className="tch-std">
         <div className="dash-hdr">
           <div>
-            <h1>Мои <span className="gl">students</span></h1>
+            <h1>
+              {t("headingPrefix")}{" "}
+              <span className="gl">{t("headingHighlight")}</span>
+            </h1>
             <div className="sub">{subParts.join(" · ")}</div>
           </div>
         </div>

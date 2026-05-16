@@ -4,6 +4,7 @@ import "@/styles/dashboard/student-teachers.css"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 import { useUser } from "@/hooks/use-user"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,13 +79,15 @@ const SPEC_TO_DB: Record<Exclude<SpecKey, "all">, string[]> = {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function pluralizeTeachers(count: number): string {
+function pluralizeTeachers(
+  count: number,
+  forms: { one: string; few: string; many: string }
+): string {
   const mod10 = count % 10
   const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return "преподаватель"
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
-    return "преподавателя"
-  return "преподавателей"
+  if (mod10 === 1 && mod100 !== 11) return forms.one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms.few
+  return forms.many
 }
 
 function formatRub(rub: number): string {
@@ -102,6 +105,7 @@ function shortSpecs(specs: string[]): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function StudentTeachersPage() {
+  const t = useTranslations("dashboard.student.teachers")
   // Если страница рендерится под админом (re-export в /admin/teachers) —
   // прячем booking/review UI. Триггерим readOnly только когда роль
   // ОТВЕРЖДЕНА не-студент (admin/teacher). Пока loading или role=null
@@ -180,7 +184,7 @@ export default function StudentTeachersPage() {
           signal: ac.signal,
         })
         if (!res.ok) {
-          if (!ac.signal.aborted) toast.error("Не удалось загрузить преподавателей")
+          if (!ac.signal.aborted) toast.error(t("loadFailed"))
           return
         }
         const data = (await res.json()) as { teachers: Teacher[]; total: number }
@@ -189,12 +193,12 @@ export default function StudentTeachersPage() {
       } catch (err) {
         if ((err as { name?: string })?.name === "AbortError") return
         console.error("[teachers page] load error:", err)
-        toast.error("Не удалось загрузить преподавателей")
+        toast.error(t("loadFailed"))
       } finally {
         if (!ac.signal.aborted) setIsLoading(false)
       }
     },
-    []
+    [t]
   )
 
   // Initial + reactive load whenever the applied snapshot changes.
@@ -312,7 +316,7 @@ export default function StudentTeachersPage() {
   const submitReview = useCallback(async () => {
     if (!modalTeacher || reviewSubmitting) return
     if (reviewRating < 1 || reviewRating > 5) {
-      toast.error("Поставь оценку от 1 до 5")
+      toast.error(t("modalReviewBadRating"))
       return
     }
     setReviewSubmitting(true)
@@ -327,11 +331,11 @@ export default function StudentTeachersPage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(json?.error || "Не удалось отправить отзыв")
+        toast.error(json?.error || t("modalReviewSubmitFailed"))
         setReviewSubmitting(false)
         return
       }
-      toast.success("Спасибо за отзыв!")
+      toast.success(t("modalReviewThanks"))
       setReviewFormOpen(false)
       setReviewRating(5)
       setReviewComment("")
@@ -342,11 +346,11 @@ export default function StudentTeachersPage() {
         setReviews(data.reviews ?? [])
       }
     } catch {
-      toast.error("Ошибка сети")
+      toast.error(t("networkError"))
     } finally {
       setReviewSubmitting(false)
     }
-  }, [modalTeacher, reviewRating, reviewComment, reviewSubmitting])
+  }, [modalTeacher, reviewRating, reviewComment, reviewSubmitting, t])
 
   // ESC closes modal.
   useEffect(() => {
@@ -389,12 +393,12 @@ export default function StudentTeachersPage() {
         redirectUrl?: string
       }
       if (!res.ok) {
-        toast.error(data.error ?? "Не удалось записаться")
+        toast.error(data.error ?? t("bookFailed"))
         setBooking(false)
         return
       }
       setBookingSuccess(true)
-      toast.success("Ты записан на урок!")
+      toast.success(t("bookSuccess"))
       // Brief success flash, then either redirect to payment or just close.
       window.setTimeout(() => {
         if (data.redirectUrl) {
@@ -406,10 +410,10 @@ export default function StudentTeachersPage() {
       }, 1200)
     } catch (err) {
       console.error("[teachers page] booking error:", err)
-      toast.error("Не удалось записаться")
+      toast.error(t("bookFailed"))
       setBooking(false)
     }
-  }, [modalTeacher, selectedSlot, booking, closeProfile])
+  }, [modalTeacher, selectedSlot, booking, closeProfile, t])
 
   // ─── Derived UI bits ───────────────────────────────────────────────────────
   // Supabase PostgREST count='exact' игнорирует фильтр по joined-таблице
@@ -419,11 +423,11 @@ export default function StudentTeachersPage() {
   const headerCount = applied.search.trim() ? teachers.length : total
 
   const bookBtnLabel = useMemo(() => {
-    if (bookingSuccess) return "Записано!"
+    if (bookingSuccess) return t("bookBtnSuccess")
     if (booking) return "…"
-    if (selectedSlot) return `Записаться на ${selectedSlot.time_label}`
-    return "Записаться на урок"
-  }, [bookingSuccess, booking, selectedSlot])
+    if (selectedSlot) return t("bookBtnSelected", { time: selectedSlot.time_label })
+    return t("bookBtnDefault")
+  }, [bookingSuccess, booking, selectedSlot, t])
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -431,10 +435,10 @@ export default function StudentTeachersPage() {
       {/* Header */}
       <div className="page-header">
         <h1>
-          Найди своего <span className="gl">teacher</span>
+          {t("headingFind")} <span className="gl">{t("headingTeacher")}</span>
         </h1>
         <p>
-          {headerCount} профессиональных teachers английского языка
+          {t("subtitle", { count: headerCount })}
         </p>
       </div>
 
@@ -442,22 +446,22 @@ export default function StudentTeachersPage() {
       <div className="filters">
         <div className="filter-group" style={{ flex: 1.5 }}>
           <label className="filter-label" htmlFor="teachers-search">
-            Поиск
+            {t("filterSearch")}
           </label>
           <input
             id="teachers-search"
             className="filter-search"
             type="text"
-            placeholder="Имя, специализация..."
+            placeholder={t("filterSearchPlaceholder")}
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             onKeyDown={handleSearchKey}
-            aria-label="Поиск преподавателя"
+            aria-label={t("filterSearchAria")}
           />
         </div>
         <div className="filter-group">
           <label className="filter-label" htmlFor="teachers-spec">
-            Специализация
+            {t("filterSpec")}
           </label>
           <select
             id="teachers-spec"
@@ -465,12 +469,12 @@ export default function StudentTeachersPage() {
             value={specDraft}
             onChange={(e) => setSpecDraft(e.target.value as SpecKey)}
           >
-            <option value="all">Все</option>
-            <option value="general">General English</option>
-            <option value="business">Business</option>
-            <option value="ielts">IELTS / TOEFL</option>
-            <option value="kids">Для детей</option>
-            <option value="it">IT English</option>
+            <option value="all">{t("specAll")}</option>
+            <option value="general">{t("specGeneral")}</option>
+            <option value="business">{t("specBusiness")}</option>
+            <option value="ielts">{t("specIelts")}</option>
+            <option value="kids">{t("specKids")}</option>
+            <option value="it">{t("specIt")}</option>
           </select>
         </div>
         {/* HIGH-5 (audit 2026-05-13): пока Yookassa отключена и в карточках
@@ -479,7 +483,7 @@ export default function StudentTeachersPage() {
         {false && (
         <div className="filter-group">
           <label className="filter-label" htmlFor="teachers-price">
-            Цена
+            {t("filterPrice")}
           </label>
           <select
             id="teachers-price"
@@ -487,17 +491,17 @@ export default function StudentTeachersPage() {
             value={priceDraft}
             onChange={(e) => setPriceDraft(e.target.value as PriceKey)}
           >
-            <option value="any">Любая</option>
-            <option value="under_1000">до 1 000 ₽</option>
-            <option value="1000_1500">1 000 – 1 500 ₽</option>
-            <option value="1500_2000">1 500 – 2 000 ₽</option>
-            <option value="over_2000">от 2 000 ₽</option>
+            <option value="any">{t("priceAny")}</option>
+            <option value="under_1000">{t("priceUnder1000")}</option>
+            <option value="1000_1500">{t("price1000_1500")}</option>
+            <option value="1500_2000">{t("price1500_2000")}</option>
+            <option value="over_2000">{t("priceOver2000")}</option>
           </select>
         </div>
         )}
         <div className="filter-group">
           <label className="filter-label" htmlFor="teachers-native">
-            Носитель
+            {t("filterNative")}
           </label>
           <select
             id="teachers-native"
@@ -505,39 +509,44 @@ export default function StudentTeachersPage() {
             value={nativeDraft}
             onChange={(e) => setNativeDraft(e.target.value as NativeKey)}
           >
-            <option value="any">Не важно</option>
-            <option value="native">Native speaker</option>
-            <option value="ru">Русскоязычный</option>
+            <option value="any">{t("nativeAny")}</option>
+            <option value="native">{t("nativeNative")}</option>
+            <option value="ru">{t("nativeRu")}</option>
           </select>
         </div>
         <button type="button" className="filter-btn" onClick={handleSearch}>
-          Найти
+          {t("filterFindCta")}
         </button>
       </div>
 
       {/* Sort bar */}
       <div className="sort-bar">
         <div className="sort-count">
-          Найдено: <b>{headerCount}</b> {pluralizeTeachers(headerCount)}
+          {t("sortFound")} <b>{headerCount}</b>{" "}
+          {pluralizeTeachers(headerCount, {
+            one: t("teacherWordOne"),
+            few: t("teacherWordFew"),
+            many: t("teacherWordMany"),
+          })}
         </div>
-        <div className="sort-tabs" role="tablist" aria-label="Сортировка">
+        <div className="sort-tabs" role="tablist" aria-label={t("sortAria")}>
           <SortTab
             active={applied.sort === "rating"}
             onClick={() => handleSortChange("rating")}
           >
-            По рейтингу
+            {t("sortByRating")}
           </SortTab>
           <SortTab
             active={applied.sort === "price_asc"}
             onClick={() => handleSortChange("price_asc")}
           >
-            По цене ↑
+            {t("sortByPriceAsc")}
           </SortTab>
           <SortTab
             active={applied.sort === "reviews"}
             onClick={() => handleSortChange("reviews")}
           >
-            По отзывам
+            {t("sortByReviews")}
           </SortTab>
         </div>
       </div>
@@ -553,19 +562,19 @@ export default function StudentTeachersPage() {
         <div className="empty">
           <span className="empty-emoji">🔍</span>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>
-            Пока никого не нашли
+            {t("emptyTitle")}
           </div>
           <div style={{ fontSize: ".78rem" }}>
-            Попробуй изменить фильтры или сбросить поиск.
+            {t("emptyHint")}
           </div>
         </div>
       ) : (
         <div className="teachers-grid">
-          {teachers.map((t, i) => (
+          {teachers.map((teacher, i) => (
             <TeacherCard
-              key={t.id}
-              teacher={t}
-              onOpen={() => openProfile(t)}
+              key={teacher.id}
+              teacher={teacher}
+              onOpen={() => openProfile(teacher)}
               readOnly={readOnly}
               eager={i < 6}
             />
@@ -590,7 +599,7 @@ export default function StudentTeachersPage() {
                 type="button"
                 className="prof-close"
                 onClick={closeProfile}
-                aria-label="Закрыть"
+                aria-label={t("modalCloseAria")}
               >
                 ✕
               </button>
@@ -612,13 +621,13 @@ export default function StudentTeachersPage() {
                 <div className="prof-name">
                   {modalTeacher.full_name}
                   {modalTeacher.is_native ? (
-                    <span className="prof-native">Native</span>
+                    <span className="prof-native">{t("cardNative")}</span>
                   ) : null}
                 </div>
                 <div className="prof-spec">
                   {modalTeacher.specializations.slice(0, 3).join(", ") || "—"}
                   {modalTeacher.experience_years != null
-                    ? ` · ${modalTeacher.experience_years} лет опыта`
+                    ? ` · ${t("modalExperienceYears", { count: modalTeacher.experience_years })}`
                     : ""}
                 </div>
                 <div className="prof-stats">
@@ -626,19 +635,19 @@ export default function StudentTeachersPage() {
                     <div className="prof-stat-val">
                       {modalTeacher.rating.toFixed(1)}
                     </div>
-                    <div className="prof-stat-lbl">Рейтинг</div>
+                    <div className="prof-stat-lbl">{t("modalRating")}</div>
                   </div>
                   <div className="prof-stat">
                     <div className="prof-stat-val">
                       {modalTeacher.total_lessons.toLocaleString("ru-RU")}
                     </div>
-                    <div className="prof-stat-lbl">Уроков</div>
+                    <div className="prof-stat-lbl">{t("modalLessons")}</div>
                   </div>
                   <div className="prof-stat">
                     <div className="prof-stat-val">
                       {modalTeacher.total_reviews}
                     </div>
-                    <div className="prof-stat-lbl">Отзывов</div>
+                    <div className="prof-stat-lbl">{t("modalReviews")}</div>
                   </div>
                   <div className="prof-stat">
                     <div className="prof-stat-val">
@@ -649,7 +658,7 @@ export default function StudentTeachersPage() {
                           : modalTeacher.total_reviews
                       )}
                     </div>
-                    <div className="prof-stat-lbl">Учеников</div>
+                    <div className="prof-stat-lbl">{t("modalStudents")}</div>
                   </div>
                 </div>
               </div>
@@ -657,19 +666,19 @@ export default function StudentTeachersPage() {
 
             <div className="prof-body">
               <div className="prof-section">
-                <div className="prof-section-title">О преподавателе</div>
+                <div className="prof-section-title">{t("modalAbout")}</div>
                 {detailLoading && !modalTeacher.bio ? (
-                  <div className="prof-section-loading">Загрузка…</div>
+                  <div className="prof-section-loading">{t("modalReviewsLoading")}</div>
                 ) : (
                   <div className="prof-bio">
-                    {modalTeacher.bio || "Преподаватель пока не добавил описание."}
+                    {modalTeacher.bio || t("modalAboutEmpty")}
                   </div>
                 )}
               </div>
 
               {modalTeacher.specializations.length > 0 ? (
                 <div className="prof-section">
-                  <div className="prof-section-title">Специализация</div>
+                  <div className="prof-section-title">{t("modalSpec")}</div>
                   <div className="prof-tags">
                     {modalTeacher.specializations.map((s) => (
                       <span key={s} className="prof-tag">
@@ -682,7 +691,7 @@ export default function StudentTeachersPage() {
 
               {modalTeacher.languages.length > 0 ? (
                 <div className="prof-section">
-                  <div className="prof-section-title">Языки</div>
+                  <div className="prof-section-title">{t("modalLanguages")}</div>
                   <div className="prof-tags">
                     {modalTeacher.languages.map((l) => (
                       <span key={l} className="prof-tag">
@@ -695,14 +704,14 @@ export default function StudentTeachersPage() {
 
               {modalTeacher.education ? (
                 <div className="prof-section">
-                  <div className="prof-section-title">Образование</div>
+                  <div className="prof-section-title">{t("modalEducation")}</div>
                   <div className="prof-bio">{modalTeacher.education}</div>
                 </div>
               ) : null}
 
               {modalTeacher.certificates.length > 0 ? (
                 <div className="prof-section">
-                  <div className="prof-section-title">Сертификаты</div>
+                  <div className="prof-section-title">{t("modalCertificates")}</div>
                   <div className="prof-tags">
                     {modalTeacher.certificates.map((c) => (
                       <span key={c} className="prof-tag">
@@ -715,14 +724,14 @@ export default function StudentTeachersPage() {
 
               {modalTeacher.video_intro_url ? (
                 <div className="prof-section">
-                  <div className="prof-section-title">Видео-визитка</div>
+                  <div className="prof-section-title">{t("modalVideo")}</div>
                   <a
                     href={modalTeacher.video_intro_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="prof-video-link"
                   >
-                    Посмотреть видео
+                    {t("modalVideoCta")}
                     <span aria-hidden style={{ marginLeft: 6 }}>↗</span>
                   </a>
                 </div>
@@ -730,13 +739,13 @@ export default function StudentTeachersPage() {
 
               {!readOnly && (
                 <div className="prof-section">
-                  <div className="prof-section-title">Ближайшие слоты</div>
+                  <div className="prof-section-title">{t("modalSlots")}</div>
                   <div className="prof-slots">
                     {slotsLoading ? (
-                      <div className="prof-slots-empty">Загружаем расписание…</div>
+                      <div className="prof-slots-empty">{t("modalSlotsLoading")}</div>
                     ) : slots.length === 0 ? (
                       <div className="prof-slots-empty">
-                        Свободных слотов на ближайшую неделю нет.
+                        {t("modalSlotsEmpty")}
                       </div>
                     ) : (
                       slots.map((s) => (
@@ -767,7 +776,7 @@ export default function StudentTeachersPage() {
                   }}
                 >
                   <div className="prof-section-title" style={{ marginBottom: 0 }}>
-                    Отзывы учеников
+                    {t("modalReviewsTitle")}
                   </div>
                   {!reviewFormOpen && !readOnly && (
                     <button
@@ -785,7 +794,7 @@ export default function StudentTeachersPage() {
                         boxShadow: "0 2px 0 rgba(180,30,45,.3)",
                       }}
                     >
-                      Оставить отзыв
+                      {t("modalLeaveReview")}
                     </button>
                   )}
                 </div>
@@ -802,7 +811,7 @@ export default function StudentTeachersPage() {
                   >
                     <div style={{ marginBottom: 10 }}>
                       <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>
-                        Оценка
+                        {t("modalReviewRating")}
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
                         {[1, 2, 3, 4, 5].map((n) => (
@@ -832,7 +841,7 @@ export default function StudentTeachersPage() {
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
                       maxLength={1000}
-                      placeholder="Расскажи как прошёл урок (необязательно)"
+                      placeholder={t("modalReviewPlaceholder")}
                       rows={3}
                       style={{
                         width: "100%",
@@ -869,7 +878,7 @@ export default function StudentTeachersPage() {
                           fontFamily: "inherit",
                         }}
                       >
-                        Отмена
+                        {t("modalReviewCancel")}
                       </button>
                       <button
                         type="button"
@@ -889,7 +898,7 @@ export default function StudentTeachersPage() {
                           opacity: reviewSubmitting ? 0.6 : 1,
                         }}
                       >
-                        {reviewSubmitting ? "Отправляем…" : "Отправить"}
+                        {reviewSubmitting ? t("modalReviewSending") : t("modalReviewSend")}
                       </button>
                     </div>
                   </div>
@@ -897,9 +906,9 @@ export default function StudentTeachersPage() {
 
                 <div className="prof-reviews">
                   {reviewsLoading ? (
-                    <div className="prof-section-loading">Загрузка…</div>
+                    <div className="prof-section-loading">{t("modalReviewsLoading")}</div>
                   ) : reviews.length === 0 ? (
-                    <div className="prof-section-loading">Отзывов пока нет.</div>
+                    <div className="prof-section-loading">{t("modalReviewsEmpty")}</div>
                   ) : (
                     reviews.map((r) => (
                       <div key={r.id} className="prof-review">
@@ -942,7 +951,7 @@ export default function StudentTeachersPage() {
                   <b>{formatRub(modalTeacher.hourly_rate_rub)}</b> / 60 мин
                 </div> */}
                 <div className="prof-price">
-                  <b>Пробный урок</b> · 0 ₽
+                  <b>{t("modalTrialFree")}</b>
                 </div>
                 <button
                   type="button"
@@ -998,6 +1007,7 @@ function TeacherCard({
   readOnly?: boolean
   eager?: boolean
 }) {
+  const t = useTranslations("dashboard.student.teachers")
   const specLabel = shortSpecs(teacher.specializations).toUpperCase()
   const tags = teacher.specializations.slice(0, 3)
 
@@ -1013,7 +1023,7 @@ function TeacherCard({
           onOpen()
         }
       }}
-      aria-label={`Открыть профиль: ${teacher.full_name}`}
+      aria-label={`${t("cardMoreCta")}: ${teacher.full_name}`}
     >
       <div className="t-photo">
         {teacher.avatar_url ? (
@@ -1033,16 +1043,16 @@ function TeacherCard({
           </div>
         )}
         {teacher.is_native ? (
-          <div className="t-native-badge">Native</div>
+          <div className="t-native-badge">{t("cardNative")}</div>
         ) : null}
         <div className="t-online">
           <div className="t-online-dot" />
-          Онлайн
+          {t("cardOnline")}
         </div>
       </div>
       <div className="t-body">
         <div className="t-name">{teacher.full_name}</div>
-        <div className="t-spec">{specLabel || "ПРЕПОДАВАТЕЛЬ"}</div>
+        <div className="t-spec">{specLabel || t("cardRoleFallback")}</div>
         {teacher.bio ? <div className="t-desc">{teacher.bio}</div> : null}
         {tags.length > 0 ? (
           <div className="t-tags">
@@ -1064,7 +1074,7 @@ function TeacherCard({
             <b>{formatRub(teacher.hourly_rate_rub)}</b> / 60 мин
           </div> */}
           <div className="t-price">
-            <b>Пробный</b> · 0 ₽
+            <b>{t("cardTrial")}</b> · 0 ₽
           </div>
         </div>
         {!readOnly && (
@@ -1076,7 +1086,7 @@ function TeacherCard({
               onOpen()
             }}
           >
-            Записаться
+            {t("cardBookCta")}
           </button>
         )}
         {readOnly && (
@@ -1088,7 +1098,7 @@ function TeacherCard({
               onOpen()
             }}
           >
-            Подробнее
+            {t("cardMoreCta")}
           </button>
         )}
       </div>
