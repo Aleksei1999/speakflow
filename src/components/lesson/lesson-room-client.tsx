@@ -777,7 +777,7 @@ export function LessonRoomClient({
           <div className={`lb ${sidebarOn?"":"no-sidebar"}`}>
             <div className="stage">
             <div className="va">
-              <div className={`vm ${!isTeacher ? "no-jitsi-clicks" : ""}`}>
+              <div className="vm">
                 <div className="jitsi-mount" ref={jitsiRef} />
                 <div className="live-badge"><span className="blink"/>LIVE</div>
                 {connQuality !== "unknown" && (
