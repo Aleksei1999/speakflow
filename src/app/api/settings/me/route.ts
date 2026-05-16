@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { invalidateProfile } from '@/lib/cache/invalidate'
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from '@/i18n/config'
 
 // ---------------------------------------------------------------------------
 // Defaults — kept in one place and mirrored in migration 025.
@@ -268,7 +269,22 @@ export async function PATCH(request: NextRequest) {
     // any setting save can mutate avatar_url (uploads) so evict.
     invalidateProfile(user.id)
 
-    return NextResponse.json({ ok: true, updated: Object.keys(patch).length })
+    const res = NextResponse.json({ ok: true, updated: Object.keys(patch).length })
+
+    // Mirror profiles.language into the rwen_locale cookie so that
+    // next-intl's request config (server-only, can't read profiles)
+    // picks up the new UI language on the very next navigation.
+    if (d.account?.language) {
+      res.cookies.set(LOCALE_COOKIE, d.account.language, {
+        path: '/',
+        maxAge: LOCALE_COOKIE_MAX_AGE,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false,
+      })
+    }
+
+    return res
   } catch (err) {
     console.error('Непредвиденная ошибка в /api/settings/me PATCH:', err)
     return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })

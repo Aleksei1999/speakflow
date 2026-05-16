@@ -1,5 +1,5 @@
 /**
- * TZ-aware форматирование времени уроков.
+ * TZ-aware форматирование времени уроков. / TZ-aware lesson date formatting.
  *
  * Важно: lessons.scheduled_at в Postgres — timestamptz (UTC).
  * В клиентских компонентах date-fns `format(new Date(iso), "HH:mm")`
@@ -9,72 +9,143 @@
  * и /student (server).
  *
  * Эти утилиты всегда форматируют в Asia/Moscow, одинаково на сервере и клиенте.
+ * Locale ('ru' | 'en') — необязательный параметр; по умолчанию 'ru'.
+ *
+ * Time format differences:
+ *  - 'ru' → 24h: "14:30",   "23 апр",  "23 апреля",  "23 апр., 14:30"
+ *  - 'en' → 12h: "2:30 PM", "Apr 23",  "April 23",   "Apr 23, 2:30 PM"
+ *
+ * TZ stays Europe/Moscow for both locales — our users are in Russia.
  */
 
 const TZ = "Europe/Moscow"
 
-const hhmmFormatter = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: TZ,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-})
+export type TimeLocale = "ru" | "en"
 
-const dayShortFormatter = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: TZ,
-  day: "numeric",
-  month: "short",
-})
-
-const dayLongFormatter = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: TZ,
-  day: "numeric",
-  month: "long",
-})
-
-const dateTimeShortFormatter = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: TZ,
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-})
-
-/** "19:30" в Asia/Moscow */
-export function formatLessonTime(input: Date | string | number): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return hhmmFormatter.format(d)
+// Pre-built formatters per locale — cached on the module scope.
+// Intl.DateTimeFormat is expensive to construct; re-use across renders.
+type FormatterSet = {
+  hhmm: Intl.DateTimeFormat
+  dayShort: Intl.DateTimeFormat
+  dayLong: Intl.DateTimeFormat
+  dateTimeShort: Intl.DateTimeFormat
+  weekdayShort: Intl.DateTimeFormat
+  weekdayLong: Intl.DateTimeFormat
 }
 
-/** "23 апр." в Asia/Moscow */
-export function formatLessonDayShort(input: Date | string | number): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return dayShortFormatter.format(d)
+function build(locale: string, hour12: boolean): FormatterSet {
+  return {
+    hhmm: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12,
+    }),
+    dayShort: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      day: "numeric",
+      month: "short",
+    }),
+    dayLong: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      day: "numeric",
+      month: "long",
+    }),
+    dateTimeShort: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12,
+    }),
+    weekdayShort: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      weekday: "short",
+    }),
+    weekdayLong: new Intl.DateTimeFormat(locale, {
+      timeZone: TZ,
+      weekday: "long",
+    }),
+  }
 }
 
-/** "23 апреля" в Asia/Moscow */
-export function formatLessonDayLong(input: Date | string | number): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return dayLongFormatter.format(d)
+const FORMATTERS: Record<TimeLocale, FormatterSet> = {
+  ru: build("ru-RU", false),
+  en: build("en-US", true),
 }
 
-/** "23 апр., 19:30" в Asia/Moscow */
-export function formatLessonDateTimeShort(input: Date | string | number): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return dateTimeShortFormatter.format(d)
+function pickSet(locale?: TimeLocale): FormatterSet {
+  return FORMATTERS[locale === "en" ? "en" : "ru"]
 }
+
+/**
+ * "14:30" (ru, 24h) / "2:30 PM" (en, 12h) в Asia/Moscow.
+ */
+export function formatLessonTime(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).hhmm.format(d)
+}
+
+/** "23 апр" (ru) / "Apr 23" (en) в Asia/Moscow. */
+export function formatLessonDayShort(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).dayShort.format(d)
+}
+
+/** "23 апреля" (ru) / "April 23" (en) в Asia/Moscow. */
+export function formatLessonDayLong(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).dayLong.format(d)
+}
+
+/** "23 апр., 14:30" (ru) / "Apr 23, 2:30 PM" (en) в Asia/Moscow. */
+export function formatLessonDateTimeShort(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).dateTimeShort.format(d)
+}
+
+/** "пн" (ru) / "Mon" (en). */
+export function formatWeekdayShort(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).weekdayShort.format(d)
+}
+
+/** "понедельник" (ru) / "Monday" (en). */
+export function formatWeekdayLong(
+  input: Date | string | number,
+  locale?: TimeLocale
+): string {
+  const d = input instanceof Date ? input : new Date(input)
+  return pickSet(locale).weekdayLong.format(d)
+}
+
+const isoDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
 
 /** YYYY-MM-DD ключ в Asia/Moscow (для группировки уроков по дням). */
 export function moscowDateKey(input: Date | string | number): string {
   const d = input instanceof Date ? input : new Date(input)
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d)
-  return parts // "2026-04-23"
+  return isoDayFormatter.format(d) // "2026-04-23"
 }
 
 /** Проверка "сегодня" в Asia/Moscow. */
