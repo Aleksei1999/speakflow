@@ -1,16 +1,20 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   TOPUP_TIERS,
   PRO_FEATURES_YES,
   FREE_FEATURES,
   PRO_PRICE_RUB,
   formatRub as formatRubShared,
-  plural as pluralShared,
   type TopupTier as TopupTierShared,
 } from "@/lib/pricing"
+import {
+  asTimeLocale,
+  formatDayMonthYearLong,
+  formatLessonDayShort,
+} from "@/lib/time"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — billing slice of GET /api/profile/me
@@ -38,7 +42,7 @@ type BalanceData = {
 // Only billing-specific classes (bal-/topup-/sub-/history/h-/section-).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BALANCE_CSS = `
+const buildBalanceCss = (popularLabel: string, bestLabel: string) => `
 .balance-page{max-width:1000px;margin:0 auto;--gold:#B8960A;--green:#16a34a}
 [data-theme="dark"] .balance-page{--gold:#FFD700;--green:#22c55e}
 .balance-page *{box-sizing:border-box}
@@ -72,10 +76,10 @@ const BALANCE_CSS = `
 .topup{background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:20px 16px;text-align:center;position:relative;overflow:hidden;transition:all .25s cubic-bezier(.16,1,.3,1);cursor:pointer}
 .topup:hover{transform:translateY(-4px);border-color:var(--red);box-shadow:0 10px 30px var(--shadow)}
 .topup--popular{border-color:var(--red)}
-.topup--popular::before{content:'ПОПУЛЯРНЫЙ';position:absolute;top:0;left:0;right:0;padding:4px;background:var(--red);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:1px;text-align:center}
+.topup--popular::before{content:'${popularLabel}';position:absolute;top:0;left:0;right:0;padding:4px;background:var(--red);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:1px;text-align:center}
 .topup--popular .topup-body{padding-top:12px}
 .topup--best{border-color:var(--lime)}
-.topup--best::before{content:'ЛУЧШАЯ ЦЕНА';position:absolute;top:0;left:0;right:0;padding:4px;background:var(--lime);color:#0A0A0A;font-size:.52rem;font-weight:700;letter-spacing:1px;text-align:center}
+.topup--best::before{content:'${bestLabel}';position:absolute;top:0;left:0;right:0;padding:4px;background:var(--lime);color:#0A0A0A;font-size:.52rem;font-weight:700;letter-spacing:1px;text-align:center}
 .topup--best .topup-body{padding-top:12px}
 .topup-amount{font-size:1.8rem;font-weight:800;letter-spacing:-1px;margin-bottom:2px}
 .topup-lessons{margin-top:10px;padding:6px 12px;border-radius:8px;background:var(--bg);font-size:.68rem;font-weight:700;display:inline-block}
@@ -159,8 +163,8 @@ const BALANCE_CSS = `
 // Top-up tiers (config — RUB amounts align with Yookassa-friendly tiers)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Цены и фичи — единый источник правды в src/lib/pricing.ts.
-// Здесь только локальный alias типа, чтобы остальной код не трогать.
+// Pricing & feature lists — single source of truth in src/lib/pricing.ts.
+// Locale-specific copy comes from messages/{ru,en}.json (proFeat*/freeFeat*).
 type TopupTier = TopupTierShared
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,26 +173,24 @@ type TopupTier = TopupTierShared
 
 const formatRub = formatRubShared
 
-const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
-const MONTHS_FULL = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
-
-function formatDate(iso: string | null, mode: "short" | "full" = "short"): string {
-  if (!iso) return ""
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ""
-  const day = d.getDate()
-  const month = mode === "full" ? MONTHS_FULL[d.getMonth()] : MONTHS_SHORT[d.getMonth()]
-  const year = d.getFullYear()
-  const now = new Date()
-  return mode === "full" && year !== now.getFullYear() ? `${day} ${month} ${year}` : `${day} ${month}`
-}
-
-const plural = pluralShared
-
 function renderBold(text: string): React.ReactNode[] {
   // Replaces **word** chunks with <b>word</b>
   const parts = text.split(/\*\*/)
   return parts.map((p, i) => (i % 2 === 1 ? <b key={i}>{p}</b> : <span key={i}>{p}</span>))
+}
+
+/** Map TOPUP_TIERS index → translated bonus / save / btn labels. */
+function tierBonusKey(idx: number): string | null {
+  if (idx === 1) return "tierBonus1"
+  if (idx === 2) return "tierBonus3"
+  if (idx === 3) return "tierBonus8"
+  return null
+}
+function tierSaveKey(idx: number): string | null {
+  if (idx === 1) return "tierSave1800"
+  if (idx === 2) return "tierSave5400"
+  if (idx === 3) return "tierSave14400"
+  return null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,6 +199,8 @@ function renderBold(text: string): React.ReactNode[] {
 
 export default function StudentBalancePage() {
   const t = useTranslations("dashboard.student.balance")
+  const tl = asTimeLocale(useLocale())
+  const balanceCss = buildBalanceCss(t("tierBadgePopular"), t("tierBadgeBest"))
   const [data, setData] = useState<BalanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -208,12 +212,12 @@ export default function StudentBalancePage() {
         const res = await fetch("/api/profile/me", { cache: "no-store" })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
-          throw new Error(body?.error ?? "Не удалось загрузить баланс")
+          throw new Error(body?.error ?? t("loadFailed"))
         }
         const json = (await res.json()) as BalanceData
         if (!cancelled) setData(json)
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Ошибка загрузки")
+        if (!cancelled) setError(e?.message ?? t("loadError"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -221,21 +225,22 @@ export default function StudentBalancePage() {
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleTopup = (amount: number) => {
     // TODO: wire Yookassa create-payment flow with purpose='topup'
-    window.alert(`Пополнение на ${formatRub(amount)} ₽ скоро будет доступно. Мы уже прикручиваем Yookassa.`)
+    window.alert(t("topUpAlert", { amount: formatRub(amount) }))
   }
 
   const handleUpgrade = () => {
-    window.alert("Подписка Raw Pro скоро будет доступна. Мы уже прикручиваем Yookassa.")
+    window.alert(t("proSoon"))
   }
 
   if (loading) {
     return (
       <>
-        <style dangerouslySetInnerHTML={{ __html: BALANCE_CSS }} />
+        <style dangerouslySetInnerHTML={{ __html: balanceCss }} />
         <div className="balance-page">
           <h1>
             {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
@@ -249,7 +254,7 @@ export default function StudentBalancePage() {
   if (error || !data) {
     return (
       <>
-        <style dangerouslySetInnerHTML={{ __html: BALANCE_CSS }} />
+        <style dangerouslySetInnerHTML={{ __html: balanceCss }} />
         <div className="balance-page">
           <h1>
             {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
@@ -266,20 +271,22 @@ export default function StudentBalancePage() {
   const balanceSubParts: string[] = []
   const lessonsFromBalance = Math.floor((profile.balance_rub ?? 0) / 1800)
   if (lessonsFromBalance > 0) {
-    balanceSubParts.push(`≈ ${lessonsFromBalance} ${plural(lessonsFromBalance, ["урок", "урока", "уроков"])} по 1 800 ₽`)
+    balanceSubParts.push(t("lessonsHint", { count: lessonsFromBalance }))
   } else {
-    balanceSubParts.push("Пополните, чтобы оплачивать уроки")
+    balanceSubParts.push(t("topUpHint"))
   }
   if (isPro && profile.subscription_until) {
-    balanceSubParts.push(`Подписка активна до ${formatDate(profile.subscription_until, "full")}`)
+    balanceSubParts.push(
+      t("subUntilShort", { date: formatDayMonthYearLong(profile.subscription_until, tl) })
+    )
   }
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: BALANCE_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: balanceCss }} />
       <div className="balance-page">
         <h1>
-          Мой <span className="gl">balance</span>
+          {t("headingMain")} <span className="gl">{t("headingHighlight")}</span>
         </h1>
         <div className="page-sub">
           {t("subtitle")}
@@ -316,26 +323,32 @@ export default function StudentBalancePage() {
         <div id="topup">
           <div className="section-title">{t("topUp")}</div>
           <div className="section-sub">
-            Баланс используется для оплаты уроков и клубов. Чем больше пополняешь — тем выгоднее.
+            {t("topUpSub")}
           </div>
         </div>
 
         <div className="topup-grid">
-          {TOPUP_TIERS.map((tier) => {
+          {TOPUP_TIERS.map((tier, idx) => {
             const cls =
               tier.badge === "popular" ? "topup topup--popular" : tier.badge === "best" ? "topup topup--best" : "topup"
             const btnCls =
               tier.btnVariant === "red" ? "topup-btn topup-btn--red" : tier.btnVariant === "lime" ? "topup-btn topup-btn--lime" : "topup-btn topup-btn--default"
+            const bonusKey = tierBonusKey(idx)
+            const saveKey = tierSaveKey(idx)
+            const btnLabel = tier.btnVariant === "lime" ? t("tierBtnBest") : t("tierBtnTopUp")
             return (
               <div key={tier.amount} className={cls} onClick={() => handleTopup(tier.amount)}>
                 <div className="topup-body">
                   <div className="topup-amount">{formatRub(tier.amount)} ₽</div>
                   <div className="topup-lessons">
-                    ≈ <b>{tier.lessons}</b> {plural(tier.lessons, ["урок", "урока", "уроков"])}
+                    {t.rich("lessonsApprox", {
+                      count: tier.lessons,
+                      b: (chunks) => <b>{chunks}</b>,
+                    })}
                   </div>
-                  {tier.bonus && <div className="topup-bonus">{tier.bonus}</div>}
-                  {tier.save && <div className="topup-save">{tier.save}</div>}
-                  <div className="topup-perprice">{formatRub(tier.perPrice)} ₽ / урок</div>
+                  {bonusKey && <div className="topup-bonus">{t(bonusKey)}</div>}
+                  {saveKey && <div className="topup-save">{t(saveKey)}</div>}
+                  <div className="topup-perprice">{t("perLessonShort", { amount: formatRub(tier.perPrice) })}</div>
                   <button
                     className={btnCls}
                     type="button"
@@ -344,7 +357,7 @@ export default function StudentBalancePage() {
                       handleTopup(tier.amount)
                     }}
                   >
-                    {tier.btnLabel}
+                    {btnLabel}
                   </button>
                 </div>
               </div>
@@ -356,7 +369,7 @@ export default function StudentBalancePage() {
         <div className="sub-section">
           <div className="section-title">{t("subscriptionTitle")}</div>
           <div className="section-sub">
-            Подписка открывает геймификацию, клубы, достижения и призы. Уроки оплачиваются отдельно с баланса.
+            {t("subscriptionSub")}
           </div>
 
           <div className="sub-grid">
@@ -369,16 +382,16 @@ export default function StudentBalancePage() {
                 </div>
               </div>
               <div className="sub-features">
-                {FREE_FEATURES.map((f, i) => (
+                {FREE_FEATURES.map((item, i) => (
                   <div key={i} className="sf">
-                    <div className={f.yes ? "sf-icon sf-icon--yes" : "sf-icon sf-icon--no"}>{f.yes ? "✓" : "✗"}</div>
-                    <div className={f.yes ? "sf-text" : "sf-text sf-text--dim"}>{f.text}</div>
+                    <div className={item.yes ? "sf-icon sf-icon--yes" : "sf-icon sf-icon--no"}>{item.yes ? "✓" : "✗"}</div>
+                    <div className={item.yes ? "sf-text" : "sf-text sf-text--dim"}>{t(`freeFeat${i}` as any)}</div>
                   </div>
                 ))}
               </div>
               {!isPro ? (
                 <button className="sub-btn sub-btn--current" type="button" disabled>
-                  Текущий план
+                  {t("subCurrentPlan")}
                 </button>
               ) : (
                 <button
@@ -386,7 +399,7 @@ export default function StudentBalancePage() {
                   type="button"
                   onClick={() => window.alert(t("cancelSubInfo"))}
                 >
-                  Перейти на бесплатный
+                  {t("subDowngrade")}
                 </button>
               )}
             </div>
@@ -398,24 +411,28 @@ export default function StudentBalancePage() {
                 </div>
                 <div className="sub-price">
                   <div className="sub-price-val">{formatRub(PRO_PRICE_RUB)} ₽</div>
-                  <div className="sub-price-per">/ месяц</div>
+                  <div className="sub-price-per">{t("subPricePerMonth")}</div>
                 </div>
               </div>
               <div className="sub-features">
-                {PRO_FEATURES_YES.map((feature, i) => (
+                {PRO_FEATURES_YES.map((_, i) => (
                   <div key={i} className="sf">
                     <div className="sf-icon sf-icon--yes">✓</div>
-                    <div className="sf-text">{renderBold(feature)}</div>
+                    <div className="sf-text">{renderBold(t(`proFeat${i}` as any))}</div>
                   </div>
                 ))}
               </div>
               {isPro ? (
                 <button className="sub-btn sub-btn--current" type="button" disabled>
-                  Активна до {profile.subscription_until ? formatDate(profile.subscription_until, "full") : "—"}
+                  {t("subActiveUntil", {
+                    date: profile.subscription_until
+                      ? formatDayMonthYearLong(profile.subscription_until, tl)
+                      : "—",
+                  })}
                 </button>
               ) : (
                 <button className="sub-btn sub-btn--upgrade" type="button" onClick={handleUpgrade}>
-                  Подключить Pro — {formatRub(PRO_PRICE_RUB)} ₽/мес
+                  {t("subUpgradeBtn", { price: formatRub(PRO_PRICE_RUB) })}
                 </button>
               )}
             </div>
@@ -425,7 +442,9 @@ export default function StudentBalancePage() {
             <div className="sub-warning">
               <div className="sub-warning-icon">⚠️</div>
               <div className="sub-warning-text">
-                <b>Без подписки</b> ты можешь только записываться на уроки с преподавателями. Speaking Clubs, геймификация, достижения, призы, лидерборд, AI-план и коммьюнити — всё это <b>доступно только с подпиской Raw Pro</b>. Подписка не включает стоимость уроков — они оплачиваются отдельно с баланса.
+                {t.rich("noSubBlurb", {
+                  b: (chunks) => <b>{chunks}</b>,
+                })}
               </div>
             </div>
           )}
@@ -456,7 +475,7 @@ export default function StudentBalancePage() {
                 h.currency === "XP" ? `${sign}${formatRub(Math.abs(h.amount))} XP` : `${sign}${formatRub(Math.abs(h.amount))} ₽`
               return (
                 <div className="h-row" key={h.id}>
-                  <div className="h-date">{formatDate(h.date, "short")}</div>
+                  <div className="h-date">{formatLessonDayShort(h.date, tl)}</div>
                   <div className="h-desc">{h.title}</div>
                   <div className={amountCls}>{displayAmount}</div>
                   <div className="h-status">
