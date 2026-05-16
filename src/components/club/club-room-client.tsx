@@ -225,7 +225,9 @@ export function ClubRoomClient({
           // disabling it hides remote screen-share entirely.
           disableSelfViewSettings: true,
           hideDisplayName: true,
-          videoLayoutFit: "both",
+          // Make shared screens use the available height instead of sitting in
+          // a small contained box with large black margins.
+          videoLayoutFit: "height",
           disableLargeVideoCrop: false,
         },
         interfaceConfigOverwrite: {
@@ -243,13 +245,16 @@ export function ClubRoomClient({
           RECENT_LIST_ENABLED: false,
           VERTICAL_FILMSTRIP: false,
           DISABLE_TRANSCRIPTION_SUBTITLES: true,
-          VIDEO_LAYOUT_FIT: "both",
+          VIDEO_LAYOUT_FIT: "height",
           DISABLE_PRESENCE_STATUS: true,
         },
         userInfo: { displayName: userName },
       })
 
       const api = apiRef.current
+      let screenShareActive = false
+      let activeSharerId: string | null = null
+      let restoringShareLargeVideo = false
 
       // Single mutation point: merge by participantId, last write wins.
       const upsert = (
@@ -311,6 +316,31 @@ export function ClubRoomClient({
       api.addListener?.("videoConferenceLeft", () => {
         setLiveParticipants([])
       })
+      // Prevent accidental participant pinning from trapping students in a
+      // one-person large-video layout. Keep this disabled while screen share
+      // is active; during share stage view is intentional.
+      api.addListener?.("tileViewChanged", (e: any) => {
+        if (screenShareActive || e?.enabled) return
+        setTimeout(() => {
+          if (screenShareActive) return
+          try {
+            api.executeCommand("pinParticipant", null)
+            api.executeCommand("setTileView", true)
+          } catch {}
+        }, 100)
+      })
+      api.addListener?.("largeVideoChanged", () => {
+        if (!screenShareActive || !activeSharerId || restoringShareLargeVideo) return
+        restoringShareLargeVideo = true
+        setTimeout(() => {
+          try {
+            api.executeCommand("setLargeVideoParticipant", activeSharerId, "desktop")
+          } catch {}
+          setTimeout(() => {
+            restoringShareLargeVideo = false
+          }, 200)
+        }, 50)
+      })
       // When anyone starts sharing their screen, leave tile view and force the
       // desktop track into the large video. Important: without the second
       // argument Jitsi defaults to the sharer's camera track, which looks like
@@ -321,11 +351,14 @@ export function ClubRoomClient({
           (Array.isArray(e?.participants) && e.participants) ||
           []
         const sharerId = ids[0]
+        screenShareActive = !!sharerId
+        activeSharerId = sharerId || null
         try {
           if (sharerId) {
             api.executeCommand("setTileView", false)
             api.executeCommand("setLargeVideoParticipant", sharerId, "desktop")
           } else {
+            api.executeCommand("pinParticipant", null)
             api.executeCommand("setTileView", true)
           }
         } catch {}
