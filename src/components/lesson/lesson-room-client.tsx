@@ -291,6 +291,10 @@ export function LessonRoomClient({
           startWithTileView:true,
           disableTileView:false,
           disableSelfView:false,
+          // Расшаренный экран занимает всю доступную высоту вместо контейнера
+          // с большими чёрными полями сверху/снизу.
+          videoLayoutFit:"height",
+          disableLargeVideoCrop:false,
         },
         interfaceConfigOverwrite:{
           SHOW_JITSI_WATERMARK:false,
@@ -306,6 +310,7 @@ export function LessonRoomClient({
           DISABLE_DOMINANT_SPEAKER_INDICATOR:true,
           DISABLE_VIDEO_BACKGROUND:true,
           RECENT_LIST_ENABLED:false,
+          VIDEO_LAYOUT_FIT:"height",
         },
         // userInfo НЕ передаём: JWT context.user.name — единственный источник имени.
         // Иначе клиент мог бы подменить displayName через iframe options в обход JWT.
@@ -329,6 +334,8 @@ export function LessonRoomClient({
       // и остаются только камеры. Также НЕ делаем pinParticipant(null) —
       // это снимает auto-pin с share-source и тоже ломает презентацию.
       let screenShareActive = false
+      let activeSharerId: string | null = null
+      let restoringShareLargeVideo = false
       const forceTileIfNoShare = () => {
         if (screenShareActive) return
         try { jitsiApi.current?.executeCommand("setTileView", true) } catch {}
@@ -358,14 +365,43 @@ export function LessonRoomClient({
           []
         const sharerId = ids[0]
         screenShareActive = !!sharerId
+        activeSharerId = sharerId || null
         try {
           if (sharerId) {
             jitsiApi.current?.executeCommand("setTileView", false)
             jitsiApi.current?.executeCommand("setLargeVideoParticipant", sharerId, "desktop")
           } else {
+            jitsiApi.current?.executeCommand("pinParticipant", null)
             setTimeout(forceTileIfNoShare, 100)
           }
         } catch {}
+      })
+      // Если что-то pin'нуло одного участника (студент кликом или auto-pin
+      // на dominant speaker) — возвращаем в tile, кроме случая screen share.
+      jitsiApi.current?.addListener("tileViewChanged", (e: any) => {
+        if (screenShareActive || e?.enabled) return
+        setTimeout(() => {
+          if (screenShareActive) return
+          try {
+            jitsiApi.current?.executeCommand("pinParticipant", null)
+            jitsiApi.current?.executeCommand("setTileView", true)
+          } catch {}
+        }, 100)
+      })
+      // Защита: если Jitsi переключил large video с desktop на camera-track
+      // шарера во время share — возвращаем обратно. restoringShareLargeVideo
+      // защищает от бесконечной петли (наш же executeCommand fire'ит событие).
+      jitsiApi.current?.addListener("largeVideoChanged", () => {
+        if (!screenShareActive || !activeSharerId || restoringShareLargeVideo) return
+        restoringShareLargeVideo = true
+        setTimeout(() => {
+          try {
+            jitsiApi.current?.executeCommand("setLargeVideoParticipant", activeSharerId, "desktop")
+          } catch {}
+          setTimeout(() => {
+            restoringShareLargeVideo = false
+          }, 200)
+        }, 50)
       })
       jitsiApi.current?.addListener("screenSharingStatusChanged", (e: any) => {
         screenShareActive = !!e?.on
