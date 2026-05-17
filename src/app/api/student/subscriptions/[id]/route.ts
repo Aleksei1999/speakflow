@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 import {
@@ -25,6 +26,7 @@ import {
   invalidateTeacherDashboard,
   invalidateTeacherStudents,
 } from '@/lib/cache/invalidate'
+import { notifySubscriptionCancelled } from '@/lib/notifications/subscription-events'
 
 const idSchema = z.string().uuid('Некорректный ID подписки')
 const fromSchema = z
@@ -191,6 +193,18 @@ export async function DELETE(
         previous_status: sub.status,
       },
     })
+
+    // Phase-4: уведомляем препода. Если отменил сам препод —
+    // notifier увидит teacher.user_id === sub.teacher и тоже отправит
+    // (это его действие → пусть имеет письменный след), но мы могли бы
+    // тут skip'нуть; для consistency оставляем — он узнает из дашборда.
+    void notifySubscriptionCancelled(
+      createAdminClient(),
+      id,
+      from
+    ).catch((err) =>
+      console.error('[subscriptions/cancel] notify failed', err)
+    )
 
     return NextResponse.json({
       ok: true,

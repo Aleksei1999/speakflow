@@ -10,9 +10,10 @@
 //   - DELETE /api/lessons/[id] — REST-удобство (фронт ожидает
 //     стандартный REST), и точечная отмена ОДНОГО occurrence из
 //     серии (студент не хочет конкретный вторник, но всю серию
-//     оставляет). Refund-policy и notifyLessonCancelled здесь
-//     намеренно НЕ дёргаем, чтобы избежать дабл-уведомления:
-//     если нужна нотификация — фронт зовёт /api/booking/cancel.
+//     оставляет). Refund-policy здесь НЕ дёргаем — но preview
+//     уведомление преподу через notifyLessonCancelled (phase 4)
+//     отправляем: для one-off cancel из серии это единственный канал,
+//     /api/booking/cancel здесь не вызывают.
 //
 // Body (optional): { reason: string }
 // ---------------------------------------------------------------
@@ -20,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 import {
@@ -27,6 +29,7 @@ import {
   invalidateTeacherDashboard,
   invalidateTeacherStudents,
 } from '@/lib/cache/invalidate'
+import { notifyLessonCancelled } from '@/lib/notifications/subscription-events'
 
 const idSchema = z.string().uuid('Некорректный ID урока')
 const bodySchema = z
@@ -230,6 +233,12 @@ export async function DELETE(
         via: 'rest_delete',
       },
     })
+
+    // Phase-4: нотификация преподу (subscription-events skip'нет
+    // самого препода-инициатора и student-only флаг lesson_reminders).
+    void notifyLessonCancelled(createAdminClient(), id, user.id).catch(
+      (err) => console.error('[lessons/delete] notify failed', err)
+    )
 
     return NextResponse.json({
       ok: true,

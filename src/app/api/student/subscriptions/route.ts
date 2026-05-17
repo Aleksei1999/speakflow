@@ -15,8 +15,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
+import { notifySubscriptionCreated } from '@/lib/notifications/subscription-events'
 
 // ---- validation ------------------------------------------------
 
@@ -67,6 +69,93 @@ const createSubscriptionSchema = z
       })
     }
   })
+
+// ---- GET -------------------------------------------------------
+// GET /api/student/subscriptions
+// GET /api/student/subscriptions?teacher_id=<uuid>
+//
+// Возвращает active подписки текущего студента. С ?teacher_id
+// фильтрует по одному преподу — этим UI («Закрепить время?»)
+// решает, показывать post-lesson попап или нет. Status фильтруется
+// по 'active' (не cancelled / ended).
+// ---------------------------------------------------------------
+
+const teacherIdQuerySchema = z
+  .string()
+  .uuid('Некорректный ID преподавателя')
+  .optional()
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Необходимо авторизоваться' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const teacherIdRaw = searchParams.get('teacher_id') ?? undefined
+    const teacherIdParsed = teacherIdQuerySchema.safeParse(teacherIdRaw)
+    if (!teacherIdParsed.success) {
+      return NextResponse.json(
+        {
+          error:
+            teacherIdParsed.error.issues[0]?.message ??
+            'Некорректный teacher_id',
+        },
+        { status: 400 }
+      )
+    }
+    const teacherId = teacherIdParsed.data
+
+    // RLS на lesson_subscriptions пускает student к своим строкам.
+    // Selecting * — серверный response, поля стабильны (миграция 082).
+    let q = supabase
+      .from('lesson_subscriptions' as any)
+      .select(
+        'id, teacher_id, student_id, pattern, starts_on, ends_on, status, weeks, created_at'
+      )
+      .eq('student_id', user.id)
+      .eq('status', 'active')
+
+    if (teacherId) q = q.eq('teacher_id', teacherId)
+
+    type SubRow = {
+      id: string
+      teacher_id: string
+      student_id: string
+      pattern: any
+      starts_on: string
+      ends_on: string | null
+      status: string
+      weeks: number
+      created_at: string
+    }
+    const { data, error } = (await q) as { data: SubRow[] | null; error: any }
+    if (error) {
+      console.error('[subscriptions/list] failed', error)
+      return NextResponse.json(
+        { error: 'Не удалось загрузить подписки' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ subscriptions: data ?? [] })
+  } catch (error) {
+    console.error('[subscriptions/list] unexpected', error)
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}
 
 // ---- POST ------------------------------------------------------
 
@@ -249,6 +338,16 @@ export async function POST(request: NextRequest) {
         lessons_created: result.lessons_created,
       },
     })
+
+    // Phase-4 нотификация преподу (email + telegram, локализация по
+    // teacher.profile.language). Fire-and-forget — никогда не валим
+    // ответ API из-за email/tg-ошибки.
+    void notifySubscriptionCreated(
+      createAdminClient(),
+      result.subscription_id
+    ).catch((err) =>
+      console.error('[subscriptions/create] notify failed', err)
+    )
 
     return NextResponse.json(
       {
