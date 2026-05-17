@@ -139,6 +139,7 @@ function formatDateInputLocal(iso: string | null, locale: string = "ru"): string
 
 export default function StudentHomeworkClient({ initial }: { initial: Snapshot }) {
   const t = useTranslations("dashboard.student.homework")
+  const tHd = useTranslations("dashboard.student.homework.humanDue")
   const [filter, setFilter] = useState<FilterKey>("all")
   const [items, setItems] = useState<HwItem[]>(initial.homework)
   const [counts, setCounts] = useState(initial.counts)
@@ -228,7 +229,7 @@ export default function StudentHomeworkClient({ initial }: { initial: Snapshot }
                   <span className="pulse"></span>
                   {urgent.ui_status === "overdue"
                     ? t("urgentOverdue")
-                    : t("urgentNearestDeadline", { when: humanDueLabel(urgent.due_date, urgent.ui_status) })}
+                    : t("urgentNearestDeadline", { when: humanDueLabel(urgent.due_date, urgent.ui_status, tHd) })}
                 </div>
                 <div className="uh-title">{urgent.title}</div>
                 <div className="uh-sub">
