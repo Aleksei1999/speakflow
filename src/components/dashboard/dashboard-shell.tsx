@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { useStudentDashboard } from "@/hooks/use-student-dashboard"
 import { useAdminSupportUnread } from "@/hooks/use-admin-support-unread"
 import { useTeacherClubsUnread } from "@/hooks/use-teacher-clubs-unread"
+import { useUnreadBadges, type UnreadCategory } from "@/hooks/use-unread-badges"
 import { LEVEL_XP_THRESHOLDS, xpToRoastLevel } from "@/lib/level-utils"
 
 const SHELL_CSS = `
@@ -198,6 +199,28 @@ const adminBottom: NavItem[] = [
 const ADMIN_LABEL_FALLBACK: Record<string, { ru: string; en: string }> = {
   _adminApplications: { ru: "Заявки", en: "Applications" },
   _adminReports: { ru: "Отчёты", en: "Reports" },
+}
+
+// Маппинг href → UnreadCategory для унифицированных бейджей (мигр 083).
+// Lifted to module scope так, что и useEffect (mark-seen on route change),
+// и useMemo (badge merge) видят один источник правды без TDZ.
+//
+// admin/support и teacher/clubs здесь намеренно отсутствуют — у них
+// дедикейтед хуки (useAdminSupportUnread / useTeacherClubsUnread)
+// с собственной логикой подсчёта, мы их не вытесняем.
+const HREF_TO_CATEGORY: Record<string, UnreadCategory> = {
+  "/student/schedule":      "schedule",
+  "/student/homework":      "homework",
+  "/student/materials":     "materials",
+  "/student/achievements":  "achievements",
+  "/student/support":       "support",
+  "/student/clubs":         "clubs",
+  "/teacher/schedule":      "schedule",
+  "/teacher/students":      "students",
+  "/teacher/homework":      "homework",
+  "/teacher/support":       "support",
+  "/admin/students":        "users",
+  "/admin/trial-requests":  "trial_requests",
 }
 
 function Icon({ svg }: { svg: string }) {
@@ -407,6 +430,54 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
   const supportUnread = adminSupportQ.data ?? 0
   const teacherClubsUnread = teacherClubsQ.data ?? 0
 
+  // -------------------------------------------------------------
+  // Unified unread badges (мигр 083, /api/notifications/*)
+  // -------------------------------------------------------------
+  // Один API-call отдаёт счётчики для всех категорий пользователя.
+  // Старые хуки (admin/support, teacher/clubs) остаются как
+  // авторитет для своих категорий — новый source просто пополняет
+  // оставшиеся разделы (schedule/homework/materials/achievements/
+  // students/users/trial_requests).
+  // -------------------------------------------------------------
+  const unifiedQ = useUnreadBadges({ enabled: Boolean(role) })
+  const unified = unifiedQ.data
+
+  // Авто-mark-seen: когда пользователь переходит на страницу
+  // соответствующего раздела — обнуляем счётчик категории. Делается
+  // в shell'е (а не в page.tsx у каждой страницы), чтобы добавлять
+  // новые разделы было дёшево: достаточно расширить HREF_TO_CATEGORY.
+  // Дебаунс 250ms даёт странице успеть забрать первичные данные до
+  // того, как мы пнём revalidate-tag invalidate в API.
+  const unifiedRefetch = unifiedQ.refetch
+  useEffect(() => {
+    if (!role) return
+    // Find category for current pathname by longest-prefix match
+    // (handles /student/schedule and /student/schedule/[id] alike).
+    let matched: UnreadCategory | null = null
+    let matchedLen = -1
+    for (const [href, cat] of Object.entries(HREF_TO_CATEGORY)) {
+      if (pathname === href || pathname.startsWith(href + "/")) {
+        if (href.length > matchedLen) {
+          matched = cat
+          matchedLen = href.length
+        }
+      }
+    }
+    if (!matched) return
+    const cat = matched
+    const id = setTimeout(() => {
+      void fetch("/api/notifications/mark-seen", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: cat }),
+      }).then(() => {
+        unifiedRefetch()
+      }).catch(() => { /* swallow — next interval will catch up */ })
+    }, 400)
+    return () => clearTimeout(id)
+  }, [pathname, role, unifiedRefetch])
+
   // Совместимость с custom events: AdminSupportClient.tsx эмитит
   // 'support-unread-changed' после mark-read, чтобы шелл сразу
   // обнулил счётчик без ожидания следующего интервала. Делаем
@@ -455,23 +526,24 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
 
   const baseNav =
     currentRole === "admin" ? adminNav : currentRole === "teacher" ? teacherNav : studentNav
+
   const navItems = useMemo(() => {
-    if (currentRole === "admin") {
-      return baseNav.map((item) =>
-        item.href === "/admin/support" && supportUnread > 0
-          ? { ...item, badge: supportUnread }
-          : item
-      )
-    }
-    if (currentRole === "teacher") {
-      return baseNav.map((item) =>
-        item.href === "/teacher/clubs" && teacherClubsUnread > 0
-          ? { ...item, badge: teacherClubsUnread }
-          : item
-      )
-    }
-    return baseNav
-  }, [baseNav, currentRole, supportUnread, teacherClubsUnread])
+    return baseNav.map((item) => {
+      // Дедикейтед хуки (приоритет — их auth/role guard уже учитывает).
+      if (currentRole === "admin" && item.href === "/admin/support" && supportUnread > 0) {
+        return { ...item, badge: supportUnread }
+      }
+      if (currentRole === "teacher" && item.href === "/teacher/clubs" && teacherClubsUnread > 0) {
+        return { ...item, badge: teacherClubsUnread }
+      }
+      // Унифицированный источник для всех остальных href.
+      const category = HREF_TO_CATEGORY[item.href]
+      if (category && unified && unified[category] > 0) {
+        return { ...item, badge: unified[category] }
+      }
+      return item
+    })
+  }, [baseNav, currentRole, supportUnread, teacherClubsUnread, unified])
   const bottomItems =
     currentRole === "admin" ? adminBottom : currentRole === "teacher" ? teacherBottom : studentBottom
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
