@@ -377,7 +377,29 @@
         "chipTrial": "🎯 Пробный",
         "chipLessonWith": "Урок · {name}",
         "chipLesson": "Урок 1-on-1",
-        "loadingLabel": "Загрузка…"
+        "loadingLabel": "Загрузка…",
+        "recurringBadge": "Повтор",
+        "recurringBadgeShort": "🔁 Серия",
+        "cancelSeries": "Отменить серию",
+        "cancelSeriesConfirm": "Отменить всю серию начиная с этого урока?\n\nВсе будущие уроки в этом закреплённом времени будут отменены.",
+        "cancelSeriesFromToday": "Отменить будущие",
+        "cancelSeriesCompleted": "Отменили {count, plural, one {# урок} few {# урока} other {# уроков}} из серии",
+        "cancelSeriesFailed": "Не удалось отменить серию"
+      },
+      "recurring": {
+        "postLessonTitle": "Закрепить время за тобой?",
+        "postLessonSub": "Бери тот же слот каждую неделю — мы заранее забронируем уроки и сохраним любимого препода.",
+        "postLessonYes": "Да, выбрать дни",
+        "postLessonNo": "Нет, спасибо",
+        "postLessonHint": "Отменить можно в любой момент из расписания.",
+        "pickerTitle": "Закрепи свои слоты",
+        "pickerSub": "Тапни на ячейку, чтобы добавить или убрать. Оранжевые — уже заняты.",
+        "saving": "Сохраняем…",
+        "savedToast": "Закрепили {count, plural, one {# урок} few {# урока} other {# уроков}}",
+        "errorEmpty": "Выбери хотя бы один слот",
+        "errorConflict": "Часть слотов уже занята — выбери другие ячейки.",
+        "errorGeneric": "Не удалось закрепить слоты",
+        "backToSchedule": "Открыть расписание"
       },
       "settings": {
         "title": "Настройки",
@@ -1902,6 +1924,36 @@
       "weekdayFri": "Пт",
       "weekdaySat": "Сб",
       "weekdaySun": "Вс"
+    },
+    "recurringSlotPicker": {
+      "ariaLabel": "Выбор регулярных слотов",
+      "closeAria": "Закрыть",
+      "headerTitle": "Закрепи слот на неделю",
+      "headerSub": "Тапни на ячейку, чтобы добавить. Повторный тап — убрать. Занятые — у других студентов.",
+      "durationLabel": "Длина урока",
+      "weeksLabel": "На сколько недель",
+      "weeks4": "4 недели",
+      "weeks8": "8 недель",
+      "weeks12": "12 недель",
+      "startsOn": "Старт с {date}",
+      "loadingBusy": "Загружаем календарь преподавателя…",
+      "legendFree": "Свободно",
+      "legendChosen": "Выбрано",
+      "legendBusy": "Занято",
+      "legendConflict": "Конфликт",
+      "ctaCancel": "Отмена",
+      "ctaSave": "Закрепить {count, plural, =0 {слоты} one {# слот} few {# слота} other {# слотов}} × {weeks, plural, one {# неделя} few {# недели} other {# недель}}",
+      "ctaSaving": "Закрепляем…",
+      "weekdayMon": "Пн",
+      "weekdayTue": "Вт",
+      "weekdayWed": "Ср",
+      "weekdayThu": "Чт",
+      "weekdayFri": "Пт",
+      "weekdaySat": "Сб",
+      "weekdaySun": "Вс"
+    },
+    "postLessonRecurring": {
+      "ariaLabel": "Закрепить время после урока"
     },
     "lesson": {
       "sidebar": {

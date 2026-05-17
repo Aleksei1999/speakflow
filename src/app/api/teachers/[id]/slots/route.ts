@@ -88,6 +88,69 @@ export async function GET(
       )
     }
 
+    // ---- BUSY MODE -----------------------------------------------
+    // ?busy=1[&week=YYYY-MM-DD] — возвращает занятые time-ranges за
+    // конкретную неделю (Mon..Sun) для UI RecurringSlotPicker, чтобы
+    // он подсветил/задизейблил соответствующие клетки сетки.
+    // Без week — берёт ближайшие 14 дней от now().
+    // Response: { busy: [{ scheduled_at, ends_at, dow, time }] }
+    const busy = searchParams.get('busy') === '1'
+    if (busy) {
+      const weekRaw = searchParams.get('week')
+      let rangeStart: Date
+      let rangeEnd: Date
+      if (weekRaw && /^\d{4}-\d{2}-\d{2}$/.test(weekRaw)) {
+        rangeStart = new Date(`${weekRaw}T00:00:00Z`)
+        rangeEnd = new Date(rangeStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+      } else {
+        const now = new Date()
+        rangeStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        )
+        rangeEnd = new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000)
+      }
+
+      const { data: lessons, error: lessonsErr } = (await supabase
+        .from('lessons')
+        .select('scheduled_at, duration_minutes, status')
+        .eq('teacher_id', teacherProfileId)
+        .gte('scheduled_at', rangeStart.toISOString())
+        .lt('scheduled_at', rangeEnd.toISOString())
+        .in('status', [
+          'pending_payment',
+          'booked',
+          'scheduled',
+          'confirmed',
+          'in_progress',
+        ])) as {
+        data: Array<{ scheduled_at: string; duration_minutes: number; status: string }> | null
+        error: any
+      }
+
+      if (lessonsErr) {
+        console.error('[teacher/slots] busy lessons load failed', lessonsErr)
+        return NextResponse.json({ busy: [] })
+      }
+
+      // dow=0..6 с понедельника (соответствует pattern из миграции 082).
+      const busyList = (lessons ?? []).map((l) => {
+        const d = new Date(l.scheduled_at)
+        const ends = new Date(d.getTime() + l.duration_minutes * 60_000)
+        // 0=Sun..6=Sat -> 0=Mon..6=Sun
+        const dow = (d.getUTCDay() + 6) % 7
+        const hh = pad2(d.getUTCHours())
+        const mm = pad2(d.getUTCMinutes())
+        return {
+          scheduled_at: l.scheduled_at,
+          ends_at: ends.toISOString(),
+          duration_minutes: l.duration_minutes,
+          dow,
+          time: `${hh}:${mm}`,
+        }
+      })
+      return NextResponse.json({ busy: busyList })
+    }
+
     // Fetch weekly availability (all days).
     const { data: availability, error: availErr } = (await supabase
       .from('teacher_availability')

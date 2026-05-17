@@ -377,7 +377,29 @@
         "chipTrial": "🎯 Trial",
         "chipLessonWith": "Lesson · {name}",
         "chipLesson": "1-on-1 lesson",
-        "loadingLabel": "Loading…"
+        "loadingLabel": "Loading…",
+        "recurringBadge": "Recurring",
+        "recurringBadgeShort": "🔁 Series",
+        "cancelSeries": "Cancel series",
+        "cancelSeriesConfirm": "Cancel the whole series from this lesson onward?\n\nAll future lessons in the recurring slot will be removed.",
+        "cancelSeriesFromToday": "Cancel future",
+        "cancelSeriesCompleted": "Cancelled {count, plural, one {# lesson} other {# lessons}} from the series",
+        "cancelSeriesFailed": "Couldn't cancel the series"
+      },
+      "recurring": {
+        "postLessonTitle": "Pin this time for you?",
+        "postLessonSub": "Take the same slot every week — we'll book the next lessons automatically and save your favourite teacher.",
+        "postLessonYes": "Yes, pick the days",
+        "postLessonNo": "No, thanks",
+        "postLessonHint": "You can cancel any time from the schedule.",
+        "pickerTitle": "Lock in your weekly slots",
+        "pickerSub": "Tap on cells to add or remove. Orange cells are already booked.",
+        "saving": "Saving…",
+        "savedToast": "Pinned {count, plural, one {# lesson} other {# lessons}}",
+        "errorEmpty": "Pick at least one slot",
+        "errorConflict": "Some slots are already booked — pick different cells.",
+        "errorGeneric": "Couldn't pin the slots",
+        "backToSchedule": "Open my schedule"
       },
       "settings": {
         "title": "Settings",
@@ -1902,6 +1924,36 @@
       "weekdayFri": "Fri",
       "weekdaySat": "Sat",
       "weekdaySun": "Sun"
+    },
+    "recurringSlotPicker": {
+      "ariaLabel": "Pick recurring slots",
+      "closeAria": "Close",
+      "headerTitle": "Pin a weekly slot",
+      "headerSub": "Tap a cell to add. Tap again to remove. Cells marked busy belong to other students.",
+      "durationLabel": "Lesson length",
+      "weeksLabel": "How many weeks",
+      "weeks4": "4 weeks",
+      "weeks8": "8 weeks",
+      "weeks12": "12 weeks",
+      "startsOn": "Starts {date}",
+      "loadingBusy": "Loading teacher's calendar…",
+      "legendFree": "Free",
+      "legendChosen": "Selected",
+      "legendBusy": "Busy",
+      "legendConflict": "Conflict",
+      "ctaCancel": "Cancel",
+      "ctaSave": "Pin {count, plural, =0 {slots} one {# slot} other {# slots}} × {weeks, plural, one {# week} other {# weeks}}",
+      "ctaSaving": "Pinning…",
+      "weekdayMon": "Mon",
+      "weekdayTue": "Tue",
+      "weekdayWed": "Wed",
+      "weekdayThu": "Thu",
+      "weekdayFri": "Fri",
+      "weekdaySat": "Sat",
+      "weekdaySun": "Sun"
+    },
+    "postLessonRecurring": {
+      "ariaLabel": "Pin time after the lesson"
     },
     "lesson": {
       "sidebar": {

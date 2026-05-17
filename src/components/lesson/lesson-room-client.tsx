@@ -8,6 +8,17 @@ import { useModalA11y } from "@/hooks/use-modal-a11y"
 import { useLessonChat } from "@/hooks/use-lesson-chat"
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog"
 import { LESSON_POST_WINDOW } from "@/lib/constants"
+import dynamic from "next/dynamic"
+import { useTranslations } from "next-intl"
+
+// RecurringSlotPicker — ~13KB component с собственной CSS-портянкой.
+// Открывается ТОЛЬКО после положительного ответа на post-lesson модал
+// у студента — у учителя/во время урока он не нужен. ssr:false: чистая
+// клиентская модалка.
+const RecurringSlotPicker = dynamic(
+  () => import("@/components/booking/recurring-slot-picker").then((m) => m.RecurringSlotPicker),
+  { ssr: false, loading: () => null }
+)
 
 interface Props {
   lessonId: string
@@ -25,6 +36,9 @@ interface Props {
   teacherRating?: number
   nextLessonAt?: string | null
   studentId?: string
+  // teacher_profiles.id урока — нужен для post-lesson попапа
+  // «Закрепить время?». На стороне teacher не используется.
+  teacherProfileId?: string | null
 }
 
 interface Material { id: string; title: string; content: string; file_url: string | null; created_at: string }
@@ -179,8 +193,9 @@ const CSS = `
 export function LessonRoomClient({
   lessonId, scheduledAt, durationMinutes, userId, userName, teacherName,
   jitsiDomain, jitsiToken, jitsiRoom, isTeacher = false, lessonNumber = 1, studentLevel = "—",
-  teacherRating = 0, nextLessonAt = null, studentId = "",
+  teacherRating = 0, nextLessonAt = null, studentId = "", teacherProfileId = null,
 }: Props) {
+  const trec = useTranslations("dashboard.student.recurring")
   const router = useRouter()
   const [tab, setTab] = useState<"chat"|"materials"|"notes">("chat")
   const [newMsg, setNewMsg] = useState("")
@@ -221,6 +236,51 @@ export function LessonRoomClient({
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
 
+  // ---- Post-lesson «закрепить слот» модал ---------------------
+  // Показываем студенту ОДИН раз после фактического выхода из Jitsi,
+  // если: (a) это не teacher; (b) у нас есть teacherProfileId;
+  // (c) урок длился > 50% от запланированного времени (proxy на
+  // «реально прошёл»); (d) у студента нет active subscription с этим
+  // преподом (GET /api/student/subscriptions?teacher_id=). Иначе
+  // — обычный redirect, как раньше.
+  const [postLessonOpen, setPostLessonOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const postLessonShownRef = useRef(false)
+  const joinedAtRef = useRef<number | null>(null)
+
+  const closeAndGoSchedule = useCallback(() => {
+    router.push(isTeacher ? "/teacher/schedule" : "/student/schedule")
+  }, [router, isTeacher])
+
+  // Возвращает true если попап был показан (значит redirect нужно ОТЛОЖИТЬ).
+  const maybeShowPostLesson = useCallback(async (): Promise<boolean> => {
+    if (postLessonShownRef.current) return false
+    postLessonShownRef.current = true // лочим один раз — даже если ниже false, не пытаемся снова
+    if (isTeacher) return false
+    if (!teacherProfileId) return false
+    // Длительность присутствия. Если урок только начался и сразу
+    // вышли — закрепляться странно. Берём 50% от scheduled длины.
+    const startTs = joinedAtRef.current ?? Date.parse(scheduledAt)
+    const stayedMs = Date.now() - startTs
+    const halfMs = durationMinutes * 30 * 1000 // 50% от durationMinutes минут
+    if (stayedMs < halfMs) return false
+    // Проверка наличия active sub с этим преподом.
+    try {
+      const r = await fetch(
+        `/api/student/subscriptions?teacher_id=${encodeURIComponent(teacherProfileId)}`,
+        { cache: "no-store" }
+      )
+      const j = await r.json().catch(() => ({}))
+      const subs: any[] = j?.subscriptions ?? []
+      if (subs.length > 0) return false
+    } catch {
+      // network не упал — просто не блокируем редирект
+      return false
+    }
+    setPostLessonOpen(true)
+    return true
+  }, [isTeacher, teacherProfileId, scheduledAt, durationMinutes])
+
   // Timer — countdown
   useEffect(() => {
     const end = new Date(scheduledAt).getTime() + durationMinutes * 60 * 1000
@@ -249,12 +309,13 @@ export function LessonRoomClient({
     if (!closeAtMs) return
     const ms = closeAtMs - Date.now()
     if (ms <= 0) return
-    const id = setTimeout(() => {
+    const id = setTimeout(async () => {
       try { jitsiApi.current?.executeCommand("hangup") } catch { /* noop */ }
-      router.push(isTeacher ? "/teacher/schedule" : "/student/schedule")
+      const intercepted = await maybeShowPostLesson()
+      if (!intercepted) closeAndGoSchedule()
     }, ms + 1000)
     return () => clearTimeout(id)
-  }, [closeAtMs, router, isTeacher])
+  }, [closeAtMs, maybeShowPostLesson, closeAndGoSchedule])
 
   // Jitsi
   useEffect(() => {
@@ -342,6 +403,9 @@ export function LessonRoomClient({
       jitsiApi.current?.addListener("videoConferenceJoined", () => {
         setTimeout(forceTileIfNoShare, 200)
         setConnQuality("good")
+        // Засекаем фактический момент входа — основа критерия «> 50%
+        // длины урока» для показа post-lesson попапа.
+        if (joinedAtRef.current == null) joinedAtRef.current = Date.now()
       })
       jitsiApi.current?.addListener("participantConnectionStatusChanged", (e: any) => {
         const st = String(e?.connectionStatus ?? "").toLowerCase()
@@ -415,10 +479,12 @@ export function LessonRoomClient({
       // safety: если listeners не сработали (бывает при reconnect)
       setTimeout(forceTileIfNoShare, 1500)
 
-      // Leave/kick/close → redirect, иначе пользователь стрянет
-      // в чёрном iframe без выхода (например модератор кикнул студента).
-      const onLeave = () => {
-        router.push(isTeacher ? "/teacher/schedule" : "/student/schedule")
+      // Leave/kick/close → попытка показать post-lesson модал ИЛИ
+      // редирект, иначе пользователь стрянет в чёрном iframe без выхода
+      // (например модератор кикнул студента).
+      const onLeave = async () => {
+        const intercepted = await maybeShowPostLesson()
+        if (!intercepted) closeAndGoSchedule()
       }
       jitsiApi.current?.addListener("videoConferenceLeft", onLeave)
       jitsiApi.current?.addListener("readyToClose", onLeave)
@@ -426,7 +492,7 @@ export function LessonRoomClient({
     }
     init().catch(()=>{})
     return()=>{disposed=true;try{jitsiApi.current?.dispose()}catch{};jitsiApi.current=null;setJitsiApiState(null)}
-  }, [jitsiDomain,jitsiRoom,jitsiToken,userName,isTeacher,router])
+  }, [jitsiDomain,jitsiRoom,jitsiToken,userName,isTeacher,maybeShowPostLesson,closeAndGoSchedule])
 
   // Pre-call hint про слабую сеть. navigator.connection — Chromium-only.
   useEffect(() => {
@@ -1012,6 +1078,59 @@ export function LessonRoomClient({
       )}
 
       <ConfirmDialog {...confirmDialogProps} />
+
+      {/* Post-lesson «закрепить слот» — только студенту, один раз.
+          Показывается на месте, ДО редиректа на /student/schedule. */}
+      {postLessonOpen && !pickerOpen && (
+        <div className="dup-tab" role="dialog" aria-modal="true" aria-label={trec("postLessonTitle")}>
+          <div className="box" style={{ maxWidth: 460 }}>
+            <h3>{trec("postLessonTitle")}</h3>
+            <p>{trec("postLessonSub")}</p>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>{trec("postLessonHint")}</p>
+            <div className="actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setPostLessonOpen(false)
+                  setPickerOpen(true)
+                }}
+              >
+                {trec("postLessonYes")}
+              </button>
+              <button
+                type="button"
+                className="btn sec"
+                onClick={() => {
+                  setPostLessonOpen(false)
+                  closeAndGoSchedule()
+                }}
+              >
+                {trec("postLessonNo")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pickerOpen && teacherProfileId && (
+        <RecurringSlotPicker
+          open={pickerOpen}
+          teacherId={teacherProfileId}
+          defaultDurationMin={durationMinutes === 30 ? 30 : durationMinutes === 60 ? 60 : 50}
+          onCancel={() => {
+            setPickerOpen(false)
+            closeAndGoSchedule()
+          }}
+          onConfirm={(payload) => {
+            setPickerOpen(false)
+            try {
+              alert(trec("savedToast", { count: payload.lessonsCreated }))
+            } catch { /* SSR безопасность — мы в client-only ветке, но на всякий случай */ }
+            closeAndGoSchedule()
+          }}
+        />
+      )}
     </>
   )
 }

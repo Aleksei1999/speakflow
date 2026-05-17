@@ -43,6 +43,9 @@ type LessonRow = {
   status: string
   jitsi_room_name: string | null
   teacher_id: string | null
+  // Из миграции 082: каждый урок может относиться к серии. Если NOT
+  // NULL — UI показывает badge и кнопку «Отменить серию».
+  subscription_id: string | null
 }
 
 type TeacherMapEntry = { full_name: string | null; initials: string; avatar_url: string | null }
@@ -132,7 +135,7 @@ export default function StudentSchedulePage() {
 
       const { data: rawLessons } = await (supabase as any)
         .from("lessons")
-        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id")
+        .select("id, scheduled_at, duration_minutes, status, jitsi_room_name, teacher_id, subscription_id")
         .eq("student_id", user.id)
         .gte("scheduled_at", from.toISOString())
         .lte("scheduled_at", to.toISOString())
@@ -233,6 +236,40 @@ export default function StudentSchedulePage() {
       setCancellingId(null)
     }
   }, [weekCursor, fetchLessons, t, locale])
+
+  // Отмена ВСЕЙ серии начиная с этого урока. DELETE без ?from
+   // (= полная отмена) бьёт жёстко — рискованно. Отправляем
+   // ?from=YYYY-MM-DD от scheduled_at, чтобы прошедшие уроки серии
+   // остались как есть, а будущие — отменились.
+  const cancelSeries = useCallback(
+    async (subscriptionId: string, fromIso: string) => {
+      if (!window.confirm(t("cancelSeriesConfirm"))) return
+      setCancellingId(subscriptionId)
+      try {
+        const fromDate = new Date(fromIso).toISOString().slice(0, 10)
+        const r = await fetch(
+          `/api/student/subscriptions/${encodeURIComponent(subscriptionId)}?from=${encodeURIComponent(fromDate)}`,
+          { method: "DELETE" }
+        )
+        const j = await r.json().catch(() => ({}))
+        if (!r.ok) {
+          alert(j?.error ?? t("cancelSeriesFailed"))
+          return
+        }
+        try {
+          alert(t("cancelSeriesCompleted", { count: Number(j?.lessons_cancelled ?? 0) }))
+        } catch { /* noop */ }
+        const ws = startOfWeek(weekCursor, { weekStartsOn: 1 })
+        const we = endOfWeek(weekCursor, { weekStartsOn: 1 })
+        await fetchLessons(ws, we, { silent: true })
+      } catch (e: any) {
+        alert(e?.message ?? t("cancelSeriesFailed"))
+      } finally {
+        setCancellingId(null)
+      }
+    },
+    [weekCursor, fetchLessons, t]
+  )
 
   useEffect(() => {
     fetchLessons(weekStart, weekEnd)
@@ -498,6 +535,23 @@ export default function StudentSchedulePage() {
                     <div className="lc-body">
                       <div className="lc-name">
                         {trialIds.has(lesson.id) ? t("trialLesson") : t("oneOnOneLesson")}
+                        {lesson.subscription_id ? (
+                          <span
+                            className="lc-badge-series"
+                            title={t("recurringBadge")}
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              background: "#DDEA88",
+                              color: "#0A0A0A",
+                            }}
+                          >
+                            {t("recurringBadgeShort")}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="lc-desc">
                         {formatLessonTime(dt, locale)}–{formatLessonTime(end, locale)}
@@ -539,6 +593,22 @@ export default function StudentSchedulePage() {
                           >
                             {cancellingId === lesson.id ? t("btnCancelling") : t("btnCancel")}
                           </button>
+                          {lesson.subscription_id ? (
+                            <button
+                              type="button"
+                              className="lc-btn lc-btn--cancel-link"
+                              disabled={cancellingId === lesson.subscription_id}
+                              onClick={() =>
+                                cancelSeries(lesson.subscription_id as string, lesson.scheduled_at)
+                              }
+                              title={t("cancelSeries")}
+                              style={{ opacity: 0.75 }}
+                            >
+                              {cancellingId === lesson.subscription_id
+                                ? t("btnCancelling")
+                                : t("cancelSeries")}
+                            </button>
+                          ) : null}
                         </div>
                       )}
                     </div>
