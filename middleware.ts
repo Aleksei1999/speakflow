@@ -97,19 +97,23 @@ export async function middleware(request: NextRequest) {
   if (ADMIN_MFA_ENFORCE && userRole === 'admin' && path.startsWith('/admin')) {
     try {
       const { data: hasMfa, error } = await supabase.rpc('admin_has_mfa')
-      if (!error && hasMfa !== true) {
+      if (error) {
         const url = request.nextUrl.clone()
-        // Settings page is reused for all three roles — same file.
+        url.pathname = '/login'
+        url.searchParams.set('error', 'mfa_check_failed')
+        return NextResponse.redirect(url)
+      }
+      if (hasMfa !== true) {
+        const url = request.nextUrl.clone()
         url.pathname = '/student/settings'
         url.searchParams.set('mfa', 'required')
         return NextResponse.redirect(url)
       }
-      // On RPC error we FAIL-OPEN (admin keeps access). The alternative
-      // — locking admins out on a transient DB blip — is worse than
-      // briefly missing the second factor. The audit log will still
-      // record the admin's actions either way.
     } catch {
-      /* fail-open intentionally */
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('error', 'mfa_check_failed')
+      return NextResponse.redirect(url)
     }
   }
 

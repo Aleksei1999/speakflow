@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types 'src/**/*.test.ts'",
+    "test:rls": "bash scripts/run-rls-tests.sh",
+    "check:api-auth": "node scripts/check-api-auth.mjs",
+    "lint:critical": "eslint src/lib/env src/lib/ip src/lib/yookassa/allowed-ips.ts middleware.ts instrumentation.ts",
+    "gen:types": "bash scripts/gen-database-types.sh",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@arcjet/next": "^1.4.0",
@@ -52,6 +59,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "@playwright/test": "^1.55.0",
     "eslint": "^9",
     "eslint-config-next": "^16.2.6",
     "supabase": "^2.84.5",

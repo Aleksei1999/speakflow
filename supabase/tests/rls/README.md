@@ -17,6 +17,8 @@
 | `30_materials.sql`| owner + participant + share-recipient видят; stranger не видит           |
 | `40_storage.sql`  | per bucket (avatars/teacher-materials/homework/lesson-recordings)        |
 | `50_audit.sql`    | `audit.audit_log` виден ТОЛЬКО admin'у; anon/student/teacher — 0 строк   |
+| `60_subscriptions.sql` | `lesson_subscriptions` — student видит своё, stranger нет           |
+| `61_badges.sql`   | `notification_badges` — unread badge только владельцу                    |
 | `99_teardown.sql` | удаляет тестовых пользователей и привязанные строки                      |
 
 Тесты не зависят от pgTAP (не установлен на текущем проекте). Если включить

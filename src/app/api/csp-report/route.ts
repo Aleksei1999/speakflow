@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — csp_violations table not in hand-maintained Database types yet.
 // CSP violation reporter. Сохраняем нарушения в public.csp_violations —
 // dedup-индекс по (directive, blocked, document_uri, hour) делает писать
 // в БД безопасным даже под массовой атакой репортами.

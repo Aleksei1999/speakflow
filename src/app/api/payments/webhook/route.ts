@@ -5,65 +5,7 @@ import type { YooKassaWebhookNotification, YooKassaPayment, YooKassaRefund } fro
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
 import { invalidateStudentDashboard } from '@/lib/cache/invalidate'
-
-/**
- * Допустимые IP-адреса YooKassa для вебхуков.
- * https://yookassa.ru/developers/using-api/webhooks#ip
- *
- * В продакшне рекомендуется также настроить фильтрацию на уровне
- * reverse-proxy / WAF / Cloudflare Access.
- */
-const YOOKASSA_ALLOWED_IPS = new Set([
-  '185.71.76.0/27',
-  '185.71.77.0/27',
-  '77.75.153.0/25',
-  '77.75.156.11',
-  '77.75.156.35',
-  '77.75.154.128/25',
-  '2a02:5180::/32',
-])
-
-/**
- * Проверяет, входит ли IP в разрешённый диапазон YooKassa.
- * Для CIDR-диапазонов выполняется побитовое сравнение.
- * В production за reverse-proxy IP приходит в X-Forwarded-For.
- */
-function isAllowedIp(ip: string): boolean {
-  if (!ip) return false
-
-  // В dev-окружении пропускаем проверку IP
-  if (process.env.NODE_ENV === 'development') return true
-
-  for (const allowed of YOOKASSA_ALLOWED_IPS) {
-    if (allowed.includes('/')) {
-      if (ipInCidr(ip, allowed)) return true
-    } else {
-      if (ip === allowed) return true
-    }
-  }
-  return false
-}
-
-function ipToLong(ip: string): number {
-  const parts = ip.split('.').map(Number)
-  if (parts.length !== 4 || parts.some((p) => isNaN(p) || p < 0 || p > 255)) return -1
-  return ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0
-}
-
-function ipInCidr(ip: string, cidr: string): boolean {
-  // IPv6 CIDR -- пропускаем упрощённую проверку, полагаемся на WAF
-  if (cidr.includes(':')) return false
-
-  const [subnet, bits] = cidr.split('/')
-  if (!subnet || !bits) return false
-
-  const ipLong = ipToLong(ip)
-  const subnetLong = ipToLong(subnet)
-  if (ipLong === -1 || subnetLong === -1) return false
-
-  const mask = (~0 << (32 - parseInt(bits, 10))) >>> 0
-  return (ipLong & mask) === (subnetLong & mask)
-}
+import { isYooKassaAllowedIp } from '@/lib/yookassa/allowed-ips'
 
 /** Комиссия платформы: 15% */
 const PLATFORM_FEE_RATE = 0.15
@@ -94,7 +36,7 @@ export async function POST(request: NextRequest) {
   const realIp = request.headers.get('x-real-ip')
   const clientIp = forwardedFor?.split(',')[0]?.trim() ?? realIp ?? ''
 
-  if (!isAllowedIp(clientIp)) {
+  if (!isYooKassaAllowedIp(clientIp)) {
     console.warn(`[webhook] Запрос с недопустимого IP: ${clientIp}`)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

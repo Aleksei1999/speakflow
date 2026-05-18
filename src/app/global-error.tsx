@@ -1,8 +1,8 @@
 "use client"
 
 // Глобальный error boundary App Router. Срабатывает только когда
-// корневой layout сам падает (редко). Все остальные ошибки ловит
-// route-level error.tsx. Sentry capture'ит и то и другое.
+// корневой layout сам падает (редко). Ошибки в dashboard ловят
+// error.tsx в сегментах student / teacher / admin. Sentry capture'ит и то и другое.
 //
 // Внимание: этот компонент рендерится ВНЕ next-intl provider,
 // поэтому useTranslations() здесь работать не будет — читаем
