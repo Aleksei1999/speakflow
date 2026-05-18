@@ -10,7 +10,7 @@ import {
   useParticipants,
   VideoTrack,
 } from "@livekit/components-react"
-import { Track, ConnectionState } from "livekit-client"
+import { Track } from "livekit-client"
 import "@livekit/components-styles"
 
 const CSS = `
@@ -30,6 +30,15 @@ const CSS = `
 .lk-stage[data-count="3"]{grid-template-columns:1fr 1fr 1fr}
 .lk-stage[data-count="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .lk-stage[data-count="5"],.lk-stage[data-count="6"]{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
+/* Presentation mode: filmstrip cameras сверху, screen-share снизу. */
+.lk-present{flex:1;display:flex;flex-direction:column;background:#1a1a1a;padding:12px;gap:8px;min-height:0;overflow:hidden}
+.lk-filmstrip{display:flex;gap:8px;height:120px;flex-shrink:0;overflow-x:auto}
+.lk-filmstrip .lk-tile{flex:0 0 200px;height:120px}
+.lk-screen{flex:1;position:relative;min-height:0}
+.lk-screen .lk-tile{width:100%;height:100%;cursor:zoom-in}
+.lk-screen .lk-tile.fullscreen{cursor:zoom-out}
+.lk-screen .lk-tile video{object-fit:contain;background:#000}
+.lk-fs-hint{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;backdrop-filter:blur(8px);pointer-events:none;opacity:.85}
 .lk-tile{position:relative;background:#0a0a0a;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .lk-tile video{width:100%;height:100%;object-fit:cover}
 .lk-tile .name{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;backdrop-filter:blur(8px)}
@@ -147,45 +156,91 @@ export function LiveKitRoomClient({ lessonId }: { lessonId: string }) {
 
 function Stage() {
   const participants = useParticipants()
-  // ScreenShare показываем ТОЛЬКО когда кто-то реально шарит — без placeholder.
-  // Иначе для 2 user'ов было бы 4 тайла (2 camera + 2 screen-share placeholder).
   const screenShares = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }], { onlySubscribed: false })
   const cameras = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false })
 
-  // Один тайл на участника (camera или placeholder). ScreenShare идёт отдельно
-  // первым большим тайлом если активен.
+  // dedup камеры по identity (если один user в 2 вкладках — оставляем первую).
   const cameraByIdentity = new Map<string, typeof cameras[number]>()
   for (const tr of cameras) {
     const id = tr.participant?.identity
     if (id && !cameraByIdentity.has(id)) cameraByIdentity.set(id, tr)
   }
-
   const cameraTiles = participants
     .map((p) => cameraByIdentity.get(p.identity))
     .filter(Boolean) as typeof cameras
 
-  const tiles = [...screenShares, ...cameraTiles]
-  const count = Math.min(6, Math.max(1, tiles.length))
+  // Presentation mode: кто-то шарит экран → filmstrip cameras сверху,
+  // screen-share занимает остаток снизу с возможностью fullscreen.
+  if (screenShares.length > 0) {
+    return (
+      <div className="lk-present">
+        <div className="lk-filmstrip">
+          {cameraTiles.map((tr) => (
+            <Tile key={`${tr.participant?.identity}-cam`} tr={tr} />
+          ))}
+        </div>
+        <div className="lk-screen">
+          {screenShares.map((tr) => (
+            <ScreenTile key={`${tr.participant?.identity}-screen`} tr={tr} />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
+  // Обычная сетка без screen-share.
+  const count = Math.min(6, Math.max(1, cameraTiles.length))
   return (
     <div className="lk-stage" data-count={count}>
-      {tiles.map((tr) => {
-        const p = tr.participant
-        const name = p?.name || p?.identity || "Гость"
-        const initials = name.split(" ").filter(Boolean).map(s => s[0]).join("").slice(0,2).toUpperCase()
-        const isScreen = tr.source === Track.Source.ScreenShare
-        const hasVideo = !!tr.publication?.track && !tr.publication.isMuted
-        return (
-          <div className="lk-tile" key={`${p?.identity}-${tr.source}`}>
-            {hasVideo && tr.publication ? (
-              <VideoTrack trackRef={tr as Parameters<typeof VideoTrack>[0]["trackRef"]} />
-            ) : (
-              <div className="ph">{initials}</div>
-            )}
-            <span className="name">{isScreen ? `${name} · экран` : name}</span>
-          </div>
-        )
-      })}
+      {cameraTiles.map((tr) => (
+        <Tile key={`${tr.participant?.identity}-cam`} tr={tr} />
+      ))}
+    </div>
+  )
+}
+
+function Tile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
+  const p = tr.participant
+  const name = p?.name || p?.identity || "Гость"
+  const initials = name.split(" ").filter(Boolean).map((s) => s[0]).join("").slice(0, 2).toUpperCase()
+  const hasVideo = !!tr.publication?.track && !tr.publication.isMuted
+  return (
+    <div className="lk-tile">
+      {hasVideo && tr.publication ? (
+        <VideoTrack trackRef={tr as Parameters<typeof VideoTrack>[0]["trackRef"]} />
+      ) : (
+        <div className="ph">{initials}</div>
+      )}
+      <span className="name">{name}</span>
+    </div>
+  )
+}
+
+function ScreenTile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
+  const p = tr.participant
+  const name = p?.name || p?.identity || "Гость"
+  const ref = useRef<HTMLDivElement>(null)
+  const [isFs, setIsFs] = useState(false)
+
+  useEffect(() => {
+    const onChange = () => setIsFs(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", onChange)
+    return () => document.removeEventListener("fullscreenchange", onChange)
+  }, [])
+
+  const toggle = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    } else {
+      ref.current?.requestFullscreen().catch(() => {})
+    }
+  }
+
+  return (
+    <div ref={ref} className={`lk-tile ${isFs ? "fullscreen" : ""}`} onClick={toggle}>
+      <VideoTrack trackRef={tr as Parameters<typeof VideoTrack>[0]["trackRef"]} />
+      <span className="name">{name} · экран</span>
+      <span className="lk-fs-hint">{isFs ? "ESC — выйти" : "Клик — на весь экран"}</span>
     </div>
   )
 }
