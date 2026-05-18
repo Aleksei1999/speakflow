@@ -11,6 +11,20 @@ import { LESSON_POST_WINDOW } from "@/lib/constants"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
 
+// Video provider — переключатель Jitsi/LiveKit. Дефолт livekit на ветке
+// эксперимента; в продакшене можно вернуть на jitsi через
+// NEXT_PUBLIC_VIDEO_PROVIDER=jitsi. Single source of truth для двух мест:
+// render-блока .vm и логики useEffect init.
+const VIDEO_PROVIDER: "livekit" | "jitsi" =
+  process.env.NEXT_PUBLIC_VIDEO_PROVIDER === "jitsi" ? "jitsi" : "livekit"
+
+// LiveKit Stage — lazy import, чтобы LiveKit-bundle (~70KB) не утягивался
+// для пользователей с провайдером jitsi. ssr:false: тяжёлый клиентский WebRTC.
+const LiveKitLessonStage = dynamic(
+  () => import("@/components/lesson/livekit-stage").then((m) => m.LiveKitLessonStage),
+  { ssr: false, loading: () => null }
+)
+
 // RecurringSlotPicker — ~13KB component с собственной CSS-портянкой.
 // Открывается ТОЛЬКО после положительного ответа на post-lesson модал
 // у студента — у учителя/во время урока он не нужен. ssr:false: чистая
@@ -170,6 +184,30 @@ const CSS = `
 .lr .rec-error .msg{flex:1;min-width:0}
 .lr .rec-error .close{background:transparent;color:#7F1D1D;border:0;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;opacity:.7}
 .lr .rec-error .close:hover{opacity:1}
+/* LiveKit stage — рендерится внутри .vm, делим визуальный язык .vm/.vc.
+   Грид камер, presentation-mode с filmstrip + screen-share, fullscreen-клик. */
+.lr .vm .lk-stage-grid{flex:1;min-height:0;display:grid;gap:6px;padding:6px;background:#1a1a1a}
+.lr .vm .lk-stage-grid[data-count="1"]{grid-template-columns:1fr}
+.lr .vm .lk-stage-grid[data-count="2"]{grid-template-columns:1fr 1fr}
+.lr .vm .lk-stage-grid[data-count="3"]{grid-template-columns:1fr 1fr 1fr}
+.lr .vm .lk-stage-grid[data-count="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.lr .vm .lk-stage-grid[data-count="5"],.lr .vm .lk-stage-grid[data-count="6"]{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
+.lr .vm .lk-stage-presentation{flex:1;min-height:0;display:flex;flex-direction:column;background:#1a1a1a;padding:6px;gap:6px;overflow:hidden}
+.lr .vm .lk-filmstrip{display:flex;gap:6px;height:110px;flex-shrink:0;overflow-x:auto}
+.lr .vm .lk-filmstrip .lk-tile{flex:0 0 180px;height:110px}
+.lr .vm .lk-screen{flex:1;position:relative;min-height:0;display:grid;gap:6px}
+.lr .vm .lk-screen[data-screens="1"]{grid-template-columns:1fr}
+.lr .vm .lk-screen[data-screens="2"]{grid-template-columns:1fr 1fr}
+.lr .vm .lk-screen[data-screens="3"],.lr .vm .lk-screen[data-screens="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.lr .vm .lk-screen .lk-tile{width:100%;height:100%;cursor:zoom-in}
+.lr .vm .lk-screen .lk-tile.lk-fs{cursor:zoom-out}
+.lr .vm .lk-screen .lk-tile video{object-fit:contain;background:#000}
+.lr .vm .lk-tile{position:relative;background:#0a0a0a;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.lr .vm .lk-tile video{width:100%;height:100%;object-fit:cover}
+.lr .vm .lk-tile .lk-name{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;backdrop-filter:blur(8px)}
+.lr .vm .lk-tile .lk-ph{width:90px;height:90px;background:#222;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#666;font-size:36px;font-weight:700}
+.lr .vm .lk-fs-hint{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;padding:4px 10px;border-radius:6px;font-size:10px;backdrop-filter:blur(8px);pointer-events:none;opacity:.85}
+
 @media(max-width:1000px){.lr .lb{grid-template-columns:1fr;grid-template-rows:1fr auto}.lr .ls{height:320px;order:2}.lr .stage{order:1}.lr .lesson-bottom{grid-template-columns:1fr}}
 @media(max-width:900px){.lr .lesson-stats{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){
@@ -232,6 +270,10 @@ export function LessonRoomClient({
   type ConnQuality = "good" | "fair" | "poor" | "lost" | "unknown"
   const [connQuality, setConnQuality] = useState<ConnQuality>("unknown")
   const [slowNetworkHint, setSlowNetworkHint] = useState(false)
+  // Сигнал auto-hangup для LiveKit stage: при изменении значения child
+  // выполняет room.disconnect(). Для Jitsi используется тот же closeAtMs
+  // через jitsiApi.executeCommand("hangup").
+  const [lkHangupSignal, setLkHangupSignal] = useState(0)
 
   const myInitials = userName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
   const otherInitials = teacherName.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)
@@ -311,14 +353,18 @@ export function LessonRoomClient({
     if (ms <= 0) return
     const id = setTimeout(async () => {
       try { jitsiApi.current?.executeCommand("hangup") } catch { /* noop */ }
+      // LiveKit: бамп сигнала, child вызовет room.disconnect().
+      setLkHangupSignal((n) => n + 1)
       const intercepted = await maybeShowPostLesson()
       if (!intercepted) closeAndGoSchedule()
     }, ms + 1000)
     return () => clearTimeout(id)
   }, [closeAtMs, maybeShowPostLesson, closeAndGoSchedule])
 
-  // Jitsi
+  // Jitsi init — не запускаем при VIDEO_PROVIDER=livekit. Provider
+  // выбирается из env-flag один раз на загрузку; смена требует reload.
   useEffect(() => {
+    if (VIDEO_PROVIDER !== "jitsi") return
     if (!jitsiRef.current) return
     let disposed = false
     async function init() {
@@ -508,8 +554,8 @@ export function LessonRoomClient({
   useEffect(() => {
     if (typeof window === "undefined") return
     const KEY = `lesson:${lessonId}:tab`
-    const STALE_MS = 12_000
-    const HEARTBEAT_MS = 5_000
+    const STALE_MS = 7_000  // hard reload не успевает graceful cleanup,
+    const HEARTBEAT_MS = 3_000  // 7s > 3s даёт grace period для reload
     const tabId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
     function read(): { tabId: string; ts: number } | null {
@@ -556,10 +602,15 @@ export function LessonRoomClient({
   // Авто-запись урока. Hook сам разбирается: teacher → /init,
   // student → polls /active. При duplicateTab выключаем — иначе
   // два браузера конкурируют за один chunk-NNNNN.
+  //
+  // jitsiApi нужен только для pause/resume на mute. На LiveKit передаём
+  // null — recorder будет писать постоянно (через свой getUserMedia), и
+  // mute-в-LiveKit не приостанавливает запись. На MVP это OK — AI-саммари
+  // получит чуть больше silence-frames; downstream Whisper это переживёт.
   const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
-    jitsiApi: jitsiApiState,
+    jitsiApi: VIDEO_PROVIDER === "jitsi" ? jitsiApiState : null,
     enabled: recorderEnabled && !duplicateTab,
     retryToken: recorderRetryToken,
     onStarted: () => {
@@ -723,6 +774,8 @@ export function LessonRoomClient({
     })
     if (!ok) return
     try { jitsiApi.current?.executeCommand("hangup") } catch { /* noop */ }
+    // LiveKit: бамп сигнала, child выполнит room.disconnect().
+    setLkHangupSignal((n) => n + 1)
     router.push(isTeacher ? "/teacher" : "/student")
   }
 
@@ -842,7 +895,20 @@ export function LessonRoomClient({
             <div className="stage">
             <div className="va">
               <div className="vm">
-                <div className="jitsi-mount" ref={jitsiRef} />
+                {VIDEO_PROVIDER === "jitsi" ? (
+                  <div className="jitsi-mount" ref={jitsiRef} />
+                ) : (
+                  <LiveKitLessonStage
+                    lessonId={lessonId}
+                    sidebarOn={sidebarOn}
+                    onToggleSidebar={() => setSidebarOn((v) => !v)}
+                    onFullscreen={fullscreenSupported ? toggleFullscreen : undefined}
+                    fullscreenSupported={fullscreenSupported}
+                    onEnd={handleEnd}
+                    onQuality={setConnQuality}
+                    hangupSignal={lkHangupSignal}
+                  />
+                )}
                 <div className="live-badge"><span className="blink"/>LIVE</div>
                 {connQuality !== "unknown" && (
                   <div className={`quality-badge ${connQuality}`}>
@@ -855,28 +921,30 @@ export function LessonRoomClient({
                   </div>
                 )}
               </div>
-              <div className="vc">
-                <button className={`cb ${micOn?"active":""}`} title="Микрофон" onClick={toggleMic}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-                </button>
-                <button className={`cb ${camOn?"active":""}`} title="Камера" onClick={toggleCam}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
-                </button>
-                <button className={`cb ${screenOn?"active":""}`} title="Демонстрация" onClick={toggleScreen}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-                </button>
-                <button className={`cb ${sidebarOn?"active":""}`} title="Показать/скрыть чат" onClick={()=>setSidebarOn(v=>!v)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
-                </button>
-                {fullscreenSupported && (
-                  <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+              {VIDEO_PROVIDER === "jitsi" && (
+                <div className="vc">
+                  <button className={`cb ${micOn?"active":""}`} title="Микрофон" onClick={toggleMic}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
                   </button>
-                )}
-                <button className="cb danger" title="Завершить" onClick={handleEnd}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                </button>
-              </div>
+                  <button className={`cb ${camOn?"active":""}`} title="Камера" onClick={toggleCam}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+                  </button>
+                  <button className={`cb ${screenOn?"active":""}`} title="Демонстрация" onClick={toggleScreen}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                  </button>
+                  <button className={`cb ${sidebarOn?"active":""}`} title="Показать/скрыть чат" onClick={()=>setSidebarOn(v=>!v)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+                  </button>
+                  {fullscreenSupported && (
+                    <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                    </button>
+                  )}
+                  <button className="cb danger" title="Завершить" onClick={handleEnd}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Bottom bar — only under video column */}
