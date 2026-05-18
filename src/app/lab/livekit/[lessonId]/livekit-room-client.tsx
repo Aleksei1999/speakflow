@@ -34,7 +34,10 @@ const CSS = `
 .lk-present{flex:1;display:flex;flex-direction:column;background:#1a1a1a;padding:12px;gap:8px;min-height:0;overflow:hidden}
 .lk-filmstrip{display:flex;gap:8px;height:120px;flex-shrink:0;overflow-x:auto}
 .lk-filmstrip .lk-tile{flex:0 0 200px;height:120px}
-.lk-screen{flex:1;position:relative;min-height:0}
+.lk-screen{flex:1;position:relative;min-height:0;display:grid;gap:8px}
+.lk-screen[data-screens="1"]{grid-template-columns:1fr}
+.lk-screen[data-screens="2"]{grid-template-columns:1fr 1fr}
+.lk-screen[data-screens="3"],.lk-screen[data-screens="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .lk-screen .lk-tile{width:100%;height:100%;cursor:zoom-in}
 .lk-screen .lk-tile.fullscreen{cursor:zoom-out}
 .lk-screen .lk-tile video{object-fit:contain;background:#000}
@@ -179,7 +182,7 @@ function Stage() {
             <Tile key={`${tr.participant?.identity}-cam`} tr={tr} />
           ))}
         </div>
-        <div className="lk-screen">
+        <div className="lk-screen" data-screens={Math.min(4, screenShares.length)}>
           {screenShares.map((tr) => (
             <ScreenTile key={`${tr.participant?.identity}-screen`} tr={tr} />
           ))}
