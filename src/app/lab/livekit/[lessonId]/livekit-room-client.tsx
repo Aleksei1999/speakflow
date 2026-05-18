@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -47,8 +47,14 @@ export function LiveKitRoomClient({ lessonId }: { lessonId: string }) {
   const [serverUrl, setServerUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [disconnectReason, setDisconnectReason] = useState<string | null>(null)
+  // Guard от двойной инициализации — React StrictMode / prefetch / hot-reload
+  // могут запустить useEffect повторно, и второй setToken вызывает re-mount
+  // <LiveKitRoom>, что выглядит как "Client initiated disconnect".
+  const initStartedRef = useRef(false)
 
   useEffect(() => {
+    if (initStartedRef.current) return
+    initStartedRef.current = true
     let cancelled = false
     async function init() {
       const res = await fetch("/api/livekit/token", {
