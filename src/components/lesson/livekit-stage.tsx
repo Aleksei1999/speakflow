@@ -169,7 +169,10 @@ function StageInner({
 
   // Маппим LiveKit ConnectionQuality → наши категории и пробрасываем в parent
   // для рендера .quality-badge той же семантикой что Jitsi.
-  const { quality } = useConnectionQualityIndicator()
+  // Явно передаём localParticipant — без него hook ищет ParticipantContext
+  // и валит компонент с 'No participant provided'.
+  const { localParticipant } = useLocalParticipant()
+  const { quality } = useConnectionQualityIndicator({ participant: localParticipant })
   useEffect(() => {
     if (!onQuality) return
     if (quality === ConnectionQuality.Excellent || quality === ConnectionQuality.Good) onQuality("good")
