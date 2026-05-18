@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -11,7 +10,7 @@ import {
   useParticipants,
   VideoTrack,
 } from "@livekit/components-react"
-import { Track } from "livekit-client"
+import { Track, ConnectionState } from "livekit-client"
 import "@livekit/components-styles"
 
 const CSS = `
@@ -47,7 +46,7 @@ export function LiveKitRoomClient({ lessonId }: { lessonId: string }) {
   const [token, setToken] = useState<string | null>(null)
   const [serverUrl, setServerUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+  const [disconnectReason, setDisconnectReason] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -96,13 +95,30 @@ export function LiveKitRoomClient({ lessonId }: { lessonId: string }) {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      {disconnectReason && (
+        <div style={{position:"fixed",top:0,left:0,right:0,zIndex:99,background:"#B63F37",color:"#fff",padding:"10px 16px",fontSize:13,textAlign:"center"}}>
+          Соединение разорвано: {disconnectReason}.{" "}
+          <button onClick={() => location.reload()} style={{background:"#fff",color:"#B63F37",border:"none",padding:"4px 12px",borderRadius:6,fontWeight:700,cursor:"pointer",marginLeft:8}}>Переподключиться</button>
+        </div>
+      )}
       <LiveKitRoom
         token={token}
         serverUrl={serverUrl}
         connect={true}
         video={true}
         audio={true}
-        onDisconnected={() => router.push("/student/schedule")}
+        onConnected={() => {
+          console.log("[livekit] connected")
+          setDisconnectReason(null)
+        }}
+        onDisconnected={(reason) => {
+          console.warn("[livekit] disconnected:", reason)
+          setDisconnectReason(String(reason ?? "unknown"))
+        }}
+        onError={(e) => {
+          console.error("[livekit] error:", e)
+          setError(e?.message ?? "LiveKit error")
+        }}
         data-lk-theme="default"
         style={{ height: "100vh" }}
       >
