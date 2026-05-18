@@ -149,7 +149,7 @@ function Stage() {
   const participants = useParticipants()
   // ScreenShare показываем ТОЛЬКО когда кто-то реально шарит — без placeholder.
   // Иначе для 2 user'ов было бы 4 тайла (2 camera + 2 screen-share placeholder).
-  const screenShares = useTracks([{ source: Track.Source.ScreenShare }], { onlySubscribed: false })
+  const screenShares = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }], { onlySubscribed: false })
   const cameras = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false })
 
   // Один тайл на участника (camera или placeholder). ScreenShare идёт отдельно
