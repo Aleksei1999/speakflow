@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://sb.raw-english.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://t.me",
-      "connect-src 'self' https://sb.raw-english.com wss://sb.raw-english.com https://*.supabase.co wss://*.supabase.co https://meet.raw-english.com wss://meet.raw-english.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
+      "connect-src 'self' https://sb.raw-english.com wss://sb.raw-english.com https://*.supabase.co wss://*.supabase.co https://meet.raw-english.com wss://meet.raw-english.com https://vitals.vercel-insights.com https://*.ingest.sentry.io https://*.livekit.cloud wss://*.livekit.cloud",
       "media-src 'self' blob: https://*.supabase.co https://sb.raw-english.com",
       "frame-src 'self' https://meet.raw-english.com https://accounts.google.com https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
