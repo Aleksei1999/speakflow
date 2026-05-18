@@ -104,8 +104,8 @@ export function LiveKitLessonStage({
       token={token}
       serverUrl={serverUrl}
       connect={true}
-      video={true}
-      audio={true}
+      video={false}
+      audio={false}
       onConnected={() => {
         setDisconnectReason(null)
         onQuality?.("good")
