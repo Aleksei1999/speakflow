@@ -6,10 +6,14 @@
 // критические server routes импортят server-init напрямую.
 
 import * as Sentry from "@sentry/nextjs"
+import { validateProductionEnv } from "@/lib/env/production"
 import { ensureSentry } from "@/lib/sentry/server-init"
 
 export function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") ensureSentry()
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    validateProductionEnv()
+    ensureSentry()
+  }
   if (process.env.NEXT_RUNTIME === "edge") ensureSentry()
 }
 

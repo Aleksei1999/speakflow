@@ -6,7 +6,6 @@ on:
   push:
     branches: [main]
 
-# Канселим устаревшие запуски на тот же PR/ветку.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -14,9 +13,18 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder
+  SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder-service
+  NEXT_PUBLIC_SITE_URL: http://localhost:3000
+  JITSI_DOMAIN: meet.example.com
+  JITSI_JWT_SECRET: "0123456789abcdef0123456789abcdef"
+  JITSI_JWT_APP_ID: speakflow
+
 jobs:
-  lint-and-typecheck:
-    name: Lint + Typecheck + Audit
+  lint-typecheck-test:
+    name: Lint + Typecheck + Tests + API auth
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -27,20 +35,91 @@ jobs:
           node-version: "24"
           cache: npm
 
-      - name: Install deps (reproducible)
+      - name: Install deps
         run: npm ci
 
-      - name: Lint
-        # TODO: убрать continue-on-error когда закроем задачу #53
-        # (@ts-nocheck cleanup + 480 ESLint errors с no-explicit-any).
-        # Сейчас non-blocking — иначе все PR'ы красные с первого дня.
+      - name: API route auth check
+        run: npm run check:api-auth
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Lint (critical paths, blocking)
+        run: npm run lint:critical
+
+      - name: Lint (full codebase)
         continue-on-error: true
         run: npm run lint
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: npm audit (high)
-        # Падаем только на HIGH/CRITICAL уязвимостях. moderate/low — варнинг.
-        # Для public репо advisory database работает без токенов.
         run: npm audit --audit-level=high
+
+  build:
+    name: Next.js build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: lint-typecheck-test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: E2E smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: E2E smoke
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder-service
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          JITSI_DOMAIN: meet.example.com
+          JITSI_JWT_SECRET: "0123456789abcdef0123456789abcdef"
+          JITSI_JWT_APP_ID: speakflow
+        run: npm run test:e2e
+
+  rls:
+    name: Supabase RLS tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run RLS suite
+        run: bash scripts/run-rls-tests.sh

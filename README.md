@@ -52,6 +52,25 @@ npx vercel deploy --prod
 npx vercel alias set <deployment-url> raw-english.com
 ```
 
+### Production checklist (обязательные env)
+
+Перед прод-релизом убедитесь, что в Vercel заданы:
+
+| Переменная | Зачем |
+|------------|--------|
+| `CRON_SECRET` | `/api/internal/cron/*` — без него cron 401 |
+| `INTERNAL_API_SECRET` | `/api/notifications/send` |
+| `TELEGRAM_WEBHOOK_SECRET` | `/api/notifications/telegram` |
+| `RW_ROLE_COOKIE_SECRET` | подпись role-cookie в middleware |
+| `ARCJET_KEY` | shield/bot detection (без ключа — fail-open) |
+| `TURNSTILE_SECRET_KEY` | server verify CAPTCHA |
+| `VIRUSTOTAL_API_KEY` | AV scan загрузок |
+| `UPSTASH_REDIS_REST_URL` + `TOKEN` | rate-limit (иначе Postgres fallback) |
+
+Опционально: `ENABLE_ADMIN_MFA_ENFORCE=1` после того, как у всех админов включён TOTP.
+
+Скопируйте шаблон из `.env.example` в `.env.local` для локальной разработки.
+
 ## Лицензия
 
 Proprietary. © Raw English, 2026.

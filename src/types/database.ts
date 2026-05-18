@@ -205,6 +205,47 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['lesson_materials']['Row']> & { lesson_id: string; teacher_id: string; title: string }
         Update: Partial<Database['public']['Tables']['lesson_materials']['Row']>
       }
+      lesson_subscriptions: {
+        Row: {
+          id: string
+          student_id: string
+          teacher_id: string
+          weekly_pattern: Json
+          starts_on: string
+          ends_on: string
+          price_kopecks: number
+          status: 'active' | 'paused' | 'cancelled'
+          timezone: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['lesson_subscriptions']['Row']> & {
+          student_id: string
+          teacher_id: string
+          weekly_pattern: Json
+          starts_on: string
+          ends_on: string
+        }
+        Update: Partial<Database['public']['Tables']['lesson_subscriptions']['Row']>
+      }
+      notification_badges: {
+        Row: {
+          id: string
+          user_id: string
+          category: string
+          event_type: string
+          payload: Json
+          target_url: string | null
+          seen_at: string | null
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['notification_badges']['Row']> & {
+          user_id: string
+          category: string
+          event_type: string
+        }
+        Update: Partial<Database['public']['Tables']['notification_badges']['Row']>
+      }
     }
     Functions: {
       is_slot_available: {
