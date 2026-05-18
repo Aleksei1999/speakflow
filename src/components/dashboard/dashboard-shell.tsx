@@ -442,17 +442,16 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
   const unifiedQ = useUnreadBadges({ enabled: Boolean(role) })
   const unified = unifiedQ.data
 
-  // Авто-mark-seen: когда пользователь переходит на страницу
-  // соответствующего раздела — обнуляем счётчик категории. Делается
-  // в shell'е (а не в page.tsx у каждой страницы), чтобы добавлять
-  // новые разделы было дёшево: достаточно расширить HREF_TO_CATEGORY.
-  // Дебаунс 250ms даёт странице успеть забрать первичные данные до
-  // того, как мы пнём revalidate-tag invalidate в API.
+  // Авто-mark-seen: только для chat-like категорий (support, materials).
+  // Для action-items (homework toDo, upcoming schedule, students,
+  // trial_requests, users, achievements) — НЕ делаем: они теперь
+  // основаны на live SQL count в notifications_unread_counts RPC.
+  // Заход на /student/homework НЕ должен обнулять «у тебя 1 несделанная
+  // домашка» — иначе sidebar лжёт и теряет смысл.
   const unifiedRefetch = unifiedQ.refetch
+  const AUTO_SEEN_CATS: ReadonlySet<UnreadCategory> = new Set(["support", "materials"])
   useEffect(() => {
     if (!role) return
-    // Find category for current pathname by longest-prefix match
-    // (handles /student/schedule and /student/schedule/[id] alike).
     let matched: UnreadCategory | null = null
     let matchedLen = -1
     for (const [href, cat] of Object.entries(HREF_TO_CATEGORY)) {
@@ -463,7 +462,7 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
         }
       }
     }
-    if (!matched) return
+    if (!matched || !AUTO_SEEN_CATS.has(matched)) return
     const cat = matched
     const id = setTimeout(() => {
       void fetch("/api/notifications/mark-seen", {
@@ -473,9 +472,10 @@ export function DashboardShell({ fullName, avatarUrl, role, emailVerified, gamif
         body: JSON.stringify({ category: cat }),
       }).then(() => {
         unifiedRefetch()
-      }).catch(() => { /* swallow — next interval will catch up */ })
+      }).catch(() => { /* swallow */ })
     }, 400)
     return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, role, unifiedRefetch])
 
   // Совместимость с custom events: AdminSupportClient.tsx эмитит
