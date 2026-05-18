@@ -24,20 +24,22 @@ const CSS = `
 @keyframes lkp{0%,100%{opacity:1}50%{opacity:.4}}
 .lk-head .exit{justify-self:end;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:9px 18px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer;transition:transform .1s}
 .lk-head .exit:hover{background:rgba(255,255,255,.18)}.lk-head .exit:active{transform:scale(.97)}
-.lk-stage{flex:1;background:#1a1a1a;border-radius:0;overflow:hidden;display:grid;gap:8px;padding:16px;min-height:0}
+.lk-stage{flex:1;background:#1a1a1a;border-radius:0;overflow:hidden;display:grid;gap:8px;padding:12px;min-height:0;grid-auto-rows:1fr}
 .lk-stage[data-count="1"]{grid-template-columns:1fr}
 .lk-stage[data-count="2"]{grid-template-columns:1fr 1fr}
-.lk-stage[data-count="3"],.lk-stage[data-count="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.lk-stage[data-count="3"]{grid-template-columns:1fr 1fr 1fr}
+.lk-stage[data-count="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.lk-stage[data-count="5"],.lk-stage[data-count="6"]{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
 .lk-tile{position:relative;background:#0a0a0a;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .lk-tile video{width:100%;height:100%;object-fit:cover}
 .lk-tile .name{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;backdrop-filter:blur(8px)}
 .lk-tile .ph{width:120px;height:120px;background:#222;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#666;font-size:48px;font-weight:700}
-.lk-bar{display:flex;justify-content:center;gap:14px;padding:14px 0;background:var(--bg);flex-shrink:0}
-.lk-btn{width:54px;height:54px;background:#fff;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,transform .1s;color:var(--black)}
-.lk-btn:hover{background:#e8e8e4}.lk-btn:active{transform:scale(.95)}
+.lk-bar{display:flex;justify-content:center;align-items:center;gap:16px;padding:20px 0;background:var(--bg);flex-shrink:0;border-top:1px solid var(--border)}
+.lk-btn{width:60px;height:60px;background:#fff;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,transform .1s,box-shadow .15s;color:var(--black);box-shadow:0 2px 4px rgba(0,0,0,.04)}
+.lk-btn:hover{background:#e8e8e4;box-shadow:0 4px 8px rgba(0,0,0,.08)}.lk-btn:active{transform:scale(.95)}
 .lk-btn.active{background:var(--lime);border-color:var(--lime)}
-.lk-btn.danger{background:var(--red);color:#fff;border-color:var(--red)}.lk-btn.danger:hover{background:#9b3530;color:#fff}
-.lk-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lk-btn.danger{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 4px 12px rgba(182,63,55,.3)}.lk-btn.danger:hover{background:#9b3530;color:#fff}
+.lk-btn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .lk-loading,.lk-error{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:12px;padding:24px;text-align:center}
 .lk-error{color:var(--red)}
 `
@@ -144,22 +146,34 @@ export function LiveKitRoomClient({ lessonId }: { lessonId: string }) {
 }
 
 function Stage() {
-  const tracks = useTracks(
-    [
-      { source: Track.Source.Camera, withPlaceholder: true },
-      { source: Track.Source.ScreenShare, withPlaceholder: false },
-    ],
-    { onlySubscribed: false },
-  )
   const participants = useParticipants()
-  const count = Math.min(4, Math.max(1, participants.length))
+  // ScreenShare показываем ТОЛЬКО когда кто-то реально шарит — без placeholder.
+  // Иначе для 2 user'ов было бы 4 тайла (2 camera + 2 screen-share placeholder).
+  const screenShares = useTracks([{ source: Track.Source.ScreenShare }], { onlySubscribed: false })
+  const cameras = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false })
+
+  // Один тайл на участника (camera или placeholder). ScreenShare идёт отдельно
+  // первым большим тайлом если активен.
+  const cameraByIdentity = new Map<string, typeof cameras[number]>()
+  for (const tr of cameras) {
+    const id = tr.participant?.identity
+    if (id && !cameraByIdentity.has(id)) cameraByIdentity.set(id, tr)
+  }
+
+  const cameraTiles = participants
+    .map((p) => cameraByIdentity.get(p.identity))
+    .filter(Boolean) as typeof cameras
+
+  const tiles = [...screenShares, ...cameraTiles]
+  const count = Math.min(6, Math.max(1, tiles.length))
 
   return (
     <div className="lk-stage" data-count={count}>
-      {tracks.map((tr) => {
+      {tiles.map((tr) => {
         const p = tr.participant
         const name = p?.name || p?.identity || "Гость"
         const initials = name.split(" ").filter(Boolean).map(s => s[0]).join("").slice(0,2).toUpperCase()
+        const isScreen = tr.source === Track.Source.ScreenShare
         const hasVideo = !!tr.publication?.track && !tr.publication.isMuted
         return (
           <div className="lk-tile" key={`${p?.identity}-${tr.source}`}>
@@ -168,7 +182,7 @@ function Stage() {
             ) : (
               <div className="ph">{initials}</div>
             )}
-            <span className="name">{name}</span>
+            <span className="name">{isScreen ? `${name} · экран` : name}</span>
           </div>
         )
       })}
