@@ -97,13 +97,13 @@ async function getTeacherAvailability(teacherId: string) {
     day_of_week: number
     start_time: string
     end_time: string
-    is_available: boolean
+    is_active: boolean
   }
   const { data, error } = await supabase
     .from("teacher_availability")
-    .select("day_of_week, start_time, end_time, is_available")
+    .select("day_of_week, start_time, end_time, is_active")
     .eq("teacher_id", teacherId)
-    .eq("is_available", true)
+    .eq("is_active", true)
     .returns<AvailabilityRow[]>()
 
   if (error || !data) return []
