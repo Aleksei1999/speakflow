@@ -86,7 +86,7 @@ export function TeacherProfileHeader({
           <span className="flex items-center gap-1">
             <Clock className="size-4" />
             {teacher.experience_years}{" "}
-            {pluralizeYears(teacher.experience_years)} опыта
+            {pluralizeYears(teacher.experience_years ?? 0)} опыта
           </span>
           <span className="flex items-center gap-1">
             <BookOpen className="size-4" />
@@ -126,7 +126,7 @@ export function TeacherInfoCards({ teacher }: { teacher: TeacherProfile }) {
         <CardContent>
           <p className="text-2xl font-bold">
             {teacher.experience_years}{" "}
-            {pluralizeYears(teacher.experience_years)}
+            {pluralizeYears(teacher.experience_years ?? 0)}
           </p>
         </CardContent>
       </Card>
