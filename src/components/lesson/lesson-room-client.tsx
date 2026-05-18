@@ -186,13 +186,13 @@ const CSS = `
 .lr .rec-error .close:hover{opacity:1}
 /* LiveKit stage — рендерится внутри .vm, делим визуальный язык .vm/.vc.
    Грид камер, presentation-mode с filmstrip + screen-share, fullscreen-клик. */
-.lr .vm .lk-stage-grid{position:absolute;inset:0;display:grid;gap:6px;padding:6px;background:#1a1a1a}
+.lr .vm .lk-stage-grid{flex:1;min-height:0;display:grid;gap:6px;padding:6px;background:#1a1a1a}
 .lr .vm .lk-stage-grid[data-count="1"]{grid-template-columns:1fr}
 .lr .vm .lk-stage-grid[data-count="2"]{grid-template-columns:1fr 1fr}
 .lr .vm .lk-stage-grid[data-count="3"]{grid-template-columns:1fr 1fr 1fr}
 .lr .vm .lk-stage-grid[data-count="4"]{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .lr .vm .lk-stage-grid[data-count="5"],.lr .vm .lk-stage-grid[data-count="6"]{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
-.lr .vm .lk-stage-presentation{position:absolute;inset:0;display:flex;flex-direction:column;background:#1a1a1a;padding:6px;gap:6px;overflow:hidden}
+.lr .vm .lk-stage-presentation{flex:1;min-height:0;display:flex;flex-direction:column;background:#1a1a1a;padding:6px;gap:6px;overflow:hidden}
 .lr .vm .lk-filmstrip{display:flex;gap:6px;height:110px;flex-shrink:0;overflow-x:auto}
 .lr .vm .lk-filmstrip .lk-tile{flex:0 0 180px;height:110px}
 .lr .vm .lk-screen{flex:1;position:relative;min-height:0;display:grid;gap:6px}
@@ -554,8 +554,8 @@ export function LessonRoomClient({
   useEffect(() => {
     if (typeof window === "undefined") return
     const KEY = `lesson:${lessonId}:tab`
-    const STALE_MS = 12_000
-    const HEARTBEAT_MS = 5_000
+    const STALE_MS = 7_000  // hard reload не успевает graceful cleanup,
+    const HEARTBEAT_MS = 3_000  // 7s > 3s даёт grace period для reload
     const tabId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
     function read(): { tabId: string; ts: number } | null {
