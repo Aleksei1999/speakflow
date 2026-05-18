@@ -74,7 +74,7 @@
 .tch-home .schedule-link:hover{background:var(--surface-2)}
 .tch-home .schedule-link.active:hover{background:var(--lime);filter:brightness(.96)}
 
-.tch-today-join{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:10px;background:var(--red,#B63F37);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(180,30,45,.3);flex-shrink:0;min-width:130px}
+.tch-today-join{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 28px;border-radius:10px;background:var(--red,#B63F37);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border:none;transition:all .15s;white-space:nowrap;box-shadow:0 2px 0 rgba(180,30,45,.3);flex-shrink:0;min-width:160px;margin-right:8px}
 .tch-today-join::before{content:"▶";font-size:11px;line-height:1}
 .tch-today-join--waiting::before,.tch-today-join--expired::before,.tch-today-join--cancelled::before,.tch-today-join--missed::before{content:""}
 .tch-today-join:hover{background:#d02e3b;transform:translateY(-1px)}
