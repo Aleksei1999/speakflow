@@ -19,12 +19,18 @@ export default async function TeacherLessonPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Admin может зайти на любой урок как наблюдатель/модератор.
+  const { data: callerProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).maybeSingle()
+  const isAdmin = callerProfile?.role === 'admin'
+
   const { data: tp } = await supabase
     .from('teacher_profiles')
     .select('id, rating')
     .eq('user_id', user.id)
     .single()
-  if (!tp) redirect('/teacher')
+  // Если не teacher и не admin — нечего здесь делать.
+  if (!tp && !isAdmin) redirect('/teacher')
 
   // Один embed-запрос вместо двух последовательных:
   //   lessons → profiles (student)
@@ -38,7 +44,7 @@ export default async function TeacherLessonPage({
     .eq('id', lessonId)
     .single()
 
-  if (!lesson || lesson.teacher_id !== tp.id) redirect('/teacher/schedule')
+  if (!lesson || (lesson.teacher_id !== tp?.id && !isAdmin)) redirect('/teacher/schedule')
 
   const studentEmbed: any = Array.isArray((lesson as any).student)
     ? (lesson as any).student[0]

@@ -36,7 +36,11 @@ export default async function StudentLessonPage({
     .eq('id', lessonId)
     .single()
 
-  if (!lesson || lesson.student_id !== user.id) {
+  // Admin может зайти на любой урок как observer/moderator (для модерации/поддержки).
+  const { data: callerProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).maybeSingle()
+  const isAdmin = callerProfile?.role === 'admin'
+  if (!lesson || (lesson.student_id !== user.id && !isAdmin)) {
     redirect('/student/schedule')
   }
 
