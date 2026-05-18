@@ -22,6 +22,7 @@ import {
   useParticipants,
   useConnectionQualityIndicator,
   VideoTrack,
+  ParticipantContext,
 } from "@livekit/components-react"
 import { ConnectionQuality, Track } from "livekit-client"
 
@@ -274,9 +275,10 @@ function Tile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
     .slice(0, 2)
     .toUpperCase()
   const hasVideo = !!tr.publication?.track && !tr.publication.isMuted
-  return (
+  const participant = tr.participant
+  const body = (
     <div className="lk-tile">
-      {hasVideo && tr.publication ? (
+      {hasVideo && tr.publication && participant ? (
         <VideoTrack trackRef={tr as Parameters<typeof VideoTrack>[0]["trackRef"]} />
       ) : (
         <div className="lk-ph">{initials}</div>
@@ -284,6 +286,8 @@ function Tile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
       <span className="lk-name">{name}</span>
     </div>
   )
+  if (!participant) return body
+  return <ParticipantContext.Provider value={participant}>{body}</ParticipantContext.Provider>
 }
 
 function ScreenTile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
@@ -306,13 +310,16 @@ function ScreenTile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
     }
   }
 
-  return (
+  const participant = tr.participant
+  const body = (
     <div ref={ref} className={`lk-tile lk-screen-tile ${isFs ? "lk-fs" : ""}`} onClick={toggle}>
       <VideoTrack trackRef={tr as Parameters<typeof VideoTrack>[0]["trackRef"]} />
       <span className="lk-name">{name} · экран</span>
       <span className="lk-fs-hint">{isFs ? "ESC — выйти" : "Клик — на весь экран"}</span>
     </div>
   )
+  if (!participant) return body
+  return <ParticipantContext.Provider value={participant}>{body}</ParticipantContext.Provider>
 }
 
 interface ControlsProps {
