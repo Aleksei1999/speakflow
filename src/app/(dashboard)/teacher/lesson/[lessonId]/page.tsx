@@ -24,11 +24,13 @@ export default async function TeacherLessonPage({
     .from('profiles').select('role').eq('id', user.id).maybeSingle()
   const isAdmin = callerProfile?.role === 'admin'
 
+  // maybeSingle() — admin может быть без teacher_profile, не валим запрос
+  // на PGRST116.
   const { data: tp } = await supabase
     .from('teacher_profiles')
     .select('id, rating')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
   // Если не teacher и не admin — нечего здесь делать.
   if (!tp && !isAdmin) redirect('/teacher')
 
@@ -44,7 +46,11 @@ export default async function TeacherLessonPage({
     .eq('id', lessonId)
     .single()
 
-  if (!lesson || (lesson.teacher_id !== tp?.id && !isAdmin)) redirect('/teacher/schedule')
+  // Admin проходит без проверки teacher_id; teacher — только на свои уроки.
+  // Ранее `lesson.teacher_id !== tp?.id` для admin'а без teacher_profile
+  // оценивался как `teacher_id !== undefined` → true → redirect.
+  if (!lesson) redirect('/teacher/schedule')
+  if (!isAdmin && lesson.teacher_id !== tp?.id) redirect('/teacher/schedule')
 
   const studentEmbed: any = Array.isArray((lesson as any).student)
     ? (lesson as any).student[0]
@@ -82,15 +88,21 @@ export default async function TeacherLessonPage({
     .from('lessons').select('id', { count: 'exact', head: true })
     .eq('student_id', lesson.student_id).eq('status', 'completed')
 
-  // Next lesson
-  const { data: nextLessons } = await supabase
-    .from('lessons')
-    .select('scheduled_at')
-    .eq('teacher_id', tp.id)
-    .eq('status', 'booked')
-    .gt('scheduled_at', lesson.scheduled_at)
-    .order('scheduled_at', { ascending: true })
-    .limit(1)
+  // Next lesson — только если у вошедшего есть teacher_profile.
+  // Admin без teacher_profile (observer) пропускает этот запрос — у него
+  // нет «своих» следующих уроков.
+  let nextLessons: Array<{ scheduled_at: string }> | null = null
+  if (tp?.id) {
+    const { data } = await supabase
+      .from('lessons')
+      .select('scheduled_at')
+      .eq('teacher_id', tp.id)
+      .eq('status', 'booked')
+      .gt('scheduled_at', lesson.scheduled_at)
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
+    nextLessons = data
+  }
 
   // ВАЖНО: имя комнаты должно совпадать с тем, на которое /api/jitsi/token
   // выпускает JWT. Используем единый helper (см. lib/jitsi/room.ts).
@@ -134,7 +146,7 @@ export default async function TeacherLessonPage({
       userId={user.id}
       userName={profile?.full_name ?? 'Преподаватель'}
       teacherName={studentProfile?.full_name ?? 'Ученик'}
-      teacherRating={tp.rating ?? 0}
+      teacherRating={tp?.rating ?? 0}
       jitsiDomain={JITSI_CONFIG.domain}
       jitsiToken={jitsiToken}
       jitsiRoom={roomName}

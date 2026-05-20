@@ -16,6 +16,19 @@ interface UseLessonRecorderArgs {
   onStarted?: () => void
   /** Меняй значение, чтобы перезапустить запись (retry после отказа в mic). */
   retryToken?: number
+  /**
+   * Опциональный LiveKit Room. Если передан — рекордер:
+   *   1. Возьмёт audio MediaStreamTrack из локального участника
+   *      (без второго getUserMedia → починка NotReadable на Safari/Firefox).
+   *   2. Будет слушать TrackMuted/TrackUnmuted для local audio publication
+   *      → pause/resume записи (privacy: не пишем mute'нутый микрофон).
+   * Передавай null когда video-provider=jitsi: рекордер откатится на свой
+   * getUserMedia + jitsiApi-слушатель.
+   *
+   * Тип `any` — в runtime это Room из livekit-client, но мы не хотим
+   * тянуть тяжёлый импорт в файл, который используется и в Jitsi-flow.
+   */
+  liveKitRoom?: any
 }
 
 interface UseLessonRecorderReturn {
@@ -46,6 +59,33 @@ function pickMimeType(): string | null {
   return null
 }
 
+/**
+ * Достаёт MediaStreamTrack микрофона из LiveKit LocalParticipant.
+ * Сигнатура SDK немного эволюционирует от версии к версии, поэтому
+ * пробуем несколько вариантов и возвращаем первый живой track или null.
+ */
+function pickLiveKitAudioTrack(lp: any): MediaStreamTrack | null {
+  if (!lp) return null
+  try {
+    // 1. getTrackPublication(Track.Source.Microphone) — современный API.
+    const pub = lp.getTrackPublication?.("microphone") ?? lp.getTrack?.("microphone")
+    const t1 = pub?.track?.mediaStreamTrack
+    if (t1 && t1.readyState === "live") return t1
+
+    // 2. audioTrackPublications.values() — fallback.
+    const pubs = lp.audioTrackPublications ?? lp.audioTracks
+    if (pubs && typeof pubs.values === "function") {
+      for (const p of pubs.values()) {
+        const t2 = p?.track?.mediaStreamTrack ?? p?.audioTrack?.mediaStreamTrack
+        if (t2 && t2.readyState === "live") return t2
+      }
+    }
+  } catch (e) {
+    console.warn("[lesson-recorder] pickLiveKitAudioTrack failed:", e)
+  }
+  return null
+}
+
 export function useLessonRecorder({
   lessonId,
   isTeacher,
@@ -53,6 +93,7 @@ export function useLessonRecorder({
   enabled = true,
   onStarted,
   retryToken = 0,
+  liveKitRoom,
 }: UseLessonRecorderArgs): UseLessonRecorderReturn {
   const [status, setStatus] = useState<Status>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +102,9 @@ export function useLessonRecorder({
   // refs — стейт-машина должна переживать ре-рендеры, не сбрасываясь
   const recRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  // true → stream получен из LiveKit; нельзя stop'ать tracks (это убьёт
+  // публикацию в комнате). false → наш собственный getUserMedia.
+  const streamFromLiveKitRef = useRef(false)
   const queueRef = useRef<Blob[]>([])
   const seqRef = useRef(0)
   const uploadingRef = useRef(false)
@@ -81,6 +125,11 @@ export function useLessonRecorder({
   // в этих ref'ах храним стабильные ссылки на них.
   const pauseRecordingRef = useRef<() => void>(() => {})
   const resumeRecordingRef = useRef<() => void>(() => {})
+  // LiveKit Room — храним в ref, чтобы основной useEffect не
+  // перезапускался каждый раз когда compose-context создаёт новый
+  // Room-instance. Реальная подписка — отдельный useEffect ниже.
+  const liveKitRoomRef = useRef<any>(liveKitRoom)
+  liveKitRoomRef.current = liveKitRoom
 
   useEffect(() => {
     if (!enabled) return
@@ -211,55 +260,107 @@ export function useLessonRecorder({
       }
     }
 
+    /**
+     * Попробовать достать локальный audio-track из LiveKit Room.
+     * Возвращает MediaStream если уже опубликован, иначе ждёт публикации
+     * до 30с (учитель/студент может включить mic не сразу).
+     * null если room недоступен или таймаут.
+     */
+    async function tryGetLiveKitAudioStream(): Promise<MediaStream | null> {
+      const room = liveKitRoomRef.current
+      if (!room) return null
+
+      // Сразу проверяем уже опубликованные треки.
+      const lp = room.localParticipant
+      if (!lp) return null
+      const audioTrack = pickLiveKitAudioTrack(lp)
+      if (audioTrack) return new MediaStream([audioTrack])
+
+      // Иначе подождём LocalTrackPublished до cancelled/timeout.
+      return await new Promise<MediaStream | null>((resolve) => {
+        let done = false
+        const finish = (s: MediaStream | null) => {
+          if (done) return
+          done = true
+          clearTimeout(timer)
+          try { room.off?.("localTrackPublished", onPub) } catch {}
+          resolve(s)
+        }
+        const onPub = () => {
+          const t = pickLiveKitAudioTrack(room.localParticipant)
+          if (t) finish(new MediaStream([t]))
+        }
+        try { room.on?.("localTrackPublished", onPub) } catch {}
+        const timer = setTimeout(() => finish(null), 30_000)
+      })
+    }
+
     async function start() {
       setStatus("starting")
       setError(null)
 
-      // mic. Браузер запросит permission ОДИН раз для этого origin'а.
-      // Echo cancellation / noise suppression — стандарт для Web RTC.
-      let stream: MediaStream
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-          video: false,
-        })
-      } catch (e: any) {
-        console.warn("[lesson-recorder] getUserMedia denied/failed:", e?.message ?? e)
-        setStatus("error")
-        // Конкретизируем причину — UI это покажет учителю, ничего
-        // молча не глотаем.
-        const name = e?.name ?? ""
-        if (name === "NotAllowedError" || name === "SecurityError") {
-          setError("Браузер заблокировал микрофон. Разреши доступ в адресной строке и обнови страницу.")
-        } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-          setError("Микрофон не найден. Подключи микрофон и обнови страницу.")
-        } else if (name === "NotReadableError") {
-          setError("Микрофон занят другим приложением. Закрой Zoom/Skype и обнови страницу.")
-        } else {
-          setError("Не удалось получить доступ к микрофону")
+      // 1. LiveKit-flow: переиспользуем тот же mic-track, что уже взял
+      //    LiveKit. Это решает NotReadableError/OverconstrainedError на
+      //    Safari/Firefox, где device-sharing менее надёжен, чем в Chromium.
+      let stream: MediaStream | null = null
+      let fromLiveKit = false
+
+      if (liveKitRoomRef.current) {
+        stream = await tryGetLiveKitAudioStream()
+        if (stream) {
+          fromLiveKit = true
         }
-        return
+      }
+
+      // 2. Fallback (Jitsi flow или LiveKit-room ещё не публикует mic):
+      //    собственный getUserMedia.
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+            video: false,
+          })
+        } catch (e: any) {
+          console.warn("[lesson-recorder] getUserMedia denied/failed:", e?.message ?? e)
+          setStatus("error")
+          // Конкретизируем причину — UI это покажет учителю, ничего
+          // молча не глотаем.
+          const name = e?.name ?? ""
+          if (name === "NotAllowedError" || name === "SecurityError") {
+            setError("Браузер заблокировал микрофон. Разреши доступ в адресной строке и обнови страницу.")
+          } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+            setError("Микрофон не найден. Подключи микрофон и обнови страницу.")
+          } else if (name === "NotReadableError") {
+            setError("Микрофон занят другим приложением. Закрой Zoom/Skype и обнови страницу.")
+          } else {
+            setError("Не удалось получить доступ к микрофону")
+          }
+          return
+        }
       }
       if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop())
+        // Если stream от LiveKit — НЕ stop'аем track'и: они принадлежат
+        // публикации в комнате и нужны другому участнику.
+        if (!fromLiveKit) stream.getTracks().forEach((t) => t.stop())
         return
       }
       streamRef.current = stream
+      streamFromLiveKitRef.current = fromLiveKit
 
       const recId = await resolveRecordingId()
       if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop())
+        if (!fromLiveKit) stream.getTracks().forEach((t) => t.stop())
         return
       }
       if (!recId) {
         console.warn("[lesson-recorder] не получили recordingId — запись пропущена")
         setStatus("error")
         setError("Не удалось инициировать запись")
-        stream.getTracks().forEach((t) => t.stop())
+        if (!fromLiveKit) stream.getTracks().forEach((t) => t.stop())
         return
       }
       recordingIdRef.current = recId
@@ -269,7 +370,7 @@ export function useLessonRecorder({
       // Стартуем первый recorder + восстановим интервал рестарта.
       const ok = spawnRecorder(stream, recId)
       if (!ok) {
-        stream.getTracks().forEach((t) => t.stop())
+        if (!fromLiveKit) stream.getTracks().forEach((t) => t.stop())
         return
       }
       armRestartInterval()
@@ -407,13 +508,18 @@ export function useLessonRecorder({
         })
       }
 
-      streamRef.current?.getTracks().forEach((t) => {
-        try {
-          t.stop()
-        } catch {
-          /* ignore */
-        }
-      })
+      // LiveKit-stream'у tracks не стопаем — это убило бы публикацию
+      // в комнате (другой участник перестал бы слышать). Tracks умрут
+      // вместе с самой публикацией, когда LiveKit-room disconnects.
+      if (!streamFromLiveKitRef.current) {
+        streamRef.current?.getTracks().forEach((t) => {
+          try {
+            t.stop()
+          } catch {
+            /* ignore */
+          }
+        })
+      }
 
       // Доуплоадить хвост из очереди.
       const recId = recordingIdRef.current
@@ -537,6 +643,54 @@ export function useLessonRecorder({
       }
     }
   }, [jitsiApi])
+
+  // Pause / resume по mute в LiveKit. Симметрично Jitsi-варианту:
+  // когда юзер кликает microphone-off в LiveKit-controls, мы тоже
+  // останавливаем запись — иначе писали бы тишину поверх "выключенного"
+  // микрофона. Privacy.
+  //
+  // LiveKit поднимает TrackMuted/TrackUnmuted на Room. Фильтруем по
+  // local participant и audio source.
+  useEffect(() => {
+    if (!liveKitRoom) return
+    const isLocalAudio = (pub: any, participant: any): boolean => {
+      try {
+        if (participant !== liveKitRoom.localParticipant) return false
+        const source = pub?.source ?? pub?.track?.source
+        // source enum: "microphone" / Track.Source.Microphone
+        return source === "microphone"
+      } catch {
+        return false
+      }
+    }
+    const onMuted = (pub: any, participant: any) => {
+      if (!isLocalAudio(pub, participant)) return
+      try { pauseRecordingRef.current() } catch (e) {
+        console.warn("[lesson-recorder] livekit pause failed:", e)
+      }
+    }
+    const onUnmuted = (pub: any, participant: any) => {
+      if (!isLocalAudio(pub, participant)) return
+      try { resumeRecordingRef.current() } catch (e) {
+        console.warn("[lesson-recorder] livekit resume failed:", e)
+      }
+    }
+
+    try {
+      liveKitRoom.on?.("trackMuted", onMuted)
+      liveKitRoom.on?.("trackUnmuted", onUnmuted)
+    } catch {
+      /* ignore */
+    }
+    return () => {
+      try {
+        liveKitRoom.off?.("trackMuted", onMuted)
+        liveKitRoom.off?.("trackUnmuted", onUnmuted)
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [liveKitRoom])
 
   return { status, error, recordingId }
 }
