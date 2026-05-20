@@ -4,6 +4,7 @@
 // Параллельно живёт с /api/jitsi/token — не заменяет.
 
 import { NextRequest, NextResponse } from "next/server"
+import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
 import { requireLessonParticipant } from "@/lib/api/lesson-auth"
 import { createLiveKitToken, getLiveKitConfig } from "@/lib/livekit/token"
@@ -63,6 +64,10 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error("[livekit/token] sign error:", err)
+    Sentry.captureException(err, {
+      tags: { endpoint: "livekit/token" },
+      extra: { lessonId: parsed.data.lessonId, userId: gate.user.id },
+    })
     return NextResponse.json(
       { error: "LiveKit token signing failed (check env)" },
       { status: 500 }

@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
+import * as Sentry from "@sentry/nextjs"
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -88,6 +89,10 @@ export function LiveKitLessonStage({
     init().catch((e) => setError(String(e?.message ?? e)))
     return () => {
       cancelled = true
+      // Сбрасываем ref, чтобы повторный mount (Strict Mode dev, HMR / fast refresh,
+      // router prefetch) мог снова инициировать fetch. cancelled-flag всё ещё
+      // защищает от двойного setState из старого fetch.
+      initStartedRef.current = false
     }
   }, [lessonId])
 
@@ -119,13 +124,33 @@ export function LiveKitLessonStage({
       onConnected={() => {
         setDisconnectReason(null)
         onQuality?.("good")
+        Sentry.addBreadcrumb({
+          category: "livekit",
+          message: "connected",
+          level: "info",
+          data: { lessonId },
+        })
       }}
       onDisconnected={(reason) => {
-        setDisconnectReason(String(reason ?? "unknown"))
+        const r = String(reason ?? "unknown")
+        setDisconnectReason(r)
         onQuality?.("lost")
+        // 'CLIENT_INITIATED' = пользователь сам hangup'нул — не репортим.
+        // LiveKit отдаёт reason как enum (numeric) или строку; матчим оба.
+        if (r !== "CLIENT_INITIATED" && r !== "1") {
+          Sentry.captureMessage("livekit disconnected", {
+            level: "warning",
+            extra: { reason: r, lessonId },
+          })
+        }
       }}
       onError={(e) => {
         setError(e?.message ?? "LiveKit error")
+        // Room unmount'ится через `if (error) return` ниже — SDK сам сделает
+        // disconnect и cleanup track'ов при unmount LiveKitRoom (см. #4 аудита).
+        Sentry.captureException(e, {
+          tags: { provider: "livekit", lesson_id: lessonId },
+        })
       }}
       data-lk-theme="default"
     >

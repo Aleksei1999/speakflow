@@ -765,11 +765,13 @@ export function LessonRoomClient({
       /* noop */
     }
   }
-  const fullscreenSupported = (() => {
+  // Lazy init: проверяем поддержку Fullscreen API ровно один раз
+  // (создание DOM-элемента на каждый рендер — дорогая операция).
+  const [fullscreenSupported] = useState<boolean>(() => {
     if (typeof document === "undefined") return true
     const el = document.createElement("div") as any
     return Boolean(el.requestFullscreen || el.webkitRequestFullscreen)
-  })()
+  })
   const handleEnd = async () => {
     const ok = await confirm({
       title: "Завершить урок?",
