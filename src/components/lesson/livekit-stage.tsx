@@ -38,6 +38,14 @@ interface Props {
   onQuality?: (q: "good" | "fair" | "poor" | "lost" | "unknown") => void
   // hangup извне (auto-hangup по closeAtMs). Parent инкрементит счётчик.
   hangupSignal?: number
+  /**
+   * Колбэк со ссылкой на LiveKit Room после подключения. Используется
+   * recorder'ом для (a) переиспользования mic-track вместо второго
+   * getUserMedia и (b) подписки на TrackMuted/TrackUnmuted чтобы
+   * пауза/resume записи следовала за UI-состоянием.
+   * null → room disconnected/unmounted.
+   */
+  onRoom?: (room: import("livekit-client").Room | null) => void
 }
 
 export function LiveKitLessonStage({
@@ -49,6 +57,7 @@ export function LiveKitLessonStage({
   onEnd,
   onQuality,
   hangupSignal,
+  onRoom,
 }: Props) {
   const [token, setToken] = useState<string | null>(null)
   const [serverUrl, setServerUrl] = useState<string | null>(null)
@@ -129,6 +138,7 @@ export function LiveKitLessonStage({
         onQuality={onQuality}
         hangupSignal={hangupSignal}
         disconnectReason={disconnectReason}
+        onRoom={onRoom}
       />
       <RoomAudioRenderer />
     </LiveKitRoom>
@@ -144,6 +154,7 @@ interface StageInnerProps {
   onQuality?: (q: "good" | "fair" | "poor" | "lost" | "unknown") => void
   hangupSignal?: number
   disconnectReason: string | null
+  onRoom?: (room: import("livekit-client").Room | null) => void
 }
 
 function StageInner({
@@ -155,8 +166,19 @@ function StageInner({
   onQuality,
   hangupSignal,
   disconnectReason,
+  onRoom,
 }: StageInnerProps) {
   const room = useRoomContext()
+
+  // Пробрасываем Room вверх (для recorder'а). Effect — а не inline-вызов,
+  // чтобы не отдавать новый room на каждый re-render. На unmount передаём
+  // null, чтобы recorder отписался от listener'ов.
+  useEffect(() => {
+    onRoom?.(room ?? null)
+    return () => {
+      onRoom?.(null)
+    }
+  }, [room, onRoom])
 
   // Auto-hangup сигнал из parent — отключаемся при достижении closeAtMs.
   useEffect(() => {

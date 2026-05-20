@@ -56,6 +56,10 @@ export async function POST(req: NextRequest) {
       participantIdentity: gate.user.id,
       participantName,
       isModerator,
+      // Сужаем TTL до фактического окна урока — нет смысла раздавать
+      // 4-часовые токены, если урок длится 50 мин.
+      scheduledAt: gate.lesson.scheduled_at,
+      durationMinutes: gate.lesson.duration_minutes,
     })
   } catch (err) {
     console.error("[livekit/token] sign error:", err)

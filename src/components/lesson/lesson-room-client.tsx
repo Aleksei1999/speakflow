@@ -261,6 +261,11 @@ export function LessonRoomClient({
   const jitsiApi = useRef<any>(null)
   // Stateful копия для useLessonRecorder — ref не триггерит его useEffect.
   const [jitsiApiState, setJitsiApiState] = useState<any>(null)
+  // LiveKit Room — приходит из <LiveKitLessonStage onRoom={...}> после
+  // connect. Используем для (a) переиспользования mic-track recorder'ом
+  // (избегаем второго getUserMedia на Safari/Firefox), (b) пауза/resume
+  // recorder'а на TrackMuted/TrackUnmuted (privacy при mute).
+  const [liveKitRoom, setLiveKitRoom] = useState<any>(null)
   const [recordingToast, setRecordingToast] = useState(false)
   // Пользовательский тогл записи. Повторный запуск не поддержан.
   const [recorderEnabled, setRecorderEnabled] = useState(true)
@@ -603,14 +608,15 @@ export function LessonRoomClient({
   // student → polls /active. При duplicateTab выключаем — иначе
   // два браузера конкурируют за один chunk-NNNNN.
   //
-  // jitsiApi нужен только для pause/resume на mute. На LiveKit передаём
-  // null — recorder будет писать постоянно (через свой getUserMedia), и
-  // mute-в-LiveKit не приостанавливает запись. На MVP это OK — AI-саммари
-  // получит чуть больше silence-frames; downstream Whisper это переживёт.
+  // jitsiApi — pause/resume на mute (Jitsi flow).
+  // liveKitRoom — symmetric pause/resume + shared mic-track (LiveKit flow).
+  // На каждом провайдере подаём только релевантный объект; recorder сам
+  // ветвится внутри.
   const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
     jitsiApi: VIDEO_PROVIDER === "jitsi" ? jitsiApiState : null,
+    liveKitRoom: VIDEO_PROVIDER === "livekit" ? liveKitRoom : null,
     enabled: recorderEnabled && !duplicateTab,
     retryToken: recorderRetryToken,
     onStarted: () => {
@@ -907,6 +913,7 @@ export function LessonRoomClient({
                     onEnd={handleEnd}
                     onQuality={setConnQuality}
                     hangupSignal={lkHangupSignal}
+                    onRoom={setLiveKitRoom}
                   />
                 )}
                 <div className="live-badge"><span className="blink"/>LIVE</div>
