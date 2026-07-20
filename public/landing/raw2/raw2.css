@@ -1,7 +1,7 @@
 /* ============================================================
    RAW ENGLISH — new landing (Figma "Главная RAW english")
    Scoped under .raw2 to avoid clobbering global styles.
-   Palette reused from brand: red #B63F37, lime #DDEA88.
+   Typography values taken 1:1 from the Figma design (all Inter).
    ============================================================ */
 .raw2 *,
 .raw2 *::before,
@@ -10,9 +10,11 @@
 .raw2 {
   --red: #B63F37;          /* brand red — buttons, accents */
   --red-hi: #C63C33;       /* brighter red — section backgrounds */
+  --red-accent: #cc3a3a;   /* text accent red (Figma) */
   --red-hover: #a5352e;
-  --lime: #DDEA88;         /* brand lime — cards / accents */
+  --lime: #DFED8C;         /* brand lime (Figma #dfed8c) */
   --lime-deep: #cfe06a;
+  --lime-dark: #aeb96c;    /* darker lime for "Level up" */
   --cream: #FAFAF8;
   --ink: #1E1E1E;          /* near-black text */
   --ink-2: #4a4a48;
@@ -25,7 +27,8 @@
   font-family: var(--font-sans), 'Inter', system-ui, sans-serif;
   color: var(--ink);
   background: var(--cream);
-  line-height: 1.55;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -34,39 +37,39 @@
 .raw2 a { text-decoration: none; color: inherit; }
 .raw2 .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
 
-/* display headings: heavy uppercase grotesque */
+/* display headings: Inter Bold 700 (Figma) */
 .raw2 h1, .raw2 h2, .raw2 h3 {
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.05em;
   line-height: 1.02;
   text-transform: uppercase;
 }
 .raw2 .gluten { font-family: var(--font-gluten), 'Gluten', cursive; text-transform: none; }
-.raw2 .c-red  { color: var(--red); }
+.raw2 .c-red  { color: var(--red-accent); }
 .raw2 .c-lime { color: var(--lime); }
 
 /* ---------- buttons / pills ---------- */
 .raw2 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 12px;
-  border: none; cursor: pointer; font-family: inherit; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .01em; border-radius: var(--radius-pill);
+  border: none; cursor: pointer; font-family: inherit; font-weight: 700;
+  text-transform: uppercase; letter-spacing: -0.05em; border-radius: var(--radius-pill);
   transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
-  white-space: nowrap;
+  white-space: nowrap; line-height: 0.9;
 }
 .raw2 .btn:hover { transform: translateY(-2px); }
-.raw2 .btn-red  { background: var(--red);  color: #fff; padding: 18px 34px; font-size: 1.05rem; box-shadow: 0 10px 24px rgba(182,63,55,.28); }
+.raw2 .btn-red  { background: var(--red);  color: #fff; padding: 18px 34px; font-size: clamp(1.25rem, 2.2vw, 32px); box-shadow: 0 10px 24px rgba(182,63,55,.28); }
 .raw2 .btn-red:hover  { background: var(--red-hover); }
-.raw2 .btn-lime { background: var(--lime); color: var(--ink); padding: 18px 30px; font-size: 1.05rem; }
+.raw2 .btn-lime { background: var(--lime); color: var(--ink); padding: 18px 30px; font-size: clamp(1.25rem, 2.2vw, 32px); }
 .raw2 .btn-lime:hover { background: var(--lime-deep); }
-.raw2 .btn-arrow { width: 52px; height: 52px; border-radius: 50%; background: var(--lime); color: var(--ink); flex-shrink: 0; padding: 0; }
+.raw2 .btn-arrow { width: 56px; height: 56px; border-radius: 50%; background: var(--lime); color: var(--ink); flex-shrink: 0; padding: 0; }
 .raw2 .btn-arrow svg { width: 26px; height: 26px; }
 
-/* section-title badge (outlined / filled pill with title inside) */
+/* section-title badge — Figma: Inter 700, 40px, -2px, 117.3% */
 .raw2 .badge-title {
-  display: inline-block; text-align: center; line-height: 1.18;
-  font-weight: 900; text-transform: uppercase; letter-spacing: .005em;
-  font-size: clamp(1.15rem, 2.6vw, 2rem);
-  padding: 18px 40px; border-radius: var(--radius-pill);
+  display: inline-block; text-align: center; line-height: 1.173;
+  font-weight: 700; text-transform: uppercase; letter-spacing: -0.05em;
+  font-size: clamp(1.5rem, 3.2vw, 40px);
+  padding: 16px 40px; border-radius: var(--radius-pill);
 }
 .raw2 .badge-title--lime   { background: var(--lime); color: var(--ink); }
 .raw2 .badge-title--outline { background: transparent; border: 2.5px solid var(--ink); color: var(--ink); }
@@ -81,14 +84,14 @@
   gap: 24px; padding: 26px 40px;
 }
 .raw2-nav .brand { display: flex; flex-direction: column; line-height: 1; }
-.raw2-nav .brand .byline { font-size: .58rem; letter-spacing: .06em; color: #fff; opacity: .85; margin-bottom: 4px; }
 .raw2-nav .brand .logo-img { height: 52px; width: auto; aspect-ratio: 171 / 98; display: block; }
 .raw2-nav .nav-links { display: flex; align-items: center; gap: 30px; list-style: none; }
-.raw2-nav .nav-links a { color: #fff; font-size: .95rem; font-weight: 600; opacity: .95; transition: color .2s; }
+.raw2-nav .nav-links a { color: #fff; font-size: 18px; font-weight: 500; letter-spacing: -0.9px; line-height: 0.975; transition: color .2s; }
 .raw2-nav .nav-links a:hover { color: var(--lime); }
 .raw2-nav .nav-actions { display: flex; align-items: center; gap: 14px; }
 .raw2-nav .pill {
-  padding: 13px 26px; border-radius: var(--radius-pill); font-weight: 700; font-size: .95rem;
+  padding: 13px 26px; border-radius: var(--radius-pill);
+  font-weight: 500; font-size: 18px; letter-spacing: -0.9px; line-height: 0.975;
   transition: transform .18s ease, background .18s ease;
 }
 .raw2-nav .pill:hover { transform: translateY(-2px); }
@@ -111,23 +114,28 @@
   background: rgba(20,16,14,.34); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255,255,255,.14);
 }
-.raw2-hero h1 { font-size: clamp(2rem, 4.2vw, 3rem); color: #fff; font-weight: 700; letter-spacing: -0.045em; line-height: 0.97; }
+/* Figma: 48px, 700, -2.4px, 96.96% */
+.raw2-hero h1 { font-size: clamp(2rem, 4.2vw, 48px); color: #fff; font-weight: 700; letter-spacing: -0.05em; line-height: 0.97; }
 .raw2-hero h1 .c-lime { color: var(--lime); }
-.raw2-hero .lede { margin: 26px 0 34px; color: #f2ede6; font-size: clamp(1.05rem,1.6vw,1.45rem); font-weight: 600; line-height: 1.4; text-transform: none; }
+/* subtitle Figma: 30px, 500, -1.5px, 97.5% */
+.raw2-hero .lede { margin: 26px 0 34px; color: #fff; font-size: clamp(1.2rem,2.2vw,30px); font-weight: 500; line-height: 0.975; letter-spacing: -1.5px; text-transform: none; }
+/* CTA "узнай свой уровень" Figma: 40px, 700, -2px, 87.82% */
 .raw2-hero .cta-red {
   position: relative; display: inline-flex; align-items: center; background: var(--red); color: #fff;
-  font-weight: 700; text-transform: uppercase; font-size: clamp(1.3rem,2.4vw,1.9rem); line-height: 0.9;
-  letter-spacing: -0.04em; padding: 22px 30px; border-radius: 22px; max-width: 480px;
+  font-weight: 700; text-transform: uppercase; font-size: clamp(1.5rem,2.9vw,40px); line-height: 0.878;
+  letter-spacing: -0.05em; padding: 22px 30px; border-radius: 22px; max-width: 500px;
 }
+/* "бесплатно" Figma: 20px, Medium 500, -1px */
 .raw2-hero .cta-red .free {
   position: absolute; top: -18px; right: 20px; background: var(--lime); color: var(--ink);
-  font-size: 1.1rem; font-weight: 500; letter-spacing: -0.03em; text-transform: none;
+  font-size: 20px; font-weight: 500; letter-spacing: -1px; text-transform: none;
   padding: 5px 18px; border-radius: 999px; transform: rotate(-8deg);
 }
 .raw2-hero .cta-row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
-.raw2-hero .cta-row .btn-lime { text-transform: none; font-weight: 700; letter-spacing: -0.02em; }
+/* "пройти тест" Figma: 32px, 700, -1.6px, lowercase */
+.raw2-hero .cta-row .btn-lime { text-transform: none; font-weight: 700; font-size: clamp(1.3rem,2.3vw,32px); letter-spacing: -0.05em; }
 
-/* speech bubble near teacher */
+/* speech bubble Figma: 20px, 700, -1px, 97.46%, #DFED8C */
 .raw2-hero .bubble {
   position: absolute; right: 3%; bottom: 30%; z-index: 2; max-width: 335px;
   background: rgba(30,30,30,.42); backdrop-filter: blur(8px); color: #DFED8C;
@@ -173,9 +181,11 @@
   display: flex; align-items: flex-end;
 }
 .raw2-fcard .ficon img { height: 96px; width: auto; display: block; }
-.raw2-fcard h3 { font-size: 1.5rem; margin-bottom: 16px; text-transform: none; letter-spacing: 0; }
-.raw2-fcard p { font-size: 1.05rem; color: var(--ink-2); line-height: 1.5; }
-.raw2-fcard p b { color: var(--ink); }
+/* card title Figma: 32px, 700, -1.6px, 97.5% */
+.raw2-fcard h3 { font-size: clamp(1.35rem,2.2vw,32px); font-weight: 700; margin-bottom: 16px; text-transform: none; letter-spacing: -0.05em; line-height: 0.975; }
+/* card body Figma: 28px, 500, -1.4px, 96% */
+.raw2-fcard p { font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; color: var(--ink); line-height: 1.05; letter-spacing: -0.04em; }
+.raw2-fcard p b { color: var(--ink); font-weight: 700; }
 
 /* ============================================================
    SECTION: quiz CTA (red)
@@ -185,21 +195,28 @@
   background: #fff; border-radius: var(--radius-card); padding: 54px 56px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
 }
-.raw2-quiz h2 { font-size: clamp(1.8rem,3.2vw,2.6rem); }
-.raw2-quiz .lvlup { font-size: 1.5rem; font-weight: 800; margin: 18px 0 14px; text-transform: none; }
-.raw2-quiz .lvlup .up { color: var(--lime-deep); }
-.raw2-quiz .lvlup .raw { color: var(--red); }
-.raw2-quiz .desc { font-size: 1.1rem; color: var(--ink-2); text-transform: none; line-height: 1.5; }
-.raw2-quiz .desc b { color: var(--red); }
+/* title Figma: 40px, 700, -2px, 117.3% */
+.raw2-quiz h2 { font-size: clamp(1.6rem,2.9vw,40px); letter-spacing: -0.05em; line-height: 1.05; }
+/* "Level up или stay raw?" Figma: 28px, 700, -1.4px, 111.3% */
+.raw2-quiz .lvlup { font-size: clamp(1.3rem,2vw,28px); font-weight: 700; letter-spacing: -0.05em; line-height: 1.113; margin: 18px 0 14px; text-transform: none; }
+.raw2-quiz .lvlup .up { color: var(--lime-dark); }
+.raw2-quiz .lvlup .raw { color: var(--red-accent); }
+/* body Figma: 24px, 500, -1.2px */
+.raw2-quiz .desc { font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; color: var(--ink); text-transform: none; line-height: 1.05; letter-spacing: -0.04em; }
+.raw2-quiz .desc b { color: var(--red-accent); font-weight: 700; }
 .raw2-quiz .right { display: flex; flex-direction: column; gap: 26px; }
 .raw2-quiz .metrics { display: flex; gap: 30px; }
 .raw2-quiz .metric { display: flex; align-items: center; gap: 12px; }
-.raw2-quiz .metric .mi { width: 54px; height: 54px; color: var(--red); }
+.raw2-quiz .metric .mi { width: 54px; height: 54px; color: var(--red-accent); }
 .raw2-quiz .metric .mi svg { width: 100%; height: 100%; }
-.raw2-quiz .metric b { font-size: 2.2rem; font-weight: 900; line-height: 1; }
-.raw2-quiz .metric span { font-size: .85rem; color: var(--ink-2); display: block; }
-.raw2-quiz .subnote { font-size: .95rem; color: var(--ink-2); text-transform: none; text-align: right; }
-.raw2-quiz .btn-red { align-self: flex-end; font-size: 1.4rem; padding: 20px 46px; }
+/* number Figma: 40px, 700, -2px */
+.raw2-quiz .metric b { font-size: clamp(1.9rem,2.8vw,40px); font-weight: 700; letter-spacing: -0.05em; line-height: 1; }
+/* label Figma: 15px, 500, -0.75px */
+.raw2-quiz .metric span { font-size: 15px; font-weight: 500; letter-spacing: -0.75px; color: var(--ink); display: block; }
+/* subnote Figma: 15px, 500, -0.75px, rgba(0,0,0,.7) */
+.raw2-quiz .subnote { font-size: 15px; font-weight: 500; letter-spacing: -0.75px; color: rgba(0,0,0,.7); text-transform: none; text-align: right; line-height: 1.2; }
+/* "НАЧАТЬ ИГРУ!" Figma: 35px, 700, -1.75px, 97.5% */
+.raw2-quiz .btn-red { align-self: flex-end; font-size: clamp(1.4rem,2.5vw,35px); padding: 20px 46px; }
 
 /* ============================================================
    SECTION: founder (dark photo)
@@ -209,19 +226,22 @@
 .raw2-founder .wrap { position: relative; z-index: 2; }
 .raw2-founder .badge-title { margin-bottom: 46px; }
 .raw2-founder .bio { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; max-width: 830px; }
+/* bio Figma: 28px, 500, -1.4px, 96% */
 .raw2-founder .bio-card {
   background: rgba(28,26,22,.55); backdrop-filter: blur(6px); border-radius: 26px; padding: 28px 30px;
-  font-size: 1.05rem; line-height: 1.5; text-transform: none;
+  font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; text-transform: none;
 }
 .raw2-founder .bio-card ul { list-style: none; display: flex; flex-direction: column; gap: 20px; }
 .raw2-founder .bio-card li { padding-left: 20px; position: relative; }
 .raw2-founder .bio-card li::before { content:'•'; position:absolute; left: 0; color:#fff; }
-.raw2-founder .bio-card b.lime { color: var(--lime); }
-.raw2-founder .bio-card b.red  { color: var(--red); }
+.raw2-founder .bio-card b.lime { color: var(--lime); font-weight: 700; }
+.raw2-founder .bio-card b.red  { color: var(--red-accent); font-weight: 700; }
 .raw2-founder .tags { position: absolute; right: 3%; bottom: 90px; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
-.raw2-founder .tag-name { background: var(--red); color: #fff; font-weight: 800; padding: 10px 22px; border-radius: 999px; }
-.raw2-founder .tag-mission { position: relative; background: var(--lime); color: var(--ink); font-weight: 800; padding: 12px 24px; border-radius: 999px; }
-.raw2-founder .tag-mission .mi { position: absolute; top: -14px; right: 10px; background: var(--red); color: #fff; font-size: .72rem; padding: 5px 14px; border-radius: 999px; }
+/* tags Figma: 24px, 700, -1.2px */
+.raw2-founder .tag-name { background: var(--red); color: #fff; font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 10px 22px; border-radius: 999px; }
+.raw2-founder .tag-mission { position: relative; background: var(--lime); color: var(--ink); font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 12px 24px; border-radius: 999px; }
+/* "миссия" Figma: 20px, 500, -1px */
+.raw2-founder .tag-mission .mi { position: absolute; top: -16px; right: 10px; background: var(--red); color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -1px; padding: 4px 16px; border-radius: 999px; }
 
 /* ============================================================
    SECTION: первое бесплатное занятие (lime)
@@ -232,12 +252,13 @@
 .raw2-pcard { position: relative; border-radius: var(--radius-card); overflow: hidden; background: #333 center/cover; }
 .raw2-pcard--tall { grid-row: span 2; }
 .raw2-pcard--wide { grid-column: span 2; }
+/* card text Figma: 32px, 500, -1.6px, 100% */
 .raw2-pcard .overlay {
-  position: absolute; top: 22px; left: 22px; right: 22px; max-width: 340px;
+  position: absolute; top: 22px; left: 22px; right: 22px; max-width: 360px;
   background: rgba(24,22,20,.5); backdrop-filter: blur(6px); color: #fff;
-  padding: 18px 22px; border-radius: 18px; font-size: 1.4rem; font-weight: 800; line-height: 1.15; text-transform: none;
+  padding: 18px 22px; border-radius: 18px; font-size: clamp(1.2rem,2vw,32px); font-weight: 500; letter-spacing: -0.05em; line-height: 1.0; text-transform: none;
 }
-.raw2-pcard .overlay b { color: var(--lime); }
+.raw2-pcard .overlay b { color: var(--lime); font-weight: 700; }
 
 /* ============================================================
    SECTION: цены (red-overlay photo)
@@ -248,16 +269,19 @@
 .raw2-price .badge-wrap { display: flex; justify-content: center; margin-bottom: 56px; }
 .raw2-price .badge-title--outline { border-color: #fff; color: #fff; }
 .raw2-price .cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 26px; align-items: stretch; }
-.raw2-prc { position: relative; border-radius: var(--radius-card); padding: 40px 34px 100px; background: var(--lime); color: var(--ink); min-height: 440px; }
+.raw2-prc { position: relative; border-radius: var(--radius-card); padding: 40px 34px; background: var(--lime); color: var(--ink); min-height: 440px; display: flex; flex-direction: column; }
 .raw2-prc--hot { background: var(--red); color: #fff; }
-.raw2-prc h3 { font-size: 1.6rem; margin-bottom: 22px; }
-.raw2-prc ul { list-style: none; display: flex; flex-direction: column; gap: 16px; }
-.raw2-prc li { position: relative; padding-left: 22px; font-size: 1.02rem; line-height: 1.4; text-transform: none; }
+/* title Figma: 32px, 700, -1.6px, uppercase */
+.raw2-prc h3 { font-size: clamp(1.35rem,2.2vw,32px); letter-spacing: -0.05em; line-height: 0.92; margin-bottom: 22px; }
+.raw2-prc ul { list-style: none; display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; }
+/* item Figma: 24px, 500, -1.2px */
+.raw2-prc li { position: relative; padding-left: 22px; font-size: clamp(1rem,1.6vw,24px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; text-transform: none; }
 .raw2-prc li::before { content:'•'; position:absolute; left: 2px; }
-.raw2-prc li b { font-weight: 800; }
+.raw2-prc li b { font-weight: 700; }
+/* price Figma: 36px, Medium 500, -1.8px */
 .raw2-prc .price {
-  position: absolute; left: 34px; bottom: 34px; display: inline-flex; align-items: center; gap: 12px;
-  background: #fff; color: var(--ink); font-weight: 900; font-size: 1.7rem; padding: 12px 30px; border-radius: 999px;
+  margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 12px;
+  background: #fff; color: var(--ink); font-weight: 500; font-size: clamp(1.5rem,2.5vw,36px); letter-spacing: -0.05em; padding: 12px 30px; border-radius: 999px;
 }
 .raw2-prc--hot .price { background: var(--lime); }
 .raw2-prc--hot .price .fire { filter: none; }
@@ -274,15 +298,17 @@
 .raw2-faq-list { display: flex; flex-direction: column; gap: 22px; max-width: 900px; }
 .raw2-faq-item { background: #fff; border-radius: 999px; overflow: hidden; transition: border-radius .2s; }
 .raw2-faq-item.open { border-radius: 28px; background: transparent; }
+/* question Figma: 36px, SemiBold 600, -1.8px */
 .raw2-faq-q {
   width: 100%; text-align: left; background: #fff; border: none; cursor: pointer; font-family: inherit;
-  font-size: 1.25rem; font-weight: 800; color: var(--ink); padding: 22px 32px; border-radius: 999px;
+  font-size: clamp(1.15rem,2.2vw,36px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink); padding: 22px 32px; border-radius: 999px;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
 .raw2-faq-item.open .raw2-faq-q { background: var(--lime); }
-.raw2-faq-q .chev { flex-shrink: 0; transition: transform .2s; color: var(--red); }
+.raw2-faq-q .chev { flex-shrink: 0; transition: transform .2s; color: var(--red); width: 28px; height: 28px; }
 .raw2-faq-item.open .chev { transform: rotate(180deg); }
-.raw2-faq-a { background: rgba(0,0,0,.14); color: #fff; padding: 22px 32px; border-radius: 0 0 24px 24px; font-size: 1.02rem; line-height: 1.5; }
+/* answer Figma: 24px, 500, -1.2px, 93.33% */
+.raw2-faq-a { background: rgba(0,0,0,.14); color: #fff; padding: 22px 32px; border-radius: 0 0 24px 24px; font-size: clamp(1rem,1.6vw,24px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.15; }
 
 /* ============================================================
    SECTION: contact (lime) + footer
@@ -290,37 +316,41 @@
 .raw2-contact { position: relative; background: var(--lime); padding: 90px 0 70px; overflow: hidden; }
 .raw2-contact .watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); width: min(1040px, 88vw); height: auto; aspect-ratio: 1100 / 540; opacity: .5; z-index: 0; pointer-events: none; }
 .raw2-contact .wrap { position: relative; z-index: 1; }
-.raw2-contact h2 { text-align: center; font-size: clamp(1.5rem,2.6vw,2.1rem); margin: 0 auto 40px; max-width: 600px; text-transform: none; font-weight: 500; line-height: 1.25; }
+/* heading Figma: 32px, 500, -1.6px, 97.5% */
+.raw2-contact h2 { text-align: center; font-size: clamp(1.4rem,2.4vw,32px); margin: 0 auto 40px; max-width: 620px; text-transform: none; font-weight: 500; letter-spacing: -0.05em; line-height: 0.975; }
 .raw2-form { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+/* inputs Figma: 24px, 500, -1.2px */
 .raw2-form input {
-  width: 100%; padding: 20px 28px; border-radius: 999px; border: none; font-family: inherit; font-size: 1.05rem;
+  width: 100%; padding: 18px 28px; border-radius: 999px; border: none; font-family: inherit;
+  font-size: clamp(1.05rem,1.6vw,24px); font-weight: 500; letter-spacing: -1.2px;
   background: #fff; color: var(--ink); outline: none;
 }
-.raw2-form input::placeholder { color: #9a9a97; }
+.raw2-form input::placeholder { color: rgba(30,30,30,.7); }
 .raw2-form .submit-row { display: flex; justify-content: center; margin-top: 6px; }
-.raw2-form .consent { text-align: center; font-size: .82rem; font-style: italic; color: var(--ink-2); max-width: 420px; margin: 10px auto 0; }
+/* consent Figma: 20px, Regular 400 italic, -1px, 97.5% */
+.raw2-form .consent { text-align: center; font-size: clamp(.85rem,1.3vw,20px); font-weight: 400; font-style: italic; letter-spacing: -1px; line-height: 0.975; color: rgba(30,30,30,.7); max-width: 460px; margin: 12px auto 0; }
 .raw2-form .ok { text-align: center; font-weight: 700; color: var(--red); }
 
 /* success state (Figma «Контакты отправлены») */
 .raw2-sent { max-width: 620px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 30px; padding: 40px 0; position: relative; z-index: 1; }
-.raw2-sent-msg { font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 400; color: var(--ink); line-height: 1.35; }
-.raw2-sent-msg b { font-weight: 800; }
+.raw2-sent-msg { font-size: clamp(1.2rem, 2vw, 28px); font-weight: 500; letter-spacing: -0.04em; color: var(--ink); line-height: 1.15; }
+.raw2-sent-msg b { font-weight: 700; }
 .raw2-sent .btn-red { min-width: 200px; }
 
 .raw2-footer { background: var(--lime); padding: 30px 0 46px; }
 .raw2-footer .inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; flex-wrap: wrap; }
-.raw2-footer .fcol { display: flex; flex-direction: column; gap: 8px; font-size: .92rem; }
+.raw2-footer .fcol { display: flex; flex-direction: column; gap: 8px; font-size: 1rem; font-weight: 500; }
 .raw2-footer .fcol a:hover { color: var(--red); }
-.raw2-footer .legal { font-size: .82rem; color: var(--ink-2); text-align: right; line-height: 1.5; }
+.raw2-footer .legal { font-size: .9rem; color: var(--ink-2); text-align: right; line-height: 1.5; }
 .raw2-footer .legal b { display: block; color: var(--ink); }
-.raw2-footer .copy { text-align: center; margin-top: 24px; font-size: .82rem; color: var(--ink-2); }
+.raw2-footer .copy { text-align: center; margin-top: 24px; font-size: .9rem; color: var(--ink-2); }
 
 /* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 980px) {
   .raw2-nav .nav-links { display: none; }
-  .raw2-cards-3, .raw2-quiz .card, .raw2-founder .bio, .raw2-free .bento, .raw2-price .cards { grid-template-columns: 1fr; }
+  .raw2-quiz .card, .raw2-founder .bio, .raw2-free .bento, .raw2-price .cards { grid-template-columns: 1fr; }
   .raw2-free .bento { grid-auto-rows: auto; }
   .raw2-pcard { min-height: 260px; }
   .raw2-pcard--tall, .raw2-pcard--wide { grid-row: auto; grid-column: auto; }
