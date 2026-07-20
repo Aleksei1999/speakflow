@@ -297,18 +297,19 @@
 .raw2-faq .badge-title--outline-lime { border-color: var(--lime); color: #fff; }
 .raw2-faq-list { display: flex; flex-direction: column; gap: 22px; max-width: 900px; }
 .raw2-faq-item { background: #fff; border-radius: 999px; overflow: hidden; transition: border-radius .2s; }
-.raw2-faq-item.open { border-radius: 28px; background: transparent; }
+/* open item = single container (Figma: pale lime rgba(223,237,140,.29) over red bg) */
+.raw2-faq-item.open { border-radius: 40px; background: rgba(223,237,140,0.29); }
 /* question Figma: 36px, SemiBold 600, -1.8px */
 .raw2-faq-q {
   width: 100%; text-align: left; background: #fff; border: none; cursor: pointer; font-family: inherit;
   font-size: clamp(1.15rem,2.2vw,36px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink); padding: 22px 32px; border-radius: 999px;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-.raw2-faq-item.open .raw2-faq-q { background: var(--lime); }
-.raw2-faq-q .chev { flex-shrink: 0; transition: transform .2s; color: var(--red); width: 28px; height: 28px; }
+.raw2-faq-item.open .raw2-faq-q { background: var(--lime); border-radius: 40px; }
+.raw2-faq-q .chev { flex-shrink: 0; transition: transform .2s; color: var(--red-accent); width: 30px; height: 20px; }
 .raw2-faq-item.open .chev { transform: rotate(180deg); }
-/* answer Figma: 24px, 500, -1.2px, 93.33% */
-.raw2-faq-a { background: rgba(0,0,0,.14); color: #fff; padding: 22px 32px; border-radius: 0 0 24px 24px; font-size: clamp(1rem,1.6vw,24px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.15; }
+/* answer sits directly on the pale-lime container (Figma: 24px, 500, -1.2px, 93.33%) */
+.raw2-faq-a { background: transparent; color: #fff; padding: 8px 34px 28px; font-size: clamp(1rem,1.6vw,24px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.15; }
 
 /* ============================================================
    SECTION: contact (lime) + footer

@@ -36,8 +36,8 @@ const IconTimer = () => (
   </svg>
 );
 const Chevron = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="chev" aria-hidden>
-    <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width="30" height="20" viewBox="0 0 30 20" fill="none" className="chev" aria-hidden>
+    <path d="M3 4.5 15 15.5 27 4.5" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const TgIcon = () => (
