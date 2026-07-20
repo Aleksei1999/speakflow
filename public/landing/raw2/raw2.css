@@ -262,9 +262,9 @@
    SECTION: contact (lime) + footer
    ============================================================ */
 .raw2-contact { position: relative; background: var(--lime); padding: 90px 0 70px; overflow: hidden; }
-.raw2-contact .watermark { position: absolute; left: -40px; bottom: -30px; width: 340px; height: auto; aspect-ratio: 1100 / 540; opacity: .55; z-index: 0; pointer-events: none; }
+.raw2-contact .watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); width: min(1040px, 88vw); height: auto; aspect-ratio: 1100 / 540; opacity: .5; z-index: 0; pointer-events: none; }
 .raw2-contact .wrap { position: relative; z-index: 1; }
-.raw2-contact h2 { text-align: center; font-size: clamp(1.6rem,3vw,2.4rem); margin-bottom: 44px; text-transform: none; font-weight: 800; }
+.raw2-contact h2 { text-align: center; font-size: clamp(1.5rem,2.6vw,2.1rem); margin: 0 auto 40px; max-width: 600px; text-transform: none; font-weight: 500; line-height: 1.25; }
 .raw2-form { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .raw2-form input {
   width: 100%; padding: 20px 28px; border-radius: 999px; border: none; font-family: inherit; font-size: 1.05rem;
@@ -272,7 +272,7 @@
 }
 .raw2-form input::placeholder { color: #9a9a97; }
 .raw2-form .submit-row { display: flex; justify-content: center; margin-top: 6px; }
-.raw2-form .consent { text-align: center; font-size: .82rem; color: var(--ink-2); max-width: 480px; margin: 10px auto 0; }
+.raw2-form .consent { text-align: center; font-size: .82rem; font-style: italic; color: var(--ink-2); max-width: 420px; margin: 10px auto 0; }
 .raw2-form .ok { text-align: center; font-weight: 700; color: var(--red); }
 
 .raw2-footer { background: var(--lime); padding: 30px 0 46px; }
