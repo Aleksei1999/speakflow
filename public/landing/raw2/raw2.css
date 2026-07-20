@@ -107,11 +107,11 @@
 .raw2-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.15) 55%, rgba(0,0,0,0) 100%); z-index: 1; }
 .raw2-hero .wrap { position: relative; z-index: 2; }
 .raw2-hero .glass {
-  max-width: 620px; padding: 46px 48px; border-radius: 34px;
+  max-width: 580px; padding: 46px 48px; border-radius: 34px;
   background: rgba(20,16,14,.34); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255,255,255,.14);
 }
-.raw2-hero h1 { font-size: clamp(2.4rem, 5vw, 4.1rem); color: #fff; }
+.raw2-hero h1 { font-size: clamp(2rem, 4.2vw, 3rem); color: #fff; font-weight: 700; letter-spacing: -0.045em; }
 .raw2-hero h1 .c-lime { color: var(--lime); }
 .raw2-hero .lede { margin: 26px 0 34px; color: #f2ede6; font-size: clamp(1.05rem,1.6vw,1.45rem); font-weight: 600; line-height: 1.4; text-transform: none; }
 .raw2-hero .cta-red {
@@ -120,16 +120,18 @@
   padding: 22px 30px; border-radius: 22px; max-width: 480px;
 }
 .raw2-hero .cta-red .free {
-  position: absolute; top: -16px; right: 22px; background: var(--lime); color: var(--ink);
+  position: absolute; top: -18px; right: 20px; background: var(--lime); color: var(--ink);
   font-size: .8rem; font-weight: 800; text-transform: none; padding: 6px 16px; border-radius: 999px;
+  transform: rotate(-8deg);
 }
 .raw2-hero .cta-row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
 
 /* speech bubble near teacher */
 .raw2-hero .bubble {
-  position: absolute; right: 6%; bottom: 16%; z-index: 2; max-width: 300px;
-  background: rgba(30,26,24,.55); backdrop-filter: blur(8px); color: #f2ede6;
-  padding: 16px 20px; border-radius: 20px 20px 4px 20px; font-size: .95rem; font-weight: 600; line-height: 1.35;
+  position: absolute; right: 4%; bottom: 30%; z-index: 2; max-width: 300px;
+  background: rgba(30,30,30,.42); backdrop-filter: blur(8px); color: var(--lime);
+  padding: 16px 22px; border-radius: 22px; font-size: .95rem; font-weight: 600; line-height: 1.35;
+  transform: rotate(-4deg);
 }
 
 /* ============================================================
