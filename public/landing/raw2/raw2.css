@@ -85,18 +85,23 @@
 }
 .raw2-nav .brand { display: flex; flex-direction: column; line-height: 1; }
 .raw2-nav .brand .logo-img { height: 52px; width: auto; aspect-ratio: 171 / 98; display: block; }
-.raw2-nav .nav-links { display: flex; align-items: center; gap: 30px; list-style: none; }
-.raw2-nav .nav-links a { color: #fff; font-size: 18px; font-weight: 500; letter-spacing: -0.9px; line-height: 0.975; transition: color .2s; }
-.raw2-nav .nav-links a:hover { color: var(--lime); }
+.raw2-nav .nav-links { display: flex; align-items: center; gap: 6px; list-style: none; }
+/* hover/active state (Figma «при нажатии»): lime pill + dark text */
+.raw2-nav .nav-links a { color: #fff; font-size: 18px; font-weight: 500; letter-spacing: -0.9px; line-height: 0.975; padding: 11px 20px; border-radius: var(--radius-pill); transition: background .2s, color .2s; }
+.raw2-nav .nav-links a:hover { background: var(--lime); color: var(--ink); }
 .raw2-nav .nav-actions { display: flex; align-items: center; gap: 14px; }
 .raw2-nav .pill {
   padding: 13px 26px; border-radius: var(--radius-pill);
   font-weight: 500; font-size: 18px; letter-spacing: -0.9px; line-height: 0.975;
   transition: transform .18s ease, background .18s ease;
 }
+.raw2-nav .pill { transition: transform .18s ease, background .2s ease, color .2s ease; }
 .raw2-nav .pill:hover { transform: translateY(-2px); }
 .raw2-nav .pill-lime { background: var(--lime); color: var(--ink); }
+.raw2-nav .pill-lime:hover { background: var(--lime-deep); }
 .raw2-nav .pill-red  { background: var(--red);  color: #fff; }
+/* Figma «при нажатии»: Личный кабинет становится лаймовым */
+.raw2-nav .pill-red:hover { background: var(--lime); color: var(--ink); }
 .raw2-nav .burger { display: none; background: none; border: none; cursor: pointer; }
 
 /* ============================================================
