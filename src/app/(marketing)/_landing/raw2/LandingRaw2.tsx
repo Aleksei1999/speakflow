@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 
 /* ------------------------------------------------------------------
@@ -46,6 +46,8 @@ const FEATURES = [
   { icon: "ic-bubble.png", title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
   { icon: "ic-cv.png", title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
   { icon: "ic-cap.png", title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
+  { icon: "ic-psy.png", title: "Работа с психологом", body: <>Преодолевай языковой барьер, <b>избавляйся от страха</b> со специалистом</> },
+  { icon: "ic-lecture.png", title: "Лекции", body: <>Развивайся <b>в профессии и хобби</b> с нашими лекциями на английском языке</> },
 ];
 
 const FREE_CARDS = [
@@ -80,6 +82,32 @@ const FAQ = [
 export default function LandingRaw2() {
   const [openFaq, setOpenFaq] = useState<number | null>(3);
   const [sent, setSent] = useState(false);
+  const carRef = useRef<HTMLDivElement>(null);
+  const [carPos, setCarPos] = useState({ atStart: true, atEnd: false });
+
+  function updateCarPos() {
+    const el = carRef.current;
+    if (!el) return;
+    // scroll origin is offset by the container's left padding, so measure from there
+    const padLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    setCarPos({
+      atStart: el.scrollLeft <= padLeft + 4,
+      atEnd: el.scrollLeft >= el.scrollWidth - el.clientWidth - 4,
+    });
+  }
+  useEffect(() => {
+    updateCarPos();
+    window.addEventListener("resize", updateCarPos);
+    return () => window.removeEventListener("resize", updateCarPos);
+  }, []);
+
+  function scrollCards(dir: 1 | -1) {
+    const el = carRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>(".raw2-fcard");
+    const step = card ? card.offsetWidth + 26 : el.clientWidth * 0.8;
+    el.scrollBy({ left: dir * step, behavior: "smooth" });
+  }
 
   // this landing is its own visual system — force light + tag <html>
   useEffect(() => {
@@ -144,7 +172,14 @@ export default function LandingRaw2() {
               Система, в которую заходишь <span className="c-red">с пользой</span>:
             </span>
           </div>
-          <div className="raw2-cards-3">
+        </div>
+        <div className="raw2-carousel-wrap">
+          {!carPos.atStart && (
+            <button type="button" className="raw2-car-nav prev" onClick={() => scrollCards(-1)} aria-label="Назад">
+              <ArrowRight />
+            </button>
+          )}
+          <div className="raw2-carousel" ref={carRef} onScroll={updateCarPos}>
             {FEATURES.map((f) => (
               <article className="raw2-fcard" key={f.title}>
                 <span className="ficon"><img src={`/landing/raw2/${f.icon}`} alt="" /></span>
@@ -153,6 +188,11 @@ export default function LandingRaw2() {
               </article>
             ))}
           </div>
+          {!carPos.atEnd && (
+            <button type="button" className="raw2-car-nav next" onClick={() => scrollCards(1)} aria-label="Вперёд">
+              <ArrowRight />
+            </button>
+          )}
         </div>
       </section>
 
