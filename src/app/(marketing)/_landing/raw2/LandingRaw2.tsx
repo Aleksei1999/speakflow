@@ -40,6 +40,11 @@ const Chevron = () => (
     <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+const TgIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M11.94 2.02a10 10 0 1 0 .12 20 10 10 0 0 0-.12-20Zm4.62 6.9-1.55 7.3c-.11.52-.42.64-.86.4l-2.38-1.76-1.15 1.1c-.13.13-.24.24-.48.24l.17-2.42 4.4-3.98c.19-.17-.04-.27-.3-.1l-5.43 3.42-2.34-.73c-.51-.16-.52-.51.11-.76l9.14-3.53c.42-.15.8.1.66.75Z" />
+  </svg>
+);
 
 /* ---------- data ---------- */
 const FEATURES = [
@@ -331,11 +336,15 @@ export default function LandingRaw2() {
       <footer className="raw2-footer">
         <div className="wrap">
           <div className="inner">
-            <div className="fcol">
-              <a href="https://t.me/" target="_blank" rel="noopener noreferrer">Telegram</a>
+            <div className="fcol fcol-links">
+              <a href="https://t.me/" target="_blank" rel="noopener noreferrer" className="tg"><TgIcon />Telegram</a>
               <a href={CONTACT_HREF}>Связаться</a>
               <Link href="/oferta">Договор-оферта</Link>
               <Link href="/privacy">Политика конфиденциальности</Link>
+            </div>
+            <div className="fcol-center">
+              <a href={CONTACT_HREF} className="btn btn-red">Выучить английский</a>
+              <p className="copy">By V. Kratkovskaya © 2026</p>
             </div>
             <div className="legal">
               <b>ИП Кратковская Валерия Витальевна</b>
@@ -343,7 +352,6 @@ export default function LandingRaw2() {
               ИНН: 616485783606
             </div>
           </div>
-          <p className="copy">By V. Kratkovskaya © 2026</p>
         </div>
       </footer>
     </div>
