@@ -18,27 +18,6 @@ const ArrowRight = () => (
     <path d="M4 12h15M13 6l7 6-7 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const IconBubble = () => (
-  <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden>
-    <path d="M12 8h40a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6H30l-14 12V46h-4a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6Z" />
-    <circle cx="24" cy="27" r="3.4" fill="#DDEA88" />
-    <circle cx="32" cy="27" r="3.4" fill="#DDEA88" />
-    <circle cx="40" cy="27" r="3.4" fill="#DDEA88" />
-  </svg>
-);
-const IconCV = () => (
-  <svg viewBox="0 0 64 64" fill="none" aria-hidden>
-    <rect x="12" y="8" width="40" height="48" rx="6" fill="#B63F37" />
-    <circle cx="32" cy="26" r="7" fill="#fff" />
-    <path d="M20 44c0-7 5.5-11 12-11s12 4 12 11" fill="#fff" />
-  </svg>
-);
-const IconCap = () => (
-  <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden>
-    <path d="M32 12 4 24l28 12 22-9.4V40h5V23L32 12Z" />
-    <path d="M16 34v9c0 4.4 7.2 8 16 8s16-3.6 16-8v-9l-16 7-16-7Z" />
-  </svg>
-);
 const IconQuestion = () => (
   <svg viewBox="0 0 56 56" fill="none" aria-hidden>
     <path d="M14 10h34a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H26L14 50V40h0a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4Z" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="round" />
@@ -64,9 +43,9 @@ const Chevron = () => (
 
 /* ---------- data ---------- */
 const FEATURES = [
-  { icon: <IconBubble />, title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
-  { icon: <IconCV />, title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
-  { icon: <IconCap />, title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
+  { icon: "ic-bubble.png", title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
+  { icon: "ic-cv.png", title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
+  { icon: "ic-cap.png", title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
 ];
 
 const FREE_CARDS = [
@@ -124,8 +103,7 @@ export default function LandingRaw2() {
       {/* ============ NAV ============ */}
       <nav className="raw2-nav">
         <Link href="/" className="brand" aria-label="Raw English">
-          <span className="byline">By V. Kratkovskaya</span>
-          <span className="logomark">Raw<small>english</small></span>
+          <img src="/landing/raw2/logo-raw-word.svg" alt="Raw English" className="logo-img" />
         </Link>
         <ul className="nav-links">
           <li><a href="#system">Методика</a></li>
@@ -169,7 +147,7 @@ export default function LandingRaw2() {
           <div className="raw2-cards-3">
             {FEATURES.map((f) => (
               <article className="raw2-fcard" key={f.title}>
-                <span className="ficon">{f.icon}</span>
+                <span className="ficon"><img src={`/landing/raw2/${f.icon}`} alt="" /></span>
                 <h3>{f.title}</h3>
                 <p>{f.body}</p>
               </article>
@@ -266,7 +244,7 @@ export default function LandingRaw2() {
 
       {/* ============ FAQ ============ */}
       <section className="raw2-faq">
-        <span className="mascot gluten" aria-hidden style={{ fontSize: "26rem", fontFamily: "var(--font-gluten), cursive", lineHeight: 1 }}>R</span>
+        <img src="/landing/raw2/mascot-r.svg" alt="" aria-hidden className="mascot" />
         <div className="wrap">
           <div className="badge-wrap">
             <span className="badge-title badge-title--outline-lime">Популярные вопросы</span>
@@ -286,6 +264,7 @@ export default function LandingRaw2() {
 
       {/* ============ CONTACT ============ */}
       <section id="contact" className="raw2-contact">
+        <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
           <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>
           {sent ? (
