@@ -264,13 +264,13 @@
    SECTION: цены (red-overlay photo)
    ============================================================ */
 .raw2-price { position: relative; background: #333 center/cover; padding: 90px 0 100px; }
-.raw2-price::before { content:''; position:absolute; inset:0; background: rgba(198,60,51,.72); }
+.raw2-price::before { content:''; position:absolute; inset:0; background: rgba(0,0,0,.12); }
 .raw2-price .wrap { position: relative; z-index: 2; }
 .raw2-price .badge-wrap { display: flex; justify-content: center; margin-bottom: 56px; }
 .raw2-price .badge-title--outline { border-color: #fff; color: #fff; }
 .raw2-price .cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 26px; align-items: stretch; }
-.raw2-prc { position: relative; border-radius: var(--radius-card); padding: 40px 34px; background: var(--lime); color: var(--ink); min-height: 440px; display: flex; flex-direction: column; }
-.raw2-prc--hot { background: var(--red); color: #fff; }
+.raw2-prc { position: relative; border-radius: var(--radius-card); padding: 40px 34px; background: rgba(223,237,140,0.69); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); color: var(--ink); min-height: 440px; display: flex; flex-direction: column; }
+.raw2-prc--hot { background: rgba(204,58,58,0.69); color: #fff; }
 /* title Figma: 32px, 700, -1.6px, uppercase */
 .raw2-prc h3 { font-size: clamp(1.35rem,2.2vw,32px); letter-spacing: -0.05em; line-height: 0.92; margin-bottom: 22px; }
 .raw2-prc ul { list-style: none; display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; }
