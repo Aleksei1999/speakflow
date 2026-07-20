@@ -264,7 +264,7 @@
    SECTION: цены (red-overlay photo)
    ============================================================ */
 .raw2-price { position: relative; background: #333 center/cover; padding: 90px 0 100px; }
-.raw2-price::before { content:''; position:absolute; inset:0; background: rgba(182,63,55,.82); }
+.raw2-price::before { content:''; position:absolute; inset:0; background: rgba(198,60,51,.72); }
 .raw2-price .wrap { position: relative; z-index: 2; }
 .raw2-price .badge-wrap { display: flex; justify-content: center; margin-bottom: 56px; }
 .raw2-price .badge-title--outline { border-color: #fff; color: #fff; }
