@@ -129,9 +129,10 @@
 
 /* speech bubble near teacher */
 .raw2-hero .bubble {
-  position: absolute; right: 4%; bottom: 30%; z-index: 2; max-width: 300px;
-  background: rgba(30,30,30,.42); backdrop-filter: blur(8px); color: var(--lime);
-  padding: 16px 22px; border-radius: 22px; font-size: .95rem; font-weight: 600; line-height: 1.35;
+  position: absolute; right: 3%; bottom: 30%; z-index: 2; max-width: 335px;
+  background: rgba(30,30,30,.42); backdrop-filter: blur(8px); color: #DFED8C;
+  padding: 16px 22px; border-radius: 22px;
+  font-size: 20px; font-weight: 700; line-height: 97.46%; letter-spacing: -1px;
   transform: rotate(-4deg);
 }
 
