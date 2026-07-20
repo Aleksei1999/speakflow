@@ -266,9 +266,15 @@ export default function LandingRaw2() {
       <section id="contact" className="raw2-contact">
         <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
-          <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>
+          {!sent && <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>}
           {sent ? (
-            <p className="ok">Спасибо! Мы свяжемся с тобой в ближайшее время.</p>
+            <div className="raw2-sent">
+              <p className="raw2-sent-msg">
+                Спасибо!<br />
+                Ваша заявка принята, <b>мы свяжемся с вами</b> в ближайшее время.
+              </p>
+              <button type="button" className="btn btn-red" onClick={() => setSent(false)}>Ок</button>
+            </div>
           ) : (
             <form className="raw2-form" onSubmit={onSubmit}>
               <input type="text" name="name" placeholder="имя" required />
