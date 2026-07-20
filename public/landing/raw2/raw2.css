@@ -137,10 +137,32 @@
    ============================================================ */
 .raw2-system { background: var(--white); padding: 96px 0; }
 .raw2-system .badge-wrap { display: flex; justify-content: center; margin-bottom: 60px; }
-.raw2-cards-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+
+/* horizontal gallery / carousel */
+.raw2-carousel-wrap { position: relative; }
+.raw2-carousel {
+  display: flex; gap: 26px; overflow-x: auto; scroll-snap-type: x proximity;
+  scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+  padding: 44px max(32px, calc((100vw - var(--maxw)) / 2)) 20px;
+  scrollbar-width: none;
+}
+.raw2-carousel::-webkit-scrollbar { display: none; }
+.raw2-car-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+  width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--lime); color: var(--ink); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12); transition: background .18s, transform .18s;
+}
+.raw2-car-nav:hover { background: var(--lime-deep); }
+.raw2-car-nav svg { width: 26px; height: 26px; }
+.raw2-car-nav.prev { left: 16px; }
+.raw2-car-nav.prev svg { transform: scaleX(-1); }
+.raw2-car-nav.next { right: 16px; }
+
 .raw2-fcard {
   position: relative; background: var(--lime); border-radius: var(--radius-card);
   padding: 74px 34px 40px; min-height: 300px;
+  flex: 0 0 340px; scroll-snap-align: start;
 }
 .raw2-fcard .ficon {
   position: absolute; top: -44px; left: 30px; height: 96px;
@@ -307,6 +329,9 @@
 @media (max-width: 560px) {
   .raw2 .wrap { padding: 0 20px; }
   .raw2-nav { padding: 18px 20px; }
+  .raw2-carousel { padding: 44px 20px 20px; gap: 18px; }
+  .raw2-fcard { flex-basis: 80vw; }
+  .raw2-car-nav { display: none; }
   .raw2-quiz .card { padding: 32px 26px; }
   .raw2-quiz .metrics { flex-direction: column; gap: 16px; }
   .raw2-hero .glass { padding: 32px 26px; }
