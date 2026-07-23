@@ -260,6 +260,7 @@ export default function LandingRaw2() {
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     // TODO: wire to lead/trial endpoint (см. autoAssignTrial / /api/auth).
+    e.currentTarget.reset();
     setSent(true);
   }
 
@@ -445,24 +446,14 @@ export default function LandingRaw2() {
       <section id="contact" className="raw2-contact">
         <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
-          {!sent && <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>}
-          {sent ? (
-            <div className="raw2-sent">
-              <p className="raw2-sent-msg">
-                Спасибо!<br />
-                Ваша заявка принята, <b>мы свяжемся с вами</b> в ближайшее время.
-              </p>
-              <button type="button" className="btn btn-red" onClick={() => setSent(false)}>Ок</button>
-            </div>
-          ) : (
-            <form className="raw2-form" onSubmit={onSubmit}>
-              <input type="text" name="name" placeholder="имя" required />
-              <input type="email" name="email" placeholder="электронная почта" required />
-              <input type="tel" name="phone" placeholder="номер телефона" required />
-              <div className="submit-row"><button type="submit" className="btn btn-red">Отправить</button></div>
-              <p className="consent">Соглашаясь отправить, вы даёте согласие на обработку персональных данных.</p>
-            </form>
-          )}
+          <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>
+          <form className="raw2-form" onSubmit={onSubmit}>
+            <input type="text" name="name" placeholder="имя" required />
+            <input type="email" name="email" placeholder="электронная почта" required />
+            <input type="tel" name="phone" placeholder="номер телефона" required />
+            <div className="submit-row"><button type="submit" className="btn btn-red">Отправить</button></div>
+            <p className="consent">Соглашаясь отправить, вы даёте согласие на обработку персональных данных.</p>
+          </form>
         </div>
       </section>
 
@@ -526,6 +517,19 @@ export default function LandingRaw2() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ============ SENT POPUP (Figma «Контакты отправлены») ============ */}
+      {sent && (
+        <div className="raw2-modal-overlay" onClick={() => setSent(false)}>
+          <div className="raw2-sent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <p className="raw2-sent-msg">
+              Спасибо!<br />
+              Ваша заявка принята, <b>мы свяжемся с вами</b> в ближайшее время.
+            </p>
+            <button type="button" className="btn btn-red" onClick={() => setSent(false)}>Ок</button>
           </div>
         </div>
       )}
