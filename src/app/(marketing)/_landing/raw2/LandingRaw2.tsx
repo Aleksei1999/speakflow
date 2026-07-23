@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 /* ------------------------------------------------------------------
    RAW ENGLISH — new landing (Figma "Главная RAW english")
@@ -87,6 +88,41 @@ const FAQ = [
 export default function LandingRaw2() {
   const [openFaq, setOpenFaq] = useState<number | null>(3);
   const [sent, setSent] = useState(false);
+
+  // login popup (Ученик / Учитель)
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginRole, setLoginRole] = useState<"student" | "teacher">("student");
+  const [loginErr, setLoginErr] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  useEffect(() => {
+    if (!loginOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLoginOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [loginOpen]);
+
+  async function onLogin(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoginErr("");
+    setLoginBusy(true);
+    const data = new FormData(e.currentTarget);
+    const email = String(data.get("email") || "").trim();
+    const password = String(data.get("password") || "");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setLoginErr("Неверный email или пароль");
+        setLoginBusy(false);
+        return;
+      }
+      window.location.href = loginRole === "teacher" ? "/teacher" : "/student";
+    } catch {
+      setLoginErr("Не удалось войти. Попробуйте позже.");
+      setLoginBusy(false);
+    }
+  }
   // infinite carousel: render FEATURES ×3, keep scroll inside the middle copy,
   // highlight the card nearest the viewport centre (bigger + red icon).
   const carRef = useRef<HTMLDivElement>(null);
@@ -197,7 +233,7 @@ export default function LandingRaw2() {
         </ul>
         <div className="nav-actions">
           <a href={CONTACT_HREF} className="pill pill-lime">Выучить английский</a>
-          <Link href="/login" className="pill pill-red">Личный кабинет</Link>
+          <button type="button" className="pill pill-red" onClick={() => setLoginOpen(true)}>Личный кабинет</button>
         </div>
       </nav>
 
@@ -404,6 +440,26 @@ export default function LandingRaw2() {
           </div>
         </div>
       </footer>
+
+      {/* ============ LOGIN POPUP (Ученик / Учитель) ============ */}
+      {loginOpen && (
+        <div className="raw2-modal-overlay" onClick={() => setLoginOpen(false)}>
+          <div className="raw2-login" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <button type="button" className="raw2-login-close" onClick={() => setLoginOpen(false)} aria-label="Закрыть">×</button>
+            <div className="raw2-login-tabs">
+              <button type="button" className={loginRole === "student" ? "active" : ""} onClick={() => setLoginRole("student")}>Ученик</button>
+              <button type="button" className={loginRole === "teacher" ? "active" : ""} onClick={() => setLoginRole("teacher")}>Учитель</button>
+            </div>
+            <form className="raw2-login-form" onSubmit={onLogin}>
+              <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
+              <input name="password" type="password" placeholder="пароль" required autoComplete="current-password" />
+              {loginErr && <p className="raw2-login-err">{loginErr}</p>}
+              <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Входим…" : "Войти"}</button>
+              <Link href="/register" className="raw2-login-reg">Регистрация</Link>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
