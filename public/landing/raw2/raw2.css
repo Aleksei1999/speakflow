@@ -404,14 +404,19 @@
 .raw2-login-form .btn-red { align-self: center; margin-top: 16px; min-width: 220px; font-size: clamp(1.1rem,1.8vw,26px); padding: 15px 44px; text-transform: none; }
 .raw2-login-form .btn-red:disabled { opacity: .7; cursor: default; transform: none; }
 .raw2-login-err { text-align: center; color: var(--red); font-weight: 600; font-size: .95rem; margin-top: -4px; }
-.raw2-login-reg { align-self: center; margin-top: 12px; background: none; border: none; cursor: pointer; font-family: inherit; font-weight: 700; font-size: clamp(1rem,1.5vw,20px); color: var(--ink); }
+/* «Регистрация» / «Уже есть аккаунт? Войти» — Figma: Inter Medium 500, 24px, -1.2px, 97.46% */
+.raw2-login-reg { align-self: center; margin-top: 14px; background: none; border: none; cursor: pointer; font-family: inherit; font-weight: 500; font-size: clamp(1.1rem,1.7vw,24px); line-height: 0.9746; letter-spacing: -1.2px; color: var(--ink); }
 .raw2-login-reg:hover { color: var(--red); }
-/* registration checkboxes (Figma: circle radio-look) */
-.raw2-check { display: flex; align-items: center; gap: 12px; font-size: clamp(.9rem,1.3vw,18px); font-weight: 500; letter-spacing: -0.03em; color: var(--ink); cursor: pointer; }
+/* registration checkboxes (Figma: circle) */
+.raw2-check { display: flex; align-items: center; gap: 12px; font-size: clamp(.95rem,1.4vw,18px); font-weight: 500; letter-spacing: -0.03em; color: var(--ink); cursor: pointer; }
 .raw2-check:first-of-type { margin-top: 8px; }
-.raw2-check input { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 22px; height: 22px; border: 2px solid var(--ink); border-radius: 50%; cursor: pointer; position: relative; transition: background .15s; }
-.raw2-check input:checked { background: var(--ink); }
-.raw2-check input:checked::after { content: ''; position: absolute; left: 6px; top: 3px; width: 6px; height: 10px; border: solid var(--lime); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.raw2-login-form .raw2-check input {
+  appearance: none; -webkit-appearance: none; flex: 0 0 22px; width: 22px; height: 22px;
+  padding: 0; margin: 0; background: #fff; border: 2px solid var(--ink); border-radius: 50%;
+  cursor: pointer; position: relative; transition: background .15s;
+}
+.raw2-login-form .raw2-check input:checked { background: var(--ink); }
+.raw2-login-form .raw2-check input:checked::after { content: ''; position: absolute; left: 6px; top: 3px; width: 5px; height: 9px; border: solid var(--lime); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
 @media (max-width: 560px) {
   .raw2-login { padding: 44px 26px 34px; }
   .raw2-login-tabs { gap: 12px; }
