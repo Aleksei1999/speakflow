@@ -140,6 +140,31 @@ export default function LandingRaw2() {
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   }
 
+  // drag-to-scroll with the mouse (touch/trackpad already scroll natively)
+  useEffect(() => {
+    const el = carRef.current;
+    if (!el) return;
+    let down = false, startX = 0, startScroll = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      down = true; startX = e.clientX; startScroll = el.scrollLeft;
+      el.classList.add("dragging");
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      el.scrollLeft = startScroll - (e.clientX - startX);
+    };
+    const onUp = () => { down = false; el.classList.remove("dragging"); };
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
   // this landing is its own visual system — force light + tag <html>
   useEffect(() => {
     const html = document.documentElement;
