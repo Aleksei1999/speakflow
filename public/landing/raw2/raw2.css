@@ -179,13 +179,20 @@
 .raw2-fcard {
   position: relative; background: var(--lime); border-radius: var(--radius-card);
   padding: 74px 34px 40px; min-height: 300px;
-  flex: 0 0 340px; scroll-snap-align: start;
+  flex: 0 0 340px; scroll-snap-align: center;
+  transform: scale(0.94); transform-origin: center bottom;
+  transition: transform .3s cubic-bezier(.16,1,.3,1);
 }
+/* active (nearest centre) card — bigger + red icon (Figma) */
+.raw2-fcard.active { transform: scale(1.02); }
 .raw2-fcard .ficon {
   position: absolute; top: -44px; left: 30px; height: 96px;
   display: flex; align-items: flex-end;
 }
 .raw2-fcard .ficon img { height: 96px; width: auto; display: block; }
+.raw2-fcard .ficon .ic-act { display: none; }
+.raw2-fcard.active .ficon .ic-def { display: none; }
+.raw2-fcard.active .ficon .ic-act { display: block; }
 /* card title Figma: 32px, 700, -1.6px, 97.5% */
 .raw2-fcard h3 { font-size: clamp(1.35rem,2.2vw,32px); font-weight: 700; margin-bottom: 16px; text-transform: none; letter-spacing: -0.05em; line-height: 0.975; }
 /* card body Figma: 28px, 500, -1.4px, 96% */

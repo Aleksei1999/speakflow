@@ -48,11 +48,11 @@ const TgIcon = () => (
 
 /* ---------- data ---------- */
 const FEATURES = [
-  { icon: "ic-bubble.png", title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
-  { icon: "ic-cv.png", title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
-  { icon: "ic-cap.png", title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
-  { icon: "ic-psy.png", title: "Работа с психологом", body: <>Преодолевай языковой барьер, <b>избавляйся от страха</b> со специалистом</> },
-  { icon: "ic-lecture.png", title: "Лекции", body: <>Развивайся <b>в профессии и хобби</b> с нашими лекциями на английском языке</> },
+  { icon: "ic-bubble.png", iconActive: "ic-bubble-red.png", title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
+  { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
+  { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
+  { icon: "ic-psy.png", iconActive: "ic-psy-red.png", title: "Работа с психологом", body: <>Преодолевай языковой барьер, <b>избавляйся от страха</b> со специалистом</> },
+  { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: "Лекции", body: <>Развивайся <b>в профессии и хобби</b> с нашими лекциями на английском языке</> },
 ];
 
 const FREE_CARDS = [
@@ -87,30 +87,56 @@ const FAQ = [
 export default function LandingRaw2() {
   const [openFaq, setOpenFaq] = useState<number | null>(3);
   const [sent, setSent] = useState(false);
+  // infinite carousel: render FEATURES ×3, keep scroll inside the middle copy,
+  // highlight the card nearest the viewport centre (bigger + red icon).
   const carRef = useRef<HTMLDivElement>(null);
-  const [carPos, setCarPos] = useState({ atStart: true, atEnd: false });
+  const carItems = [...FEATURES, ...FEATURES, ...FEATURES];
+  const [activeIdx, setActiveIdx] = useState(FEATURES.length);
 
-  function updateCarPos() {
+  function carCards() {
     const el = carRef.current;
-    if (!el) return;
-    // scroll origin is offset by the container's left padding, so measure from there
-    const padLeft = parseFloat(getComputedStyle(el).paddingLeft) || 0;
-    setCarPos({
-      atStart: el.scrollLeft <= padLeft + 4,
-      atEnd: el.scrollLeft >= el.scrollWidth - el.clientWidth - 4,
+    if (!el) return null;
+    return Array.from(el.querySelectorAll<HTMLElement>(".raw2-fcard"));
+  }
+  function copyWidth(cards: HTMLElement[]) {
+    if (cards.length < 2) return 0;
+    return (cards[1].offsetLeft - cards[0].offsetLeft) * FEATURES.length;
+  }
+  function onCarScroll() {
+    const el = carRef.current;
+    const cards = carCards();
+    if (!el || !cards) return;
+    const copyW = copyWidth(cards);
+    if (copyW > 0) {
+      if (el.scrollLeft < copyW * 0.5) el.scrollLeft += copyW;
+      else if (el.scrollLeft > copyW * 1.5) el.scrollLeft -= copyW;
+    }
+    const center = el.scrollLeft + el.clientWidth / 2;
+    let best = 0, bestD = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - center);
+      if (d < bestD) { bestD = d; best = i; }
     });
+    setActiveIdx(best);
   }
   useEffect(() => {
-    updateCarPos();
-    window.addEventListener("resize", updateCarPos);
-    return () => window.removeEventListener("resize", updateCarPos);
+    const el = carRef.current;
+    const cards = carCards();
+    if (el && cards) {
+      const copyW = copyWidth(cards);
+      if (copyW > 0) el.scrollLeft = copyW;
+    }
+    onCarScroll();
+    window.addEventListener("resize", onCarScroll);
+    return () => window.removeEventListener("resize", onCarScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function scrollCards(dir: 1 | -1) {
     const el = carRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>(".raw2-fcard");
-    const step = card ? card.offsetWidth + 26 : el.clientWidth * 0.8;
+    const cards = carCards();
+    if (!el || !cards) return;
+    const step = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : el.clientWidth * 0.8;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   }
 
@@ -179,25 +205,24 @@ export default function LandingRaw2() {
           </div>
         </div>
         <div className="raw2-carousel-wrap">
-          {!carPos.atStart && (
-            <button type="button" className="raw2-car-nav prev" onClick={() => scrollCards(-1)} aria-label="Назад">
-              <ArrowRight />
-            </button>
-          )}
-          <div className="raw2-carousel" ref={carRef} onScroll={updateCarPos}>
-            {FEATURES.map((f) => (
-              <article className="raw2-fcard" key={f.title}>
-                <span className="ficon"><img src={`/landing/raw2/${f.icon}`} alt="" /></span>
+          <button type="button" className="raw2-car-nav prev" onClick={() => scrollCards(-1)} aria-label="Назад">
+            <ArrowRight />
+          </button>
+          <div className="raw2-carousel" ref={carRef} onScroll={onCarScroll}>
+            {carItems.map((f, i) => (
+              <article className={`raw2-fcard ${i === activeIdx ? "active" : ""}`} key={i}>
+                <span className="ficon">
+                  <img src={`/landing/raw2/${f.icon}`} alt="" className="ic-def" />
+                  <img src={`/landing/raw2/${f.iconActive}`} alt="" className="ic-act" />
+                </span>
                 <h3>{f.title}</h3>
                 <p>{f.body}</p>
               </article>
             ))}
           </div>
-          {!carPos.atEnd && (
-            <button type="button" className="raw2-car-nav next" onClick={() => scrollCards(1)} aria-label="Вперёд">
-              <ArrowRight />
-            </button>
-          )}
+          <button type="button" className="raw2-car-nav next" onClick={() => scrollCards(1)} aria-label="Вперёд">
+            <ArrowRight />
+          </button>
         </div>
       </section>
 
