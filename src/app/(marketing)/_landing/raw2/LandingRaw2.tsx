@@ -89,11 +89,59 @@ export default function LandingRaw2() {
   const [openFaq, setOpenFaq] = useState<number | null>(3);
   const [sent, setSent] = useState(false);
 
-  // login popup (Ученик / Учитель)
+  // login / registration popup (Ученик / Учитель)
   const [loginOpen, setLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginRole, setLoginRole] = useState<"student" | "teacher">("student");
   const [loginErr, setLoginErr] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+
+  function openAuth() {
+    setAuthMode("login");
+    setLoginErr("");
+    setLoginOpen(true);
+  }
+
+  async function onRegister(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoginErr("");
+    const data = new FormData(e.currentTarget);
+    const password = String(data.get("password") || "");
+    if (password !== String(data.get("password2") || "")) {
+      setLoginErr("Пароли не совпадают");
+      return;
+    }
+    if (!data.get("agree")) {
+      setLoginErr("Нужно согласие на обработку данных");
+      return;
+    }
+    setLoginBusy(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email: String(data.get("email") || "").trim(),
+        password,
+        options: {
+          data: {
+            first_name: String(data.get("first_name") || "").trim(),
+            last_name: String(data.get("last_name") || "").trim(),
+            role: loginRole,
+            marketing_opt_in: !!data.get("marketing"),
+          },
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/api/auth/callback` : undefined,
+        },
+      });
+      if (error) {
+        setLoginErr(error.message.includes("already") ? "Такой email уже зарегистрирован" : "Не удалось зарегистрироваться");
+        setLoginBusy(false);
+        return;
+      }
+      window.location.href = loginRole === "teacher" ? "/teacher" : "/student";
+    } catch {
+      setLoginErr("Не удалось зарегистрироваться. Попробуйте позже.");
+      setLoginBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!loginOpen) return;
@@ -233,7 +281,7 @@ export default function LandingRaw2() {
         </ul>
         <div className="nav-actions">
           <a href={CONTACT_HREF} className="pill pill-lime">Выучить английский</a>
-          <button type="button" className="pill pill-red" onClick={() => setLoginOpen(true)}>Личный кабинет</button>
+          <button type="button" className="pill pill-red" onClick={openAuth}>Личный кабинет</button>
         </div>
       </nav>
 
@@ -446,17 +494,38 @@ export default function LandingRaw2() {
         <div className="raw2-modal-overlay" onClick={() => setLoginOpen(false)}>
           <div className="raw2-login" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <button type="button" className="raw2-login-close" onClick={() => setLoginOpen(false)} aria-label="Закрыть">×</button>
-            <div className="raw2-login-tabs">
-              <button type="button" className={loginRole === "student" ? "active" : ""} onClick={() => setLoginRole("student")}>Ученик</button>
-              <button type="button" className={loginRole === "teacher" ? "active" : ""} onClick={() => setLoginRole("teacher")}>Учитель</button>
-            </div>
-            <form className="raw2-login-form" onSubmit={onLogin}>
-              <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
-              <input name="password" type="password" placeholder="пароль" required autoComplete="current-password" />
-              {loginErr && <p className="raw2-login-err">{loginErr}</p>}
-              <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Входим…" : "Войти"}</button>
-              <Link href="/register" className="raw2-login-reg">Регистрация</Link>
-            </form>
+
+            {authMode === "login" ? (
+              <>
+                <div className="raw2-login-tabs">
+                  <button type="button" className={loginRole === "student" ? "active" : ""} onClick={() => setLoginRole("student")}>Ученик</button>
+                  <button type="button" className={loginRole === "teacher" ? "active" : ""} onClick={() => setLoginRole("teacher")}>Учитель</button>
+                </div>
+                <form className="raw2-login-form" onSubmit={onLogin}>
+                  <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
+                  <input name="password" type="password" placeholder="пароль" required autoComplete="current-password" />
+                  {loginErr && <p className="raw2-login-err">{loginErr}</p>}
+                  <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Входим…" : "Войти"}</button>
+                  <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("register"); }}>Регистрация</button>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="raw2-login-title">Регистрация для входа в ЛК</div>
+                <form className="raw2-login-form" onSubmit={onRegister}>
+                  <input name="first_name" type="text" placeholder="имя" required autoComplete="given-name" />
+                  <input name="last_name" type="text" placeholder="фамилия" required autoComplete="family-name" />
+                  <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
+                  <input name="password" type="password" placeholder="пароль" required autoComplete="new-password" />
+                  <input name="password2" type="password" placeholder="повтор пароля" required autoComplete="new-password" />
+                  <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Регистрируем…" : "Зарегистрироваться"}</button>
+                  {loginErr && <p className="raw2-login-err">{loginErr}</p>}
+                  <label className="raw2-check"><input type="checkbox" name="agree" /><span>Согласен с обработкой персональных данных</span></label>
+                  <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>
+                  <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("login"); }}>Уже есть аккаунт? Войти</button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
