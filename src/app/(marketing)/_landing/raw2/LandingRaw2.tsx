@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import RoastQuiz from "./RoastQuiz";
 
 /* ------------------------------------------------------------------
    RAW ENGLISH — new landing (Figma "Главная RAW english")
@@ -10,7 +11,6 @@ import { createClient } from "@/lib/supabase/client";
    Photos: /landing/raw2/*.jpg (exported from Figma)
    ------------------------------------------------------------------ */
 
-const QUIZ_HREF = "/level-test";
 const CONTACT_HREF = "#contact";
 
 /* ---------- inline icons ---------- */
@@ -88,6 +88,7 @@ const FAQ = [
 export default function LandingRaw2() {
   const [openFaq, setOpenFaq] = useState<number | null>(3);
   const [sent, setSent] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
 
   // login / registration popup (Ученик / Учитель)
   const [loginOpen, setLoginOpen] = useState(false);
@@ -278,7 +279,7 @@ export default function LandingRaw2() {
           <li><a href="#system">Методика</a></li>
           <li><a href="#founder">Преподаватели</a></li>
           <li><a href="#price">Стоимость</a></li>
-          <li><a href={QUIZ_HREF}>Пройти тест</a></li>
+          <li><a href="#" onClick={(e) => { e.preventDefault(); setQuizOpen(true); }}>Пройти тест</a></li>
         </ul>
         <div className="nav-actions">
           <a href={CONTACT_HREF} className="pill pill-lime">Выучить английский</a>
@@ -292,13 +293,13 @@ export default function LandingRaw2() {
           <div className="glass">
             <h1>Преврати сырой английский в <span className="c-lime">сочный разговорный</span></h1>
             <p className="lede">Без скуки, без зубрёжки, в компании таких же голодных до языка людей.</p>
-            <Link href={QUIZ_HREF} className="cta-red">
+            <button type="button" className="cta-red" onClick={() => setQuizOpen(true)}>
               <span className="free">бесплатно</span>
               Узнай свой уровень прожарки
-            </Link>
+            </button>
             <div className="cta-row">
-              <Link href={QUIZ_HREF} className="btn btn-lime">пройти тест</Link>
-              <Link href={QUIZ_HREF} className="btn btn-arrow" aria-label="Пройти тест"><ArrowRight /></Link>
+              <button type="button" className="btn btn-lime" onClick={() => setQuizOpen(true)}>пройти тест</button>
+              <button type="button" className="btn btn-arrow" onClick={() => setQuizOpen(true)} aria-label="Пройти тест"><ArrowRight /></button>
             </div>
           </div>
         </div>
@@ -352,7 +353,7 @@ export default function LandingRaw2() {
                 <div className="metric"><span className="mi"><IconTimer /></span><div><b>2</b><span>мин времени</span></div></div>
               </div>
               <p className="subnote">Узнай, на каком ты уровне прямо сейчас — и получи персональный план прожарки.</p>
-              <Link href={QUIZ_HREF} className="btn btn-red">Начать игру!</Link>
+              <button type="button" className="btn btn-red" onClick={() => setQuizOpen(true)}>Начать игру!</button>
             </div>
           </div>
         </div>
@@ -533,6 +534,8 @@ export default function LandingRaw2() {
           </div>
         </div>
       )}
+
+      <RoastQuiz open={quizOpen} onClose={() => setQuizOpen(false)} />
     </div>
   );
 }
