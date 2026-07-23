@@ -161,9 +161,11 @@
   display: flex; gap: 26px; overflow-x: auto; scroll-snap-type: x proximity;
   scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
   padding: 74px max(32px, calc((100vw - var(--maxw)) / 2)) 20px;
-  scrollbar-width: none;
+  scrollbar-width: none; cursor: grab;
 }
 .raw2-carousel::-webkit-scrollbar { display: none; }
+.raw2-carousel.dragging { cursor: grabbing; scroll-behavior: auto; scroll-snap-type: none; user-select: none; }
+.raw2-carousel img { -webkit-user-drag: none; user-select: none; }
 .raw2-car-nav {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
   width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
