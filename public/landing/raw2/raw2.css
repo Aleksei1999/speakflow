@@ -160,7 +160,7 @@
 .raw2-carousel {
   display: flex; gap: 26px; overflow-x: auto; scroll-snap-type: x proximity;
   scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
-  padding: 44px max(32px, calc((100vw - var(--maxw)) / 2)) 20px;
+  padding: 74px max(32px, calc((100vw - var(--maxw)) / 2)) 20px;
   scrollbar-width: none;
 }
 .raw2-carousel::-webkit-scrollbar { display: none; }
@@ -380,7 +380,7 @@
 @media (max-width: 560px) {
   .raw2 .wrap { padding: 0 20px; }
   .raw2-nav { padding: 18px 20px; }
-  .raw2-carousel { padding: 44px 20px 20px; gap: 18px; }
+  .raw2-carousel { padding: 70px 20px 20px; gap: 18px; }
   .raw2-fcard { flex-basis: 80vw; }
   .raw2-car-nav { display: none; }
   .raw2-quiz .card { padding: 32px 26px; }
