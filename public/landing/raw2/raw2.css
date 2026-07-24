@@ -317,7 +317,7 @@
 .raw2-faq .badge-wrap { display: flex; justify-content: center; margin-bottom: 50px; }
 .raw2-faq .badge-title--outline-lime { border-color: var(--lime); color: #fff; }
 .raw2-faq-list { display: flex; flex-direction: column; gap: 22px; max-width: 900px; }
-.raw2-faq-item { background: #fff; border-radius: 999px; overflow: hidden; transition: border-radius .2s; }
+.raw2-faq-item { background: #fff; border-radius: 999px; overflow: hidden; }
 /* open item = single container (Figma: pale lime rgba(223,237,140,.29) over red bg) */
 .raw2-faq-item.open { border-radius: 40px; background: rgba(223,237,140,0.29); }
 /* question Figma: 36px, SemiBold 600, -1.8px */
