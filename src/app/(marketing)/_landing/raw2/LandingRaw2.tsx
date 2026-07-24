@@ -420,7 +420,11 @@ export default function LandingRaw2() {
               <article className={`raw2-prc ${p.hot ? "raw2-prc--hot" : ""}`} key={p.title}>
                 <h3>{p.title}</h3>
                 <ul>{p.items.map((it, i) => <li key={i}>{it}</li>)}</ul>
-                <span className="price">{p.hot && <span className="fire">🔥</span>}{p.price}{p.hot && <span className="fire">🔥</span>}</span>
+                <span className="price-wrap">
+                  {p.hot && <img src="/landing/raw2/fire.svg" className="fire" alt="" />}
+                  <span className="price">{p.price}</span>
+                  {p.hot && <img src="/landing/raw2/fire.svg" className="fire fire-r" alt="" />}
+                </span>
               </article>
             ))}
           </div>

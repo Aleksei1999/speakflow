@@ -296,12 +296,15 @@
 .raw2-prc li::before { content:'•'; position:absolute; left: 2px; }
 .raw2-prc li b { font-weight: 700; }
 /* price Figma: 36px, Medium 500, -1.8px */
+.raw2-prc .price-wrap { margin-top: auto; align-self: center; display: inline-flex; align-items: center; gap: 16px; }
 .raw2-prc .price {
-  margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 12px;
+  display: inline-flex; align-items: center;
   background: #fff; color: var(--ink); font-weight: 500; font-size: clamp(1.5rem,2.5vw,36px); letter-spacing: -0.05em; padding: 12px 30px; border-radius: 999px;
 }
 .raw2-prc--hot .price { background: var(--lime); }
-.raw2-prc--hot .price .fire { filter: none; }
+/* лаймовые огни снаружи пилюли (на красном фоне карточки) */
+.raw2-prc .price-wrap .fire { height: 46px; width: auto; display: block; flex-shrink: 0; }
+.raw2-prc .price-wrap .fire-r { transform: scaleX(-1); }
 .raw2-price .cta-wrap { display: flex; justify-content: center; margin-top: 48px; }
 
 /* ============================================================
