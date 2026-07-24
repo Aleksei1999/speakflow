@@ -366,17 +366,24 @@ export default function LandingRaw2() {
             Преподаватель английского <br className="d-br" />и <span className="c-lime">основатель своей школы</span>
           </span>
           <div className="bio">
-            <div className="bio-card">
+            <div className="bio-card bio-green">
               <ul>
                 <li>Два высших образования: маркетинг, в университете <b className="lime">Хартфордшира, Великобритания</b> и филологический факультет педагогического направления в <b className="lime">Южном федеральном университете.</b></li>
                 <li>Начинала преподавать по объявлению, затем работала <b className="lime">в самой популярной школе</b> английского в Ростове.</li>
               </ul>
             </div>
-            <div className="bio-card">
-              <ul>
-                <li>Бабушка учила её английскому <b className="red">с 5 лет.</b></li>
-                <li>Решила создать школу, где английский становится частью жизни и <b className="red">учится с удовольствием.</b> В планах — выход на новый уровень: обучать сотрудников компаний, <b className="red">помогать бизнесу расти</b> через английский.</li>
-              </ul>
+            <div className="bio-col">
+              <div className="bio-card bio-green">
+                <ul>
+                  <li>Бабушка учила её английскому <b className="red">с 5 лет.</b></li>
+                </ul>
+              </div>
+              <div className="bio-card bio-dark">
+                <ul>
+                  <li>Решила создать школу, где английский становится частью жизни и <b className="red">учится с удовольствием.</b></li>
+                  <li>В планах — выход на новый уровень: обучать сотрудников компаний, <b className="red">помогать бизнесу расти</b> через английский.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
