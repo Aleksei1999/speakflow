@@ -375,7 +375,7 @@ export default function LandingRaw2() {
             <div className="bio-col">
               <div className="bio-card bio-green">
                 <ul>
-                  <li>Бабушка учила её английскому <b className="red">с 5 лет.</b></li>
+                  <li>Бабушка учила её английскому <b className="lime">с 5 лет.</b></li>
                 </ul>
               </div>
               <div className="bio-card bio-dark">
