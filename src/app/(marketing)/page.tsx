@@ -1,19 +1,15 @@
 import type { Metadata } from "next"
-import { getTranslations } from "next-intl/server"
-import LandingClient from "./_landing/LandingClient"
+import LandingRaw2 from "./_landing/raw2/LandingRaw2"
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("landing")
-  return {
-    title: t("metaTitle"),
-    description: t("metaDescription"),
-  }
+export const metadata: Metadata = {
+  title: "Raw English — превратить сырой английский в сочный разговорный",
+  description:
+    "Онлайн-школа Raw English: индивидуальные уроки, разговорные клубы с носителями, игровой формат. Узнай свой уровень прожарки бесплатно.",
 }
 
-// Make homepage statically generated, revalidated hourly so Vercel can cache it on the edge.
-// Auth state is resolved on the client via useUser() inside LandingClient — see CTA logic there.
+// New landing is now the homepage. Previous one lives at /old.
 export const revalidate = 3600
 
 export default function Home() {
-  return <LandingClient />
+  return <LandingRaw2 />
 }
