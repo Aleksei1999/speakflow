@@ -367,6 +367,11 @@
 .raw2-quiz-close { position: absolute; top: 16px; right: 22px; background: none; border: none; font-size: 2rem; line-height: 1; color: #fff; cursor: pointer; opacity: .55; }
 .raw2-quiz-pop.result .raw2-quiz-close { color: var(--ink); }
 .raw2-quiz-close:hover { opacity: 1; }
+.rq-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.rq-lives { display: flex; gap: 7px; }
+.rq-lives svg { width: 26px; height: 26px; }
+.rq-timer { display: inline-flex; align-items: center; gap: 7px; color: var(--lime); font-weight: 700; font-size: clamp(1.05rem,1.7vw,22px); letter-spacing: -0.04em; }
+.rq-timer svg { width: 22px; height: 22px; }
 .rq-q { text-align: center; color: var(--lime); font-weight: 700; font-size: clamp(1.3rem,2.4vw,28px); letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 26px; }
 .rq-options { display: flex; flex-direction: column; gap: 16px; }
 .rq-opt {
