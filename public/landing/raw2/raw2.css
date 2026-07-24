@@ -239,12 +239,15 @@
 .raw2-founder::before { content:''; position:absolute; inset:0; background: linear-gradient(90deg, rgba(15,13,11,.9) 0%, rgba(15,13,11,.55) 45%, rgba(15,13,11,.05) 75%); }
 .raw2-founder .wrap { position: relative; z-index: 2; }
 .raw2-founder .badge-title { margin-bottom: 46px; }
-.raw2-founder .bio { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; max-width: 830px; }
-/* bio Figma: 28px, 500, -1.4px, 96% */
+.raw2-founder .bio { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; max-width: 830px; align-items: stretch; }
+.raw2-founder .bio-col { display: flex; flex-direction: column; gap: 26px; }
+/* bio Figma: 28px, 500, -1.4px, 96%; заливки: зелёная rgba(146,157,79,.39) / тёмная rgba(30,30,30,.58) */
 .raw2-founder .bio-card {
-  background: rgba(28,26,22,.55); backdrop-filter: blur(6px); border-radius: 26px; padding: 28px 30px;
+  backdrop-filter: blur(6px); border-radius: 30px; padding: 28px 30px;
   font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; text-transform: none;
 }
+.raw2-founder .bio-green { background: rgba(146,157,79,0.39); }
+.raw2-founder .bio-dark { background: rgba(30,30,30,0.58); }
 .raw2-founder .bio-card ul { list-style: none; display: flex; flex-direction: column; gap: 20px; }
 .raw2-founder .bio-card li { padding-left: 20px; position: relative; }
 .raw2-founder .bio-card li::before { content:'•'; position:absolute; left: 0; color:#fff; }
