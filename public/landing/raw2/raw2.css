@@ -296,15 +296,16 @@
 .raw2-prc li::before { content:'•'; position:absolute; left: 2px; }
 .raw2-prc li b { font-weight: 700; }
 /* price Figma: 36px, Medium 500, -1.8px */
-.raw2-prc .price-wrap { margin-top: auto; align-self: center; display: inline-flex; align-items: center; gap: 16px; }
+.raw2-prc .price-wrap { margin-top: auto; align-self: center; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
 .raw2-prc .price {
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: center; white-space: nowrap;
   background: #fff; color: var(--ink); font-weight: 500; font-size: clamp(1.5rem,2.5vw,36px); letter-spacing: -0.05em; padding: 12px 30px; border-radius: 999px;
 }
-.raw2-prc--hot .price { background: var(--lime); }
-/* лаймовые огни снаружи пилюли (на красном фоне карточки) */
-.raw2-prc .price-wrap .fire { height: 46px; width: auto; display: block; flex-shrink: 0; }
-.raw2-prc .price-wrap .fire-r { transform: scaleX(-1); }
+/* «горячая» цена крупнее и жирнее (Figma: Bold 700, 48px, плашка больше) */
+.raw2-prc--hot .price { background: var(--lime); font-weight: 700; font-size: clamp(1.7rem,2.9vw,48px); padding: 14px 36px; }
+/* лаймовые огни снаружи пилюли (на красном фоне), слегка повёрнуты */
+.raw2-prc .price-wrap .fire { height: 50px; width: auto; display: block; flex-shrink: 0; transform: rotate(-16deg); }
+.raw2-prc .price-wrap .fire-r { transform: scaleX(-1) rotate(-16deg); }
 .raw2-price .cta-wrap { display: flex; justify-content: center; margin-top: 48px; }
 
 /* ============================================================
