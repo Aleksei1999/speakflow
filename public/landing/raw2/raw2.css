@@ -250,12 +250,12 @@
 .raw2-founder .bio-card li::before { content:'•'; position:absolute; left: 0; color:#fff; }
 .raw2-founder .bio-card b.lime { color: var(--lime); font-weight: 700; }
 .raw2-founder .bio-card b.red  { color: var(--red-accent); font-weight: 700; }
-.raw2-founder .tags { position: absolute; right: 3%; bottom: 90px; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
-/* tags Figma: 24px, 700, -1.2px */
-.raw2-founder .tag-name { background: var(--red); color: #fff; font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 10px 22px; border-radius: 999px; }
-.raw2-founder .tag-mission { position: relative; background: var(--lime); color: var(--ink); font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 12px 24px; border-radius: 999px; }
-/* "миссия" Figma: 20px, 500, -1px */
-.raw2-founder .tag-mission .mi { position: absolute; top: -16px; right: 10px; background: var(--red); color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -1px; padding: 4px 16px; border-radius: 999px; }
+.raw2-founder .tags { position: absolute; right: 5%; bottom: 17%; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 26px; }
+/* tags Figma: 24px, 700, -1.2px — слегка повёрнуты */
+.raw2-founder .tag-name { background: var(--red-accent); color: #fff; font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 10px 24px; border-radius: 999px; transform: rotate(-4deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.raw2-founder .tag-mission { position: relative; background: var(--lime); color: var(--ink); font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 12px 26px; border-radius: 999px; transform: rotate(-8deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+/* "миссия" Figma: 20px, 500, -1px — на верхнем-правом углу лаймовой плашки */
+.raw2-founder .tag-mission .mi { position: absolute; top: -18px; right: 2px; background: var(--red-accent); color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -1px; padding: 4px 16px; border-radius: 999px; box-shadow: 0 4px 4px rgba(0,0,0,.25); }
 
 /* ============================================================
    SECTION: первое бесплатное занятие (lime)
