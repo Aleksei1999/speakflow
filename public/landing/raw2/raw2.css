@@ -455,13 +455,16 @@
 /* registration checkboxes (Figma: circle) */
 .raw2-check { display: flex; align-items: center; gap: 12px; font-size: clamp(.95rem,1.4vw,18px); font-weight: 500; letter-spacing: -0.03em; color: var(--ink); cursor: pointer; }
 .raw2-check:first-of-type { margin-top: 8px; }
-.raw2-login-form .raw2-check input {
+.raw2-check input {
   appearance: none; -webkit-appearance: none; flex: 0 0 22px; width: 22px; height: 22px;
   padding: 0; margin: 0; background: #fff; border: 2px solid var(--ink); border-radius: 50%;
   cursor: pointer; position: relative; transition: background .15s;
 }
-.raw2-login-form .raw2-check input:checked { background: var(--ink); }
-.raw2-login-form .raw2-check input:checked::after { content: ''; position: absolute; left: 6px; top: 3px; width: 5px; height: 9px; border: solid var(--lime); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.raw2-check input:checked { background: var(--ink); }
+.raw2-check input:checked::after { content: ''; position: absolute; left: 6px; top: 3px; width: 5px; height: 9px; border: solid var(--lime); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.raw2-form .raw2-check { margin-top: 8px; justify-content: center; }
+.raw2-form .raw2-check a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.raw2-form .raw2-check a:hover { color: var(--red); }
 @media (max-width: 560px) {
   .raw2-login { padding: 44px 26px 34px; }
   .raw2-login-tabs { gap: 12px; }
