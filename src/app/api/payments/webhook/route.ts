@@ -117,12 +117,15 @@ async function handlePaymentSucceeded(
   }
 
   // Идемпотентность: уже обработан → выходим.
+  // 'refunded' тоже short-circuits — иначе late-приход payment.succeeded
+  // (после refund.succeeded) перезапишет статус обратно на 'succeeded'
+  // и teacher_earnings воскреснет из 'cancelled'.
   const { data: existingPayment } = await supabase
     .from('payments')
     .select('id, status')
     .eq('yookassa_payment_id', yookassaPaymentId)
     .maybeSingle<{ id: string; status: string }>()
-  if (existingPayment?.status === 'succeeded') return
+  if (existingPayment?.status === 'succeeded' || existingPayment?.status === 'refunded') return
 
   // НЕ доверяем телу webhook'а полностью (IP можно подделать через
   // misconfig proxy). Тянем тот же payment напрямую из YooKassa API
@@ -315,6 +318,7 @@ async function handleRefundSucceeded(
   refund: YooKassaRefund
 ) {
   const yookassaPaymentId = refund.payment_id
+  const refundId = refund.id
 
   // Находим платёж по yookassa_payment_id
   const { data: paymentRecord } = await supabase
@@ -331,6 +335,25 @@ async function handleRefundSucceeded(
   // --- Идемпотентность ---
   if (paymentRecord.status === 'refunded') {
     return
+  }
+
+  // Не доверяем телу webhook'а: подтверждаем refund через YooKassa API
+  // (тот же паттерн, что и для payment.succeeded/canceled). Иначе владелец
+  // allowed-IP мог бы отправить поддельный refund и обнулить teacher_earnings.
+  if (refundId) {
+    try {
+      const client = new YooKassaClient()
+      const apiRefund = await client.getRefund(refundId)
+      if (apiRefund.status !== 'succeeded' || apiRefund.payment_id !== yookassaPaymentId) {
+        console.warn(
+          `[webhook] refund.succeeded webhook, но API status=${apiRefund.status} payment_id=${apiRefund.payment_id}: refund=${refundId}`
+        )
+        return
+      }
+    } catch (e) {
+      console.error('[webhook] YooKassa getRefund failed:', refundId, e)
+      throw e
+    }
   }
 
   // --- Обновление статуса платежа ---
