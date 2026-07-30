@@ -134,6 +134,18 @@ export class YooKassaClient {
   }
 
   /**
+   * Получение информации о возврате.
+   * https://yookassa.ru/developers/api#get_refund
+   */
+  async getRefund(refundId: string): Promise<YooKassaRefund> {
+    if (!refundId || typeof refundId !== 'string') {
+      throw new YooKassaError('refundId обязателен', 400, 'invalid_parameter', 'refundId')
+    }
+
+    return this.request<YooKassaRefund>('GET', `/refunds/${encodeURIComponent(refundId)}`)
+  }
+
+  /**
    * Создание возврата.
    * https://yookassa.ru/developers/api#create_refund
    */
