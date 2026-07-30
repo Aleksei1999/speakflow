@@ -463,8 +463,9 @@ export default function LandingRaw2() {
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
             <input type="tel" name="phone" placeholder="номер телефона" required />
+            <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
+            <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы.</span></label>
             <div className="submit-row"><button type="submit" className="btn btn-red">Отправить</button></div>
-            <p className="consent">Соглашаясь отправить, вы даёте согласие на обработку персональных данных.</p>
           </form>
         </div>
       </section>
