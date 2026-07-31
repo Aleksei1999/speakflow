@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import RoastQuiz from "./RoastQuiz";
@@ -258,11 +258,120 @@ export default function LandingRaw2() {
     return () => { if (prevTheme) html.dataset.theme = prevTheme; };
   }, []);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  // Phone masks per country. Fallback = generic international.
+  const PHONE_CONFIGS: Record<string, { code: string; mask: string; digits: number; placeholder: string }> = {
+    RU: { code: '+7',   mask: '(###) ###-##-##',    digits: 10, placeholder: '+7 (999) 123-45-67' },
+    KZ: { code: '+7',   mask: '(###) ###-##-##',    digits: 10, placeholder: '+7 (700) 123-45-67' },
+    US: { code: '+1',   mask: '(###) ###-####',     digits: 10, placeholder: '+1 (555) 123-4567' },
+    CA: { code: '+1',   mask: '(###) ###-####',     digits: 10, placeholder: '+1 (416) 123-4567' },
+    UA: { code: '+380', mask: '(##) ###-##-##',     digits: 9,  placeholder: '+380 (44) 123-45-67' },
+    BY: { code: '+375', mask: '(##) ###-##-##',     digits: 9,  placeholder: '+375 (29) 123-45-67' },
+    GB: { code: '+44',  mask: '#### ######',        digits: 10, placeholder: '+44 7911 123456' },
+    DE: { code: '+49',  mask: '### #######',        digits: 10, placeholder: '+49 151 23456789' },
+    FR: { code: '+33',  mask: '# ## ## ## ##',      digits: 9,  placeholder: '+33 6 12 34 56 78' },
+    IT: { code: '+39',  mask: '### ### ####',       digits: 10, placeholder: '+39 320 123 4567' },
+    ES: { code: '+34',  mask: '### ### ###',        digits: 9,  placeholder: '+34 612 345 678' },
+    DEFAULT: { code: '+', mask: '###############', digits: 15, placeholder: '+123456789012345' },
+  };
+
+  function detectCountry(): string {
+    if (typeof navigator === 'undefined') return 'RU';
+    const langs = [navigator.language, ...(navigator.languages || [])];
+    for (const l of langs) {
+      const region = (l.split('-')[1] || '').toUpperCase();
+      if (region && PHONE_CONFIGS[region]) return region;
+    }
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      if (/Moscow|Kaliningrad|Samara|Yekaterinburg|Novosibirsk|Vladivostok/i.test(tz)) return 'RU';
+      if (/New_York|Los_Angeles|Chicago|Denver|Anchorage|Honolulu/i.test(tz)) return 'US';
+      if (/Toronto|Vancouver|Montreal/i.test(tz)) return 'CA';
+      if (/London/i.test(tz)) return 'GB';
+      if (/Berlin|Frankfurt/i.test(tz)) return 'DE';
+      if (/Paris/i.test(tz)) return 'FR';
+      if (/Kiev|Kyiv/i.test(tz)) return 'UA';
+      if (/Minsk/i.test(tz)) return 'BY';
+      if (/Almaty|Aqtobe/i.test(tz)) return 'KZ';
+    } catch {}
+    return 'RU';
+  }
+
+  const [phoneCountry, setPhoneCountry] = useState<string>('RU');
+  const [phoneValue, setPhoneValue] = useState<string>('');
+  useEffect(() => { setPhoneCountry(detectCountry()); }, []);
+
+  const phoneCfg = PHONE_CONFIGS[phoneCountry] || PHONE_CONFIGS.DEFAULT;
+
+  function formatPhone(rawDigits: string): string {
+    const digits = rawDigits.slice(0, phoneCfg.digits);
+    let out = phoneCfg.code + ' ';
+    let d = 0;
+    for (const ch of phoneCfg.mask) {
+      if (d >= digits.length) break;
+      if (ch === '#') { out += digits[d++]; } else { out += ch; }
+    }
+    return out;
+  }
+
+  function onPhoneChange(e: ChangeEvent<HTMLInputElement>) {
+    // Оставляем только цифры, отбрасываем всё лишнее (включая код страны)
+    let digits = e.target.value.replace(/\D/g, '');
+    // Если начинается с кода страны — срезаем
+    const codeDigits = phoneCfg.code.replace(/\D/g, '');
+    if (codeDigits && digits.startsWith(codeDigits)) digits = digits.slice(codeDigits.length);
+    setPhoneValue(formatPhone(digits));
+  }
+
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [submitErr, setSubmitErr] = useState('');
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO: wire to lead/trial endpoint (см. autoAssignTrial / /api/auth).
-    e.currentTarget.reset();
-    setSent(true);
+    setSubmitErr('');
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const name = String(fd.get('name') || '').trim();
+    const email = String(fd.get('email') || '').trim();
+    const marketing = fd.get('marketing') === 'on';
+
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    const phoneDigits = phoneValue.replace(/\D/g, '').slice(phoneCfg.code.replace(/\D/g, '').length);
+    const phoneOk = phoneDigits.length === phoneCfg.digits;
+
+    const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement | null;
+    const phoneInput = form.querySelector('input[name="phone"]') as HTMLInputElement | null;
+    emailInput?.classList.toggle('invalid', !emailOk);
+    phoneInput?.classList.toggle('invalid', !phoneOk);
+    if (!emailOk || !phoneOk) { (emailOk ? phoneInput : emailInput)?.focus(); return; }
+
+    setSubmitBusy(true);
+    try {
+      const res = await fetch('/api/landing/lead', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone: phoneValue,
+          marketing_opt_in: marketing,
+          country: phoneCountry,
+          source: 'landing_raw2',
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setSubmitErr(j?.error || 'Не удалось отправить. Попробуй ещё раз.');
+        setSubmitBusy(false);
+        return;
+      }
+      form.reset();
+      setPhoneValue('');
+      setSent(true);
+    } catch {
+      setSubmitErr('Проблема с сетью. Попробуй ещё раз.');
+    } finally {
+      setSubmitBusy(false);
+    }
   }
 
   return (
@@ -462,10 +571,12 @@ export default function LandingRaw2() {
           <form className="raw2-form" onSubmit={onSubmit}>
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
-            <input type="tel" name="phone" placeholder="номер телефона" required />
+            <input type="tel" name="phone" placeholder={phoneCfg.placeholder} value={phoneValue} onChange={onPhoneChange} inputMode="tel" autoComplete="tel" required />
             <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
             <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы.</span></label>
-            <div className="submit-row"><button type="submit" className="btn btn-red">Отправить</button></div>
+            {submitErr && <p className="raw2-form-err">{submitErr}</p>}
+            <div className="submit-row"><button type="submit" className="btn btn-red" disabled={submitBusy}>{submitBusy ? 'Отправляем…' : 'Отправить'}</button></div>
+            <p className="raw2-form-consent">Нажимая «отправить» вы даёте своё согласие на обработку персональных данных.</p>
           </form>
         </div>
       </section>

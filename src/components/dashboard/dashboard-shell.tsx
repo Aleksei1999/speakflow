@@ -186,6 +186,7 @@ const adminNav: NavItem[] = [
   // Admin-only label; English fallback below. We don't expose it in
   // the `nav` namespace since admin UI is RU-first by spec.
   { href: "/admin/trial-requests", labelKey: "_adminApplications", icon: icons.clipboard },
+  { href: "/admin/leads", labelKey: "_adminLeads", icon: icons.clipboard },
   { href: "/admin/schedule", labelKey: "schedule", icon: icons.calendar },
   { href: "/admin/clubs", labelKey: "clubs", icon: icons.mic },
   { href: "/admin/support", labelKey: "support", icon: icons.support },
@@ -198,6 +199,7 @@ const adminBottom: NavItem[] = [
 // Static fallbacks for admin-only labels (not in messages.json by design).
 const ADMIN_LABEL_FALLBACK: Record<string, { ru: string; en: string }> = {
   _adminApplications: { ru: "Заявки", en: "Applications" },
+  _adminLeads: { ru: "Лиды", en: "Leads" },
   _adminReports: { ru: "Отчёты", en: "Reports" },
 }
 
