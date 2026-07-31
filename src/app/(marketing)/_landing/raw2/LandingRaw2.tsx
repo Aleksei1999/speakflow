@@ -280,9 +280,9 @@ export default function LandingRaw2() {
           <li><a href="#founder">Преподаватели</a></li>
           <li><a href="#price">Стоимость</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); setQuizOpen(true); }}>Пройти тест</a></li>
+          <li><a href={CONTACT_HREF}>Выучить английский</a></li>
         </ul>
         <div className="nav-actions">
-          <a href={CONTACT_HREF} className="pill pill-lime">Выучить английский</a>
           <button type="button" className="pill pill-red" onClick={openAuth}>Личный кабинет</button>
         </div>
       </nav>
@@ -291,11 +291,11 @@ export default function LandingRaw2() {
       <header className="raw2-hero" style={{ backgroundImage: "url(/landing/raw2/hero.jpg)" }}>
         <div className="wrap">
           <div className="glass">
-            <h1>Преврати сырой английский в <span className="c-lime">сочный разговорный</span></h1>
-            <p className="lede">Без скуки, без зубрёжки, в компании таких же голодных до языка людей.</p>
+            <h1>Преврати<br />сырой английский<br />в <span className="c-lime">сочный<br />разговорный</span></h1>
+            <p className="lede">Без скуки, без зубрёжки,<br />в компании таких же голодных<br />до языка людей.</p>
             <button type="button" className="cta-red" onClick={() => setQuizOpen(true)}>
               <span className="free">бесплатно</span>
-              Узнай свой уровень прожарки
+              Узнай свой<br />уровень прожарки
             </button>
             <div className="cta-row">
               <button type="button" className="btn btn-lime" onClick={() => setQuizOpen(true)}>пройти тест</button>
@@ -368,20 +368,20 @@ export default function LandingRaw2() {
           <div className="bio">
             <div className="bio-card bio-green">
               <ul>
-                <li>Два высших образования: маркетинг, в университете <b className="lime">Хартфордшира, Великобритания</b> и филологический факультет педагогического направления в <b className="lime">Южном федеральном университете.</b></li>
-                <li>Начинала преподавать по объявлению, затем работала <b className="lime">в самой популярной школе</b> английского в Ростове.</li>
+                <li>Два высших<br />образования:<br />маркетинг,<br />в университете<br /><b className="lime">Хартфордшира,<br />Великобритания</b><br />и филологический<br />факультет<br />педагогического<br />направления<br />в <b className="lime">Южном<br />федеральном<br />университете.</b></li>
+                <li>Начинала преподавать<br />по объявлению, затем работала<br /><b className="lime">в самой популярной школе</b> английского<br />в Ростове.</li>
               </ul>
             </div>
             <div className="bio-col">
               <div className="bio-card bio-green">
                 <ul>
-                  <li>Бабушка учила её английскому <b className="lime">с 5 лет.</b></li>
+                  <li>Бабушка учила<br />её английскому<br /><b className="lime">с 5 лет.</b></li>
                 </ul>
               </div>
               <div className="bio-card bio-dark">
                 <ul>
-                  <li>Решила создать школу, где английский становится частью жизни и <b className="red">учится с удовольствием.</b></li>
-                  <li>В планах — выход на новый уровень: обучать сотрудников компаний, <b className="red">помогать бизнесу расти</b> через английский.</li>
+                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="red">учится с<br />удовольствием.</b></li>
+                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="red">помогать<br />бизнесу расти</b><br />через английский.</li>
                 </ul>
               </div>
             </div>
