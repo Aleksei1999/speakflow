@@ -1,125 +1,92 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
-import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
-import { forgotPasswordSchema } from '@/lib/validations'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
-type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
-
 export default function ForgotPasswordPage() {
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const [email, setEmail] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [sent, setSent] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<ForgotPasswordValues>({
-    resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: '',
-    },
-  })
-
-  async function onSubmit(values: ForgotPasswordValues) {
-    setServerError(null)
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
-      captchaToken: captchaToken ?? undefined,
-    })
-
-    if (error) {
-      setServerError('Не удалось отправить письмо. Попробуйте позже.')
-      return
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+        captchaToken: captchaToken ?? undefined,
+      })
+      if (error) {
+        setErr('Не удалось отправить письмо. Попробуй позже.')
+        setBusy(false)
+        return
+      }
+      setSent(true)
+    } catch {
+      setErr('Не удалось отправить письмо. Попробуй позже.')
+    } finally {
+      setBusy(false)
     }
-
-    // Always show success to prevent email enumeration
-    setIsSuccess(true)
-  }
-
-  if (isSuccess) {
-    return (
-      <div className="fade-in">
-        <div className="auth-success">
-          <div className="success-icon">✉️</div>
-          <h3>Письмо отправлено</h3>
-          <p>
-            Ссылка для сброса пароля отправлена на email. Проверь почту и следуй
-            инструкциям в письме.
-          </p>
-          <Link href="/login" className="auth-submit auth-submit--ghost">
-            Вернуться ко входу
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: 20 }}>
-        <h2
-          style={{
-            fontSize: '1.1rem',
-            fontWeight: 800,
-            color: 'var(--auth-text)',
-            marginBottom: 6,
-          }}
-        >
-          Сброс пароля
-        </h2>
-        <p style={{ fontSize: '.78rem', color: 'var(--auth-text2)', lineHeight: 1.5 }}>
-          Отправляем письмо со ссылкой для сброса пароля
-        </p>
+    <div className="raw2 raw2-auth-page">
+      {/* eslint-disable-next-line @next/next/no-css-tags */}
+      <link rel="stylesheet" href="/landing/raw2/raw2.css" />
+      <div className="raw2-auth-bg" />
+
+      <div className="raw2-login raw2-login--page" role="dialog" aria-modal="false">
+        <Link href="/login" className="raw2-login-close" aria-label="Назад">×</Link>
+
+        <div className="raw2-login-title">Восстановление пароля</div>
+
+        {sent ? (
+          <div className="raw2-login-form" style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3, margin: '10px 0 20px' }}>
+              Письмо со ссылкой для сброса отправлено на <b>{email}</b>. Проверь почту.
+            </p>
+            <Link href="/login" className="btn btn-red" style={{ textAlign: 'center' }}>Вернуться ко входу</Link>
+          </div>
+        ) : (
+          <form className="raw2-login-form" onSubmit={onSubmit}>
+            <p style={{ fontSize: 16, color: 'var(--ink)', opacity: .8, textAlign: 'center', margin: '0 0 6px' }}>
+              Введи email — пришлём ссылку для сброса пароля
+            </p>
+            <input
+              name="email"
+              type="email"
+              placeholder="электронная почта"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TurnstileWidget onToken={setCaptchaToken} />
+            {err && <p className="raw2-login-err">{err}</p>}
+            <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Отправляем…' : 'Восстановить пароль'}</button>
+            <Link href="/login" className="raw2-login-reg">Вспомнил? Войти</Link>
+          </form>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
-        {serverError && <div className="auth-error">{serverError}</div>}
+      <style jsx global>{`
+        html:has(.raw2-auth-page) .auth-scope { padding: 0 !important; background: transparent !important; display: block !important; min-height: 0 !important; }
+        html:has(.raw2-auth-page) .auth-modal { max-width: none !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; }
+        html:has(.raw2-auth-page) .auth-modal::before { display: none !important; }
+        html:has(.raw2-auth-page) .auth-header { display: none !important; }
+        html:has(.raw2-auth-page) .auth-body { padding: 0 !important; }
 
-        <div className="field">
-          <div className="field-label">Email</div>
-          <input
-            className="field-input"
-            type="email"
-            placeholder="hello@example.com"
-            autoComplete="email"
-            aria-invalid={!!errors.email}
-            {...register('email')}
-          />
-          {errors.email && (
-            <div className="auth-field-error">{errors.email.message}</div>
-          )}
-        </div>
-
-        <div style={{ margin: '8px 0' }}>
-          <TurnstileWidget onToken={setCaptchaToken} />
-        </div>
-
-        <button
-          type="submit"
-          className="auth-submit auth-submit--red"
-          disabled={isSubmitting}
-        >
-          {isSubmitting && (
-            <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
-          )}
-          Восстановить пароль
-        </button>
-      </form>
-
-      <div className="auth-bottom">
-        Вспомнил? <Link href="/login">Войти</Link>
-      </div>
+        .raw2-auth-page { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; background: #1E1E1E; }
+        .raw2-auth-bg { position: fixed; inset: 0; z-index: 0; background-image: url(/landing/raw2/hero.jpg); background-size: cover; background-position: center; filter: blur(14px) brightness(.5); transform: scale(1.1); }
+        .raw2 .raw2-login--page { position: relative; z-index: 1; }
+      `}</style>
     </div>
   )
 }

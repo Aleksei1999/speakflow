@@ -5,7 +5,7 @@
 // задан — виджет не рендерится (вообще ничего не показывает), сервер
 // тоже пропускает (см. verifyTurnstile).
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 declare global {
   interface Window {
@@ -73,15 +73,26 @@ export function TurnstileWidget({ onToken, theme = "auto", size = "flexible" }: 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  // На localhost/127.0.0.1 ключ Turnstile обычно не whitelisted — скрываем
+  // виджет только после mount, чтобы SSR и первый client-render совпали
+  // (иначе hydration mismatch: server = <div>, client = null).
+  const [mounted, setMounted] = useState(false)
+  const [isLocalhost, setIsLocalhost] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    setIsLocalhost(
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    )
+  }, [])
 
   useEffect(() => {
-    if (!siteKey) return
+    if (!siteKey || !mounted || isLocalhost) return
     if (!containerRef.current) return
 
-    let mounted = true
+    let active = true
     loadTurnstileScript()
       .then(() => {
-        if (!mounted || !containerRef.current || !window.turnstile) return
+        if (!active || !containerRef.current || !window.turnstile) return
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           theme,
@@ -94,16 +105,18 @@ export function TurnstileWidget({ onToken, theme = "auto", size = "flexible" }: 
       .catch(() => onToken(null))
 
     return () => {
-      mounted = false
+      active = false
       if (widgetIdRef.current && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current) } catch { /* noop */ }
       }
       widgetIdRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteKey])
+  }, [siteKey, mounted, isLocalhost])
 
-  // Без site-key вообще ничего не рендерим — пусть формы работают без капчи.
+  // Без site-key — вообще ничего не рендерим.
+  // На localhost скрываем после mount (SSR отдаёт <div>, потом клиент его убирает).
   if (!siteKey) return null
+  if (mounted && isLocalhost) return null
   return <div ref={containerRef} />
 }

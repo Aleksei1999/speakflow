@@ -1,265 +1,187 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { Suspense, useEffect, useState, type FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
-import { z } from 'zod'
-import { useTranslations } from 'next-intl'
 
 import { createClient } from '@/lib/supabase/client'
-import { loginSchema } from '@/lib/validations'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
-
-type LoginValues = z.infer<typeof loginSchema>
 
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
   const initialRole = searchParams.get('as') === 'teacher' ? 'teacher' : 'student'
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [oauthPending, setOauthPending] = useState(false)
+  const mfaRequired = searchParams.get('error') === 'mfa_check_failed'
+
   const [role, setRole] = useState<'student' | 'teacher'>(initialRole)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const t = useTranslations('auth.login')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  })
+  useEffect(() => {
+    if (mfaRequired) setErr('MFA-проверка не прошла, попробуй войти снова.')
+  }, [mfaRequired])
 
-  async function onSubmit(values: LoginValues) {
-    setServerError(null)
-    const supabase = createClient()
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+        options: captchaToken ? { captchaToken } : undefined,
+      })
+      if (error) {
+        setErr('Неверный email или пароль')
+        setBusy(false)
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setErr('Не удалось войти'); setBusy(false); return }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-      options: captchaToken ? { captchaToken } : undefined,
-    })
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, language')
+        .eq('id', user.id)
+        .single<{ role: 'student' | 'teacher' | 'admin' | null; language: 'ru' | 'en' | null }>()
 
-    if (error) {
-      setServerError(t('errorGeneric'))
-      return
+      if (profile?.language === 'ru' || profile?.language === 'en') {
+        try {
+          document.cookie = `rwen_locale=${profile.language}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`
+        } catch {}
+      }
+
+      if (redirectTo && redirectTo.startsWith('/')) router.push(redirectTo)
+      else if (profile?.role === 'admin') router.push('/admin')
+      else if (profile?.role === 'teacher') router.push('/teacher')
+      else router.push('/student')
+      router.refresh()
+    } catch {
+      setErr('Не удалось войти. Попробуй позже.')
+      setBusy(false)
     }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setServerError(t('errorGeneric'))
-      return
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, language')
-      .eq('id', user.id)
-      .single<{ role: 'student' | 'teacher' | 'admin' | null; language: 'ru' | 'en' | null }>()
-
-    // Mirror UI language into the rwen_locale cookie so next-intl picks it up
-    // on the very next navigation (single-locale runtime, no /en/... prefix).
-    if (profile?.language === 'ru' || profile?.language === 'en') {
-      try {
-        document.cookie = `rwen_locale=${profile.language}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`
-      } catch { /* no-op */ }
-    }
-
-    if (redirectTo && redirectTo.startsWith('/')) {
-      router.push(redirectTo)
-    } else if (profile?.role === 'teacher') {
-      router.push('/teacher')
-    } else {
-      router.push('/student')
-    }
-
-    router.refresh()
   }
 
-  async function handleGoogle() {
-    setServerError(null)
-    setOauthPending(true)
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-    })
-    if (error) {
-      setOauthPending(false)
-      setServerError(t('errorGeneric'))
-    }
+  async function onGoogle() {
+    setErr('')
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/api/auth/callback` },
+      })
+      if (error) setErr('Не удалось войти через Google')
+    } catch { setErr('Не удалось войти через Google') }
   }
 
   return (
-    <div className="fade-in">
-      <style>{`
-        .role-toggle{display:flex;gap:6px;background:var(--auth-bg,rgba(0,0,0,.04));border-radius:12px;padding:4px;margin-bottom:18px}
-        .role-toggle button{flex:1;padding:10px 14px;border:none;background:transparent;border-radius:9px;font:inherit;font-weight:600;font-size:13px;color:var(--auth-muted,rgba(0,0,0,.55));cursor:pointer;transition:all .15s}
-        .role-toggle button.active{background:var(--auth-surface,#fff);color:var(--auth-text,#111);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-        .role-toggle button:hover:not(.active){color:var(--auth-text,#111)}
-      `}</style>
-      <div className="role-toggle" role="tablist" aria-label={t('chooseRole')}>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={role === 'student'}
-          className={role === 'student' ? 'active' : ''}
-          onClick={() => {
-            setServerError(null)
-            setRole('student')
-          }}
-        >
-          🎓 {t('asStudent')}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={role === 'teacher'}
-          className={role === 'teacher' ? 'active' : ''}
-          onClick={() => {
-            setServerError(null)
-            setRole('teacher')
-          }}
-        >
-          👨‍🏫 {t('asTeacher')}
-        </button>
-      </div>
+    <div className="raw2 raw2-auth-page">
+      {/* eslint-disable-next-line @next/next/no-css-tags */}
+      <link rel="stylesheet" href="/landing/raw2/raw2.css" />
+      <div className="raw2-auth-bg" />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
-        {serverError && <div className="auth-error">{serverError}</div>}
+      <div className="raw2-login raw2-login--page" role="dialog" aria-modal="false">
+        <Link href="/" className="raw2-login-close" aria-label="На главную">×</Link>
 
-        <div className="field">
-          <div className="field-label">{t('email')}</div>
-          <input
-            className="field-input"
-            type="email"
-            placeholder="hello@example.com"
-            autoComplete="email"
-            aria-invalid={!!errors.email}
-            {...register('email')}
-          />
-          {errors.email && (
-            <div className="auth-field-error">{errors.email.message}</div>
-          )}
+        <div className="raw2-login-tabs">
+          <button type="button" className={role === 'student' ? 'active' : ''} onClick={() => setRole('student')}>Ученик</button>
+          <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => setRole('teacher')}>Учитель</button>
         </div>
 
-        <div className="field">
-          <div className="field-label">{t('password')}</div>
-          <div className="pass-wrap">
+        <form className="raw2-login-form" onSubmit={onSubmit}>
+          <input
+            name="email"
+            type="email"
+            placeholder="электронная почта"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <div className="raw2-login-pass">
             <input
-              className="field-input"
+              name="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder={t('passwordPlaceholder')}
+              placeholder="пароль"
+              required
               autoComplete="current-password"
-              aria-invalid={!!errors.password}
-              {...register('password')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
             <button
               type="button"
-              className="pass-toggle"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="raw2-login-pass-eye"
+              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-pressed={showPassword}
               onClick={() => setShowPassword((v) => !v)}
-              style={showPassword ? { color: 'var(--auth-red)' } : undefined}
+              tabIndex={-1}
             >
               {showPassword ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6 0 10 6 10 6a17.3 17.3 0 0 1-3.2 3.7" />
+                  <path d="M6.6 6.6C3.8 8.3 2 12 2 12s4 6 10 6c1.5 0 2.9-.3 4.1-.9" />
+                  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
               )}
             </button>
           </div>
-          {errors.password && (
-            <div className="auth-field-error">{errors.password.message}</div>
-          )}
-        </div>
-
-        <Link href="/forgot-password" className="forgot-link">
-          {t('forgot')}
-        </Link>
-
-        <div style={{ margin: '8px 0' }}>
           <TurnstileWidget onToken={setCaptchaToken} />
-        </div>
-
-        <button
-          type="submit"
-          className="auth-submit auth-submit--red"
-          disabled={isSubmitting}
-        >
-          {isSubmitting && (
-            <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
-          )}
-          {isSubmitting ? t('submitting') : t('submit')}
-        </button>
-
-        <div className="auth-divider">
-          <span>{t('orContinueWith')}</span>
-        </div>
-
-        {/*
-          Раньше тут был disabled Telegram-чип — он не подключён в Supabase
-          и расходился с /register, где висел нерабочий Apple. Чистим оба
-          экрана до одного реального провайдера (Google). Когда захотим
-          второй — добавляем сразу на login И register.
-        */}
-        <div className="social-btns social-btns--single">
-          <button
-            type="button"
-            className="social-btn"
-            onClick={handleGoogle}
-            disabled={oauthPending}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            Google
+          {err && <p className="raw2-login-err">{err}</p>}
+          <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Входим…' : 'Войти'}</button>
+          <button type="button" className="btn btn-red raw2-login-oauth" onClick={onGoogle}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden><path fill="#fff" d="M22 12.2c0-.7-.06-1.5-.19-2.2H12v4.17h5.62c-.24 1.28-.98 2.36-2.09 3.09v2.57h3.38c1.98-1.82 3.09-4.51 3.09-7.63ZM12 22c2.83 0 5.2-.94 6.94-2.54l-3.38-2.62c-.94.63-2.13.99-3.55.99-2.73 0-5.05-1.85-5.88-4.33H2.65v2.7C4.39 19.71 7.94 22 12 22ZM6.11 13.5c-.21-.63-.33-1.31-.33-2s.12-1.37.33-2v-2.7H2.65C1.87 8.4 1.44 10.15 1.44 12s.43 3.6 1.21 5.2l3.46-2.7ZM12 6.13c1.54 0 2.92.53 4.01 1.57l3-3C17.19 3.02 14.83 2 12 2 7.94 2 4.39 4.29 2.65 6.8l3.46 2.7c.83-2.48 3.15-4.33 5.89-4.33Z"/></svg>
+            Войти через Google
           </button>
-        </div>
-      </form>
-
-      <div className="auth-bottom">
-        {role === 'teacher' ? (
-          <>{t('noAccount')} <Link href="/teach">{t('register')}</Link></>
-        ) : (
-          <>{t('noAccount')} <Link href="/register">{t('register')}</Link></>
-        )}
+          <Link href="/forgot-password" className="raw2-login-forgot">Забыл пароль?</Link>
+          <Link href="/register" className="raw2-login-reg">Регистрация</Link>
+        </form>
       </div>
+
+      <style jsx global>{`
+        /* Нейтрализуем родительскую auth-обёртку из layout.tsx — раскрываем полный экран под raw2. */
+        html:has(.raw2-auth-page) .auth-scope { padding: 0 !important; background: transparent !important; display: block !important; min-height: 0 !important; }
+        html:has(.raw2-auth-page) .auth-modal { max-width: none !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; }
+        html:has(.raw2-auth-page) .auth-modal::before { display: none !important; }
+        html:has(.raw2-auth-page) .auth-header { display: none !important; }
+        html:has(.raw2-auth-page) .auth-body { padding: 0 !important; }
+
+        .raw2-auth-page { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; background: #1E1E1E; }
+        .raw2-auth-bg { position: fixed; inset: 0; z-index: 0; background-image: url(/landing/raw2/hero.jpg); background-size: cover; background-position: center; filter: blur(14px) brightness(.5); transform: scale(1.1); }
+        .raw2 .raw2-login--page { position: relative; z-index: 1; }
+        .raw2 .raw2-login-oauth { display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
+        .raw2 .raw2-login-forgot { align-self: center; margin-top: 8px; font-size: 14px; color: var(--ink); opacity: .7; text-decoration: none; }
+        .raw2 .raw2-login-forgot:hover { opacity: 1; text-decoration: underline; }
+        .raw2 .raw2-login-pass { position: relative; display: flex; }
+        .raw2 .raw2-login-pass input { flex: 1 1 auto; padding-right: 56px; }
+        .raw2 .raw2-login-pass-eye {
+          position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 36px; height: 36px; border-radius: 999px;
+          background: transparent; border: none; padding: 0; cursor: pointer;
+          color: rgba(30,30,30,.55); transition: color .15s, background .15s;
+        }
+        .raw2 .raw2-login-pass-eye:hover { color: var(--ink); background: rgba(30,30,30,.06); }
+        .raw2 .raw2-login-pass-eye:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+      `}</style>
     </div>
   )
 }
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="fade-in" style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
-          <Loader2
-            className="animate-spin"
-            style={{ width: 32, height: 32, color: 'var(--auth-red)' }}
-          />
-        </div>
-      }
-    >
+    <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#1E1E1E' }} />}>
       <LoginPageContent />
     </Suspense>
   )

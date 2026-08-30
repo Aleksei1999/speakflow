@@ -1,0 +1,90 @@
+/* ============================================================
+   SiteFooter — общий подвал для teacher/student дашбордов
+   ============================================================ */
+.sf-footer {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: clamp(24px, 3vw, 60px);
+  padding: clamp(40px, 5vw, 70px) clamp(24px, 4vw, 60px);
+  background: #FFF;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+}
+
+.sf-footer-links,
+.sf-footer-legal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: clamp(14px, 1.2vw, 17px);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.sf-footer-links a,
+.sf-footer-links button {
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  transition: opacity .15s;
+}
+.sf-footer-links a:hover,
+.sf-footer-links button:hover { opacity: .7; }
+.sf-footer-links .sf-mut { color: #6b6b6b; }
+.sf-footer-legal { text-align: right; }
+.sf-footer-legal b { font-weight: 700; }
+
+.sf-footer-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Figma: 261×48, Inter 700 20px, tracking -1px, line-height 97.46% (=19.492px) */
+.sf-footer-support {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 261px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #CC3A3A !important;
+  color: #FFF !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -1px;
+  line-height: 0.9746;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s;
+}
+.sf-footer-support:hover { background: #b03030 !important; }
+
+.sf-footer-copy {
+  font-family: 'Gluten', 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(14px, 1.2vw, 18px);
+  letter-spacing: -0.02em;
+  color: #1E1E1E;
+  margin: 0;
+}
+
+@media (max-width: 820px) {
+  .sf-footer {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .sf-footer-links,
+  .sf-footer-legal { text-align: center; align-items: center; }
+}

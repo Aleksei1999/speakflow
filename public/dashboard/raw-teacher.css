@@ -3,6 +3,19 @@
    Pixel-perfect rebuild of Figma «Учитель RAW english» (node 2208:955)
    Base design: 1441×6170. Scope: .tr
    ============================================================ */
+
+/* Раньше здесь был `.dash:has(.tr) { ... }` — CSS-хак, прятавший
+   сайдбар DashboardShell на странице /teacher. Он вызывал flash
+   старого дашборда на SSR/hydration (сайдбар успевал отрендериться
+   до применения :has()). Теперь `/teacher` живёт в отдельной
+   route-group `(teacher-full)` вообще без DashboardShell, поэтому
+   хак не нужен. Оставшиеся `.tr-*` стили ниже — актуальны как есть. */
+
+/* DashboardShell содержит inline-стиль `.dash button { background:none; color:inherit }`
+   специфичности 0-1-1 — он выигрывает у всех наших `.tr-*` (0-1-0) и сбивает
+   цвет+фон. `!important` на критичных background/color самый прямой способ пробить
+   этот overreach shell'а, не переписывая десятки селекторов на `.tr .tr-*`. */
+
 .tr, .tr *, .tr *::before, .tr *::after { box-sizing: border-box; }
 .tr *, .tr ul, .tr p, .tr h1, .tr h2, .tr h3 { margin: 0; padding: 0; }
 .tr ul { list-style: none; }
@@ -138,8 +151,14 @@
   display: flex; justify-content: center;
   margin: 0 auto clamp(30px, 4vw, 50px);
 }
+/* Figma:
+   Light-bg badge (ВХОДЯЩИЕ ЗАЯВКИ УЧЕНИКОВ) — 40px, tracking -2px, ink
+   Dark-bg badge  (СПИСОК УЧЕНИКОВ)          — 48px, tracking -2.4px, white
+   Оба: Inter 700, line-height 117.344%, uppercase, text-align center. */
 .tr-badge {
-  display: inline-flex; align-items: center; justify-content: center;
+  /* inline-block вместо inline-flex — иначе whitespace между текстом и <span>
+     схлопывается в flex-контейнере и «СПИСОК УЧЕНИКОВ» слипается */
+  display: inline-block;
   border: 4px solid var(--lime);
   border-radius: 41.5px;
   padding: clamp(14px, 1.6vw, 22px) clamp(28px, 4vw, 60px);
@@ -147,13 +166,16 @@
   font-weight: 700;
   font-size: clamp(22px, 3vw, 40px);
   letter-spacing: -0.05em;
-  line-height: 1.173;
+  line-height: 1.17344;
   text-transform: uppercase;
   text-align: center;
-  color: var(--ink);
+  color: #1E1E1E;
   background: transparent;
 }
-.tr-badge.on-dark { color: var(--white); }
+.tr-badge.on-dark {
+  color: #FFF;
+  font-size: clamp(24px, 3.6vw, 48px);
+}
 
 /* ============================================================
    STUDENTS SECTION  (on dark hero backdrop)
@@ -180,8 +202,8 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 183px;
   height: 48px;
-  background: #DFED8C;
-  color: var(--ink);
+  background: #DFED8C !important;
+  color: var(--ink) !important;
   border-radius: 29.5px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -211,8 +233,8 @@
 }
 .tr-sort-opt {
   display: flex; align-items: flex-start; gap: 15px;
-  background: transparent;
-  color: #1e1e1e;
+  background: transparent !important;
+  color: #1e1e1e !important;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 18px;
@@ -388,7 +410,7 @@
   color: var(--white);
   max-width: none;
   padding: clamp(60px, 8vw, 107px) 0 clamp(50px, 6vw, 90px);
-  margin: clamp(40px, 5vw, 80px) 0 0;
+  margin: 0;
   overflow: hidden;
 }
 .tr-section-red .tr-inner {
@@ -790,17 +812,19 @@
   transition: background .2s;
 }
 .tr-lesson-edit:hover { background: var(--lime); color: var(--ink); }
+/* Figma: 248×44 (фиксированные размеры). */
 .tr-lesson-call {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--red);
-  color: var(--white);
+  background: var(--red) !important;
+  color: var(--white) !important;
   border-radius: var(--radius-btn);
-  height: clamp(40px, 3.4vw, 44px);
-  padding: 0 clamp(18px, 2.5vw, 32px);
+  width: 248px;
+  height: 44px;
+  padding: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(16px, 1.7vw, 24px);
+  font-size: 20px;
   letter-spacing: -0.05em;
   line-height: 0.805;
   text-transform: lowercase;
@@ -808,51 +832,127 @@
 }
 .tr-lesson-call:hover { background: var(--red-deep); }
 
+/* Figma: gap 105px между кнопками. */
 .tr-schedule-actions {
-  display: flex; gap: clamp(16px, 2vw, 30px);
+  display: flex;
+  gap: 105px;
   justify-content: center;
   flex-wrap: wrap;
   max-width: 1164px;
   margin: 0 auto;
 }
+/* Figma: высота 68 у всех. Ширины:
+   1-я «открыть …» — 368; «добавить урок» и «запрос на урок» — 293. */
 .tr-sched-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  height: clamp(56px, 5.2vw, 68px);
-  padding: 0 clamp(28px, 3vw, 50px);
+  height: 68px;
+  width: 293px;
+  padding: 0;
   border-radius: var(--radius-btn);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.4vw, 32px);
+  font-size: 24px;
   letter-spacing: -0.05em;
   line-height: 0.805;
   text-transform: lowercase;
   transition: background .2s;
 }
-.tr-sched-btn.lime { background: var(--lime); color: var(--ink); }
-.tr-sched-btn.lime:hover { background: var(--lime-deep); }
-.tr-sched-btn.red { background: var(--red); color: var(--white); }
-.tr-sched-btn.red:hover { background: var(--red-deep); }
+.tr-schedule-actions .tr-sched-btn:first-child { width: 368px; }
+.tr-sched-btn.lime { background: var(--lime) !important; color: var(--ink) !important; }
+.tr-sched-btn.lime:hover { background: var(--lime-deep) !important; }
+.tr-sched-btn.red { background: var(--red) !important; color: var(--white) !important; }
+.tr-sched-btn.red:hover { background: var(--red-deep) !important; }
 
 /* ============================================================
-   INCOME (red)
+   Google Calendar banner (CTA + status)
+   ============================================================ */
+.tr-gcal-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+  margin: 0 auto 20px;
+  max-width: 954px;
+  border-radius: var(--radius-btn);
+  background: rgba(223, 237, 140, 0.08);
+  border: 1px solid rgba(223, 237, 140, 0.25);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.tr-gcal-banner--ok {
+  background: rgba(223, 237, 140, 0.14);
+  border-color: rgba(223, 237, 140, 0.45);
+}
+.tr-gcal-banner-text { flex: 1 1 auto; display: inline-flex; align-items: center; gap: 8px; }
+.tr-gcal-banner-btn {
+  flex: 0 0 auto;
+  height: 48px;
+  width: auto;
+  padding: 0 20px;
+  font-size: 16px;
+  text-transform: none;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.tr-gcal-banner-unlink {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--white) !important;
+  border: 1px solid rgba(255,255,255,0.24);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.tr-gcal-banner-unlink:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.4);
+}
+.tr-gcal-banner-unlink:disabled { opacity: .5; cursor: not-allowed; }
+.tr-gcal-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tr-gcal-dot--ok { background: #7fb432; box-shadow: 0 0 0 2px rgba(127,180,50,0.25); }
+.tr-gcal-dot--off { background: #cc3a3a; box-shadow: 0 0 0 2px rgba(204,58,58,0.25); }
+.tr-lesson-empty {
+  padding: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+/* ============================================================
+   INCOME (red) — Figma node 4088:72 (card 1228×351)
    ============================================================ */
 .tr-income-card {
   background: var(--white);
   color: var(--ink);
-  border-radius: var(--radius-card);
+  border-radius: 29.5px;
   max-width: 1228px;
   margin: 0 auto;
-  padding: clamp(30px, 4vw, 55px) clamp(30px, 4vw, 60px);
+  padding: clamp(30px, 3.5vw, 48px) clamp(24px, 3vw, 40px);
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(280px, 1fr) minmax(280px, 1fr);
-  gap: clamp(30px, 3vw, 50px);
+  grid-template-columns: minmax(512px, 1.2fr) minmax(180px, 0.55fr) minmax(280px, 1fr);
+  gap: clamp(20px, 2vw, 32px);
   align-items: stretch;
   position: relative;
 }
 .tr-income-left {
   display: flex; flex-direction: column;
   justify-content: space-between;
-  gap: clamp(20px, 2.5vw, 40px);
+  gap: clamp(24px, 3vw, 48px);
 }
 .tr-income-title {
   font-family: 'Inter', sans-serif;
@@ -861,49 +961,95 @@
   letter-spacing: -0.05em;
   line-height: 1.173;
   text-transform: uppercase;
+  color: var(--ink);
 }
+.tr-income-title .c-red { color: var(--red); }
+/* Figma: точный размер 512×76, Inter 700 35px, tracking -1.75px, line-height 97.46% */
 .tr-income-cta {
   display: inline-flex; align-items: center; justify-content: center;
   align-self: flex-start;
-  background: var(--red);
-  color: var(--white);
+  width: 512px;
+  height: 76px;
+  max-width: 100%;
+  background: var(--red) !important;
+  color: #FFF !important;
   border-radius: 50px;
-  height: clamp(56px, 5.5vw, 76px);
-  padding: 0 clamp(24px, 3vw, 44px);
+  padding: 0 24px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.6vw, 35px);
-  letter-spacing: -0.05em;
-  line-height: 0.975;
+  font-size: 35px;
+  letter-spacing: -1.75px;
+  line-height: 0.9746;
   text-align: center;
+  white-space: nowrap;
   transition: background .2s;
+  cursor: pointer;
+  border: 0;
 }
-.tr-income-cta:hover { background: var(--red-deep); }
+.tr-income-cta:hover { background: var(--red-deep) !important; }
+
+/* --- BOOK column: icon LEFT + [big number / label] RIGHT --- */
 .tr-income-metric {
-  display: flex; flex-direction: column;
-  justify-content: center;
-  gap: clamp(10px, 1.2vw, 18px);
-  padding-left: clamp(20px, 2vw, 30px);
-  border-left: 1px dashed rgba(30,30,30,.15);
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.4vw, 22px);
+  padding-left: clamp(20px, 2vw, 30px);
 }
+/* красный вертикальный сепаратор (Figma: Vector 43, 6px, #CC3A3A) —
+   на всю высоту карточки, чуть тоньше и с закруглёнными концами */
+.tr-income-metric::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 6px;
+  background: #CC3A3A;
+}
+.tr-income-icon {
+  flex: 0 0 auto;
+  display: block;
+  width: clamp(56px, 5.5vw, 76px);
+  height: auto;
+}
+.tr-income-icon--wallet {
+  width: clamp(64px, 6vw, 84px);
+}
+
+/* --- MONEY column: two rows (wallet + stack), stacked vertically --- */
+.tr-income-metric--money {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(20px, 2.4vw, 34px);
+}
+.tr-income-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.4vw, 22px);
+}
+
 .tr-income-metric .caption {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: clamp(13px, 1.1vw, 15px);
   letter-spacing: -0.05em;
   line-height: 0.92;
+  color: var(--ink);
+  display: block;
 }
 .tr-income-metric .caption.red { color: var(--red); }
-.tr-income-metric .caption.mut { color: var(--lime-mut); }
+.tr-income-metric .caption.mut { color: #AEB96C; }
 .tr-income-metric .value {
-  display: flex; align-items: baseline; gap: 8px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: clamp(28px, 2.9vw, 40px);
   letter-spacing: -0.05em;
   line-height: 0.805;
   color: var(--ink);
+  margin: clamp(8px, 0.9vw, 12px) 0 clamp(6px, 0.7vw, 10px);
 }
 .tr-income-metric .label {
   font-family: 'Inter', sans-serif;
@@ -912,13 +1058,12 @@
   letter-spacing: -0.05em;
   line-height: 0.92;
   color: var(--ink);
-  opacity: .8;
+  display: block;
 }
 .tr-income-metric .stack {
   display: flex; flex-direction: column;
-  gap: clamp(14px, 1.6vw, 24px);
+  min-width: 0;
 }
-.tr-income-metric .stack + .stack { margin-top: clamp(16px, 2vw, 30px); }
 
 /* ============================================================
    CHATS (dark warm bg with people photo)
@@ -927,7 +1072,7 @@
   position: relative;
   max-width: none;
   padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px) clamp(60px, 8vw, 130px);
-  margin-top: clamp(40px, 5vw, 80px);
+  margin-top: 0;
   background: var(--dark-bg) url('/dashboard/bg-chat.jpg') center/cover no-repeat;
   color: var(--white);
   overflow: hidden;
@@ -1725,6 +1870,8 @@
   .tr-nav-links { display: none; }
   .tr-students-grid { grid-template-columns: 1fr; }
   .tr-income-card { grid-template-columns: 1fr; }
+  .tr-income-metric { padding-left: 0; }
+  .tr-income-metric::before { display: none; }
   .tr-schedule-actions { flex-direction: column; align-items: stretch; }
   .tr-sched-btn { width: 100%; }
   .tr-lesson { flex-wrap: wrap; }
@@ -2074,3 +2221,981 @@
   .tr-chat-input-row { padding: 8px 14px 14px; }
   .tr .tr-chat-input { font-size: 16px; }
 }
+
+/* ============================================================
+   Add Lesson Modal
+   Figma: YSwlSQF1n6QIpGTOohlMOd
+     • 2208:2449 empty    • 2208:2699 student dropdown
+     • 2208:2489 filled   • 2208:685  date/time picker
+     • 2208:2509 success
+   Все размеры взяты 1:1 из Figma (главная модалка 686×557,
+   success 503×475). `!important` на background/color нужен
+   чтобы пробить reset .dash button — как в .tr-sort / .tr-lesson-call.
+   ============================================================ */
+.tr-add-lesson-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.tr-add-lesson {
+  position: relative;
+  width: 686px;
+  max-width: calc(100vw - 40px);
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 79px 54px 40px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  display: flex; flex-direction: column; gap: 34px;
+}
+/* success — уже, компактнее */
+.tr-add-lesson--success {
+  width: 503px;
+  padding: 33px 54px 40px;
+  align-items: center;
+  gap: 22px;
+  min-height: 475px;
+}
+
+/* закрыть — крестик в верхнем правом углу.
+   !important нужен, чтобы пробить .dash button reset. */
+.tr .tr-add-lesson-close {
+  position: absolute;
+  top: 28px; right: 34px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: color .15s;
+  z-index: 2;
+}
+.tr .tr-add-lesson-close:hover { color: #CC3A3A !important; }
+
+/* Заголовок «Добавить новый урок» — Inter 500 32px, tracking -0.05em */
+.tr-add-lesson-title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+
+/* Ряд с двумя половинками (дата+время) */
+.tr-add-lesson-row {
+  display: flex; gap: 16px;
+  justify-content: space-between;
+}
+
+/* Общий стиль пилла (белая капсула 68px высоты, radius 34) */
+.tr .tr-add-lesson-pill {
+  position: relative;
+  height: 68px;
+  border-radius: 34px !important;
+  background: #FFFFFF !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  padding: 0 60px 0 32px !important;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+  text-align: center;
+}
+.tr .tr-add-lesson-pill:hover { background: #FAFAFA !important; }
+.tr-add-lesson-pill--full { width: 100%; }
+.tr-add-lesson-pill--half { flex: 1 1 0; }
+
+/* Placeholder-текст: серый 24px medium tracking -0.05em */
+.tr-add-lesson-pill-placeholder {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: rgba(30, 30, 30, 0.7);
+}
+/* Filled-значение: чёрный 32px medium */
+.tr-add-lesson-pill-value {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+}
+
+/* Иконка-стрелка справа (35×36) */
+.tr-al-arrow {
+  position: absolute;
+  right: 18px; top: 50%;
+  transform: translateY(-50%);
+  display: block;
+  pointer-events: none;
+}
+
+/* ────────── STUDENT DROPDOWN ────────── */
+.tr-add-lesson-dropdown {
+  position: relative;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 34px;
+  padding: 0;
+  overflow: hidden;
+  min-height: 309px;
+}
+.tr-add-lesson-pill--dropdown-head {
+  background: #FFFFFF !important;
+  border-radius: 34px !important;
+  width: 100%;
+}
+.tr-add-lesson-dropdown-list {
+  padding: 24px 0 24px;
+  max-height: 231px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #1E1E1E rgba(30, 30, 30, 0.14);
+}
+.tr-add-lesson-dropdown-list::-webkit-scrollbar { width: 7px; }
+.tr-add-lesson-dropdown-list::-webkit-scrollbar-track {
+  background: rgba(30, 30, 30, 0.14);
+  border-radius: 3.5px;
+  margin: 12px 0;
+}
+.tr-add-lesson-dropdown-list::-webkit-scrollbar-thumb {
+  background: #1E1E1E;
+  border-radius: 3.5px;
+}
+.tr .tr-add-lesson-dropdown-item {
+  display: block; width: 100%;
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  padding: 20px 32px !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s;
+}
+.tr .tr-add-lesson-dropdown-item.has-divider {
+  border-top: 1px solid rgba(30, 30, 30, 0.18) !important;
+}
+.tr .tr-add-lesson-dropdown-item:hover { background: rgba(255, 255, 255, 0.4) !important; }
+.tr .tr-add-lesson-dropdown-item.is-selected {
+  font-weight: 700 !important;
+  font-size: 36px !important;
+  letter-spacing: -0.05em !important;
+}
+.tr-add-lesson-dropdown-empty {
+  padding: 40px 32px;
+  text-align: center;
+  color: rgba(30, 30, 30, 0.7);
+  font-size: 20px;
+}
+
+/* ────────── DATE/TIME PICKER ────────── */
+.tr-add-lesson-row--picker { align-items: stretch; }
+.tr-add-lesson-half { flex: 1 1 0; display: flex; flex-direction: column; }
+.tr-add-lesson-half--picker {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 34px;
+  padding: 0;
+  overflow: hidden;
+  min-height: 217px;
+}
+.tr-add-lesson-picker-head {
+  position: relative;
+  height: 68px;
+  background: #FFFFFF;
+  border-radius: 34px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0;
+}
+.tr-add-lesson-picker-head .tr-al-arrow { right: 18px; }
+.tr .tr-add-lesson-picker-back {
+  position: absolute;
+  right: 18px; top: 50%;
+  transform: translateY(-50%);
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: #1E1E1E !important;
+  cursor: pointer;
+  display: block;
+}
+
+/* iOS-style wheel */
+.tr-al-wheel {
+  position: relative;
+  height: 149px;
+  overflow: hidden;
+}
+.tr-al-wheel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.tr-al-wheel-scroll::-webkit-scrollbar { display: none; }
+.tr-al-wheel-spacer { height: 40px; /* центрируем середину пикера */ }
+.tr .tr-al-wheel-item {
+  width: 100%;
+  height: 68px;
+  scroll-snap-align: center;
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  padding: 0 !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity .15s, font-weight .15s, font-size .15s;
+}
+.tr .tr-al-wheel-item.is-active {
+  opacity: 1;
+  font-weight: 700 !important;
+  font-size: 36px !important;
+  letter-spacing: -0.05em !important;
+}
+/* fade overlays сверху/снизу */
+.tr-al-wheel-fade {
+  position: absolute; left: 0; right: 0; height: 40px;
+  pointer-events: none;
+  z-index: 1;
+}
+.tr-al-wheel-fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(223, 237, 140, 0.85), rgba(255, 255, 255, 0));
+}
+.tr-al-wheel-fade--bot {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(223, 237, 140, 0.85), rgba(255, 255, 255, 0));
+}
+
+/* ────────── CREATE BUTTON ────────── */
+.tr-add-lesson-footer {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding-top: 4px;
+}
+.tr .tr-add-lesson-btn {
+  width: 200px;
+  height: 68px;
+  border-radius: 34px !important;
+  background: #CC3A3A !important;
+  color: #FFFFFF !important;
+  border: 0 !important;
+  padding: 0 !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 0.805;
+  letter-spacing: -0.05em;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+}
+.tr .tr-add-lesson-btn:hover:not(:disabled) { background: #B03030 !important; }
+.tr .tr-add-lesson-btn:disabled {
+  background: #CC3A3A !important;
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.tr-add-lesson-error {
+  color: #CC3A3A;
+  font-size: 14px;
+  text-align: center;
+  max-width: 100%;
+}
+
+/* ────────── SUCCESS ────────── */
+.tr-add-lesson-timer {
+  position: absolute;
+  top: 33px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: rgba(30, 30, 30, 0.7);
+}
+.tr-add-lesson-success-title {
+  margin-top: 30px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-add-lesson-success-check {
+  margin-top: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.tr-add-lesson-success-name {
+  margin-top: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-add-lesson-success-when {
+  margin-top: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr .tr-add-lesson-success-back {
+  margin-top: 22px;
+  width: 46px; height: 47px;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
+}
+.tr .tr-add-lesson-success-back:hover { transform: scale(1.05); }
+
+/* ────────── RESPONSIVE ────────── */
+@media (max-width: 768px) {
+  .tr-add-lesson { padding: 66px 22px 28px; gap: 22px; }
+  .tr-add-lesson-title { font-size: 24px; }
+  .tr .tr-add-lesson-pill { height: 56px; padding: 0 52px 0 22px !important; }
+  .tr-add-lesson-pill-placeholder { font-size: 18px; }
+  .tr-add-lesson-pill-value { font-size: 22px; }
+  .tr .tr-add-lesson-dropdown-item { font-size: 22px !important; padding: 16px 22px !important; }
+  .tr .tr-add-lesson-dropdown-item.is-selected { font-size: 26px !important; }
+  .tr .tr-add-lesson-btn { width: 170px; height: 56px; font-size: 24px; }
+  .tr .tr-al-wheel-item { font-size: 22px; height: 56px; }
+  .tr .tr-al-wheel-item.is-active { font-size: 26px !important; }
+  .tr-add-lesson--success { padding: 40px 26px 30px; }
+  .tr-add-lesson-success-title { font-size: 24px; }
+  .tr-add-lesson-success-name, .tr-add-lesson-success-when { font-size: 26px; }
+}
+
+/* =============================================================
+   LessonRequestsModal — Figma 2208:2435 (list) + 2208:2686 (success)
+   ------------------------------------------------------------- */
+
+/* Бейдж-счётчик на кнопке «запрос на урок» */
+.tr .tr-sched-btn--with-badge { position: relative; }
+.tr-sched-btn-badge {
+  position: absolute;
+  top: -8px; right: -8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #1E1E1E;
+  color: #DFED8C;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 24px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* Backdrop + carte */
+.tr-lr-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.tr-lr-modal {
+  position: relative;
+  width: 686px;
+  max-width: calc(100vw - 40px);
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 74px 54px 40px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 26px;
+}
+.tr-lr-modal--success {
+  width: 503px;
+  padding: 33px 54px 40px;
+  gap: 22px;
+  min-height: 475px;
+}
+
+.tr .tr-lr-close {
+  position: absolute;
+  top: 28px; right: 34px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: color .15s;
+  z-index: 2;
+}
+.tr .tr-lr-close:hover { color: #CC3A3A !important; }
+
+.tr-lr-counter {
+  position: absolute;
+  top: 33px; left: 50%;
+  transform: translateX(-50%);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: rgba(30, 30, 30, 0.7);
+}
+
+/* Headline: «Кристина Кирова запрашивает урок 2 апреля в 8:30» */
+.tr-lr-headline {
+  margin: 0;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+  max-width: 492px;
+}
+.tr-lr-headline b { font-weight: 700; }
+
+/* Длительность */
+.tr-lr-duration {
+  margin-top: 8px;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-lr-duration-label { font-weight: 500; }
+.tr-lr-duration b { font-weight: 700; }
+
+.tr-lr-message {
+  align-self: stretch;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(30, 30, 30, 0.08);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.25;
+  color: #1E1E1E;
+  text-align: center;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.tr-lr-question {
+  margin-top: 6px;
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+
+/* Ряд из 3-х кнопок: Нет / Чат / Да */
+.tr-lr-actions {
+  margin-top: 8px;
+  display: flex; gap: 14px; justify-content: center;
+  align-items: center;
+}
+.tr .tr-lr-btn {
+  width: 185px;
+  height: 68px;
+  border-radius: 34px !important;
+  padding: 0 !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.805;
+  letter-spacing: -0.05em;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, color .15s, opacity .15s;
+}
+.tr .tr-lr-btn--outline {
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 2px solid #1E1E1E !important;
+}
+.tr .tr-lr-btn--outline:hover:not(:disabled) {
+  background: rgba(30, 30, 30, 0.08) !important;
+}
+.tr .tr-lr-btn--red {
+  background: #CC3A3A !important;
+  color: #FFFFFF !important;
+  border: 0 !important;
+  font-weight: 700;
+}
+.tr .tr-lr-btn--red:hover:not(:disabled) { background: #B03030 !important; }
+.tr .tr-lr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tr-lr-error {
+  margin-top: 4px;
+  color: #CC3A3A;
+  font-size: 14px;
+  text-align: center;
+  max-width: 100%;
+}
+
+/* Empty state */
+.tr-lr-empty-title {
+  margin: 12px 0 0;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-lr-empty-sub {
+  margin: 0;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.25;
+  color: rgba(30, 30, 30, 0.7);
+  text-align: center;
+  max-width: 380px;
+}
+
+/* Success (2208:2686) */
+.tr-lr-timer {
+  position: absolute;
+  top: 33px; left: 50%;
+  transform: translateX(-50%);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: rgba(30, 30, 30, 0.7);
+}
+.tr-lr-success-title {
+  margin-top: 30px;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-lr-success-check {
+  margin-top: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.tr-lr-success-name {
+  margin-top: 14px;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr-lr-success-when {
+  margin-top: 12px;
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 0.975;
+  letter-spacing: -0.05em;
+  color: #1E1E1E;
+  text-align: center;
+}
+.tr .tr-lr-success-back {
+  margin-top: 22px;
+  width: 46px; height: 47px;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
+}
+.tr .tr-lr-success-back:hover { transform: scale(1.05); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .tr-lr-modal { padding: 60px 22px 28px; gap: 20px; }
+  .tr-lr-headline { font-size: 22px; }
+  .tr-lr-duration { font-size: 22px; }
+  .tr-lr-question { font-size: 26px; }
+  .tr .tr-lr-btn {
+    width: auto; flex: 1 1 0; min-width: 0;
+    height: 56px; font-size: 20px;
+    padding: 0 8px !important;
+  }
+  .tr-lr-actions { gap: 8px; align-self: stretch; }
+  .tr-lr-modal--success { padding: 40px 26px 30px; }
+  .tr-lr-success-title { font-size: 24px; }
+  .tr-lr-success-name, .tr-lr-success-when { font-size: 26px; }
+  .tr-lr-empty-title { font-size: 24px; }
+}
+
+
+/* ============================================================
+   INCOME INFO MODAL — «Как считается доход?» (Figma 2208:3072)
+   1:1 absolute-layout: карточка 1228×351, дочерние — position:absolute
+   с точными top/left из Figma. Mobile — потом отдельно.
+   ============================================================ */
+.tr-income-info {
+  position: relative;
+  width: 1228px;
+  height: 351px;
+  background: #FFF;
+  border-radius: 29.5px;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+}
+/* Figma: 13.334×13.336 top:34 left:1181 */
+.tr-income-info-close {
+  position: absolute;
+  top: 34px; left: 1181px;
+  width: 13.334px; height: 13.336px;
+  padding: 0; border: 0;
+  background: none !important;
+  color: #1E1E1E !important;
+  cursor: pointer;
+  display: block;
+}
+.tr-income-info-close svg { width: 100%; height: 100%; display: block; }
+.tr-income-info-close:hover { opacity: .7; }
+/* Figma: w:1130 h:126 top:55 left:49 (centered in 1228) */
+.tr-income-info-text {
+  position: absolute;
+  top: 55px; left: 49px;
+  width: 1130px; height: 126px;
+  margin: 0;
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -1.4px;
+  line-height: 1.113;
+  text-align: center;
+  color: #1E1E1E;
+}
+/* Figma: top:181, centered horizontally */
+.tr-income-info-q {
+  position: absolute;
+  top: 181px; left: 0; right: 0;
+  margin: 0;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 1.113;
+  text-align: center;
+  color: #1E1E1E;
+  white-space: nowrap;
+}
+/* Figma: 424×68 top:236 left:402, radius 34, Inter 700 32px white centered */
+.tr-income-info-cta {
+  position: absolute;
+  top: 236px; left: 402px;
+  width: 424px; height: 68px;
+  padding: 0; border: 0;
+  border-radius: 34px;
+  background: #CC3A3A !important;
+  color: #FFF !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.805;
+  text-align: center;
+  cursor: pointer;
+  transition: background .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.tr-income-info-cta:hover { background: #b03030 !important; }
+
+/* ============================================================
+   CHATS BLOCK 1:1 — Figma 4096:81
+   Bage 452×83, card 1228×837, 4 rows 1108×153.
+   Все дочерние — position:absolute с точными Figma-координатами.
+   Frame origin (0,0). Card local origin = (0, 0) внутри .tr-chats-card.
+   ============================================================ */
+#chats.tr-section { padding-bottom: clamp(60px, 8vw, 130px); }
+.tr-chats-frame {
+  position: relative;
+  width: 1228px;
+  height: 1008px;         /* от badge top:71 до card bottom:1079 = 1008 */
+  margin: 0 auto;
+}
+/* Badge 452×83 centered horizontally (frame top:71 → local top:0) */
+.tr-chats-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 452px;
+  height: 83px;
+  border: 4px solid #DFED8C;
+  border-radius: 41.5px;
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  color: #FFF;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: -2px;
+  line-height: 1.173;
+  text-transform: uppercase;
+  text-align: center;
+}
+.tr-chats-badge .c-lime { color: #DFED8C; }
+
+/* Card 1228×837, top:171. Скроллим вертикально (нативный скроллбар
+   спрятан). Кастомный track/thumb — декоративные (пока статичны). */
+.tr-chats-card {
+  position: absolute;
+  top: 171px;
+  left: 0;
+  width: 1228px;
+  height: 837px;
+  background: rgba(30,30,30,0.58);
+  border-radius: 29.5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;              /* Firefox */
+}
+.tr-chats-card::-webkit-scrollbar { display: none; }  /* WebKit */
+/* Scroll track/thumb (Figma: track w:7 h:723 top:58; thumb h:259.618 top:101.44) */
+.tr-chats-track {
+  position: absolute;
+  top: 58px;
+  left: 1203px;  /* frame 1309 - card offset 106 */
+  width: 7px;
+  height: 723px;
+  border-radius: 3.5px;
+  background: rgba(255,255,255,0.14);
+}
+.tr-chats-thumb {
+  position: absolute;
+  top: 101.44px;
+  left: 1203px;
+  width: 7px;
+  height: 259.618px;
+  border-radius: 3.5px;
+  background: #DFED8C;
+}
+
+/* Base row: 1108×153, radius 29.5. Left-offset — как в Figma
+   (calc(50%-560.5) = card_center 614 - 6.5 - row_half 554 = 53.5 от левого края).
+   Мы позиционируем через left:60 для перфекта в 1228, но Figma указывает
+   именно 53.5 → используем calc для 1:1. */
+.tr-chat-row {
+  position: absolute;
+  left: calc(50% - 560.5px);
+  width: 1108px;
+  height: 153px;
+  border-radius: 29.5px;
+}
+.tr-chat-row--lime { background: rgba(223,237,140,0.69); }
+.tr-chat-row--red  { background: rgba(204,58,58,0.55); }
+
+/* Y-позиции 4 рядов (Figma top → local = -242 offset от frame) */
+.tr-chat-row--r1 { top: 58px;  } /* 300 - 242 */
+.tr-chat-row--r2 { top: 248.07px; } /* 490.07 - 242 */
+.tr-chat-row--r3 { top: 438px; } /* 680 - 242 */
+.tr-chat-row--r4 { top: 628px; } /* 870 - 242 */
+
+/* Аватар 103×103 (Figma: left:calc(50%-475), top:325 → в row 25).
+   Внутри img — Figma-percentages (px мы вычислим): контейнер 103, поэтому
+   1% = 1.03px. Позиция и размер img отличаются для каждого аватара. */
+.tr-chat-avatar-big {
+  position: absolute;
+  top: 25px;
+  left: 85.5px;
+  width: 103px;
+  height: 103px;
+  border-radius: 82px;
+  overflow: hidden;
+  background: #d9d9d9;
+}
+.tr-chat-avatar-big img {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+/* Vadim (imgRectangle253): w:248.23% h:185.15% left:-140.59% top:-22.73% */
+.tr-chat-row--r1 .tr-chat-avatar-big img,
+.tr-chat-row--r3 .tr-chat-avatar-big img {
+  width: 248.23%; height: 185.15%;
+  left: -140.59%; top: -22.73%;
+}
+/* Kristina (imgRectangle271): w:450.27% h:263.93% left:-205.13% top:-31.49% */
+.tr-chat-row--r2 .tr-chat-avatar-big img {
+  width: 450.27%; height: 263.93%;
+  left: -205.13%; top: -31.49%;
+}
+/* Group main (imgRectangle275): w:392.1% h:292.45% left:-284.45% top:-74.61% */
+.tr-chat-row--r4 .tr-chat-avatar-big img {
+  width: 392.1%; height: 292.45%;
+  left: -284.45%; top: -74.61%;
+}
+
+/* Mini avatar for group (50×50, top:950 in frame → -870=80 in row; left calc(50%-512.5)
+   frame; row calc(50%-560.5) → local = (calc(50%-512.5)) - (calc(50%-560.5)) = 48 */
+.tr-chat-avatar-mini {
+  position: absolute;
+  top: 80px;
+  left: 48px;
+  width: 50px; height: 50px;
+  border-radius: 82px;
+  overflow: hidden;
+  background: #d9d9d9;
+  border: 3px solid rgba(204,58,58,0.55); /* соответствует row bg */
+}
+.tr-chat-avatar-mini img {
+  position: absolute; display: block; max-width: none;
+  width: 450.27%; height: 263.93%; left: -205.13%; top: -31.49%;
+}
+
+/* Nano avatar for group (27×27, top:936→66 in row; left calc(50%-529) frame
+   → local = calc(50%-529) - calc(50%-560.5) = 31.5) */
+.tr-chat-avatar-nano {
+  position: absolute;
+  top: 66px;
+  left: 31.5px;
+  width: 27px; height: 27px;
+  border-radius: 82px;
+  overflow: hidden;
+  background: #d9d9d9;
+}
+.tr-chat-avatar-nano img {
+  position: absolute; display: block; max-width: none;
+  width: 248.23%; height: 185.15%; left: -140.59%; top: -22.73%;
+}
+
+/* «9» count-pill for group (Figma bg 40×36 at left:265 top:964; text at 279,972)
+   In row: bg left = 265 - card_offset(106) - row_left(53.5) = 105.5;
+           top = 964 - 870 = 94 */
+.tr-chat-count {
+  position: absolute;
+  left: 105.5px;
+  top: 94px;
+  width: 40px;
+  height: 36px;
+  border-radius: 20.5px;
+  background: rgba(223,237,140,0.65);
+  display: flex; align-items: center; justify-content: center;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -1px;
+  line-height: 0.8782;
+}
+
+/* Name (Figma: h:35 top:330→30, w:348, Inter Medium 32px, tracking -1.6, ink)
+   left frame calc(50%-401.5) → row local = calc(50%-401.5) - calc(50%-560.5) = 159 */
+.tr-chat-name {
+  position: absolute;
+  top: 30px;
+  left: 159px;
+  width: 348px;
+  height: 35px;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
+  color: #1E1E1E;
+}
+.tr-chat-name--white { color: #FFF; }
+
+/* Preview (2 lines default; Figma: left:319 frame → row local = 319-106-53.5 = 159.5;
+   top:380.04→80.04; w:637; Inter Medium 24px, tracking -1.2, ink) */
+.tr-chat-preview {
+  position: absolute;
+  top: 80.04px;
+  left: 159.5px;
+  width: 637px;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  color: #1E1E1E;
+}
+.tr-chat-preview--white { color: #FFF; width: 614px; }
+.tr-chat-preview--1line { top: 60.04px; height: auto; }
+.tr-chat-preview b { font-weight: 700; }
+
+/* «1 новое сообщение» pill (Figma: 253×36 at left:932.56, top:281.93 in frame)
+   row local: left = 932.56-106-53.5 = 773.06; top = 281.93-300 = -18.07 (over row top) */
+.tr-chat-badge {
+  position: absolute;
+  top: -18.07px;
+  left: 773.06px;
+  width: 253px;
+  height: 36px;
+  border-radius: 20.5px;
+  background: #CC3A3A;
+  color: #FFF;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -1px;
+  line-height: 0.8782;
+  display: flex; align-items: center; justify-content: center;
+  padding-left: 37px;
+  padding-right: 30px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Arrow button (Figma: circle 67×68 at left:1156 top:346 in frame)
+   row local: left = 1156-106-53.5 = 996.5; top = 346-300 = 46 */
+.tr-chat-arrow-btn {
+  position: absolute;
+  top: 46px;
+  left: 996.5px;
+  width: 67px;
+  height: 68px;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
+}
+.tr-chat-arrow-btn:hover { transform: scale(1.05); }
+.tr-chat-arrow-btn--red  { background: #CC3A3A !important; }
+.tr-chat-arrow-btn--lime { background: #DFED8C !important; }
+/* Figma-иконка нарисована стрелкой вправо, но кнопка обёрнута в rotate-180 —
+   выходит стрелка влево. Крутим здесь. */
+.tr-chat-arrow-btn img { width: 32px; height: auto; display: block; transform: rotate(180deg); }
