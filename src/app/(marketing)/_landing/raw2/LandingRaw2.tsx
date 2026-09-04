@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { PASSWORD_MIN } from "@/lib/validations";
 import RoastQuiz from "./RoastQuiz";
+import { ArrowIcon } from "@/components/icons/ArrowIcon";
 
 /* ------------------------------------------------------------------
    RAW ENGLISH — new landing (Figma "Главная RAW english")
@@ -15,23 +16,12 @@ import RoastQuiz from "./RoastQuiz";
 const CONTACT_HREF = "#contact";
 
 /* ---------- inline icons ---------- */
-const ArrowRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-    <path d="M4 12h15M13 6l7 6-7 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 /**
  * Filled стрелка ← / → как в pill-arrow дашборда (Figma node 4140:86).
- * Использует path из свг Figma (viewBox сжат до 37×37 для чистой сетки).
+ * Использует единый ArrowIcon (37×37), CSS-размер через .btn-arrow / .disc.
  */
 const ArrowRightFilled = () => (
-  <svg viewBox="0 0 37 37" fill="none" aria-hidden>
-    <path
-      d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z"
-      fill="currentColor"
-    />
-  </svg>
+  <ArrowIcon direction="right" size="100%" />
 );
 const Chevron = () => (
   <svg width="30" height="20" viewBox="0 0 30 20" fill="none" className="chev" aria-hidden>

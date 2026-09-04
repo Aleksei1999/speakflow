@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { CheckIcon } from "@/components/icons/CheckIcon"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
@@ -960,7 +961,7 @@ export function LessonRoomClient({
             <div className="lesson-bottom">
               <div className="bb-card" onClick={()=>setHwOpen(!hwOpen)}>
                 <div className="bb-icon lime">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  <CheckIcon size={24} />
                 </div>
                 <div>
                   <div className="title">Домашнее задание</div>

@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ArrowIcon } from "@/components/icons/ArrowIcon"
+import { CheckIcon } from "@/components/icons/CheckIcon"
 
 // Fallback-моки вопросов если у заявки нет testAnswers (маловероятно —
 // fetchTrialApplicationsForAdmin фильтрует по test=true).
@@ -130,23 +132,7 @@ function levelLabel(lvl: string) {
 }
 
 function ArrowRight({ size = 32 }: { size?: number }) {
-  return (
-    <svg
-      viewBox="0 0 32 18"
-      fill="none"
-      aria-hidden
-      width={size}
-      height={(size * 18) / 32}
-    >
-      <path
-        d="M2 9h27M22 2l7 7-7 7"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  return <ArrowIcon direction="right" size={size} />
 }
 
 // Круглая стрелка ← 79×79 (лаймовая заливка + белая обводка), точно
@@ -1054,9 +1040,7 @@ export default function AdminRawDashboard({
                             <path d="M2 5l14 12L30 5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 37 37" width="32" height="32" fill="none" aria-hidden style={{ transform: "scaleX(-1)" }}>
-                            <path d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z" fill="#1E1E1E"/>
-                          </svg>
+                          <ArrowIcon direction="left" size={32} style={{ color: "#1E1E1E" }} />
                         )}
                       </button>
                       {isOpen && (
@@ -1065,9 +1049,7 @@ export default function AdminRawDashboard({
                             {qTotalPages > 1 && (
                               <button type="button" className="tr-q-prev" aria-label="Предыдущие"
                                 onClick={() => setQPage((p) => (p - 1 + qTotalPages) % qTotalPages)}>
-                                <svg viewBox="0 0 37 37" width="24" height="24" fill="none" aria-hidden>
-                                  <path d="M34.5 15.9099C35.8807 15.9099 37 17.0292 37 18.4099C37 19.7906 35.8807 20.9099 34.5 20.9099V18.4099V15.9099ZM0.732233 20.1777C-0.244078 19.2014 -0.244078 17.6184 0.732233 16.6421L16.6421 0.732233C17.6184 -0.244078 19.2014 -0.244078 20.1777 0.732233C21.154 1.70854 21.154 3.29146 20.1777 4.26777L6.03553 18.4099L20.1777 32.552C21.154 33.5283 21.154 35.1113 20.1777 36.0876C19.2014 37.0639 17.6184 37.0639 16.6421 36.0876L0.732233 20.1777ZM34.5 18.4099V20.9099H2.5V18.4099V15.9099H34.5V18.4099Z" fill="#1E1E1E"/>
-                                </svg>
+                                <ArrowIcon direction="left" size={24} style={{ color: "#1E1E1E" }} />
                               </button>
                             )}
                             {currentQuestions.map((q, i) => (
@@ -1112,9 +1094,7 @@ export default function AdminRawDashboard({
                               <button type="button" className="tr-q-next"
                                 aria-label={`Следующие (${qPage + 1}/${qTotalPages})`}
                                 onClick={() => setQPage((p) => (p + 1) % qTotalPages)}>
-                                <svg viewBox="0 0 37 37" width="24" height="24" fill="none" aria-hidden>
-                                  <path d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z" fill="#1E1E1E"/>
-                                </svg>
+                                <ArrowIcon direction="right" size={24} style={{ color: "#1E1E1E" }} />
                               </button>
                             )}
                           </div>
@@ -1274,9 +1254,7 @@ export default function AdminRawDashboard({
                       }}
                     >
                       {picked && (
-                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden className="tr-assign-radio-check">
-                          <path d="M4 12.5l5 5 11-12" stroke="#DFED8C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <CheckIcon size={26} className="tr-assign-radio-check" style={{ color: "#DFED8C" }} />
                       )}
                     </button>
                   </li>
@@ -1294,9 +1272,7 @@ export default function AdminRawDashboard({
             <button type="button" className="tr-confirm-close" aria-label="Закрыть" onClick={() => setAssignConfirm(null)}>×</button>
             <div className="tr-confirm-title">Преподаватель назначен</div>
             <div className="tr-confirm-check" aria-hidden>
-              <svg viewBox="0 0 40 40" width="30" height="30" fill="none">
-                <path d="M10 20l7 7 14-14" stroke="#DFED8C" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <CheckIcon size={30} style={{ color: "#DFED8C" }} />
             </div>
             <div className="tr-confirm-teacher">{assignConfirm.teacherName}</div>
             <div className="tr-confirm-student">для ученика {assignConfirm.studentName}</div>

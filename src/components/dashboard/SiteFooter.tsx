@@ -20,7 +20,7 @@ export default function SiteFooter({ supportHref = "/support", onSupportClick }:
   return (
     <footer className="sf-footer">
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260902-5" />
+      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260904-6" />
 
       <div className="sf-inner">
         <div className="sf-col sf-col-links">

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { ArrowIcon } from "@/components/icons/ArrowIcon"
 import { useRouter } from "next/navigation"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
@@ -123,17 +124,7 @@ function useClock() {
 }
 
 function ArrowRight({ size = 32 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 32 18" fill="none" aria-hidden width={size} height={(size * 18) / 32}>
-      <path
-        d="M2 9h27M22 2l7 7-7 7"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  return <ArrowIcon direction="right" size={size} />
 }
 
 const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]

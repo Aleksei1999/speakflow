@@ -520,8 +520,21 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .rq-bot { color: var(--ink); font-weight: 500; font-size: clamp(1.2rem,2vw,26px); letter-spacing: -0.04em; line-height: 1.2; }
 .rq-cta { text-transform: uppercase; padding: 15px 40px; font-size: clamp(1.05rem,1.7vw,22px); }
 
-.raw2-footer { background: #fff; padding: 34px 0 46px; font-family: 'Inter', sans-serif; color: #1E1E1E; }
-.raw2-footer .inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+/* Figma frame: 1441×328 — фон растянут на viewport, контентный блок
+   центрирован по горизонтали, вертикально колонки — по центру. */
+.raw2-footer { background: #fff; font-family: 'Inter', sans-serif; color: #1E1E1E; }
+.raw2-footer .inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  max-width: 1441px;
+  min-height: 328px;
+  margin: 0 auto;
+  padding: 34px clamp(24px, 4vw, 60px) 46px;
+  box-sizing: border-box;
+}
 .raw2-footer .fcol-links { display: flex; flex-direction: column; gap: 8px; font-size: 20px; font-weight: 500; letter-spacing: -1px; line-height: 1.13; }
 .raw2-footer .fcol-links a { color: #1E1E1E; text-decoration: none; }
 .raw2-footer .fcol-links .fmut { color: rgba(30, 30, 30, 0.70); }

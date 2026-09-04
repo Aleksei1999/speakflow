@@ -2,21 +2,27 @@
    SiteFooter — общий подвал для teacher/student/admin дашбордов
    Разметка/типографика — 1:1 как у .raw2-footer на главной.
    ============================================================ */
+/* Figma frame: 1441×328. Фон растянут на весь viewport (одинаковый белый),
+   контентный блок жёстко 1441 × min-height 328 и центрирован по горизонтали
+   через margin:auto. Внутренние колонки: слева/центр/справа через
+   space-between, вертикально — по центру блока. */
 .sf-footer {
   background: #fff;
   margin-top: 120px;
-  padding: 34px 0 46px;
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
 }
 .sf-inner {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 30px;
+  width: 100%;
   max-width: 1441px;
+  min-height: 328px;
   margin: 0 auto;
-  padding: 0 clamp(24px, 4vw, 60px);
+  padding: 34px clamp(24px, 4vw, 60px) 46px;
+  box-sizing: border-box;
 }
 
 .sf-col-links {

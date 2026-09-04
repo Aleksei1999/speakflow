@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { ArrowIcon } from "@/components/icons/ArrowIcon"
+import { CheckIcon } from "@/components/icons/CheckIcon"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import AddLessonModal from "./AddLessonModal"
@@ -176,11 +178,7 @@ function formatRub(kopecks: number): string {
 }
 
 function ArrowRight({ size = 32 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 32 18" fill="none" aria-hidden width={size} height={(size * 18) / 32}>
-      <path d="M2 9h27M22 2l7 7-7 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
+  return <ArrowIcon direction="right" size={size} />
 }
 
 function EditIcon() {
@@ -1139,9 +1137,7 @@ export default function TeacherRawDashboard({
                     >
                       <span className={`tr-modal-check ${on ? "on" : ""}`} aria-hidden>
                         {on && (
-                          <svg viewBox="0 0 16 13" width="16" height="13" fill="none">
-                            <path d="M2 7l4 4 8-9" stroke="#DFED8C" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <CheckIcon size={16} style={{ color: "#DFED8C" }} />
                         )}
                       </span>
                       <div className="tr-stu tr-stu--modal">
@@ -1219,9 +1215,7 @@ export default function TeacherRawDashboard({
                 и появится у вас в чатах
               </p>
               <div className="tr-modal-success-check" aria-hidden>
-                <svg viewBox="0 0 32 26" width="32" height="26" fill="none">
-                  <path d="M4 14l8 8 16-18" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <CheckIcon size={32} style={{ color: "#fff" }} />
               </div>
               <h3 className="tr-modal-success-name">{groupName || "Группа"}</h3>
               <button
@@ -1232,9 +1226,7 @@ export default function TeacherRawDashboard({
                 onClick={() => setGroupStep("name")}
                 disabled={!backEnabled}
               >
-                <svg viewBox="0 0 22 18" width="22" height="18" fill="none" aria-hidden>
-                  <path d="M20 9H3M10 2L2 9l8 7" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowIcon direction="left" size={22} style={{ color: "#fff" }} />
               </button>
             </div>
           )}
@@ -1527,9 +1519,7 @@ export default function TeacherRawDashboard({
                       <path d="M2 5l14 12L30 5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 37 37" width="32" height="32" fill="none" aria-hidden style={{ transform: "scaleX(-1)" }}>
-                      <path d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z" fill="#1E1E1E"/>
-                    </svg>
+                    <ArrowIcon direction="left" size={32} style={{ color: "#1E1E1E" }} />
                   )}
                 </button>
                 {isOpen && (
@@ -1542,9 +1532,7 @@ export default function TeacherRawDashboard({
                           aria-label="Предыдущие вопросы"
                           onClick={() => setQPage((p) => (p - 1 + qTotalPages) % qTotalPages)}
                         >
-                          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden>
-                            <path d="M13 8H4M8 3L3 8l5 5" stroke="#DFED8C" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <ArrowIcon direction="left" size={14} style={{ color: "#DFED8C" }} />
                         </button>
                       )}
                       {currentQuestions.map((q, i) => (
@@ -1588,9 +1576,7 @@ export default function TeacherRawDashboard({
                           aria-label={`Следующие вопросы (${qPage + 1} из ${qTotalPages})`}
                           onClick={() => setQPage((p) => (p + 1) % qTotalPages)}
                         >
-                          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden>
-                            <path d="M3 8h9M8 3l5 5-5 5" stroke="#DFED8C" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <ArrowIcon direction="right" size={14} style={{ color: "#DFED8C" }} />
                         </button>
                       )}
                     </div>
