@@ -289,7 +289,8 @@
   padding: 0 0 0 clamp(14px, 1.4vw, 20px);
   overflow: hidden;
 }
-.tr-modal .tr-stu { background: #DFED8C; border-radius: 29.5px; }
+.tr-modal .tr-stu { background: #DFED8C; border-radius: 29.5px; align-items: center; }
+.tr-modal .tr-stu-name { text-align: center; }
 .tr-stu-avatar {
   flex: 0 0 auto;
   width: clamp(70px, 6.7vw, 93px);
@@ -1296,7 +1297,7 @@
   border-radius: 999px;
   background: rgba(255,255,255,0.06) !important;
   color: var(--white) !important;
-  border: 1px solid rgba(255,255,255,0.24);
+  border: 2px solid rgba(255,255,255,0.24);
   font-family: 'Inter', sans-serif;
   font-size: 15px;
   line-height: 1;
@@ -1666,7 +1667,7 @@
   height: min(869px, calc(100vh - 40px));
   background: #1E1E1E;
   border-radius: 29.5px;
-  padding: 40px 73px 50px 52px;
+  padding: 40px 40px 50px 40px;
   display: flex; flex-direction: column;
   color: #fff;
   overflow: hidden;
@@ -1694,9 +1695,9 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0 8px 22px;
-  margin-left: -22px;
+  padding: 8px 0;
   display: flex; flex-direction: column;
+  align-items: center;
   gap: 39px;
   scrollbar-width: thin;
   scrollbar-color: #DFED8C rgba(255,255,255,.14);
@@ -1708,9 +1709,10 @@
   position: relative;
   display: block;
   background: transparent;
-  padding: 0 0 0 22px;
+  padding: 0;
   text-align: left;
-  width: 100%;
+  width: 539px;
+  max-width: 100%;
 }
 .tr-modal-check {
   position: absolute;
@@ -1934,7 +1936,6 @@
 .tr-stu-modal-card span { display: block; }
 .tr-stu-modal-card--empty {
   color: rgba(30, 30, 30, 0.5);
-  font-style: italic;
   font-size: 20px;
 }
 /* Clickable-версия (hover → cursor pointer + подсветка). */
@@ -1947,41 +1948,21 @@
   transition: background .15s;
 }
 .tr-stu-modal-card--clickable:hover { background: #F7F7F0; }
-/* Textarea в режиме редактирования — размеры карточки + resize:none. */
+/* Textarea всегда видима — авто-сохранение по debounce. */
 .tr-stu-modal-card--edit {
   resize: none;
   padding: 24px 40px;
-  border: 2px solid #DFED8C;
+  border: 2px solid transparent;
   outline: none;
   font-family: 'Inter', sans-serif;
+  text-align: center;
+  transition: border-color .15s;
+}
+.tr-stu-modal-card--edit::placeholder {
+  color: rgba(30, 30, 30, 0.5);
+  font-size: 20px;
 }
 .tr-stu-modal-card--edit:focus { border-color: #1E1E1E; }
-/* Кнопки Save/Cancel под карточкой в режиме редактирования. */
-.tr-stu-modal-bio-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 14px;
-}
-.tr-stu-modal-bio-save,
-.tr-stu-modal-bio-cancel {
-  padding: 10px 26px;
-  border-radius: 22px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  transition: transform .1s, background .15s;
-}
-.tr-stu-modal-bio-save {
-  background: #DFED8C; color: #1E1E1E; border: none;
-}
-.tr-stu-modal-bio-save:hover:not(:disabled) { background: #CFE06A; transform: translateY(-1px); }
-.tr-stu-modal-bio-save:disabled { opacity: 0.55; cursor: not-allowed; }
-.tr-stu-modal-bio-cancel {
-  background: transparent; color: #FFF; border: 1px solid rgba(255,255,255,0.35);
-}
-.tr-stu-modal-bio-cancel:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
 .tr-stu-modal-count {
   position: absolute;
   right: 0;
@@ -2172,8 +2153,10 @@
 .tr-modal--name .tr-modal-footer { padding-top: 0; margin-top: 0; }
 .tr-modal-done {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 182px;
+  min-width: 260px;
+  width: auto;
   height: 68px;
+  padding: 0 44px;
   background: #CC3A3A;
   color: #fff;
   border-radius: 34px;
@@ -2182,6 +2165,7 @@
   font-size: 32px;
   letter-spacing: -0.05em;
   line-height: 0.805;
+  white-space: nowrap;
   transition: background .2s;
 }
 .tr-modal-done:hover { background: var(--red-deep); }

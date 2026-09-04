@@ -1092,7 +1092,7 @@ export default function StudentRawDashboard({
 
           <div className="st-bal-side">
             <div className="st-topup-card">
-              <h3>Пополнение баланса</h3>
+              <h3>Пополнение<br />баланса</h3>
               <input
                 type="tel"
                 className="st-topup-input"

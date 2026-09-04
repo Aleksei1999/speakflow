@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
 import { CheckIcon } from "@/components/icons/CheckIcon"
@@ -689,15 +689,20 @@ export default function TeacherRawDashboard({
     updatedByName: string | null
     updatedAt: string
   } | null>(null)
-  const [bioEditing, setBioEditing] = useState(false)
   const [bioDraft, setBioDraft] = useState("")
   const [bioSaving, setBioSaving] = useState(false)
+  const bioLoadedRef = useRef<string | null>(null)
+  const bioSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!studentModalId) {
       setStudentLatestNote(null)
       setStudentBio(null)
-      setBioEditing(false)
       setBioDraft("")
+      bioLoadedRef.current = null
+      if (bioSaveTimerRef.current) {
+        clearTimeout(bioSaveTimerRef.current)
+        bioSaveTimerRef.current = null
+      }
       return
     }
     let cancelled = false
@@ -715,7 +720,11 @@ export default function TeacherRawDashboard({
         if (bioRes.ok) {
           const data = await bioRes.json()
           setStudentBio(data.note ?? null)
-          setBioDraft(data.note?.content ?? "")
+          const initial = data.note?.content ?? ""
+          setBioDraft(initial)
+          bioLoadedRef.current = initial
+        } else {
+          bioLoadedRef.current = ""
         }
       } catch (e) {
         console.error('[student-modal] fetch failed', e)
@@ -724,9 +733,8 @@ export default function TeacherRawDashboard({
     return () => { cancelled = true }
   }, [studentModalId])
 
-  async function saveBio() {
-    if (!studentModalId || bioSaving) return
-    const content = bioDraft.trim().slice(0, 500)
+  async function saveBio(content: string) {
+    if (!studentModalId) return
     setBioSaving(true)
     try {
       const res = await fetch(`/api/teacher/students/${studentModalId}/bio`, {
@@ -735,19 +743,32 @@ export default function TeacherRawDashboard({
         body: JSON.stringify({ content }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data.error || `HTTP ${res.status}`)
-        return
-      }
+      if (!res.ok) return
       setStudentBio(data.note ?? null)
-      setBioDraft(data.note?.content ?? "")
-      setBioEditing(false)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Ошибка сохранения")
+      console.error('[student-modal] bio save failed', e)
     } finally {
       setBioSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (!studentModalId) return
+    if (bioLoadedRef.current === null) return
+    const trimmed = bioDraft.trim().slice(0, 500)
+    if (trimmed === (bioLoadedRef.current ?? "").trim().slice(0, 500)) return
+    if (bioSaveTimerRef.current) clearTimeout(bioSaveTimerRef.current)
+    bioSaveTimerRef.current = setTimeout(() => {
+      bioLoadedRef.current = trimmed
+      void saveBio(trimmed)
+    }, 700)
+    return () => {
+      if (bioSaveTimerRef.current) {
+        clearTimeout(bioSaveTimerRef.current)
+        bioSaveTimerRef.current = null
+      }
+    }
+  }, [bioDraft, studentModalId])
   useEffect(() => {
     if (!studentModalId) return
     const onKey = (e: KeyboardEvent) => {
@@ -1179,7 +1200,7 @@ export default function TeacherRawDashboard({
               <input
                 type="text"
                 className="tr-modal-input"
-                placeholder="название группы"
+                placeholder="Название группы"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 autoFocus
@@ -1297,64 +1318,16 @@ export default function TeacherRawDashboard({
 
             <div className="tr-stu-modal-section">
               <div className="tr-stu-modal-title">Об ученике</div>
-              {bioEditing ? (
-                <>
-                  <textarea
-                    className="tr-stu-modal-card tr-stu-modal-card--edit"
-                    maxLength={500}
-                    placeholder="Расскажите об ученике: интересы, цели, особенности…"
-                    value={bioDraft}
-                    onChange={(e) => setBioDraft(e.target.value)}
-                    autoFocus
-                    disabled={bioSaving}
-                  />
-                  <div className="tr-stu-modal-count">{bioDraft.length}/500</div>
-                  <div className="tr-stu-modal-bio-actions">
-                    <button
-                      type="button"
-                      className="tr-stu-modal-bio-save"
-                      onClick={saveBio}
-                      disabled={bioSaving}
-                    >
-                      {bioSaving ? "Сохраняем…" : "Сохранить"}
-                    </button>
-                    <button
-                      type="button"
-                      className="tr-stu-modal-bio-cancel"
-                      onClick={() => {
-                        setBioEditing(false)
-                        setBioDraft(studentBio?.content ?? "")
-                      }}
-                      disabled={bioSaving}
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={`tr-stu-modal-card tr-stu-modal-card--clickable${!studentBio ? " tr-stu-modal-card--empty" : ""}`}
-                    onClick={() => {
-                      setBioDraft(studentBio?.content ?? "")
-                      setBioEditing(true)
-                    }}
-                    title="Нажмите чтобы редактировать"
-                  >
-                    {studentBio?.content
-                      ? studentBio.content.split(/\r?\n/).map((line, i) => (
-                          <span key={i}>{line}</span>
-                        ))
-                      : "Добавьте информацию об ученике…"}
-                  </button>
-                  {studentBio?.updatedByName && (
-                    <div className="tr-stu-modal-count">
-                      {studentBio.updatedByName}
-                    </div>
-                  )}
-                </>
-              )}
+              <textarea
+                className="tr-stu-modal-card tr-stu-modal-card--edit"
+                maxLength={500}
+                placeholder="Добавьте информацию об ученике…"
+                value={bioDraft}
+                onChange={(e) => setBioDraft(e.target.value)}
+              />
+              <div className="tr-stu-modal-count">
+                {bioSaving ? "Сохраняем…" : studentBio?.updatedByName ?? ""}
+              </div>
             </div>
 
             <div className="tr-stu-modal-section">

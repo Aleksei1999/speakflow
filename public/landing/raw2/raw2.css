@@ -75,8 +75,8 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   padding: 16px 40px; border-radius: var(--radius-pill);
 }
 .raw2 .badge-title--lime   { background: var(--lime); color: var(--ink); }
-.raw2 .badge-title--outline { background: transparent; border: 2.5px solid var(--ink); color: var(--ink); }
-.raw2 .badge-title--outline-lime { background: transparent; border: 2.5px solid var(--lime); color: #fff; }
+.raw2 .badge-title--outline { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+.raw2 .badge-title--outline-lime { background: transparent; border: 2px solid var(--lime); color: #fff; }
 
 /* ============================================================
    NAV

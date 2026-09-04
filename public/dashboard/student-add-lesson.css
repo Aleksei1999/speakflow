@@ -316,9 +316,12 @@
 .sal-success-title {
   margin: 20px 0 0;
   text-align: center;
-  font-size: 26px;
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  line-height: 0.9746;
+  letter-spacing: -1.6px;
+  color: #1E1E1E;
 }
 .sal-success-check {
   display: flex;
@@ -328,11 +331,15 @@
 }
 .sal-success-note {
   text-align: center;
-  font-size: 18px;
-  line-height: 1.35;
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 0.9746;
+  letter-spacing: -1.2px;
   color: #1E1E1E;
   margin: 4px 0 6px;
 }
+.sal-success-note b { font-weight: 700; }
 .sal-success-back {
   align-self: center;
   margin-top: 10px;

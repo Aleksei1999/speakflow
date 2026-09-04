@@ -63,7 +63,7 @@ nav.pushed{top:38px}
 .nav-cta-group{display:flex;align-items:center;gap:12px}
 .nav-cta.nav-cta--student{background:var(--red)!important;color:#fff!important;border:none!important}
 .nav-cta.nav-cta--student:hover{background:var(--red-light)!important}
-.nav-cta.nav-cta--teacher{background:transparent!important;color:var(--text)!important;border:1.5px solid var(--text)!important;box-shadow:none!important}
+.nav-cta.nav-cta--teacher{background:transparent!important;color:var(--text)!important;border:2px solid var(--text)!important;box-shadow:none!important}
 .nav-cta.nav-cta--teacher:hover{background:var(--text)!important;color:var(--bg)!important;transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.15)!important}
 
 /* ===== SECTIONS BASE ===== */
