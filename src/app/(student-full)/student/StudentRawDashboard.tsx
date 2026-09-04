@@ -613,7 +613,7 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260904-topup3" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260904-topup4" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}

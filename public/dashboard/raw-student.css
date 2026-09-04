@@ -956,7 +956,7 @@
   line-height: 0.975;
   color: rgba(255, 255, 255, .44);
   text-align: center;
-  margin: 50px 0 0;
+  margin: 60px 0 0 !important;
 }
 .st-topup-btn {
   height: 68px;
