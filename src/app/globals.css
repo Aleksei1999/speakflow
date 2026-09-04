@@ -2,6 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Windows-фикс: 27 CSS-файлов используют `font-family: 'Inter', sans-serif`.
+   Inter от next/font подключён под именем var(--font-sans) (хешированное
+   `__Inter_XXXX`). Литерал 'Inter' на Windows не резолвился — браузер
+   падал на Segoe UI с другими метриками → вся вёрстка плыла. Дублируем
+   Inter через Google Fonts под каноничным именем, чтобы все места
+   `font-family: 'Inter'` работали одинаково на macOS/Windows/Linux. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -68,17 +68,8 @@ function LoginPageContent() {
     }
   }
 
-  async function onGoogle() {
-    setErr('')
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-      })
-      if (error) setErr('Не удалось войти через Google')
-    } catch { setErr('Не удалось войти через Google') }
-  }
+  // Google-логин временно отключён — используем только email/пароль.
+  // Логика оставлена как заглушка на случай возврата фичи.
 
   return (
     <div className="raw2 raw2-auth-page">
@@ -140,10 +131,6 @@ function LoginPageContent() {
           <TurnstileWidget onToken={setCaptchaToken} />
           {err && <p className="raw2-login-err">{err}</p>}
           <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Входим…' : 'Войти'}</button>
-          <button type="button" className="btn btn-red raw2-login-oauth" onClick={onGoogle}>
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden><path fill="#fff" d="M22 12.2c0-.7-.06-1.5-.19-2.2H12v4.17h5.62c-.24 1.28-.98 2.36-2.09 3.09v2.57h3.38c1.98-1.82 3.09-4.51 3.09-7.63ZM12 22c2.83 0 5.2-.94 6.94-2.54l-3.38-2.62c-.94.63-2.13.99-3.55.99-2.73 0-5.05-1.85-5.88-4.33H2.65v2.7C4.39 19.71 7.94 22 12 22ZM6.11 13.5c-.21-.63-.33-1.31-.33-2s.12-1.37.33-2v-2.7H2.65C1.87 8.4 1.44 10.15 1.44 12s.43 3.6 1.21 5.2l3.46-2.7ZM12 6.13c1.54 0 2.92.53 4.01 1.57l3-3C17.19 3.02 14.83 2 12 2 7.94 2 4.39 4.29 2.65 6.8l3.46 2.7c.83-2.48 3.15-4.33 5.89-4.33Z"/></svg>
-            Войти через Google
-          </button>
           <Link href="/forgot-password" className="raw2-login-forgot">Забыл пароль?</Link>
           <Link href="/register" className="raw2-login-reg">Регистрация</Link>
         </form>
