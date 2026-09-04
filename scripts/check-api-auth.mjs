@@ -47,6 +47,13 @@ const ALLOWLIST = new Set([
   "src/app/api/teachers/[id]/reviews/route.ts",
   "src/app/api/teachers/[id]/slots/route.ts",
   "src/app/api/trial-lesson/teachers/route.ts",
+  // Публичный список активных преподов для дропдауна в StudentAddLessonModal
+  // (то же что /api/teachers — только shape под booking-модалку). RLS на
+  // teacher_profiles ограничивает выдачу is_listed=true записями.
+  "src/app/api/booking/teachers/route.ts",
+  // Google OAuth callback: приходит от Google с ?state=<HMAC-signed>. Auth
+  // делается через verifyState(state) — эквивалент CSRF-guard'а.
+  "src/app/api/google/oauth/callback/route.ts",
 ])
 
 function walk(dir, files = []) {
