@@ -27,6 +27,15 @@ async function resolveTeacherProfileId(userId: string): Promise<string | null> {
   return (data as { id: string } | null)?.id ?? null
 }
 
+// Заявки бывают двух типов:
+//   trial_lesson_requests.id (raw UUID) — student уже зарегистрирован
+//   landing_leads.id с префиксом "lead:" — анонимный лид с лендинга
+function parseRequestId(id: string): { kind: "trial" | "lead"; uuid: string } {
+  if (id.startsWith("lead:")) return { kind: "lead", uuid: id.slice(5) }
+  if (id.startsWith("trial:")) return { kind: "trial", uuid: id.slice(6) }
+  return { kind: "trial", uuid: id }
+}
+
 export async function acceptTrialRequest(requestId: string): Promise<TrialActionResult> {
   if (!requestId) return { ok: false, error: "requestId required" }
   let auth: Awaited<ReturnType<typeof requireTeacher>>
@@ -38,6 +47,11 @@ export async function acceptTrialRequest(requestId: string): Promise<TrialAction
   const teacherProfileId = await resolveTeacherProfileId(auth.userId)
   if (!teacherProfileId) return { ok: false, error: "teacher_profiles not found" }
 
+  const parsed = parseRequestId(requestId)
+  if (parsed.kind === "lead") {
+    return { ok: false, error: "Лида нельзя взять до регистрации" }
+  }
+
   const admin = createAdminClient() as UntypedSupabase
   // Атомарно назначаем: только если ещё нет assigned_teacher (иначе кто-то опередил).
   const { data, error } = await admin
@@ -46,7 +60,7 @@ export async function acceptTrialRequest(requestId: string): Promise<TrialAction
       assigned_teacher_id: teacherProfileId,
       status: "assigned",
     })
-    .eq("id", requestId)
+    .eq("id", parsed.uuid)
     .is("assigned_teacher_id", null)
     .in("status", ["pending", "new"])
     .select("id")
@@ -72,10 +86,25 @@ export async function declineTrialRequest(requestId: string): Promise<TrialActio
   if (!teacherProfileId) return { ok: false, error: "teacher_profiles not found" }
 
   const admin = createAdminClient() as UntypedSupabase
+  const parsed = parseRequestId(requestId)
+
+  if (parsed.kind === "lead") {
+    // Лид назначен админом — снимаем назначение, чтобы у учителя пропало
+    // из очереди и админ мог назначить кому-то ещё.
+    const { error } = await admin
+      .from("landing_leads")
+      .update({ assigned_teacher_id: null })
+      .eq("id", parsed.uuid)
+      .eq("assigned_teacher_id", auth.userId)
+    if (error) return { ok: false, error: error.message }
+    invalidateTeacherDashboard(auth.userId)
+    return { ok: true }
+  }
+
   const { error } = await admin
     .from("trial_request_declines")
     .upsert(
-      { teacher_id: teacherProfileId, request_id: requestId },
+      { teacher_id: teacherProfileId, request_id: parsed.uuid },
       { onConflict: "teacher_id,request_id" },
     )
   if (error) return { ok: false, error: error.message }

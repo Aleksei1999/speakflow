@@ -1505,7 +1505,7 @@ export default function TeacherRawDashboard({
                           aria-label="Предыдущие вопросы"
                           onClick={() => setQPage((p) => (p - 1 + qTotalPages) % qTotalPages)}
                         >
-                          <ArrowIcon direction="left" size={14} style={{ color: "#DFED8C" }} />
+                          <ArrowIcon direction="left" size={18} style={{ color: "#DFED8C" }} />
                         </button>
                       )}
                       {currentQuestions.map((q, i) => (
@@ -1549,7 +1549,7 @@ export default function TeacherRawDashboard({
                           aria-label={`Следующие вопросы (${qPage + 1} из ${qTotalPages})`}
                           onClick={() => setQPage((p) => (p + 1) % qTotalPages)}
                         >
-                          <ArrowIcon direction="right" size={14} style={{ color: "#DFED8C" }} />
+                          <ArrowIcon direction="right" size={18} style={{ color: "#DFED8C" }} />
                         </button>
                       )}
                     </div>

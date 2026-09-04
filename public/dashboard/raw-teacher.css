@@ -701,7 +701,7 @@
   height: 39px;
   border-radius: 50%;
   background: #1E1E1E;
-  color: #fff;
+  color: #DFED8C;
   border: 2px solid #1E1E1E;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .2s;
@@ -1951,12 +1951,13 @@
 /* Textarea всегда видима — авто-сохранение по debounce. */
 .tr-stu-modal-card--edit {
   resize: none;
-  padding: 24px 40px;
+  padding: 55px 40px 24px;
   border: 2px solid transparent;
   outline: none;
   font-family: 'Inter', sans-serif;
   text-align: center;
   transition: border-color .15s;
+  overflow-y: auto;
 }
 .tr-stu-modal-card--edit::placeholder {
   color: rgba(30, 30, 30, 0.5);

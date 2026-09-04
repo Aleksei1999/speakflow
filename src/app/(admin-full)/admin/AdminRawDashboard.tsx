@@ -246,7 +246,7 @@ export default function AdminRawDashboard({
   initialChats,
 }: AdminRawDashboardProps = {}) {
   const [chatPeer, setChatPeer] = useState<
-    | { id: string; role: "teacher" | "student" | "admin"; name: string; avatar: string | null }
+    | { id: string; role: "teacher" | "student" | "admin"; name: string; avatar: string | null; level?: string | null }
     | null
   >(null)
   const [chatUnreadOverride, setChatUnreadOverride] = useState<Record<string, number>>({})
@@ -1145,6 +1145,7 @@ export default function AdminRawDashboard({
           peerId={chatPeer.id}
           peerRole={chatPeer.role}
           peerName={chatPeer.name}
+          peerLevel={chatPeer.level ?? undefined}
           peerAvatar={chatPeer.avatar ?? undefined}
           currentUserId={adminUserId}
           currentRole="admin"

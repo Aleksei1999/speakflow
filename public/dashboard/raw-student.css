@@ -910,16 +910,16 @@
   max-width: 406px;
   justify-self: end;
 }
+/* Figma node 4093:73: 406×610, padding 79/25/24, gaps 53/25/72/22 */
 .st-topup-card {
   background: var(--red);
   color: var(--white);
   border-radius: var(--radius-card);
-  padding: 40px 32px;
+  padding: 79px 25px 24px;
   min-height: 610px;
   display: flex; flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 28px;
+  gap: 0;
 }
 .st-topup-card h3 {
   font-family: 'Inter', sans-serif;
@@ -929,6 +929,7 @@
   line-height: 0.975;
   text-align: center;
   color: var(--white);
+  margin: 0 0 53px;
 }
 .st-topup-input {
   width: 100%;
@@ -945,6 +946,7 @@
   text-align: center;
   outline: none;
 }
+.st-topup-input + .st-topup-input { margin-top: 25px; }
 .st-topup-input::placeholder { color: rgba(30, 30, 30, .7); }
 .st-topup-hint {
   font-family: 'Inter', sans-serif;
@@ -954,6 +956,7 @@
   line-height: 0.975;
   color: rgba(255, 255, 255, .44);
   text-align: center;
+  margin: 22px 0 0;
 }
 .st-topup-btn {
   height: 68px;
@@ -969,6 +972,7 @@
   transition: background .2s;
   align-self: center;
   min-width: 198px;
+  margin-top: 72px;
 }
 .st-topup-btn:hover { background: var(--lime-deep) !important; }
 .st-topup-btn:disabled {
