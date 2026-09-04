@@ -613,18 +613,18 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260901-call" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260904-topup" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260902-gap" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260904-arrows-lime" />
       {/* FilesModal — модалка «Библиотека / ДЗ». Без стилей плашки папок валятся в поток документа. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
       {/* StudentAddLessonModal — модалка добавления урока. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260904-typo" />
 
       {/* ================== HERO: nav + SCHEDULE ================== */}
       <div className="st-hero">

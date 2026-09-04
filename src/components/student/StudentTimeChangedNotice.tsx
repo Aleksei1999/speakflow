@@ -25,7 +25,7 @@ export default function StudentTimeChangedNotice({ open, onClose, onOpenCalendar
   return createPortal(
     <>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260904-typo" />
       <div className="sal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
         <div className="sal-card sal-card--small" role="dialog" aria-modal="true">
           <button type="button" className="sal-close" aria-label="Закрыть" onClick={onClose}>

@@ -587,7 +587,7 @@ export default function AdminRawDashboard({
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260903-checkinline" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260904-arrows-lime" />
 
       {/* ================== HERO: nav + dark card holding SCHEDULE ================== */}
       <div className="ad-hero">
