@@ -11,7 +11,7 @@ import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import StudentAddLessonModal from "@/components/student/StudentAddLessonModal"
 import { FilesModal, type FileItem } from "@/components/dashboard/FilesModal"
 import type { ChatListItem } from "@/lib/chat/list"
-import { toRoastLevel } from "@/lib/levels/mapping"
+import { toRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
 import { normalizePhoneRu } from "@/lib/validators/contact"
 import { disconnectStudentGoogleCalendar } from "./calendar-actions"
 import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
@@ -1039,21 +1039,27 @@ export default function StudentRawDashboard({
                 onChange={handleAvatarPick}
               />
               <div>
-                {/* Строка «прожарки» — макс 6 огней, filled по current_streak */}
-                <div className="st-flame-row" aria-label={`Серия: ${currentStreak} из 6`}>
-                  {Array.from({ length: 6 }, (_, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={i}
-                      className="st-flame"
-                      src={i < currentStreak
-                        ? "/dashboard/student/flame/filled.svg"
-                        : "/dashboard/student/flame/empty.svg"}
-                      alt=""
-                      aria-hidden
-                    />
-                  ))}
-                </div>
+                {/* Строка «прожарки» — 6 огней, заполнены по уровню (Raw=1 … Well Done=6). */}
+                {(() => {
+                  const roast = toRoastLevel(englishLevel)
+                  const roastIdx = ROAST_LEVELS.indexOf(roast) + 1
+                  return (
+                    <div className="st-flame-row" aria-label={`Уровень: ${roast} (${roastIdx} из 6)`}>
+                      {Array.from({ length: 6 }, (_, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={i}
+                          className="st-flame"
+                          src={i < roastIdx
+                            ? "/dashboard/student/flame/filled.svg"
+                            : "/dashboard/student/flame/empty.svg"}
+                          alt=""
+                          aria-hidden
+                        />
+                      ))}
+                    </div>
+                  )
+                })()}
                 <div className="st-bal-name">
                   <span>{firstName}</span>
                   {lastName && <span>{lastName}</span>}
