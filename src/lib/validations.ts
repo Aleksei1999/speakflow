@@ -74,16 +74,23 @@ export const teacherProfileSchema = z.object({
   certificates: z.array(z.string()).optional(),
 })
 
+// Допустимые длительности урока: 25/50 (legacy trial/regular), 60/90 (тарифы «час»/«1.5 часа»).
 export const bookingSchema = z.object({
   teacherId: z.string().uuid(),
   scheduledAt: z.string().datetime(),
-  durationMinutes: z.enum(['25', '50']).transform(Number),
+  durationMinutes: z.union([
+    z.literal(25), z.literal(50), z.literal(60), z.literal(90),
+    z.literal('25'), z.literal('50'), z.literal('60'), z.literal('90'),
+  ]).transform((v): number => Number(v)),
 })
 
 export const teacherBookingSchema = z.object({
   studentId: z.string().uuid('Некорректный ID ученика'),
   scheduledAt: z.string().datetime('Некорректный формат даты'),
-  durationMinutes: z.union([z.literal(25), z.literal(50), z.literal('25'), z.literal('50')]).transform(v => Number(v)),
+  durationMinutes: z.union([
+    z.literal(25), z.literal(50), z.literal(60), z.literal(90),
+    z.literal('25'), z.literal('50'), z.literal('60'), z.literal('90'),
+  ]).transform((v): number => Number(v)),
 })
 
 export const levelTestSubmitSchema = z.object({

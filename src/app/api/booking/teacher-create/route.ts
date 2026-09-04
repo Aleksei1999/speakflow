@@ -4,6 +4,7 @@ import { teacherBookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
+import { fetchTeacherRates } from '@/lib/settings/rates'
 
 /**
  * POST /api/booking/teacher-create
@@ -132,10 +133,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Длительность: 25 или 50
-    if (durationMinutes !== 25 && durationMinutes !== 50) {
+    // Длительность: 25 / 50 / 60 / 90 минут.
+    if (![25, 50, 60, 90].includes(durationMinutes)) {
       return NextResponse.json(
-        { error: 'Длительность должна быть 25 или 50 минут' },
+        { error: 'Длительность должна быть 25, 50, 60 или 90 минут' },
         { status: 400 }
       )
     }
@@ -166,18 +167,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Цена: trial_rate если это первый урок между этим учителем и учеником,
-    // иначе hourly_rate. Копируем ту же логику, что и в /api/booking/create.
+    // Price: 60/90 → фиксированные тарифы app_settings (админ настраивает),
+    // иначе (25/50) — trial_rate первого урока / hourly_rate пропорционально.
     const hourlyRate = teacherProfile.hourly_rate
     let price: number
-    if (teacherProfile.trial_rate !== null) {
+    if (durationMinutes === 60 || durationMinutes === 90) {
+      const rates = await fetchTeacherRates().catch(() => ({
+        rate60Kopecks: 0, rate90Kopecks: 0, rateGroupKopecks: 0,
+      }))
+      const fixed = durationMinutes === 60 ? rates.rate60Kopecks : rates.rate90Kopecks
+      price = fixed > 0 ? fixed : Math.round((hourlyRate * durationMinutes) / 60)
+    } else if (teacherProfile.trial_rate !== null) {
       const { count: previousLessons } = await supabase
         .from('lessons')
         .select('id', { count: 'exact', head: true })
         .eq('student_id', studentId)
         .eq('teacher_id', teacherProfileId)
         .in('status', ['booked', 'completed', 'in_progress'])
-
       if (previousLessons === 0) {
         price = Math.round((teacherProfile.trial_rate * durationMinutes) / 60)
       } else {
@@ -227,14 +233,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!lesson) {
+      console.error('[booking/teacher-create] INSERT returned no row without error', { teacherProfileId, studentId })
+      return NextResponse.json({ error: 'Ошибка создания урока' }, { status: 500 })
+    }
+
     // Имя комнаты Jitsi по DB-сгенерированному id
-    const jitsiRoomName = `speakflow-${lesson!.id}`
+    const jitsiRoomName = `speakflow-${lesson.id}`
     // FIXME(types): Postgrest UpdateBuilder инференсится в never
     await (supabase.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
-      .eq('id', lesson!.id)
+      .eq('id', lesson.id)
 
-    void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
 
     // Teacher's cached «Мои ученики» list is derived from lessons — invalidate.
     // user.id is the teacher's auth user_id (we resolved teacher_profiles via
@@ -250,20 +261,20 @@ export async function POST(request: NextRequest) {
       category: 'data',
       action: 'lesson_created_by_teacher',
       target_type: 'lessons',
-      target_id: lesson!.id,
+      target_id: lesson.id,
       payload: {
         teacher_id: teacherProfileId,
         teacher_user_id: user.id,
         student_id: studentId,
-        scheduled_at: lesson!.scheduled_at,
-        duration_minutes: lesson!.duration_minutes,
-        price_kopecks: lesson!.price,
+        scheduled_at: lesson.scheduled_at,
+        duration_minutes: lesson.duration_minutes,
+        price_kopecks: lesson.price,
       },
     })
 
     return NextResponse.json({
-      lessonId: lesson!.id,
-      price: lesson!.price,
+      lessonId: lesson.id,
+      price: lesson.price,
     })
   } catch (error) {
     console.error('Непредвиденная ошибка в teacher-create API:', error)

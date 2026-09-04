@@ -22,14 +22,16 @@ export async function GET() {
     return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'))
   }
 
-  // Пускаем только teacher/admin — обычный student не должен подключать календарь.
+  // Пускаем teacher/admin/student — все могут привязать личный Google Calendar,
+  // чтобы уроки автоматически появлялись у обеих сторон.
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single()
-  if (!profile || (profile.role !== 'teacher' && profile.role !== 'admin')) {
-    return NextResponse.json({ error: 'Forbidden: teacher role required' }, { status: 403 })
+    .maybeSingle<{ role: string }>()
+  const role = profile?.role
+  if (!role || (role !== 'teacher' && role !== 'admin' && role !== 'student')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   let redirectUrl: string

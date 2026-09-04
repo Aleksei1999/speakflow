@@ -68,6 +68,7 @@ function button(text: string, url: string): string {
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
   const subject = 'Добро пожаловать в Raw English!'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://raw-english.com'
   const html = layout(subject, `
     <h2 style="margin:0 0 16px;color:${TEXT_COLOR};font-size:22px;">Привет, ${name}!</h2>
     <p style="color:${TEXT_COLOR};font-size:15px;line-height:1.7;margin:0 0 16px;">
@@ -83,9 +84,9 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
       <li>Удобное расписание и видеозвонки прямо на платформе</li>
     </ul>
     <p style="color:${TEXT_COLOR};font-size:15px;line-height:1.7;margin:0 0 8px;">
-      Начните с прохождения теста на определение уровня английского, а затем выберите преподавателя и забронируйте первый урок.
+      Войдите в личный кабинет, чтобы пройти тест на уровень английского и забронировать первый урок.
     </p>
-    ${button('Начать обучение', `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)}
+    ${button('Войти в аккаунт', `${appUrl}/login`)}
     <p style="color:${TEXT_SECONDARY};font-size:13px;margin:0;">
       Если у вас возникнут вопросы, мы всегда на связи.
     </p>

@@ -5,6 +5,7 @@ import { notifyLessonCancelled } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
+import { deleteEventFromGoogle } from '@/lib/google-calendar/client'
 
 const cancelSchema = z.object({
   lessonId: z.string().uuid('Некорректный идентификатор урока'),
@@ -60,10 +61,12 @@ export async function POST(request: NextRequest) {
       duration_minutes: number
       status: string
       price: number
+      google_event_id: string | null
+      student_google_event_id: string | null
     }
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
-      .select('id, student_id, teacher_id, scheduled_at, duration_minutes, status, price')
+      .select('id, student_id, teacher_id, scheduled_at, duration_minutes, status, price, google_event_id, student_google_event_id')
       .eq('id', lessonId)
       .single<LessonRow>()
 
@@ -150,6 +153,30 @@ export async function POST(request: NextRequest) {
         await (supabase.from('payments') as any)
           .update({ status: 'refunded', refunded_at: new Date().toISOString() })
           .eq('id', payment.id)
+      }
+    }
+
+    // Google Calendar cleanup: удаляем event у учителя И у ученика (fail-soft).
+    // Нужен teacher.user_id — резолвим по teacher_profiles.id.
+    if (lesson.google_event_id) {
+      try {
+        const { data: tpRow } = await supabase
+          .from('teacher_profiles')
+          .select('user_id')
+          .eq('id', lesson.teacher_id)
+          .maybeSingle<{ user_id: string }>()
+        if (tpRow?.user_id) {
+          await deleteEventFromGoogle(tpRow.user_id, lesson.google_event_id)
+        }
+      } catch (e) {
+        console.error('[booking/cancel] Google delete (teacher) failed', e)
+      }
+    }
+    if (lesson.student_google_event_id) {
+      try {
+        await deleteEventFromGoogle(lesson.student_id, lesson.student_google_event_id)
+      } catch (e) {
+        console.error('[booking/cancel] Google delete (student) failed', e)
       }
     }
 

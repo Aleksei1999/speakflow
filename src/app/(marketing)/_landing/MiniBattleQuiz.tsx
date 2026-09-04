@@ -372,6 +372,15 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     intensity: null,
   })
   const [bonusActive, setBonusActive] = useState(false)
+  // Полный лог ответов: text/options денормализованы, чтобы преподаватель мог
+  // разобрать конкретные ответы даже если BANK на лендинге поменяется.
+  const [answersLog, setAnswersLog] = useState<Array<{
+    text: string
+    options: string[]
+    chosen: number
+    correct: number
+    lvl: 1 | 2 | 3 | 4
+  }>>([])
 
   const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -403,6 +412,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     setGoalsStep(0)
     setGoals({ purpose: null, timeline: null, intensity: null })
     setBonusActive(false)
+    setAnswersLog([])
   }, [])
 
   const startBattle = useCallback(() => {
@@ -422,6 +432,11 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
 
       const q = currentQ.q
       const isCorrect = chosen === q.correct
+
+      setAnswersLog((prev) => [
+        ...prev,
+        { text: q.q, options: q.opts, chosen, correct: q.correct, lvl: q.lvl },
+      ])
 
       const nextAnswered: AnsweredByLevel = {
         ...answered,
@@ -523,7 +538,10 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
       correctCount: totalRight,
       totalQuestions: totalAnswered,
       percent,
-      answers: {} as Record<number, number>,
+      // Полный лог: { log: [{text, options, chosen, correct, lvl}, ...] }
+      // — денормализованный формат, чтобы преподаватель мог разобрать конкретные
+      // ответы даже если BANK на лендинге поменяется.
+      answers: { log: answersLog },
       cefr: grade.cefr,
     }
     try {
@@ -531,7 +549,7 @@ export default function MiniBattleQuiz({ isAuthenticated = false, ctaHref = "/re
     } catch {
       /* ignore quota/private-mode errors */
     }
-  }, [mode, grade, totalRight, qIndex])
+  }, [mode, grade, totalRight, qIndex, answersLog])
 
   // Persist goals (purpose/timeline/intensity) as human-readable labels so
   // the /register profile-summary can show them without recomputing.

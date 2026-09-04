@@ -1,0 +1,194 @@
+/* ============================================================
+   Shared dashboard components — используются на teacher/admin/
+   student дашбордах. Один линк на этот файл в каждой из
+   *RawDashboard.tsx (после соответствующего role-css).
+   ============================================================ */
+
+/* ---------- HwPillList (Figma 2208:3327) ----------
+   Структура:
+   .hw-pill (a/button)               ← position:relative, интерактив
+     .hw-pill-body                   ← overflow:hidden обёртка для эффекта
+       ::before = лаймовая шапка     ← translateX влево при hover
+       .hw-pill-text                 ← сам текст
+     .hw-pill-arrow                  ← торчит СПРАВА за пределами body
+*/
+.hw-pill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1087px;
+  margin: 0 auto;
+}
+.hw-pill {
+  position: relative;
+  display: block;
+  min-height: 137px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: clamp(24px, 2.9vw, 40px);
+  letter-spacing: -0.05em;
+  line-height: 0.975;
+}
+/* Body — визуальная плашка. Чёрная база; поверх лаймовая шапка ::before,
+   которая при hover уезжает влево (остаётся ~50px tab). Overflow:hidden
+   обрезает уходящую часть шапки, но не влияет на стрелку — она сестра
+   этого элемента, а не внутри него. */
+.hw-pill-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 137px;
+  padding: 0 100px;
+  background: #1E1E1E;
+  border-radius: 29.5px;
+  color: #1E1E1E;
+  text-align: center;
+  overflow: hidden;
+  transition: color .28s ease;
+}
+.hw-pill-body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #DFED8C;
+  border-radius: 29.5px;
+  z-index: 1;
+  transition: transform .35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hw-pill-text {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+}
+.hw-pill .raw { color: #CC3A3A; margin-left: 4px; }
+
+/* Hover / focus — на самом .hw-pill (потому что фокус ловит только он) */
+.hw-pill:hover .hw-pill-body,
+.hw-pill:focus-visible .hw-pill-body { color: #FFF; }
+.hw-pill:focus-visible { outline: none; }
+.hw-pill:hover .hw-pill-body::before,
+.hw-pill:focus-visible .hw-pill-body::before {
+  transform: translateX(calc(-100% + 50px));
+}
+
+/* Круг со стрелкой — сестра body, торчит вправо (правый край плашки
+   проходит по центру круга). Не клипается overflow:hidden. */
+.hw-pill-arrow {
+  position: absolute;
+  right: -35.5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 71px;
+  height: 71px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #DFED8C;
+  color: #1E1E1E;
+  border: 4px solid #FFF;
+  z-index: 3;
+  transition: background .28s ease, color .28s ease, border-color .28s ease;
+  pointer-events: none; /* клик должен идти в родительский .hw-pill */
+}
+.hw-pill:hover .hw-pill-arrow,
+.hw-pill:focus-visible .hw-pill-arrow {
+  background: #CC3A3A;
+  color: #FFF;
+  border-color: #FFF;
+}
+
+/* ---------- ApplicationRow (Figma «Входящие заявки учеников») ---------- */
+.app-row {
+  position: relative;
+  height: 137px;
+  width: 100%;
+  flex-shrink: 0;
+}
+/* Тёмная «шапка» — под лаймовым телом, торчит справа для карточки уровня */
+.app-row-cap {
+  position: absolute;
+  left: 75.27%;
+  top: 0;
+  width: 21.79%;
+  height: 137px;
+  background: #1E1E1E;
+  border-radius: 29.5px;
+  z-index: 0;
+}
+.app-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 81.07%;
+  height: 100%;
+  background: #DFED8C;
+  border-radius: 29.5px;
+  z-index: 1;
+}
+.app-row-name {
+  position: absolute;
+  left: 3.66%;
+  top: 50px;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: -0.05em;
+  line-height: 0.975;
+  color: #1E1E1E;
+  white-space: nowrap;
+  z-index: 3;
+}
+.app-row-tag {
+  position: absolute;
+  left: 50.8%;
+  top: 38px;
+  height: 60px;
+  border-radius: 29.5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -0.05em;
+  line-height: 0.975;
+  color: #DFED8C;
+  white-space: nowrap;
+  z-index: 3;
+}
+.app-row-tag--ok { background: rgba(30, 30, 30, 0.75); min-width: 269px; }
+.app-row-tag--no { background: rgba(204, 58, 58, 0.74); min-width: 301px; }
+.app-row-lvl {
+  position: absolute;
+  left: 86%;
+  top: 50px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: -0.05em;
+  line-height: 0.975;
+  color: #DFED8C;
+  z-index: 3;
+}
+.app-row-arrow {
+  position: absolute;
+  right: 0;
+  top: 33px;
+  width: 71px; height: 71px;
+  border-radius: 50%;
+  background: #DFED8C;
+  color: #1E1E1E;
+  border: 4px solid #FFF;
+  display: inline-flex; align-items: center; justify-content: center;
+  z-index: 4;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.app-row-arrow:hover { background: #cfe06a; transform: translateY(-1px); }

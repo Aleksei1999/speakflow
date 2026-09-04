@@ -5,6 +5,8 @@ import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
+import { hasGoogleCalendar, pushEventToGoogle } from '@/lib/google-calendar/client'
+import { fetchTeacherRates } from '@/lib/settings/rates'
 
 export async function POST(request: NextRequest) {
   try {
@@ -215,26 +217,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calculate price based on duration
-    // hourly_rate is stored in kopeks (based on transform in validation)
-    // For 25 min: hourly_rate * 25/60, for 50 min: hourly_rate * 50/60
+    // Price:
+    //   • 60 мин → app_settings.teacher_rate_60_kopecks (тариф «час»)
+    //   • 90 мин → app_settings.teacher_rate_90_kopecks (тариф «1.5 часа»)
+    //   • иначе (25/50) — legacy teacher_profiles.hourly_rate пропорционально,
+    //     с учётом trial_rate для первого урока.
     const hourlyRate = teacherProfile.hourly_rate
-
-    // Check if student is eligible for trial rate
     let price: number
-    if (teacherProfile.trial_rate !== null) {
+    if (durationMinutes === 60 || durationMinutes === 90) {
+      const rates = await fetchTeacherRates().catch(() => ({
+        rate60Kopecks: 0, rate90Kopecks: 0, rateGroupKopecks: 0,
+      }))
+      const fixed = durationMinutes === 60 ? rates.rate60Kopecks : rates.rate90Kopecks
+      // Fallback: если админ ещё не поставил тариф — считаем по hourly_rate.
+      price = fixed > 0 ? fixed : Math.round((hourlyRate * durationMinutes) / 60)
+    } else if (teacherProfile.trial_rate !== null) {
       const { count: previousLessons } = await supabase
         .from('lessons')
         .select('id', { count: 'exact', head: true })
         .eq('student_id', user.id)
         .eq('teacher_id', teacherProfileId)
         .in('status', ['booked', 'completed', 'in_progress'])
-
       if (previousLessons === 0) {
-        // First lesson with this teacher - apply trial rate
-        price = Math.round(
-          (teacherProfile.trial_rate * durationMinutes) / 60
-        )
+        price = Math.round((teacherProfile.trial_rate * durationMinutes) / 60)
       } else {
         price = Math.round((hourlyRate * durationMinutes) / 60)
       }
@@ -300,14 +305,86 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!lesson) {
+      console.error('[booking/create] INSERT returned no row without error', { teacherProfileId, scheduledAt })
+      return NextResponse.json({ error: 'Не удалось создать урок' }, { status: 500 })
+    }
+
     // Set Jitsi room name using the DB-generated lesson ID
-    const jitsiRoomName = `speakflow-${lesson!.id}`
+    const jitsiRoomName = `speakflow-${lesson.id}`
     // FIXME(types): Postgrest UpdateBuilder инференсится в never
     await (supabase.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
-      .eq('id', lesson!.id)
+      .eq('id', lesson.id)
 
-    void notifyLessonBooked({ lessonId: lesson!.id }).catch(() => {})
+    // Push в Google Calendar (fail-soft: не откатывает урок).
+    // teacherId здесь = teacher.user_id (auth), нужен для getAccessToken.
+    // 1) У учителя: событие с учеником-гостем ТОЛЬКО если у ученика НЕ подключён
+    //    собственный Google — иначе будет дубликат (invite + own event).
+    // 2) У ученика: если он подключил свой Google Calendar, пушим и туда —
+    //    самый надёжный способ, чтобы событие точно попало к нему.
+    try {
+      const startISO = lesson.scheduled_at
+      const endISO = new Date(
+        new Date(startISO).getTime() + (lesson.duration_minutes ?? 50) * 60_000,
+      ).toISOString()
+
+      const stuProfRes = await (supabase.from('profiles') as any)
+        .select('full_name, email')
+        .eq('id', user.id)
+        .maybeSingle()
+      const stuProf = stuProfRes.data as { full_name: string | null; email: string | null } | null
+
+      const [teacherConn, studentConn] = await Promise.all([
+        hasGoogleCalendar(teacherId),
+        hasGoogleCalendar(user.id),
+      ])
+
+      // 1) У учителя
+      if (teacherConn.connected) {
+        const summary = `Урок с ${stuProf?.full_name || 'учеником'}`
+        const attendees = !studentConn.connected && stuProf?.email
+          ? [{ email: stuProf.email, displayName: stuProf.full_name || undefined }]
+          : undefined
+        const eventId = await pushEventToGoogle(teacherId, {
+          summary,
+          startISO,
+          endISO,
+          attendees,
+          extendedProps: { source: 'raw-english', lessonId: lesson.id, side: 'teacher' },
+        })
+        if (eventId) {
+          await (supabase.from('lessons') as any)
+            .update({ google_event_id: eventId })
+            .eq('id', lesson.id)
+        }
+      }
+
+      // 2) У ученика — прямой push в личный календарь
+      if (studentConn.connected) {
+        // Резолвим имя преподавателя для summary.
+        const { data: teacherProf } = await (supabase.from('profiles') as any)
+          .select('full_name')
+          .eq('id', teacherId)
+          .maybeSingle()
+        const teacherName = (teacherProf as { full_name: string | null } | null)?.full_name || 'преподавателем'
+        const studentEventId = await pushEventToGoogle(user.id, {
+          summary: `Урок с ${teacherName}`,
+          startISO,
+          endISO,
+          extendedProps: { source: 'raw-english', lessonId: lesson.id, side: 'student' },
+        })
+        if (studentEventId) {
+          await (supabase.from('lessons') as any)
+            .update({ student_google_event_id: studentEventId })
+            .eq('id', lesson.id)
+        }
+      }
+    } catch (e) {
+      console.error('[booking/create] Google push failed', e)
+    }
+
+    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
 
     // The teacher's «Мои ученики» list is derived from lessons; invalidate
     // its cached snapshot so the new student shows up on next request.
@@ -328,13 +405,13 @@ export async function POST(request: NextRequest) {
       category: 'data',
       action: 'lesson_booked',
       target_type: 'lessons',
-      target_id: lesson!.id,
+      target_id: lesson.id,
       payload: {
         teacher_id: teacherProfileId,
         student_id: user.id,
-        scheduled_at: lesson!.scheduled_at,
-        duration_minutes: lesson!.duration_minutes,
-        price_kopecks: lesson!.price,
+        scheduled_at: lesson.scheduled_at,
+        duration_minutes: lesson.duration_minutes,
+        price_kopecks: lesson.price,
       },
     })
 
@@ -372,8 +449,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      lessonId: lesson!.id,
-      price: lesson!.price,
+      lessonId: lesson.id,
+      price: lesson.price,
       redirectUrl: `/student/schedule`,
     })
   } catch (error) {

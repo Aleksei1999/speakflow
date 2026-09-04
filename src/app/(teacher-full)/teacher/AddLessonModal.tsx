@@ -43,12 +43,12 @@ type ModalState =
 // шаг 30 мин. Русская локаль без внешних зависимостей: даты вида «2 апреля».
 // -----------------------------------------------------------------------------
 
-const MONTHS_RU_GEN = [
+export const MONTHS_RU_GEN = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
 ]
 
-interface DateOption {
+export interface DateOption {
   /** YYYY-MM-DD (local) */
   key: string
   label: string
@@ -57,7 +57,7 @@ interface DateOption {
   d: number // 1-31
 }
 
-interface TimeOption {
+export interface TimeOption {
   /** HH:MM */
   key: string
   label: string
@@ -65,7 +65,7 @@ interface TimeOption {
   min: number
 }
 
-function buildDateOptions(): DateOption[] {
+export function buildDateOptions(): DateOption[] {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const out: DateOption[] = []
@@ -81,7 +81,7 @@ function buildDateOptions(): DateOption[] {
   return out
 }
 
-function buildTimeOptions(): TimeOption[] {
+export function buildTimeOptions(): TimeOption[] {
   const out: TimeOption[] = []
   for (let h = 8; h <= 22; h++) {
     for (const min of [0, 30]) {
@@ -107,7 +107,7 @@ interface WheelPickerProps<T extends { key: string; label: string }> {
   ariaLabel: string
 }
 
-function WheelPicker<T extends { key: string; label: string }>({
+export function WheelPicker<T extends { key: string; label: string }>({
   items, value, onChange, ariaLabel,
 }: WheelPickerProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -179,7 +179,7 @@ function WheelPicker<T extends { key: string; label: string }>({
 // Reusable UI-элементы
 // -----------------------------------------------------------------------------
 
-function CloseIcon() {
+export function CloseIcon() {
   return (
     <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
       <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -187,7 +187,7 @@ function CloseIcon() {
   )
 }
 
-function ArrowDown() {
+export function ArrowDown() {
   // Чёрный круг с лаймовой стрелкой вниз. Размер 35×36 (Figma ellipse36).
   return (
     <span className="tr-al-arrow" aria-hidden>
@@ -199,7 +199,7 @@ function ArrowDown() {
   )
 }
 
-function ArrowLeftLime() {
+export function ArrowLeftLime() {
   // Лаймовый круг (в дропдауне ученика — «свернуть»). Стрелка ← чёрная.
   return (
     <span className="tr-al-arrow" aria-hidden>

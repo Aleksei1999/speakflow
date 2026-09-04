@@ -16,6 +16,8 @@
    цвет+фон. `!important` на критичных background/color самый прямой способ пробить
    этот overreach shell'а, не переписывая десятки селекторов на `.tr .tr-*`. */
 
+.tr { scroll-behavior: smooth; }
+.tr [id] { scroll-margin-top: 24px; }
 .tr, .tr *, .tr *::before, .tr *::after { box-sizing: border-box; }
 .tr *, .tr ul, .tr p, .tr h1, .tr h2, .tr h3 { margin: 0; padding: 0; }
 .tr ul { list-style: none; }
@@ -191,6 +193,8 @@
 .tr-panel {
   position: relative;
   background: var(--panel-dark);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: var(--radius-card);
   padding: clamp(24px, 3vw, 45px) clamp(20px, 3vw, 50px) clamp(30px, 4vw, 60px);
 }
@@ -442,6 +446,42 @@
   display: flex; flex-direction: column;
   gap: 0;
 }
+
+/* Empty state: centered graduation-cap SVG + два текста (Figma node 2208:3058).
+   Общая композиция вертикальная, всё по центру. Иконка 384×279 (Figma inset). */
+.tr-apps-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 80px 20px 60px;
+  text-align: center;
+}
+.tr-apps-empty-icon {
+  display: block;
+  width: 384px;
+  max-width: 60%;
+  height: auto;
+  margin-bottom: 12px;
+  user-select: none;
+}
+.tr-apps-empty-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -1.6px;
+  color: #000;
+}
+.tr-apps-empty-sub {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 0.975;
+  letter-spacing: -1.2px;
+  color: rgba(0, 0, 0, 0.7);
+}
 /* Скроллящийся контейнер: padding-right = 45 (Figma gap),
    scrollbar сам занимает 7 сверх padding. */
 .tr-apps-list {
@@ -671,6 +711,21 @@
 .tr .tr-q-next:hover,
 .tr .tr-q-prev:hover { background: #333; }
 
+/* В админской версии — увеличенные лаймовые круги с чёрной стрелкой
+   (как большая стрелка развернуть у самой карточки заявки). */
+.ad .tr .tr-q-next,
+.ad .tr .tr-q-prev {
+  width: 67px; height: 67px;
+  top: calc(50% - 33px);   /* центру блока вопросов */
+  background: #DFED8C;
+  color: #1E1E1E;
+  border: 4px solid #fff;
+}
+.ad .tr .tr-q-next { right: -33px; }
+.ad .tr .tr-q-prev { left: -33px; }
+.ad .tr .tr-q-next:hover,
+.ad .tr .tr-q-prev:hover { background: #cfe06a; }
+
 /* Кнопки действий */
 .tr-app-actions {
   position: absolute;
@@ -709,6 +764,338 @@
   border: 2px solid #1E1E1E;
 }
 .tr .tr-app-decline:hover { background: #1E1E1E; color: #fff; }
+
+/* ==== АДМИН: кнопка «Назначить учителя», иконка редактирования уровня,
+   pill выбора уровня, модалка выбора учителя и окно подтверждения.
+   Figma nodes 2505:3525 (кнопка), 2505:3532 (pill), 2505:264 (модалка),
+   2505:2852 (окно подтверждения). ==== */
+.tr .tr-app-assign {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 40px;
+  width: 329px;
+  height: 60px;
+  background: #CC3A3A;
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  transition: background .2s;
+}
+.tr .tr-app-assign:hover { background: var(--red-deep, #A53026); }
+
+.tr .tr-app-lvl-edit {
+  position: absolute;
+  left: 79%;   /* слева от .tr-app-lvl (86%) */
+  top: 42px;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: #1E1E1E;
+  color: #fff;
+  border: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 4;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity .25s ease, transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), background .2s;
+  pointer-events: none;
+}
+.tr-app--open .tr .tr-app-lvl-edit,
+.tr .tr-app--open .tr-app-lvl-edit {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.tr .tr-app-lvl-edit:hover { background: #333; }
+/* Когда pill открыт — иконка редактирования уезжает */
+.tr .tr-app--edit-lvl .tr-app-lvl-edit {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+/* .tr-app-lvl и .tr-app-name — плавно скрываются, когда открыт pill */
+.tr .tr-app-lvl,
+.tr .tr-app-name {
+  transition: opacity .22s ease, transform .22s ease;
+}
+/* Имя ученика при редактировании уровня остаётся видимым.
+   Прячем только сам уровень (его сейчас редактируют). */
+.tr .tr-app--edit-lvl .tr-app-lvl {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+/* Pill выбора уровня (Figma 4076:74): 567×70, центру шапки; при выборе
+   активная кнопка «капелькой» выступает вниз (86×88). Правый край pill'а
+   не заходит под стрелку — оставляем зазор ~110px (стрелка Ø71 + 40 gap). */
+.tr .tr-app-lvl-pill {
+  position: absolute;
+  right: 110px;
+  top: 32px;
+  transform-origin: right top;
+  transform: scale(0.94);
+  width: 460px;
+  max-width: calc(100% - 400px);
+  height: 70px;
+  background: #CC3A3A;
+  border-radius: 35px;
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 12px;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tr .tr-app--edit-lvl .tr-app-lvl-pill {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.tr .tr-app-lvl-pill-btn {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 70px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.05em;
+  cursor: pointer;
+  transition: opacity .2s, background .25s ease, transform .3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tr .tr-app-lvl-pill-btn:hover { opacity: 0.85; }
+.tr .tr-app-lvl-pill-btn:disabled { cursor: default; opacity: 0.7; }
+/* Активный уровень: 86×88 pill с полупрозрачной тёмной заливкой,
+   слегка торчит вверх/вниз из основной pill'ы (Figma Rectangle 176). */
+.tr .tr-app-lvl-pill-btn.active {
+  flex: 0 0 86px;
+  width: 86px;
+  height: 88px;
+  border-radius: 29.5px;
+  background: rgba(30, 30, 30, 0.58);
+  z-index: 1;
+}
+
+/* Модалка «Список учителей» (Figma 2505:264). */
+@keyframes tr-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tr-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+.tr-assign-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  z-index: 1200;
+  animation: tr-fade-in .2s ease;
+}
+.tr-assign-modal {
+  position: relative;
+  width: min(1200px, 96vw);
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 32px;
+  padding: 40px 40px 80px; /* +padding снизу под торчащий кружок */
+  overflow: visible; /* иначе торчащий кружок обрезается */
+  animation: tr-pop-in .28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tr-assign-title {
+  display: block;
+  text-align: center;
+  margin: 0 auto 32px;
+  max-width: max-content;
+  padding: 18px 44px;
+  border: 3px solid #DFED8C;
+  border-radius: 44px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 117.344%; /* 46.937px */
+  letter-spacing: -2px;
+  text-transform: uppercase;
+  color: #1E1E1E;
+}
+.tr-assign-title--red { color: #CC3A3A; }
+.tr-assign-close {
+  position: absolute;
+  top: 20px; right: 26px;
+  width: 40px; height: 40px;
+  border: none;
+  background: transparent;
+  font-size: 34px;
+  line-height: 1;
+  color: #1E1E1E;
+  cursor: pointer;
+}
+.tr-assign-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+/* Слот = карточка + торчащий кружок. Position:relative нужен для абсолютного
+   позиционирования кружка ВНЕ .tr-assign-card (иначе mask на карточке
+   срезала бы обводку кружка). */
+.tr-assign-slot {
+  position: relative;
+}
+.tr-assign-card {
+  background: #CC3A3A;
+  border-radius: 24px;
+  display: flex; flex-direction: column;
+  min-height: 520px;
+  /* Полукруглый вырез посередине снизу — точно под внешний Ø круга (54+2×8=70),
+     радиус 35. Без белого зазора между карточкой и обводкой круга. */
+  -webkit-mask:
+    radial-gradient(circle 35px at 50% 100%, transparent 35px, #000 35.5px);
+          mask:
+    radial-gradient(circle 35px at 50% 100%, transparent 35px, #000 35.5px);
+}
+.tr-assign-card > .tr-assign-photo { border-radius: 24px 24px 0 0; overflow: hidden; }
+.tr-assign-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #eee;
+  overflow: hidden;
+}
+.tr-assign-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tr-assign-body { padding: 18px 22px 70px; color: #fff; }
+.tr-assign-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+.tr-assign-sub {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+.tr-assign-desc {
+  font-size: 15px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+/* Кружок выбора учителя (Figma 4076:75): 54×54 фон + красная обводка 10px,
+   торчит наполовину снизу карточки. Не выбран — белый круг; выбран —
+   готовый SVG (чёрный + красная обводка + лаймовая галочка). */
+/* Круг ЖИВЁТ ВНЕ .tr-assign-card (родитель — <li>), чтобы CSS-маска
+   на карточке не «съедала» обводку круга. Центр круга — на нижнем краю
+   карточки. */
+.ad .tr-assign-radio {
+  position: absolute;
+  left: 50%;
+  bottom: -27px;    /* центр круга совпадает с низом карточки = центром выреза */
+  transform: translateX(-50%);
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: #fff;
+  color: #1E1E1E;
+  border: 8px solid #CC3A3A;
+  box-sizing: content-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background .2s, transform .2s;
+  z-index: 5;
+}
+.ad .tr-assign-radio:hover { transform: translateX(-50%) translateY(-1px); }
+.ad .tr-assign-radio:disabled { opacity: 0.7; cursor: default; }
+.ad .tr-assign-radio.picked {
+  background: #1E1E1E; /* тёмный круг, обводка красная 8px остаётся */
+}
+.ad .tr-assign-radio-check { display: block; }
+
+/* Окно подтверждения (Figma 2505:2852): 503×452, лаймовое, чёрный чек. */
+.tr-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1300;
+  animation: tr-fade-in .2s ease;
+}
+.tr-confirm-modal {
+  position: relative;
+  width: 503px;
+  max-width: 92vw;
+  min-height: 452px;
+  background: #DFED8C;
+  border-radius: 24px;
+  padding: 30px 32px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: tr-pop-in .32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tr-confirm-timer {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: #1E1E1E;
+  margin-bottom: 24px;
+}
+.tr-confirm-close {
+  position: absolute;
+  top: 20px; right: 24px;
+  width: 32px; height: 32px;
+  background: transparent;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #1E1E1E;
+  cursor: pointer;
+}
+.tr-confirm-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #1E1E1E;
+  margin-bottom: 30px;
+}
+.tr-confirm-check {
+  width: 69px; height: 69px;
+  border-radius: 50%;
+  background: #1E1E1E;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 26px;
+}
+.tr-confirm-teacher {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+  color: #1E1E1E;
+  margin-bottom: 10px;
+}
+.tr-confirm-student {
+  font-size: 15px;
+  color: #1E1E1E;
+}
+
+@media (max-width: 900px) {
+  .tr-assign-list { grid-template-columns: 1fr; }
+}
 
 /* Footer row: chevron слева-центр, «и еще 43» справа.
    Живёт СНАРУЖИ скролл-контейнера — всегда виден.
@@ -767,8 +1154,11 @@
   position: relative;
   display: flex; align-items: center;
   gap: clamp(16px, 2vw, 30px);
-  background: var(--panel-grey);
-  border-radius: var(--radius-card);
+  background: rgba(30, 30, 30, 0.52);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 30px;
   min-height: clamp(110px, 10.5vw, 149px);
   padding: clamp(16px, 2vw, 28px) clamp(20px, 2.5vw, 40px);
 }
@@ -836,7 +1226,7 @@
 .tr-schedule-actions {
   display: flex;
   gap: 105px;
-  justify-content: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   max-width: 1164px;
   margin: 0 auto;
@@ -900,16 +1290,22 @@
 }
 .tr-gcal-banner-unlink {
   flex: 0 0 auto;
-  height: 40px;
-  padding: 0 16px;
+  height: 44px;
+  min-width: 128px;
+  padding: 0 24px;
   border-radius: 999px;
   background: rgba(255,255,255,0.06) !important;
   color: var(--white) !important;
   border: 1px solid rgba(255,255,255,0.24);
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   transition: background .2s, border-color .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .tr-gcal-banner-unlink:hover:not(:disabled) {
   background: rgba(255,255,255,0.12) !important;
@@ -944,7 +1340,7 @@
   margin: 0 auto;
   padding: clamp(30px, 3.5vw, 48px) clamp(24px, 3vw, 40px);
   display: grid;
-  grid-template-columns: minmax(512px, 1.2fr) minmax(180px, 0.55fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(640px, 1.6fr) minmax(280px, 1fr);
   gap: clamp(20px, 2vw, 32px);
   align-items: stretch;
   position: relative;
@@ -953,6 +1349,13 @@
   display: flex; flex-direction: column;
   justify-content: space-between;
   gap: clamp(24px, 3vw, 48px);
+}
+/* Верхний ряд левой колонки: заголовок + иконка книги + число уроков */
+.tr-income-header {
+  display: flex;
+  align-items: center;
+  gap: clamp(24px, 3vw, 48px);
+  flex-wrap: wrap;
 }
 .tr-income-title {
   font-family: 'Inter', sans-serif;
@@ -1008,6 +1411,7 @@
   border-radius: 6px;
   background: #CC3A3A;
 }
+.tr-income-metric--book::before { display: none; }
 .tr-income-icon {
   flex: 0 0 auto;
   display: block;
@@ -1191,36 +1595,58 @@
 /* ============================================================
    HOMEWORK — 3 lime pill buttons
    ============================================================ */
+/* ============================================================
+   HOMEWORK PILLS — стиль как в списке заявок (.tr-app):
+   зелёная плашка на всю ширину + лаймовый круг со стрелкой
+   справа (с белой обводкой), сидящий на правом краю.
+   ============================================================ */
 .tr-hw-list {
   display: flex; flex-direction: column;
-  gap: clamp(18px, 2vw, 30px);
+  gap: 18px;
   max-width: 1087px;
   margin: 0 auto;
 }
 .tr-hw-pill {
   position: relative;
   display: flex; align-items: center; justify-content: center;
-  background: var(--lime);
-  border-radius: var(--radius-card);
-  min-height: clamp(96px, 9.5vw, 137px);
-  padding: 0 clamp(80px, 8vw, 110px);
+  background: #DFED8C;
+  border: none;
+  border-radius: 29.5px;
+  min-height: 137px;
+  padding: 0 100px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: clamp(24px, 2.9vw, 40px);
   letter-spacing: -0.05em;
   line-height: 0.975;
-  color: var(--ink);
+  color: #1E1E1E;
   text-align: center;
-  transition: background .2s;
+  cursor: pointer;
+  transition: background .18s;
 }
-.tr-hw-pill:hover { background: var(--lime-deep); }
-.tr-hw-pill .raw { color: var(--red); }
-.tr-hw-pill .arrow-btn {
+.tr-hw-pill .tr-hw-text { display: inline-block; }
+.tr-hw-pill .raw { color: #CC3A3A; margin-left: 4px; }
+.tr-hw-pill:hover { background: #cfe06a; }
+
+/* Стрелка справа — как в .tr-app-arrow: круг Ø71, центр на правом крае
+   плашки (половина внутри, половина торчит наружу). */
+.tr-hw-arrow {
   position: absolute;
-  right: clamp(20px, 2.5vw, 36px);
+  right: -35.5px; /* -width/2 → центр круга совпадает с правым краем плашки */
   top: 50%;
   transform: translateY(-50%);
+  width: 71px;
+  height: 71px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #DFED8C;
+  color: #1E1E1E;
+  border: 4px solid #FFF;
+  transition: background .2s, transform .2s;
 }
+.tr-hw-pill:hover .tr-hw-arrow { background: #cfe06a; transform: translateY(calc(-50% - 1px)); }
 
 /* ============================================================
    CREATE GROUP MODAL
@@ -1506,6 +1932,56 @@
   color: #1E1E1E;
 }
 .tr-stu-modal-card span { display: block; }
+.tr-stu-modal-card--empty {
+  color: rgba(30, 30, 30, 0.5);
+  font-style: italic;
+  font-size: 20px;
+}
+/* Clickable-версия (hover → cursor pointer + подсветка). */
+.tr-stu-modal-card--clickable {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  width: 539px;
+  max-width: 100%;
+  transition: background .15s;
+}
+.tr-stu-modal-card--clickable:hover { background: #F7F7F0; }
+/* Textarea в режиме редактирования — размеры карточки + resize:none. */
+.tr-stu-modal-card--edit {
+  resize: none;
+  padding: 24px 40px;
+  border: 2px solid #DFED8C;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+.tr-stu-modal-card--edit:focus { border-color: #1E1E1E; }
+/* Кнопки Save/Cancel под карточкой в режиме редактирования. */
+.tr-stu-modal-bio-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 14px;
+}
+.tr-stu-modal-bio-save,
+.tr-stu-modal-bio-cancel {
+  padding: 10px 26px;
+  border-radius: 22px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .1s, background .15s;
+}
+.tr-stu-modal-bio-save {
+  background: #DFED8C; color: #1E1E1E; border: none;
+}
+.tr-stu-modal-bio-save:hover:not(:disabled) { background: #CFE06A; transform: translateY(-1px); }
+.tr-stu-modal-bio-save:disabled { opacity: 0.55; cursor: not-allowed; }
+.tr-stu-modal-bio-cancel {
+  background: transparent; color: #FFF; border: 1px solid rgba(255,255,255,0.35);
+}
+.tr-stu-modal-bio-cancel:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
 .tr-stu-modal-count {
   position: absolute;
   right: 0;
@@ -1954,8 +2430,8 @@
   right: 0.5px;
   height: 161px;
   background: rgba(30, 30, 30, 0.73);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 29.5px;
   padding: 34px 0 34px 34px;
   display: flex;
@@ -2107,8 +2583,8 @@
   width: 100%;
   height: 60px;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   will-change: backdrop-filter;
   transform: translateZ(0);
   border-radius: 30px;
@@ -2138,7 +2614,7 @@
   bottom: calc(100% + 12px);
   width: 232px;
   background: rgba(30, 30, 30, 0.95);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
   border-radius: 29.5px;
   padding: 14px 20px;
   display: flex;
@@ -2984,12 +3460,92 @@
   width: 1228px;
   height: 837px;
   background: rgba(30,30,30,0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 29.5px;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;              /* Firefox */
+  scrollbar-color: #DFED8C rgba(255,255,255,.14);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
-.tr-chats-card::-webkit-scrollbar { display: none; }  /* WebKit */
+.tr-chats-card::-webkit-scrollbar { width: 7px !important; display: block !important; }
+.tr-chats-card::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.14);
+  border-radius: 3.5px;
+  /* Figma: track top-offset 101.44px, bottom-offset 18px.
+     Через border на track — надёжнее чем margin, thumb рисуется внутри. */
+  border-top: 101px solid transparent;
+  border-bottom: 18px solid transparent;
+  background-clip: padding-box;
+}
+.tr-chats-card::-webkit-scrollbar-thumb {
+  background: #DFED8C;
+  border-radius: 3.5px;
+}
+/* Flex-раскладка для динамического списка чатов (N рядов вместо фикс. 4).
+   Ряды больше не позиционируются абсолютно через --r1..r4; сепараторы
+   между ними — gap. */
+.tr-chats-card--flow {
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+  padding: 58px 60px 80px;
+}
+.tr-chats-card--flow .tr-chat-row {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin: 0;
+  width: 1108px;
+  align-self: center;
+  flex: 0 0 153px;
+}
+.tr-chats-empty {
+  color: rgba(255,255,255,0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  text-align: center;
+  padding: 40px 20px;
+}
+.tr-chat-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #b63f37, #5e6b3a);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 40px;
+  letter-spacing: -0.5px;
+}
+/* Инициалы в mini/nano аватарах поменьше (67×67 и 27×27 соответственно). */
+.tr-chat-avatar-mini .tr-chat-avatar-fallback { font-size: 22px; }
+.tr-chat-avatar-nano .tr-chat-avatar-fallback { font-size: 11px; letter-spacing: -0.3px; }
+.tr-chat-arrow-btn:disabled { opacity: .55; cursor: not-allowed; }
+/* Реальные аватары ученика — не Figma-заглушки. object-fit:cover достаточно. */
+.tr-chats-card--flow .tr-chat-avatar-big img {
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: 100%;
+  left: auto;
+  top: auto;
+}
+.tr-chats-card--flow .tr-chat-avatar-mini img,
+.tr-chats-card--flow .tr-chat-avatar-nano img {
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: 100%;
+  left: auto;
+  top: auto;
+}
+/* WebKit scrollbar теперь виден — стили выше (track lime, thumb #DFED8C). */
 /* Scroll track/thumb (Figma: track w:7 h:723 top:58; thumb h:259.618 top:101.44) */
 .tr-chats-track {
   position: absolute;
@@ -3030,13 +3586,11 @@
 .tr-chat-row--r3 { top: 438px; } /* 680 - 242 */
 .tr-chat-row--r4 { top: 628px; } /* 870 - 242 */
 
-/* Аватар 103×103 (Figma: left:calc(50%-475), top:325 → в row 25).
-   Внутри img — Figma-percentages (px мы вычислим): контейнер 103, поэтому
-   1% = 1.03px. Позиция и размер img отличаются для каждого аватара. */
+/* Аватар 103×103, 34px от левого края плашки (Figma). */
 .tr-chat-avatar-big {
   position: absolute;
   top: 25px;
-  left: 85.5px;
+  left: 34px;
   width: 103px;
   height: 103px;
   border-radius: 82px;
@@ -3075,7 +3629,7 @@
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
-  border: 3px solid rgba(204,58,58,0.55); /* соответствует row bg */
+  /* Без обводки — сидит поверх big-аватара плотно, ободок выглядел лишним */
 }
 .tr-chat-avatar-mini img {
   position: absolute; display: block; max-width: none;
@@ -3118,42 +3672,49 @@
   line-height: 0.8782;
 }
 
-/* Name (Figma: h:35 top:330→30, w:348, Inter Medium 32px, tracking -1.6, ink)
-   left frame calc(50%-401.5) → row local = calc(50%-401.5) - calc(50%-560.5) = 159 */
-.tr-chat-name {
+/* Name: 22px gap от аватара (34+103=137 → 159 по Figma).
+   Спецификация .tr-chat-row нужна, чтобы перебить .tr .tr-chat-name модалки. */
+.tr-chat-row .tr-chat-name {
   position: absolute;
   top: 30px;
   left: 159px;
-  width: 348px;
+  right: 100px; /* оставляем место под стрелку (arrow left:996.5 в row 1108) */
   height: 35px;
   margin: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
   letter-spacing: -1.6px;
-  line-height: 0.975;
+  line-height: 0.9746;
   color: #1E1E1E;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.tr-chat-name--white { color: #FFF; }
+.tr-chat-row .tr-chat-name--white { color: #FFF; }
 
-/* Preview (2 lines default; Figma: left:319 frame → row local = 319-106-53.5 = 159.5;
-   top:380.04→80.04; w:637; Inter Medium 24px, tracking -1.2, ink) */
-.tr-chat-preview {
+/* Preview: тоже вправо от аватара */
+.tr-chat-row .tr-chat-preview {
   position: absolute;
   top: 80.04px;
   left: 159.5px;
-  width: 637px;
+  right: 130px; /* с запасом под стрелку */
   margin: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
   letter-spacing: -1.2px;
-  line-height: 0.975;
+  line-height: 1.15;
   color: #1E1E1E;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.tr-chat-preview--white { color: #FFF; width: 614px; }
-.tr-chat-preview--1line { top: 60.04px; height: auto; }
-.tr-chat-preview b { font-weight: 700; }
+.tr-chat-row .tr-chat-preview--white { color: #FFF; }
+.tr-chat-row .tr-chat-preview--1line { top: 60.04px; height: auto; }
+.tr-chat-row .tr-chat-preview b { font-weight: 700; }
 
 /* «1 новое сообщение» pill (Figma: 253×36 at left:932.56, top:281.93 in frame)
    row local: left = 932.56-106-53.5 = 773.06; top = 281.93-300 = -18.07 (over row top) */

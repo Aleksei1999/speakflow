@@ -53,6 +53,7 @@ export type NotificationType =
   | 'welcome'
   | 'booking_confirmation'
   | 'lesson_cancelled'
+  | 'lesson_rescheduled'
   | 'lesson_missed'
   | 'lesson_reminder'
   | 'lesson_summary_ready'
@@ -74,6 +75,7 @@ const TRANSACTIONAL_TYPES: ReadonlySet<NotificationType> = new Set([
   'welcome',
   'booking_confirmation',
   'lesson_cancelled',
+  'lesson_rescheduled',
   'lesson_missed',
   'lesson_summary_ready',
   'payment_receipt',
@@ -124,6 +126,11 @@ interface NotificationData {
   date?: string
   time?: string
   duration?: number
+
+  // lesson_rescheduled — старое время урока + кто перенёс
+  oldDate?: string
+  oldTime?: string
+  rescheduledByName?: string
 
   // lesson_reminder
   teacherOrStudentName?: string
@@ -380,6 +387,26 @@ function buildEmailContent(
       return { subject, html }
     }
 
+    case 'lesson_rescheduled': {
+      const oldDate = (data as any).oldDate || '—'
+      const oldTime = (data as any).oldTime || ''
+      const rescheduledBy = (data as any).rescheduledByName || 'Преподаватель'
+      const subject = `Урок перенесён · было ${oldDate}, теперь ${data.date || ''}`
+      const html = `
+        <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px">
+          <h1 style="font-size:22px;font-weight:800;margin:0 0 12px">Время урока изменилось</h1>
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.55">${rescheduledBy} перенёс(ла) урок.</p>
+          <div style="background:#FAFAF7;border:1px solid #EEEEEA;border-radius:12px;padding:14px 18px;font-size:14px;margin:14px 0">
+            <div><b>Было:</b> ${oldDate} · ${oldTime}</div>
+            <div style="margin-top:6px"><b>Стало:</b> ${data.date || '—'} · ${data.time || ''}</div>
+            <div style="margin-top:6px"><b>Длительность:</b> ${data.duration || 50} мин</div>
+          </div>
+          <p style="margin:0 0 12px;font-size:13px;color:#8A8A86">Проверьте актуальное расписание в личном кабинете.</p>
+        </div>
+      `
+      return { subject, html }
+    }
+
     case 'lesson_missed': {
       const role = (data as any).recipientRole === 'student' ? 'student' : 'teacher'
       const studentName = data.studentName || 'Ученик'
@@ -543,6 +570,20 @@ function buildTelegramText(
       ]
       if (reason) lines.push(``, `<i>Причина:</i> ${reason}`)
       return lines.join('\n')
+    }
+
+    case 'lesson_rescheduled': {
+      const oldDate = (data as any).oldDate || '—'
+      const oldTime = (data as any).oldTime || ''
+      const rescheduledBy = (data as any).rescheduledByName || 'Преподаватель'
+      return [
+        `🔄 <b>Время урока изменилось</b>`,
+        ``,
+        `${rescheduledBy} перенёс(ла) урок.`,
+        `Было: ${oldDate} · ${oldTime}`,
+        `Стало: <b>${data.date || '—'} · ${data.time || ''}</b>`,
+        `⏱ ${data.duration || 50} мин`,
+      ].join('\n')
     }
 
     case 'lesson_missed': {

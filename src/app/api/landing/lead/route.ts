@@ -10,16 +10,38 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 import { protectPublic, validateEmailField } from "@/lib/api/arcjet"
+import { emailSchema, phoneIntlSchema } from "@/lib/validators/contact"
 
 export const dynamic = "force-dynamic"
 
 const bodySchema = z.object({
   name: z.string().trim().min(1, "Укажи имя").max(100),
-  email: z.string().trim().email("Некорректный email").max(200),
-  phone: z.string().trim().min(6, "Некорректный номер телефона").max(40),
+  email: emailSchema,
+  phone: phoneIntlSchema,
   marketing_opt_in: z.boolean().optional().default(false),
   country: z.string().trim().length(2).optional(),
   source: z.string().trim().max(50).optional().default("landing"),
+  // Опциональный результат «Прожарки» с лендинга — сохраняем в level_tests
+  // с этим же email, чтобы админ у заявки увидел тег «тест пройден».
+  // log[] — детальный разбор ответов, админка рендерит его в развёрнутой карточке.
+  roast_quiz: z
+    .object({
+      level: z.enum(["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"]),
+      tierScores: z.tuple([z.number().int().min(0).max(4), z.number().int().min(0).max(4), z.number().int().min(0).max(4)]),
+      log: z
+        .array(
+          z.object({
+            text: z.string().max(300),
+            options: z.array(z.string().max(120)).min(2).max(6),
+            chosen: z.number().int().min(0).max(5),
+            correct: z.number().int().min(0).max(5),
+            lvl: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+          }),
+        )
+        .max(20)
+        .optional(),
+    })
+    .optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -106,6 +128,38 @@ export async function POST(request: NextRequest) {
     if (error || !lead) {
       console.error("[landing/lead] insert error:", error)
       return NextResponse.json({ error: "Не удалось сохранить заявку" }, { status: 500 })
+    }
+
+    // Прикрепляем результат квиза «Прожарка» к email — insert-if-absent.
+    // Fire-and-forget: ошибка не должна ронять форму. Дедуп по email за 24ч,
+    // чтобы повторные заявки не плодили дубли в level_tests.
+    if (d.roast_quiz) {
+      void (async () => {
+        try {
+          const { data: existing } = await (admin as any)
+            .from("level_tests")
+            .select("id")
+            .eq("email", d.email)
+            .gte("completed_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .maybeSingle()
+          if (existing) return
+          const scores = d.roast_quiz!.tierScores
+          const score = scores[0] + scores[1] + scores[2]
+          const log = d.roast_quiz!.log
+          await (admin as any).from("level_tests").insert({
+            email: d.email,
+            level: d.roast_quiz!.level,
+            answers: { source: "roast_quiz", tierScores: scores, ...(log ? { log } : {}) },
+            score,
+            correct_count: score,
+            total_questions: 12,
+            xp: 0,
+            first_name: d.name.split(" ")[0] || null,
+          })
+        } catch (e) {
+          console.error("[landing/lead] roast_quiz insert failed", e)
+        }
+      })()
     }
 
     // Telegram fan-out to admins (fire-and-forget)

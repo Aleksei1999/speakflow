@@ -150,6 +150,37 @@ export async function GET(
       ? student.user_progress[0]
       : student.user_progress
 
+    // Заметка учителя об ученике (student_shared_notes) — источник для «Послений комментарий».
+    // Cast: типы Supabase генерятся из миграций старее, чем добавление этой таблицы.
+    const bioRes = await (admin as any)
+      .from("student_shared_notes")
+      .select("content, updated_at, updated_by")
+      .eq("student_id", id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const bioRow = bioRes.data as
+      | { content: string | null; updated_at: string; updated_by: string | null }
+      | null
+    let bioAuthor: string | null = null
+    if (bioRow?.updated_by) {
+      const { data: bp } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", bioRow.updated_by)
+        .maybeSingle<{ full_name: string | null }>()
+      bioAuthor = bp?.full_name ?? null
+    }
+
+    // Кол-во проведённых уроков c начала года — по completed lessons текущего года.
+    const yearStartIso = `${new Date().getUTCFullYear()}-01-01T00:00:00Z`
+    const { count: lessonsThisYear } = await admin
+      .from("lessons")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", id)
+      .in("status", ["completed", "confirmed", "done"])
+      .gte("scheduled_at", yearStartIso)
+
     return NextResponse.json({
       student: {
         id: student.id,
@@ -174,6 +205,9 @@ export async function GET(
         longest_streak: up?.longest_streak ?? 0,
         last_seen_at: up?.updated_at ?? null,
         last_lesson: lastLesson,
+        bio_content: bioRow?.content ?? null,
+        bio_author_name: bioAuthor,
+        lessons_this_year: lessonsThisYear ?? 0,
       },
     })
   } catch (err) {

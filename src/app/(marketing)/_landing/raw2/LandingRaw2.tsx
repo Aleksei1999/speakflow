@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { PASSWORD_MIN } from "@/lib/validations";
 import RoastQuiz from "./RoastQuiz";
 
 /* ------------------------------------------------------------------
@@ -19,21 +20,17 @@ const ArrowRight = () => (
     <path d="M4 12h15M13 6l7 6-7 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const IconQuestion = () => (
-  <svg viewBox="0 0 56 56" fill="none" aria-hidden>
-    <path d="M14 10h34a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H26L14 50V40h0a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4Z" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="round" />
-    <path d="M24 21a5 5 0 0 1 9 3c0 3-4 3.5-4 6.5M29 35.5h.02" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />
-  </svg>
-);
-const IconHeart = () => (
-  <svg viewBox="0 0 56 56" fill="none" aria-hidden>
-    <path d="M28 47S8 35 8 21.5C8 14.6 13.4 10 19.5 10c3.9 0 7 1.9 8.5 4.6C29.5 11.9 32.6 10 36.5 10 42.6 10 48 14.6 48 21.5 48 35 28 47 28 47Z" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="round" />
-  </svg>
-);
-const IconTimer = () => (
-  <svg viewBox="0 0 56 56" fill="none" aria-hidden>
-    <circle cx="28" cy="31" r="17" stroke="currentColor" strokeWidth="3.4" />
-    <path d="M28 31V22M22 8h12M28 14V8" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />
+
+/**
+ * Filled стрелка ← / → как в pill-arrow дашборда (Figma node 4140:86).
+ * Использует path из свг Figma (viewBox сжат до 37×37 для чистой сетки).
+ */
+const ArrowRightFilled = () => (
+  <svg viewBox="0 0 37 37" fill="none" aria-hidden>
+    <path
+      d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z"
+      fill="currentColor"
+    />
   </svg>
 );
 const Chevron = () => (
@@ -49,18 +46,18 @@ const TgIcon = () => (
 
 /* ---------- data ---------- */
 const FEATURES = [
-  { icon: "ic-bubble.png", iconActive: "ic-bubble-red.png", title: "Разговорные клубы", body: <>Speaking club <b>с носителями</b> каждый день.</> },
-  { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: "CV / резюме", body: <>Составляем резюме на английском <b>вместе с вами</b> для трудоустройства.</> },
-  { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: "Индивидуальные уроки", body: <>Никаких больших групп. Всё внимание — <b>только вам.</b></> },
-  { icon: "ic-psy.png", iconActive: "ic-psy-red.png", title: "Работа с психологом", body: <>Преодолевай языковой барьер, <b>избавляйся от страха</b> со специалистом</> },
-  { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: "Лекции", body: <>Развивайся <b>в профессии и хобби</b> с нашими лекциями на английском языке</> },
+  { icon: "ic-bubble.svg", iconActive: "ic-bubble-red.svg", title: <>Разговорные<br />клубы</>, body: <>Speaking club<br /><b>с носителями</b><br />каждый день.</> },
+  { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: <>CV / резюме</>, body: <>Составляем резюме<br />на английском<br /><b>вместе с вами</b><br />для трудоустройства.</> },
+  { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: <>Индивидуальные<br />уроки</>, body: <>Никаких больших<br />групп. Всё внимание —<br /><b>только вам.</b></> },
+  { icon: "ic-psy.svg", iconActive: "ic-psy-red.svg", title: <>Работа<br />с психологом</>, body: <>Преодолевай<br />языковой барьер,<br /><b>избавляйся<br />от страха</b><br />со специалистом</> },
+  { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: <>Лекции</>, body: <>Развивайся<br /><b>в профессии и хобби</b><br />с нашими лекциями<br />на английском языке</> },
 ];
 
 const FREE_CARDS = [
-  { img: "ff-video.jpg", cls: "raw2-pcard--tall", text: <>Получи первое занятие <b>полностью бесплатно</b></> },
-  { img: "ff-tennis.jpg", cls: "", text: <><b>Выстроим план</b> обучения исходя из твоих интересов и хобби</> },
-  { img: "ff-chat.jpg", cls: "", text: <>Подберем для тебя <b>идеального преподавателя</b></> },
-  { img: "ff-hoodie.jpg", cls: "raw2-pcard--wide", text: <><b>Замотивируем тебя</b> продолжать путь в изучении английского</> },
+  { img: "ff-video.jpg", cls: "raw2-pcard--tall", text: <>Получи первое<br />занятие <b>полностью<br />бесплатно</b></> },
+  { img: "ff-tennis.jpg", cls: "", text: <><b>Выстроим план</b><br />обучения исходя<br />из твоих интересов<br />и хобби</> },
+  { img: "ff-chat.jpg", cls: "", text: <>Подберем для тебя<br /><b>идеального<br />преподавателя</b></> },
+  { img: "ff-hoodie.jpg", cls: "raw2-pcard--wide", text: <><b>Замотивируем тебя</b><br />продолжать путь<br />в изучении английского</> },
 ];
 
 const PRICES = [
@@ -108,6 +105,10 @@ export default function LandingRaw2() {
     setLoginErr("");
     const data = new FormData(e.currentTarget);
     const password = String(data.get("password") || "");
+    if (password.length < PASSWORD_MIN) {
+      setLoginErr(`Пароль должен быть не короче ${PASSWORD_MIN} символов`);
+      return;
+    }
     if (password !== String(data.get("password2") || "")) {
       setLoginErr("Пароли не совпадают");
       return;
@@ -177,22 +178,29 @@ export default function LandingRaw2() {
   const carRef = useRef<HTMLDivElement>(null);
   const carItems = [...FEATURES, ...FEATURES, ...FEATURES];
   const [activeIdx, setActiveIdx] = useState(FEATURES.length);
+  // ignore programmatic scroll for wrap-decisions until this timestamp;
+  // otherwise the wrap fires mid-animation and cancels the smooth scroll.
+  const wrapMuteUntilRef = useRef(0);
 
   function carCards() {
     const el = carRef.current;
     if (!el) return null;
     return Array.from(el.querySelectorAll<HTMLElement>(".raw2-fcard"));
   }
-  function copyWidth(cards: HTMLElement[]) {
+  function stepWidth(cards: HTMLElement[]) {
     if (cards.length < 2) return 0;
-    return (cards[1].offsetLeft - cards[0].offsetLeft) * FEATURES.length;
+    return cards[1].offsetLeft - cards[0].offsetLeft;
+  }
+  function copyWidth(cards: HTMLElement[]) {
+    return stepWidth(cards) * FEATURES.length;
   }
   function onCarScroll() {
     const el = carRef.current;
     const cards = carCards();
     if (!el || !cards) return;
     const copyW = copyWidth(cards);
-    if (copyW > 0) {
+    // Wrap ONLY for user-driven scroll — never during a smooth programmatic jump.
+    if (copyW > 0 && performance.now() > wrapMuteUntilRef.current) {
       if (el.scrollLeft < copyW * 0.5) el.scrollLeft += copyW;
       else if (el.scrollLeft > copyW * 1.5) el.scrollLeft -= copyW;
     }
@@ -221,7 +229,19 @@ export default function LandingRaw2() {
     const el = carRef.current;
     const cards = carCards();
     if (!el || !cards) return;
-    const step = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : el.clientWidth * 0.8;
+    const step = stepWidth(cards) || el.clientWidth * 0.8;
+    const copyW = copyWidth(cards);
+    // Rebase into the middle copy BEFORE animating, so the smooth scroll target
+    // never crosses the wrap boundary (which would cause a visible snap-back).
+    if (copyW > 0) {
+      let base = el.scrollLeft;
+      const nextTarget = base + dir * step;
+      if (nextTarget > copyW * 1.5) base -= copyW;
+      else if (nextTarget < copyW * 0.5) base += copyW;
+      if (base !== el.scrollLeft) el.scrollLeft = base; // instant, no CSS smooth
+    }
+    // Mute wrap for the duration of the smooth animation.
+    wrapMuteUntilRef.current = performance.now() + 500;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   }
 
@@ -324,6 +344,11 @@ export default function LandingRaw2() {
 
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitErr, setSubmitErr] = useState('');
+  // Валидность лид-формы: submit disabled пока не заполнены обязательные поля.
+  const [contactValid, setContactValid] = useState(false);
+  // Валидности форм логина/регистрации.
+  const [loginValid, setLoginValid] = useState(false);
+  const [registerValid, setRegisterValid] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -344,6 +369,23 @@ export default function LandingRaw2() {
     phoneInput?.classList.toggle('invalid', !phoneOk);
     if (!emailOk || !phoneOk) { (emailOk ? phoneInput : emailInput)?.focus(); return; }
 
+    // Если пользователь прошёл квиз в этой же сессии — прицепим результат,
+    // чтобы бек создал level_tests-строку с этим email.
+    // log[] нужен админке (AdminRawDashboard рендерит вопросы+варианты).
+    type QuizLog = { text: string; options: string[]; chosen: number; correct: number; lvl?: 1 | 2 | 3 };
+    let roastQuiz: { level: string; tierScores: [number, number, number]; log?: QuizLog[] } | undefined;
+    try {
+      const raw = sessionStorage.getItem('raw2_roast_quiz');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { level: string; tierScores: [number, number, number]; log?: QuizLog[]; ts: number };
+        // 2ч TTL — старые результаты не приклеиваем к новым заявкам.
+        if (parsed?.level && Array.isArray(parsed.tierScores) && Date.now() - (parsed.ts || 0) < 2 * 60 * 60 * 1000) {
+          roastQuiz = { level: parsed.level, tierScores: parsed.tierScores };
+          if (Array.isArray(parsed.log) && parsed.log.length > 0) roastQuiz.log = parsed.log;
+        }
+      }
+    } catch {}
+
     setSubmitBusy(true);
     try {
       const res = await fetch('/api/landing/lead', {
@@ -356,6 +398,7 @@ export default function LandingRaw2() {
           marketing_opt_in: marketing,
           country: phoneCountry,
           source: 'landing_raw2',
+          ...(roastQuiz ? { roast_quiz: roastQuiz } : {}),
         }),
       });
       if (!res.ok) {
@@ -367,6 +410,8 @@ export default function LandingRaw2() {
       form.reset();
       setPhoneValue('');
       setSent(true);
+      // Одноразовый прикреп: не приклеим тот же тест к следующему сабмиту.
+      try { sessionStorage.removeItem('raw2_roast_quiz'); } catch {}
     } catch {
       setSubmitErr('Проблема с сетью. Попробуй ещё раз.');
     } finally {
@@ -377,7 +422,7 @@ export default function LandingRaw2() {
   return (
     <div className="raw2">
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/landing/raw2/raw2.css" />
+      <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260903-faq12" />
 
       {/* ============ NAV ============ */}
       <nav className="raw2-nav">
@@ -408,7 +453,7 @@ export default function LandingRaw2() {
             </button>
             <div className="cta-row">
               <button type="button" className="btn btn-lime" onClick={() => setQuizOpen(true)}>пройти тест</button>
-              <button type="button" className="btn btn-arrow" onClick={() => setQuizOpen(true)} aria-label="Пройти тест"><ArrowRight /></button>
+              <button type="button" className="btn btn-arrow" onClick={() => setQuizOpen(true)} aria-label="Пройти тест"><ArrowRightFilled /></button>
             </div>
           </div>
         </div>
@@ -419,29 +464,33 @@ export default function LandingRaw2() {
       <section id="system" className="raw2-system">
         <div className="wrap">
           <div className="badge-wrap">
-            <span className="badge-title badge-title--outline-lime" style={{ borderColor: "#DDEA88", color: "#1E1E1E" }}>
+            <span className="badge-title badge-title--outline-lime" style={{ borderRadius: "41.5px", border: "4px solid #DFED8C", color: "#1E1E1E" }}>
               Система, в которую заходишь <span className="c-red">с пользой</span>:
             </span>
           </div>
         </div>
-        <div className="raw2-carousel-wrap">
+        <div className="raw2-carousel-outer">
           <button type="button" className="raw2-car-nav prev" onClick={() => scrollCards(-1)} aria-label="Назад">
-            <ArrowRight />
+            <span className="notch" aria-hidden />
+            <span className="disc"><ArrowRightFilled /></span>
           </button>
-          <div className="raw2-carousel" ref={carRef} onScroll={onCarScroll}>
-            {carItems.map((f, i) => (
-              <article className={`raw2-fcard ${i === activeIdx ? "active" : ""}`} key={i}>
-                <span className="ficon">
-                  <img src={`/landing/raw2/${f.icon}`} alt="" className="ic-def" />
-                  <img src={`/landing/raw2/${f.iconActive}`} alt="" className="ic-act" />
-                </span>
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
-              </article>
-            ))}
+          <div className="raw2-carousel-clip">
+            <div className="raw2-carousel" ref={carRef} onScroll={onCarScroll}>
+              {carItems.map((f, i) => (
+                <article className={`raw2-fcard ${i === activeIdx ? "active" : ""}`} key={i}>
+                  <span className="ficon">
+                    <img src={`/landing/raw2/${f.icon}`} alt="" className="ic-def" />
+                    <img src={`/landing/raw2/${f.iconActive}`} alt="" className="ic-act" />
+                  </span>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
           <button type="button" className="raw2-car-nav next" onClick={() => scrollCards(1)} aria-label="Вперёд">
-            <ArrowRight />
+            <span className="notch" aria-hidden />
+            <span className="disc"><ArrowRightFilled /></span>
           </button>
         </div>
       </section>
@@ -453,15 +502,15 @@ export default function LandingRaw2() {
             <div className="left">
               <h2>Проверь свою <span className="c-red">прожарку</span></h2>
               <p className="lvlup"><span className="up">Level up</span> или <span className="raw">stay raw</span>?</p>
-              <p className="desc">Пройди 12 вопросов и узнай свою прожарку. Помоги Стейку стать <b>well done</b> — он очень волнуется.</p>
+              <p className="desc">Пройди 12 вопросов и узнай свою прожарку.<br />Помоги Стейку стать <b>well done</b> -<br />он очень волнуется.</p>
             </div>
             <div className="right">
               <div className="metrics">
-                <div className="metric"><span className="mi"><IconQuestion /></span><div><b>12</b><span>вопросов</span></div></div>
-                <div className="metric"><span className="mi"><IconHeart /></span><div><b>3</b><span>жизни</span></div></div>
-                <div className="metric"><span className="mi"><IconTimer /></span><div><b>2</b><span>мин времени</span></div></div>
+                <div className="metric"><span className="mi"><img src="/landing/raw2/ic-q-red.svg" alt="" /></span><div><b>12</b><span>вопросов</span></div></div>
+                <div className="metric"><span className="mi"><img src="/landing/raw2/ic-heart-red.svg" alt="" /></span><div><b>3</b><span>жизни</span></div></div>
+                <div className="metric"><span className="mi"><img src="/landing/raw2/ic-timer-red.svg" alt="" /></span><div><b>2</b><span>мин времени</span></div></div>
               </div>
-              <p className="subnote">Узнай, на каком ты уровне прямо сейчас — и получи персональный план прожарки.</p>
+              <p className="subnote">Узнай, на каком ты уровне прямо сейчас -<br />и получи персональный план прожарки.</p>
               <button type="button" className="btn btn-red" onClick={() => setQuizOpen(true)}>Начать игру!</button>
             </div>
           </div>
@@ -489,8 +538,8 @@ export default function LandingRaw2() {
               </div>
               <div className="bio-card bio-dark">
                 <ul>
-                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="red">учится с<br />удовольствием.</b></li>
-                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="red">помогать<br />бизнесу расти</b><br />через английский.</li>
+                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="lime">учится с<br />удовольствием.</b></li>
+                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="lime">помогать<br />бизнесу расти</b><br />через английский.</li>
                 </ul>
               </div>
             </div>
@@ -554,9 +603,16 @@ export default function LandingRaw2() {
             {FAQ.map((f, i) => (
               <div className={`raw2-faq-item ${openFaq === i ? "open" : ""}`} key={i}>
                 <button className="raw2-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                  {f.q}<Chevron />
+                  <span>{f.q}</span>
                 </button>
-                {openFaq === i && <div className="raw2-faq-a">{f.a}</div>}
+                {openFaq === i && (
+                  <div className="raw2-faq-a">
+                    <span className="raw2-faq-a-text">{f.a}</span>
+                    <svg viewBox="0 0 48 22" fill="none" className="chev-down" aria-hidden>
+                      <path d="M4.00037 4.00049L24.0004 18.0005L44.0004 4.00049" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -568,14 +624,19 @@ export default function LandingRaw2() {
         <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
           <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>
-          <form className="raw2-form" onSubmit={onSubmit}>
+          <form
+            className="raw2-form"
+            onSubmit={onSubmit}
+            onChange={(e) => setContactValid(e.currentTarget.checkValidity())}
+            onInput={(e) => setContactValid(e.currentTarget.checkValidity())}
+          >
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
             <input type="tel" name="phone" placeholder={phoneCfg.placeholder} value={phoneValue} onChange={onPhoneChange} inputMode="tel" autoComplete="tel" required />
             <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
             <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы.</span></label>
             {submitErr && <p className="raw2-form-err">{submitErr}</p>}
-            <div className="submit-row"><button type="submit" className="btn btn-red" disabled={submitBusy}>{submitBusy ? 'Отправляем…' : 'Отправить'}</button></div>
+            <div className="submit-row"><button type="submit" className="btn btn-red" disabled={submitBusy || !contactValid}>{submitBusy ? 'Отправляем…' : 'Отправить'}</button></div>
             <p className="raw2-form-consent">Нажимая «отправить» вы даёте своё согласие на обработку персональных данных.</p>
           </form>
         </div>
@@ -587,18 +648,19 @@ export default function LandingRaw2() {
           <div className="inner">
             <div className="fcol fcol-links">
               <a href="https://t.me/" target="_blank" rel="noopener noreferrer" className="tg"><TgIcon />Telegram</a>
-              <a href={CONTACT_HREF}>Связаться</a>
-              <Link href="/oferta">Договор-оферта</Link>
-              <Link href="/privacy">Политика конфиденциальности</Link>
+              <a href={CONTACT_HREF} className="fmut">Связаться</a>
+              <Link href="/oferta" className="fmut">Договор-оферта</Link>
+              <Link href="/privacy" className="fmut">Политика конфиденциальности</Link>
             </div>
             <div className="fcol-center">
               <a href={CONTACT_HREF} className="btn btn-red">Выучить английский</a>
               <p className="copy">By V. Kratkovskaya © 2026</p>
             </div>
             <div className="legal">
-              <b>ИП Кратковская Валерия Витальевна</b>
-              ОГРНИП: 325619600134369<br />
-              ИНН: 616485783606
+              <span>ИП Кратковская</span>
+              <span>Валерия Витальевна</span>
+              <span>ОГРНИП: 325619600134369</span>
+              <span>ИНН: 616485783606</span>
             </div>
           </div>
         </div>
@@ -616,24 +678,34 @@ export default function LandingRaw2() {
                   <button type="button" className={loginRole === "student" ? "active" : ""} onClick={() => setLoginRole("student")}>Ученик</button>
                   <button type="button" className={loginRole === "teacher" ? "active" : ""} onClick={() => setLoginRole("teacher")}>Учитель</button>
                 </div>
-                <form className="raw2-login-form" onSubmit={onLogin}>
+                <form
+                  className="raw2-login-form"
+                  onSubmit={onLogin}
+                  onChange={(e) => setLoginValid(e.currentTarget.checkValidity())}
+                  onInput={(e) => setLoginValid(e.currentTarget.checkValidity())}
+                >
                   <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
                   <input name="password" type="password" placeholder="пароль" required autoComplete="current-password" />
                   {loginErr && <p className="raw2-login-err">{loginErr}</p>}
-                  <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Входим…" : "Войти"}</button>
+                  <button type="submit" className="btn btn-red" disabled={loginBusy || !loginValid}>{loginBusy ? "Входим…" : "Войти"}</button>
                   <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("register"); }}>Регистрация</button>
                 </form>
               </>
             ) : (
               <>
                 <div className="raw2-login-title">Регистрация для входа в ЛК</div>
-                <form className="raw2-login-form" onSubmit={onRegister}>
+                <form
+                  className="raw2-login-form"
+                  onSubmit={onRegister}
+                  onChange={(e) => setRegisterValid(e.currentTarget.checkValidity())}
+                  onInput={(e) => setRegisterValid(e.currentTarget.checkValidity())}
+                >
                   <input name="first_name" type="text" placeholder="имя" required autoComplete="given-name" />
                   <input name="last_name" type="text" placeholder="фамилия" required autoComplete="family-name" />
                   <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
                   <input name="password" type="password" placeholder="пароль" required autoComplete="new-password" />
                   <input name="password2" type="password" placeholder="повтор пароля" required autoComplete="new-password" />
-                  <button type="submit" className="btn btn-red" disabled={loginBusy}>{loginBusy ? "Регистрируем…" : "Зарегистрироваться"}</button>
+                  <button type="submit" className="btn btn-red" disabled={loginBusy || !registerValid}>{loginBusy ? "Регистрируем…" : "Зарегистрироваться"}</button>
                   {loginErr && <p className="raw2-login-err">{loginErr}</p>}
                   <label className="raw2-check"><input type="checkbox" name="agree" /><span>Согласен с обработкой персональных данных</span></label>
                   <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>

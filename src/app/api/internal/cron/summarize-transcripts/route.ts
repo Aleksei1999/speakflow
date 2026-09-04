@@ -3,6 +3,10 @@
 // Pg_cron каждые 5 минут. Берёт свежий ok-транскрипт без recording-саммари,
 // прогоняет через GPT-4o (json_schema → структурированный конспект + квиз),
 // пишет в lesson_summaries / lesson_quizzes и уведомляет студента.
+//
+// Concurrency-safe: захват транскрипта через атомарный UPDATE `locked_at`
+// (см. миграция 20260904200000). Дополнительно — partial UNIQUE index
+// на lesson_summaries(lesson_id) WHERE source='recording' как safety-net.
 
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -20,6 +24,7 @@ export const maxDuration = 300
 export const dynamic = "force-dynamic"
 
 const MODEL = "gpt-4o-2024-08-06" // json_schema strict + русский/английский
+const LOCK_TTL_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization")
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data: transcripts, error: tErr } = await admin
     .from("lesson_transcripts")
-    .select("id, lesson_id, recording_id, full_text, duration_sec, created_at")
+    .select("id, lesson_id, recording_id, full_text, duration_sec, created_at, locked_at")
     .eq("status", "ok")
     .order("created_at", { ascending: true })
     .limit(20)
@@ -52,8 +57,51 @@ export async function POST(req: NextRequest) {
     .in("lesson_id", lessonIds)
     .eq("source", "recording")
   const done = new Set((existing ?? []).map((e: any) => e.lesson_id))
-  const target = transcripts.find((t) => !done.has(t.lesson_id))
-  if (!target) return NextResponse.json({ ok: true, picked: null })
+  const eligible = transcripts.filter((t) => !done.has(t.lesson_id))
+  if (eligible.length === 0) return NextResponse.json({ ok: true, picked: null })
+
+  // Атомарный захват lock'а: UPDATE ... WHERE not-locked-or-stale RETURNING.
+  // Если 0 строк — другой worker уже взял этот transcript, пробуем следующий.
+  let target: (typeof eligible)[number] | null = null
+  const staleBefore = new Date(Date.now() - LOCK_TTL_MS).toISOString()
+  for (const cand of eligible) {
+    const { data: locked, error: lockErr } = await admin
+      .from("lesson_transcripts")
+      .update({ locked_at: new Date().toISOString() })
+      .eq("id", cand.id)
+      .eq("status", "ok")
+      .or(`locked_at.is.null,locked_at.lt.${staleBefore}`)
+      .select("id")
+    if (lockErr) {
+      console.error("[cron/summarize] lock attempt failed:", lockErr)
+      continue
+    }
+    if (locked && locked.length > 0) {
+      target = cand
+      break
+    }
+  }
+  if (!target) {
+    console.log("[cron/summarize] all candidates locked by other workers")
+    return NextResponse.json({ ok: true, picked: null, skipped: "all_locked" })
+  }
+
+  const releaseLock = async () => {
+    const { error } = await admin
+      .from("lesson_transcripts")
+      .update({ locked_at: null })
+      .eq("id", target!.id)
+    if (error) console.error("[cron/summarize] release lock failed:", error)
+  }
+
+  try {
+    return await runSummarize(admin, target)
+  } finally {
+    await releaseLock()
+  }
+}
+
+async function runSummarize(admin: any, target: any) {
 
   // student_id / teacher_id для саммари берём из lessons.
   const { data: lesson, error: lErr } = await admin
@@ -125,6 +173,14 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (sErr || !summary) {
+    // 23505 = unique_violation. Наш partial UNIQUE (lesson_id) WHERE
+    // source='recording' — safety-net против race'а: если lock-логика
+    // всё-таки пропустила параллельный INSERT, второй worker уходит
+    // тихо, не сжигая OpenAI-токены впустую.
+    if (sErr?.code === "23505") {
+      console.warn("[cron/summarize] duplicate summary (race lost), skipping")
+      return NextResponse.json({ ok: true, skipped: "duplicate" })
+    }
     console.error("[cron/summarize] insert summary failed:", sErr)
     return NextResponse.json({ error: "summary insert failed" }, { status: 500 })
   }

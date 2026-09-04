@@ -174,3 +174,67 @@ export async function notifyLessonCancelled(args: {
     }).catch(() => {})
   }
 }
+
+/**
+ * Fan-out уведомления о переносе урока.
+ * Отправляет всем, кроме того, кто перенос инициировал (обычно — учителя).
+ */
+export async function notifyLessonRescheduled(args: {
+  lessonId: string
+  oldScheduledAt: string
+  changedByUserId: string
+}): Promise<void> {
+  const admin = createAdminClient() as unknown as LooseAdmin
+  const lessonRes = await admin
+    .from("lessons")
+    .select("id, student_id, teacher_id, scheduled_at, duration_minutes")
+    .eq("id", args.lessonId)
+    .maybeSingle()
+  const lesson = lessonRes.data as LessonRecord | null
+  if (!lesson) return
+
+  const tpRes = await admin
+    .from("teacher_profiles")
+    .select("user_id")
+    .eq("id", lesson.teacher_id)
+    .maybeSingle()
+  const tp = tpRes.data as TeacherProfileLink | null
+  const teacherUserId = tp?.user_id ?? null
+
+  const ids = [lesson.student_id, teacherUserId, args.changedByUserId].filter(Boolean) as string[]
+  const profilesRes = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", ids)
+  const profiles = (profilesRes.data ?? []) as ProfileName[]
+  const byId = new Map<string, ProfileName>(profiles.map((p) => [p.id, p]))
+  const rescheduledByName = byId.get(args.changedByUserId)?.full_name || "Собеседник"
+  const studentName = byId.get(lesson.student_id)?.full_name || "Ученик"
+  const teacherName = teacherUserId
+    ? byId.get(teacherUserId)?.full_name || "Преподаватель"
+    : "Преподаватель"
+
+  const { date, time } = moscow(lesson.scheduled_at)
+  const { date: oldDate, time: oldTime } = moscow(args.oldScheduledAt)
+
+  const recipients: string[] = []
+  if (lesson.student_id && lesson.student_id !== args.changedByUserId) {
+    recipients.push(lesson.student_id)
+  }
+  if (teacherUserId && teacherUserId !== args.changedByUserId) {
+    recipients.push(teacherUserId)
+  }
+
+  for (const uid of recipients) {
+    void sendNotification(uid, "lesson_rescheduled" as any, {
+      studentName,
+      teacherName,
+      rescheduledByName,
+      date,
+      time,
+      oldDate,
+      oldTime,
+      duration: lesson.duration_minutes ?? 50,
+    }).catch(() => {})
+  }
+}

@@ -60,6 +60,17 @@ export async function autoAssignTrial(args: {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Гейт «есть реальное намерение».
+  // Раньше эта функция вызывалась на КАЖДОМ логине из /auth/callback и
+  // ВСЕГДА создавала строку — учитель видел фантомных «заявок» от каждого
+  // залогинившегося тестового аккаунта. Теперь строку создаём только если
+  // студент явно указал одно из: preferredSlot | levelTestId | teacherProfileId.
+  // «Голый» логин без сигналов — no-op (return null).
+  // ---------------------------------------------------------------------
+  const hasIntent = !!(args.preferredSlot || args.levelTestId || args.teacherProfileId)
+  if (!hasIntent) return null
+
   // 1) Create the request row.
   const { data: inserted, error: insertErr } = await admin
     .from("trial_lesson_requests")

@@ -221,3 +221,86 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Уведомление «Время вашего занятия изменилось» (Figma 2505:3378) — pop-up
+   с лаймовым фоном и красной кнопкой «Календарь». Открывается через
+   LessonRescheduleWatcher при UPDATE на lessons.scheduled_at. */
+.lesson-resch-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1400;
+  animation: lesson-resch-fade .18s ease;
+}
+@keyframes lesson-resch-fade { from { opacity: 0 } to { opacity: 1 } }
+/* Абсолютное позиционирование 1:1 по Figma-фрейму 503×370.
+   Текст: y=86, ширина 492, 32px Inter Bold, letter-spacing -0.05em,
+   line-height 0.975. Крестик: 13.33×13.33 в (451,34).
+   Кнопка «Календарь»: 226×68 в (139,239), radius 34, 32px белый. */
+.lesson-resch-modal {
+  position: relative;
+  width: 503px; max-width: 92vw;
+  height: 370px;
+  background: #DFED8C;
+  border-radius: 29.5px;
+  animation: lesson-resch-pop .28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes lesson-resch-pop {
+  from { opacity: 0; transform: scale(0.9) }
+  to   { opacity: 1; transform: scale(1)   }
+}
+.lesson-resch-close {
+  position: absolute; top: 34px; right: 38.5px;
+  width: 13.33px; height: 13.33px;
+  background: transparent; border: none; cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #1E1E1E;
+}
+.lesson-resch-text {
+  position: absolute; top: 86px; left: 50%;
+  transform: translateX(-50%);
+  width: 492px; max-width: calc(100% - 20px);
+  font-family: 'Inter', sans-serif;
+  font-weight: 700; font-size: 32px; line-height: 0.975;
+  letter-spacing: -0.05em; color: #1E1E1E;
+  text-align: center;
+  margin: 0;
+}
+.lesson-resch-cta {
+  position: absolute; top: 239px; left: 139px;
+  width: 226px; height: 68px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #CC3A3A;
+  color: #fff !important;
+  border-radius: 34px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700; font-size: 32px; line-height: 0.805;
+  letter-spacing: -0.05em;
+  text-decoration: none;
+  transition: background .2s;
+}
+.lesson-resch-cta:hover,
+.lesson-resch-cta:visited,
+.lesson-resch-cta:active { color: #fff !important; }
+.lesson-resch-cta:hover { background: #A53026; }
+
+/* Мобильная адаптация: карточка сжимается пропорционально. */
+@media (max-width: 560px) {
+  .lesson-resch-modal { width: 92vw; height: auto; min-height: 300px; padding-bottom: 32px; }
+  .lesson-resch-text { position: static; transform: none; width: auto; padding: 70px 24px 0; font-size: 24px; }
+  .lesson-resch-cta { position: static; margin: 30px auto 0; display: flex; font-size: 24px; height: 56px; width: 200px; }
+  .lesson-resch-close { top: 20px; right: 22px; }
+}
+
+/* Автоматически «тушим» кнопку submit в любой форме, где хоть одно
+   обязательное поле не заполнено или невалидно. Работает через CSS-псевдокласс
+   :invalid без дополнительного JS — достаточно проставить required на поля
+   и оставить кнопку type="submit". Класс form-no-auto-disable отключает
+   это поведение для отдельной формы. */
+form:invalid:not(.form-no-auto-disable) button[type="submit"],
+form:invalid:not(.form-no-auto-disable) input[type="submit"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.35);
+}

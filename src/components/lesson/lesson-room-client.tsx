@@ -10,6 +10,9 @@ import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog"
 import { LESSON_POST_WINDOW } from "@/lib/constants"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
+import SettingsModal from "@/components/lesson/SettingsModal"
+import LeaveCallModal from "@/components/lesson/LeaveCallModal"
+import PostLessonNoteModal from "@/components/lesson/PostLessonNoteModal"
 
 // Video provider — переключатель Jitsi/LiveKit. Дефолт livekit на ветке
 // эксперимента; в продакшене можно вернуть на jitsi через
@@ -95,24 +98,6 @@ const CSS = `
 .lr .vm .jitsi-mount > div{width:100%;height:100%}
 .lr .vm .jitsi-mount iframe{width:100%;height:100%;border:0;display:block}
 .lr .vm.no-jitsi-clicks::after{content:"";position:absolute;inset:0;z-index:5;background:transparent}
-.lr .live-badge{position:absolute;top:16px;left:16px;background:var(--red);color:#fff;padding:6px 12px;border-radius:999px;font-size:10px;letter-spacing:1.5px;font-weight:800;display:flex;align-items:center;gap:6px;z-index:10;pointer-events:none}
-.lr .live-badge .blink{width:6px;height:6px;background:#fff;border-radius:50%;animation:blink 1.5s infinite}
-@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:.3}}
-.lr .quality-badge{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.55);backdrop-filter:blur(10px);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;z-index:10;pointer-events:none;display:inline-flex;align-items:center;gap:6px}
-.lr .quality-badge .bar{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
-.lr .quality-badge .bar i{width:3px;background:#fff;border-radius:1px;opacity:.35}
-.lr .quality-badge .bar i:nth-child(1){height:4px}
-.lr .quality-badge .bar i:nth-child(2){height:8px}
-.lr .quality-badge .bar i:nth-child(3){height:12px}
-.lr .quality-badge.good .bar i{opacity:1}
-.lr .quality-badge.fair .bar i:nth-child(1),.lr .quality-badge.fair .bar i:nth-child(2){opacity:1}
-.lr .quality-badge.poor{background:rgba(182,63,55,.85)}
-.lr .quality-badge.poor .bar i:nth-child(1){opacity:1}
-.lr .quality-badge.lost{background:rgba(182,63,55,.95)}
-.lr .vc{display:flex;justify-content:center;gap:12px;padding:6px 0 2px;flex-shrink:0}
-.lr .cb{width:52px;height:52px;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s ease;color:var(--text)}
-.lr .cb:hover{background:#e8e8e4}.lr .cb.active{background:var(--lime)}.lr .cb.danger{background:var(--red);color:#fff;transform:rotate(135deg)}.lr .cb.danger:hover{opacity:.9}
-.lr .cb svg{width:22px;height:22px}
 .lr .ls{background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
 .lr .lt{display:flex;padding:8px;gap:4px;border-bottom:1px solid var(--border);flex-shrink:0}
 .lr .ltb{flex:1;padding:11px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);border-radius:10px;transition:all .15s ease}
@@ -221,8 +206,6 @@ const CSS = `
   .lr .rec-pill > span:not(.dot){display:none}
   .lr .rec-pill .stop{display:none}
   .lr .lm{padding:10px;gap:10px}
-  .lr .cb{width:44px;height:44px}
-  .lr .cb svg{width:18px;height:18px}
   /* toast вниз — иначе перекрывает «Выйти» */
   .lr .rec-toast{top:auto;bottom:calc(24px + env(safe-area-inset-bottom));font-size:12px;padding:10px 16px}
 }
@@ -249,6 +232,9 @@ export function LessonRoomClient({
   const [hwDesc, setHwDesc] = useState("")
   const [hwOpen, setHwOpen] = useState(false)
   const hwModalRef = useModalA11y(hwOpen, () => setHwOpen(false))
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [leaveOpen, setLeaveOpen] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
   // Брендированный confirm-диалог вместо нативного window.confirm().
   const { confirm, dialogProps: confirmDialogProps } = useConfirm()
   const [remaining, setRemaining] = useState(0)
@@ -789,6 +775,7 @@ export function LessonRoomClient({
 
   return (
     <>
+      <link rel="stylesheet" href="/lesson/lesson-room.css" />
       <style dangerouslySetInnerHTML={{__html:CSS}} />
       <div className="lr">
         {/* Header */}
@@ -903,6 +890,43 @@ export function LessonRoomClient({
             <div className="stage">
             <div className="va">
               <div className="vm">
+                <div className="vc-topbar">
+                  <span className="vc-logo">
+                    Raw<small>english</small>
+                  </span>
+                  <div className="vc-winbtns">
+                    <button
+                      type="button"
+                      className="vc-winbtn vc-winbtn--min"
+                      aria-label="Свернуть"
+                      onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }}
+                    >
+                      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
+                        <path d="M4 10h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="vc-winbtn vc-winbtn--exp"
+                      aria-label="На весь экран"
+                      onClick={() => { if (fullscreenSupported) toggleFullscreen() }}
+                    >
+                      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
+                        <path d="M7 13L14 6M8 6h6v6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="vc-winbtn vc-winbtn--close"
+                      aria-label="Закрыть звонок"
+                      onClick={() => setLeaveOpen(true)}
+                    >
+                      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
+                        <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
                 {VIDEO_PROVIDER === "jitsi" ? (
                   <div className="jitsi-mount" ref={jitsiRef} />
                 ) : (
@@ -912,48 +936,24 @@ export function LessonRoomClient({
                     onToggleSidebar={() => setSidebarOn((v) => !v)}
                     onFullscreen={fullscreenSupported ? toggleFullscreen : undefined}
                     fullscreenSupported={fullscreenSupported}
-                    onEnd={handleEnd}
+                    onEnd={() => setLeaveOpen(true)}
                     onQuality={setConnQuality}
                     hangupSignal={lkHangupSignal}
                     onRoom={setLiveKitRoom}
+                    onOpenSettings={() => setSettingsOpen(true)}
+                    onOpenNotes={() => setNoteOpen(true)}
+                    onShareLink={() => {
+                      const url = typeof window !== "undefined" ? window.location.href : ""
+                      if (!url) return
+                      try {
+                        void navigator.clipboard?.writeText(url)
+                      } catch {
+                        /* нет прав / http контекст — пропускаем */
+                      }
+                    }}
                   />
                 )}
-                <div className="live-badge"><span className="blink"/>LIVE</div>
-                {connQuality !== "unknown" && (
-                  <div className={`quality-badge ${connQuality}`}>
-                    <span className="bar"><i/><i/><i/></span>
-                    <span>
-                      {connQuality === "good" ? "Связь" :
-                       connQuality === "fair" ? "Средне" :
-                       connQuality === "poor" ? "Слабо" : "Нет связи"}
-                    </span>
-                  </div>
-                )}
               </div>
-              {VIDEO_PROVIDER === "jitsi" && (
-                <div className="vc">
-                  <button className={`cb ${micOn?"active":""}`} title="Микрофон" onClick={toggleMic}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-                  </button>
-                  <button className={`cb ${camOn?"active":""}`} title="Камера" onClick={toggleCam}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
-                  </button>
-                  <button className={`cb ${screenOn?"active":""}`} title="Демонстрация" onClick={toggleScreen}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-                  </button>
-                  <button className={`cb ${sidebarOn?"active":""}`} title="Показать/скрыть чат" onClick={()=>setSidebarOn(v=>!v)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
-                  </button>
-                  {fullscreenSupported && (
-                    <button className="cb" title="Полноэкранный режим" onClick={toggleFullscreen}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-                    </button>
-                  )}
-                  <button className="cb danger" title="Завершить" onClick={handleEnd}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Bottom bar — only under video column */}
@@ -1206,6 +1206,34 @@ export function LessonRoomClient({
             } catch { /* SSR безопасность — мы в client-only ветке, но на всякий случай */ }
             closeAndGoSchedule()
           }}
+        />
+      )}
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+      <LeaveCallModal
+        open={leaveOpen}
+        canEndForAll={isTeacher}
+        onClose={() => setLeaveOpen(false)}
+        onLeave={() => {
+          setLeaveOpen(false)
+          handleEnd()
+        }}
+        onEndForAll={() => {
+          setLeaveOpen(false)
+          handleEnd()
+        }}
+      />
+      {isTeacher && studentId && (
+        <PostLessonNoteModal
+          open={noteOpen}
+          lessonId={lessonId}
+          studentId={studentId}
+          studentName={teacherName}
+          studentLevel={studentLevel}
+          onClose={() => setNoteOpen(false)}
         />
       )}
     </>

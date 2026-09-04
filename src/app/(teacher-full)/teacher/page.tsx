@@ -6,8 +6,11 @@ import { getCachedTeacherStudents } from "@/lib/cache/dashboard"
 import { getCachedTeacherDashboard } from "@/lib/dashboard/teacher"
 import { createAdminClient } from "@/lib/supabase/admin"
 import TeacherRawDashboard from "./TeacherRawDashboard"
+import { fetchTeacherRates } from "@/lib/settings/rates"
 import { fetchTeacherSchedule, getCalendarConnection } from "./calendar-actions"
 import { fetchLessonRequests } from "./request-actions"
+import { fetchTrialApplications } from "./trial-request-fetch"
+import { fetchChatList } from "@/lib/chat/list"
 
 export const dynamic = "force-dynamic"
 
@@ -34,8 +37,10 @@ export default async function TeacherNewPage() {
   // тот же источник, что применяется в существующих teacher-страницах.
   const snapshot = await getCachedTeacherStudents(user.id)
   const levelByUser = new Map<string, string>()
+  // DB хранит роаст-уровни (Raw..Well Done) — маппим обратно на CEFR.
+  const { fromRoastLevel } = await import("@/lib/levels/mapping")
   for (const p of snapshot.progress) {
-    if (p.english_level) levelByUser.set(p.user_id, String(p.english_level).toUpperCase())
+    if (p.english_level) levelByUser.set(p.user_id, fromRoastLevel(p.english_level))
   }
 
   // firstSeen + nextUpcoming по lessons
@@ -87,12 +92,16 @@ export default async function TeacherNewPage() {
   }
   let initialRequests: Awaited<ReturnType<typeof fetchLessonRequests>> = []
   let dashSnap: Awaited<ReturnType<typeof getCachedTeacherDashboard>> = null
+  let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
+  let initialApplications: Awaited<ReturnType<typeof fetchTrialApplications>> = []
   try {
-    ;[initialSchedule, calendarConnection, initialRequests, dashSnap] = await Promise.all([
+    ;[initialSchedule, calendarConnection, initialRequests, dashSnap, initialChats, initialApplications] = await Promise.all([
       fetchTeacherSchedule(),
       getCalendarConnection(),
       fetchLessonRequests(),
       getCachedTeacherDashboard(user.id),
+      fetchChatList({ includeTeacherGroups: true }),
+      fetchTrialApplications(),
     ])
   } catch (e) {
     console.error("[teacher] dashboard prefetch failed", e)
@@ -127,6 +136,11 @@ export default async function TeacherNewPage() {
     monthLabel: new Date().toLocaleDateString("ru", { month: "long" }),
   }
 
+  // Глобальные тарифы для плашки «как считается доход» (админ настраивает).
+  const teacherRates = await fetchTeacherRates().catch(() => ({
+    rate60Kopecks: 0, rate90Kopecks: 0, rateGroupKopecks: 0,
+  }))
+
   return (
     <TeacherRawDashboard
       initialStudents={students}
@@ -135,6 +149,9 @@ export default async function TeacherNewPage() {
       calendarConnection={calendarConnection}
       initialRequests={initialRequests}
       incomeStats={incomeStats}
+      initialChats={initialChats}
+      initialApplications={initialApplications}
+      teacherRates={teacherRates}
     />
   )
 }

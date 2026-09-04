@@ -451,9 +451,20 @@ async function loadTeacherStudents(
   }
 
   const lessons = (lessonRows ?? []) as CachedTeacherStudentsSnapshot['lessons']
-  const studentIds = Array.from(
-    new Set(lessons.map((l) => l.student_id).filter((x): x is string => !!x))
-  )
+  const lessonStudentIds = lessons.map((l) => l.student_id).filter((x): x is string => !!x)
+
+  // Учеников, «взятых» через trial-request accept (assigned_teacher_id = я),
+  // тоже включаем в список — даже если у них ещё нет lessons-строки.
+  const { data: trialRows } = await (admin as any)
+    .from('trial_lesson_requests')
+    .select('user_id')
+    .eq('assigned_teacher_id', teacherProfileId)
+    .in('status', ['assigned', 'scheduled'])
+  const trialStudentIds = ((trialRows ?? []) as Array<{ user_id: string }>)
+    .map((r) => r.user_id)
+    .filter(Boolean)
+
+  const studentIds = Array.from(new Set([...lessonStudentIds, ...trialStudentIds]))
 
   if (studentIds.length === 0) {
     return {

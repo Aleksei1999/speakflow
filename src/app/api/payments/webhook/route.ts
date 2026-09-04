@@ -75,12 +75,22 @@ export async function POST(request: NextRequest) {
     switch (notification.event) {
       case 'payment.succeeded': {
         if (!isPaymentObject(notification.object)) break
-        await handlePaymentSucceeded(supabase, notification.object)
+        // Пополнение баланса и оплата урока — разные потоки. Роутим по
+        // metadata.kind, установленному в /api/balance/topup/create.
+        if (notification.object.metadata?.kind === 'balance') {
+          await handleBalanceTopupSucceeded(supabase, notification.object)
+        } else {
+          await handlePaymentSucceeded(supabase, notification.object)
+        }
         break
       }
       case 'payment.canceled': {
         if (!isPaymentObject(notification.object)) break
-        await handlePaymentCanceled(supabase, notification.object)
+        if (notification.object.metadata?.kind === 'balance') {
+          await handleBalanceTopupCanceled(supabase, notification.object)
+        } else {
+          await handlePaymentCanceled(supabase, notification.object)
+        }
         break
       }
       case 'refund.succeeded': {
@@ -372,4 +382,125 @@ async function handleRefundSucceeded(
       .update({ status: 'cancelled' as const })
       .eq('lesson_id', paymentRecord.lesson_id)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Balance top-up handlers (metadata.kind === 'balance')
+// ---------------------------------------------------------------------------
+
+async function handleBalanceTopupSucceeded(
+  supabase: ReturnType<typeof createAdminClient>,
+  webhookPayment: YooKassaPayment
+) {
+  const yookassaPaymentId = webhookPayment.id
+  if (!yookassaPaymentId) {
+    console.error('[webhook][topup] succeeded без id')
+    return
+  }
+
+  // Идемпотентность: если topup уже succeeded — выходим.
+  // FIXME(types): balance_topups не в generated Database типах — cast to any.
+  const { data: existingTopup } = await ((supabase as any).from('balance_topups'))
+    .select('id, user_id, amount_kopecks, status')
+    .eq('yookassa_payment_id', yookassaPaymentId)
+    .maybeSingle() as { data: { id: string; user_id: string; amount_kopecks: number; status: string } | null }
+  if (!existingTopup) {
+    console.error('[webhook][topup] topup не найден:', yookassaPaymentId)
+    return
+  }
+  if (existingTopup.status === 'succeeded') return
+
+  // Не верим телу webhook — тянем платёж через API YooKassa.
+  let payment: YooKassaPayment
+  try {
+    const client = new YooKassaClient()
+    payment = await client.getPayment(yookassaPaymentId)
+  } catch (e) {
+    console.error('[webhook][topup] getPayment failed:', yookassaPaymentId, e)
+    throw e
+  }
+  if (payment.status !== 'succeeded' || !payment.paid) {
+    console.warn(
+      `[webhook][topup] webhook succeeded, но API status=${payment.status} paid=${payment.paid}: ${yookassaPaymentId}`
+    )
+    return
+  }
+  const topupIdFromMeta = payment.metadata?.topup_id
+  const userIdFromMeta = payment.metadata?.user_id
+  if (topupIdFromMeta !== existingTopup.id || userIdFromMeta !== existingTopup.user_id) {
+    console.error(
+      `[webhook][topup] metadata mismatch: topup=${existingTopup.id}/${existingTopup.user_id} vs ${topupIdFromMeta}/${userIdFromMeta}`
+    )
+    return
+  }
+
+  const paidKopecks = Math.round(parseFloat(payment.amount.value) * 100)
+  if (payment.amount.currency !== 'RUB') {
+    console.error(
+      `[webhook][topup] unsupported currency ${payment.amount.currency}:`,
+      yookassaPaymentId
+    )
+    return
+  }
+  if (paidKopecks !== existingTopup.amount_kopecks) {
+    console.error(
+      `[webhook][topup] amount mismatch: paid=${paidKopecks} expected=${existingTopup.amount_kopecks}`
+    )
+    return
+  }
+
+  // Атомарно кредитуем баланс через SQL-функцию (upsert + increment).
+  const { error: creditError } = await (supabase as any).rpc('credit_student_balance', {
+    uid: existingTopup.user_id,
+    amount_add: paidKopecks,
+  })
+  if (creditError) {
+    console.error('[webhook][topup] credit_student_balance failed:', creditError)
+    throw creditError
+  }
+
+  await ((supabase as any).from('balance_topups'))
+    .update({
+      status: 'succeeded' as const,
+      paid_at: payment.captured_at ?? new Date().toISOString(),
+    })
+    .eq('id', existingTopup.id)
+    .eq('status', 'pending') // защита от гонки
+
+  invalidateStudentDashboard(existingTopup.user_id)
+}
+
+async function handleBalanceTopupCanceled(
+  supabase: ReturnType<typeof createAdminClient>,
+  webhookPayment: YooKassaPayment
+) {
+  const yookassaPaymentId = webhookPayment.id
+  if (!yookassaPaymentId) return
+
+  // FIXME(types): balance_topups не в generated Database типах.
+  const { data: existingTopup } = await ((supabase as any).from('balance_topups'))
+    .select('id, user_id, status')
+    .eq('yookassa_payment_id', yookassaPaymentId)
+    .maybeSingle() as { data: { id: string; user_id: string; status: string } | null }
+  if (!existingTopup || existingTopup.status !== 'pending') return
+
+  let payment: YooKassaPayment
+  try {
+    const client = new YooKassaClient()
+    payment = await client.getPayment(yookassaPaymentId)
+  } catch (e) {
+    console.error('[webhook][topup] getPayment failed (cancel):', yookassaPaymentId, e)
+    throw e
+  }
+  if (payment.status !== 'canceled') {
+    console.warn(
+      `[webhook][topup] cancel webhook, но API status=${payment.status}: ${yookassaPaymentId}`
+    )
+    return
+  }
+
+  await ((supabase as any).from('balance_topups'))
+    .update({ status: 'cancelled' as const })
+    .eq('id', existingTopup.id)
+    .eq('status', 'pending')
 }

@@ -41,6 +41,7 @@ export interface GoogleCalendarEvent {
   htmlLink?: string | null
   updated?: string | null
   status?: string | null
+  extendedProperties?: { private?: Record<string, string>; shared?: Record<string, string> } | null
 }
 
 interface StoredToken {
@@ -310,6 +311,10 @@ export async function pushEventToGoogle(
     startISO: string
     endISO: string
     description?: string
+    /** Гости события. Google разошлёт приглашение по email если sendUpdates≠'none'. */
+    attendees?: Array<{ email: string; displayName?: string }>
+    /** 'all' → Google шлёт email-приглашение гостям; 'none' → тихо (по умолчанию). */
+    sendUpdates?: 'all' | 'externalOnly' | 'none'
     /** private-namespaced ключи; читаются через events.get(...).extendedProperties.private */
     extendedProps?: Record<string, string>
   },
@@ -317,12 +322,16 @@ export async function pushEventToGoogle(
   const auth = await getAccessToken(userId)
   if (!auth) return null
 
-  const url = `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(auth.calendarId)}/events`
+  const sendUpdates = params.sendUpdates ?? (params.attendees?.length ? 'all' : 'none')
+  const url = `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(auth.calendarId)}/events?sendUpdates=${sendUpdates}`
   const body: Record<string, unknown> = {
     summary: params.summary,
     description: params.description ?? undefined,
     start: { dateTime: params.startISO },
     end: { dateTime: params.endISO },
+  }
+  if (params.attendees && params.attendees.length > 0) {
+    body.attendees = params.attendees
   }
   if (params.extendedProps && Object.keys(params.extendedProps).length > 0) {
     body.extendedProperties = { private: params.extendedProps }
@@ -389,6 +398,48 @@ export async function isSlotBusyInGoogle(
   } catch (e) {
     // Fail-soft: не блокируем создание урока из-за проблем с Google API.
     console.error('[isSlotBusyInGoogle] fail-soft', e)
+    return false
+  }
+}
+
+/**
+ * Обновляет time-поля события в Google Calendar (PATCH). Возвращает `true`
+ * при успехе, `false` при любой ошибке (fail-soft — не рушим reschedule БД
+ * из-за проблем с Google). Опционально шлёт обновление гостям (sendUpdates).
+ */
+export async function updateEventInGoogle(
+  userId: string,
+  eventId: string,
+  params: {
+    startISO: string
+    endISO: string
+    sendUpdates?: 'all' | 'externalOnly' | 'none'
+  },
+): Promise<boolean> {
+  if (!eventId) return false
+  try {
+    const auth = await getAccessToken(userId)
+    if (!auth) return false
+    const sendUpdates = params.sendUpdates ?? 'all'
+    const url = `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(auth.calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=${sendUpdates}`
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${auth.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        start: { dateTime: params.startISO },
+        end: { dateTime: params.endISO },
+      }),
+      cache: 'no-store',
+    })
+    if (res.ok) return true
+    const text = await res.text().catch(() => '')
+    console.error(`[updateEventInGoogle] ${res.status}: ${text}`)
+    return false
+  } catch (e) {
+    console.error('[updateEventInGoogle] failed', e)
     return false
   }
 }

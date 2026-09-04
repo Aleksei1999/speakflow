@@ -55,29 +55,61 @@ export function useLessonChat({
         if (!res.ok) return
         const data = (await res.json()) as ChatMessage[] | { error: string }
         if (cancelled) return
-        if (Array.isArray(data)) setMessages(data)
+        if (Array.isArray(data)) {
+          // Мержим с текущим state, чтобы не потерять optimistic-плейсхолдеры
+          // отправленные во время refetch (SUBSCRIBED-reconnect).
+          setMessages((prev) => {
+            const seen = new Set(data.map((m) => m.id))
+            const pending = prev.filter((m) => m.id.startsWith("optimistic:") && !seen.has(m.id))
+            return [...data, ...pending]
+          })
+        }
       } catch {
         // тихо: пустой список покажется
       }
     }
     loadInitial()
 
+    // Realtime подписка на chat_messages (общий 1:1 чат teacher↔student).
+    // Фильтр по одному из участников (userId), клиент маппит и дедуп-ит по id.
+    // Строки chat_messages идут в shape {teacher_id, student_id, sender_role, text}
+    // — превращаем в клиентский ChatMessage {sender_id, message}.
+    type ChatRow = {
+      id: string
+      teacher_id: string
+      student_id: string
+      sender_role: "teacher" | "student"
+      text: string | null
+      created_at: string
+    }
+    function rowToMsg(r: ChatRow): ChatMessage {
+      return {
+        id: r.id,
+        sender_id: r.sender_role === "teacher" ? r.teacher_id : r.student_id,
+        message: r.text ?? "",
+        created_at: r.created_at,
+      }
+    }
     const channel: RealtimeChannel = supabase
-      .channel(`lesson-chat:${lessonId}`)
+      // Уникальный суффикс — защита от кеша supabase-js по имени
+      // (StrictMode двойной mount → cleanup → «мёртвый» канал).
+      .channel(`lesson-chat:${lessonId}:${Date.now()}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
-          table: "lesson_messages",
-          filter: `lesson_id=eq.${lessonId}`,
+          table: "chat_messages",
+          // Фильтруем «мои треды» — student_id или teacher_id совпал.
+          // postgres_changes допускает один фильтр — используем OR через
+          // 2 подписки не хочется; берём eq по userId в любой роли.
+          // Realtime отдаст строки, где хотя бы одна из FK равна userId.
+          filter: `student_id=eq.${userId}`,
         },
         (payload) => {
-          const incoming = payload.new as ChatMessage
+          const incoming = rowToMsg(payload.new as ChatRow)
           setMessages((prev) => {
-            // Дедуп по id (гонка initial-load vs realtime).
             if (prev.some((m) => m.id === incoming.id)) return prev
-            // Наш собственный INSERT — заменяем оптимистичный плейсхолдер.
             if (incoming.sender_id === userId) {
               const optimisticId = pendingRef.current.get(incoming.message)
               if (optimisticId) {
@@ -89,7 +121,36 @@ export function useLessonChat({
           })
         }
       )
-      .subscribe()
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `teacher_id=eq.${userId}`,
+        },
+        (payload) => {
+          const incoming = rowToMsg(payload.new as ChatRow)
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === incoming.id)) return prev
+            if (incoming.sender_id === userId) {
+              const optimisticId = pendingRef.current.get(incoming.message)
+              if (optimisticId) {
+                pendingRef.current.delete(incoming.message)
+                return prev.map((m) => (m.id === optimisticId ? incoming : m))
+              }
+            }
+            return [...prev, incoming]
+          })
+        }
+      )
+      .subscribe((status, err) => {
+        // Reconnect-safe: закрываем gap событий на (re)подписке.
+        if (status === "SUBSCRIBED") loadInitial()
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          console.warn("[lesson-chat] realtime status:", status, err ?? "")
+        }
+      })
 
     return () => {
       cancelled = true

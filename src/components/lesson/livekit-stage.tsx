@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react"
 import * as Sentry from "@sentry/nextjs"
 import {
+  Chat,
   LiveKitRoom,
   RoomAudioRenderer,
   useTracks,
@@ -29,6 +30,14 @@ import { ConnectionQuality, Track } from "livekit-client"
 
 interface Props {
   lessonId: string
+  /**
+   * Если true — стейдж НЕ рендерит собственный чат-сайдбар. Кнопка «чат»
+   * в нижнем баре зовёт `onToggleSidebar` (parent сам решает, что открыть —
+   * например, `ChatModal` с историей `chat_messages`). Для лекций (нет
+   * teacher↔student пары) оставляем false — тогда работает встроенный
+   * LiveKit `<Chat />` (data-channel, ephemeral).
+   */
+  externalChat?: boolean
   // Колбэки в parent — sidebar, fullscreen, end не управляются LiveKit'ом.
   sidebarOn: boolean
   onToggleSidebar: () => void
@@ -47,10 +56,74 @@ interface Props {
    * null → room disconnected/unmounted.
    */
   onRoom?: (room: import("livekit-client").Room | null) => void
+  onOpenSettings?: () => void
+  onOpenNotes?: () => void
+  onShareLink?: () => void
+  /**
+   * Опциональный override endpoint'а для токена. По умолчанию используется
+   * `/api/livekit/token` с { lessonId }. Для лекций передаём
+   * `/api/livekit/lecture-token` + `{ lectureId }`, стейдж не знает
+   * разницы — визуал и контролы остаются те же (`.vc` bar).
+   */
+  tokenEndpoint?: string
+  tokenBody?: Record<string, unknown>
+}
+
+/**
+ * Правая сайдбар-панель «Чат звонка». Используется ТОЛЬКО когда parent не
+ * предоставил внешний чат (externalChat=false, например для лекций). LiveKit
+ * `<Chat />` — data-channel, ephemeral: сообщения теряются после disconnect.
+ * Для уроков parent (LessonVideoRoom) вместо этого открывает <ChatModal>
+ * variant="dock" с историей `chat_messages`.
+ */
+function LkChatPanel({ onClose }: { onClose: () => void }) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const patch = () => {
+      const input = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        ".lk-chat-form-input, input[type='text'], textarea",
+      )
+      if (input && input.placeholder !== "Введите сообщение") {
+        input.placeholder = "Введите сообщение"
+      }
+      const sendBtn = root.querySelector<HTMLButtonElement>(
+        ".lk-chat-form-button, button[type='submit']",
+      )
+      if (sendBtn && !sendBtn.querySelector("svg[data-lk-send]")) {
+        sendBtn.innerHTML = `<svg data-lk-send viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`
+        sendBtn.setAttribute("aria-label", "Отправить")
+      }
+    }
+    patch()
+    const mo = new MutationObserver(patch)
+    mo.observe(root, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [])
+  return (
+    <aside className="lk-chat-side" ref={rootRef}>
+      <div className="lk-chat-side-head">
+        <span>Чат звонка</span>
+        <button
+          type="button"
+          className="lk-chat-side-close"
+          aria-label="Закрыть чат"
+          onClick={onClose}
+        >
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" aria-hidden>
+            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+      <Chat />
+    </aside>
+  )
 }
 
 export function LiveKitLessonStage({
   lessonId,
+  externalChat = false,
   sidebarOn,
   onToggleSidebar,
   onFullscreen,
@@ -59,6 +132,11 @@ export function LiveKitLessonStage({
   onQuality,
   hangupSignal,
   onRoom,
+  onOpenSettings,
+  onOpenNotes,
+  onShareLink,
+  tokenEndpoint,
+  tokenBody,
 }: Props) {
   const [token, setToken] = useState<string | null>(null)
   const [serverUrl, setServerUrl] = useState<string | null>(null)
@@ -71,10 +149,10 @@ export function LiveKitLessonStage({
     initStartedRef.current = true
     let cancelled = false
     async function init() {
-      const res = await fetch("/api/livekit/token", {
+      const res = await fetch(tokenEndpoint ?? "/api/livekit/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId }),
+        body: JSON.stringify(tokenBody ?? { lessonId }),
       })
       if (cancelled) return
       if (!res.ok) {
@@ -155,6 +233,7 @@ export function LiveKitLessonStage({
       data-lk-theme="default"
     >
       <StageInner
+        externalChat={externalChat}
         sidebarOn={sidebarOn}
         onToggleSidebar={onToggleSidebar}
         onFullscreen={onFullscreen}
@@ -164,6 +243,9 @@ export function LiveKitLessonStage({
         hangupSignal={hangupSignal}
         disconnectReason={disconnectReason}
         onRoom={onRoom}
+        onOpenSettings={onOpenSettings}
+        onOpenNotes={onOpenNotes}
+        onShareLink={onShareLink}
       />
       <RoomAudioRenderer />
     </LiveKitRoom>
@@ -171,6 +253,7 @@ export function LiveKitLessonStage({
 }
 
 interface StageInnerProps {
+  externalChat: boolean
   sidebarOn: boolean
   onToggleSidebar: () => void
   onFullscreen?: () => void
@@ -180,9 +263,13 @@ interface StageInnerProps {
   hangupSignal?: number
   disconnectReason: string | null
   onRoom?: (room: import("livekit-client").Room | null) => void
+  onOpenSettings?: () => void
+  onOpenNotes?: () => void
+  onShareLink?: () => void
 }
 
 function StageInner({
+  externalChat,
   sidebarOn,
   onToggleSidebar,
   onFullscreen,
@@ -192,8 +279,16 @@ function StageInner({
   hangupSignal,
   disconnectReason,
   onRoom,
+  onOpenSettings,
+  onOpenNotes,
+  onShareLink,
 }: StageInnerProps) {
   const room = useRoomContext()
+  // Ephemeral LiveKit-чат (data-channel) — только когда parent НЕ управляет
+  // чатом сам. Для уроков externalChat=true и LkChatPanel не рендерится:
+  // кнопка «чат» вместо этого зовёт `onToggleSidebar` → parent открывает
+  // <ChatModal variant="dock"> с историей chat_messages.
+  const [lkChatOpen, setLkChatOpen] = useState(false)
 
   // Пробрасываем Room вверх (для recorder'а). Effect — а не inline-вызов,
   // чтобы не отдавать новый room на каждый re-render. На unmount передаём
@@ -254,12 +349,20 @@ function StageInner({
         </div>
       )}
       <Stage />
+      {!externalChat && lkChatOpen && (
+        <LkChatPanel onClose={() => setLkChatOpen(false)} />
+      )}
       <LiveKitControls
         sidebarOn={sidebarOn}
         onToggleSidebar={onToggleSidebar}
         onFullscreen={onFullscreen}
         fullscreenSupported={fullscreenSupported}
         onEnd={onEnd}
+        onOpenSettings={onOpenSettings}
+        onOpenNotes={onOpenNotes}
+        onShareLink={onShareLink}
+        lkChatOpen={externalChat ? sidebarOn : lkChatOpen}
+        onToggleLkChat={externalChat ? undefined : () => setLkChatOpen((v) => !v)}
       />
     </>
   )
@@ -304,8 +407,8 @@ function Stage() {
     )
   }
 
-  // Обычная tile-сетка. До 6 участников.
-  const count = Math.min(6, Math.max(1, cameraTiles.length))
+  // Обычная tile-сетка. До 10 участников (клубы/лекции).
+  const count = Math.min(10, Math.max(1, cameraTiles.length))
   return (
     <div className="lk-stage-grid" data-count={count}>
       {cameraTiles.map((tr) => (
@@ -379,77 +482,144 @@ interface ControlsProps {
   onFullscreen?: () => void
   fullscreenSupported: boolean
   onEnd: () => void
+  onOpenSettings?: () => void
+  onOpenNotes?: () => void
+  onShareLink?: () => void
+  /** In-call LiveKit-чат (data-channel) — открыт/закрыт. */
+  lkChatOpen?: boolean
+  onToggleLkChat?: () => void
 }
 
 function LiveKitControls({
   sidebarOn,
   onToggleSidebar,
-  onFullscreen,
-  fullscreenSupported,
   onEnd,
+  onOpenSettings,
+  onOpenNotes,
+  onShareLink,
+  lkChatOpen,
+  onToggleLkChat,
 }: ControlsProps) {
   const { localParticipant, isCameraEnabled, isMicrophoneEnabled, isScreenShareEnabled } =
     useLocalParticipant()
+  const [copiedAt, setCopiedAt] = useState(0)
+  const shareLinkCopy = () => {
+    onShareLink?.()
+    setCopiedAt(Date.now())
+  }
+  const showCopied = copiedAt > 0 && Date.now() - copiedAt < 2000
+  useEffect(() => {
+    if (!showCopied) return
+    const t = window.setTimeout(() => setCopiedAt(0), 2000)
+    return () => window.clearTimeout(t)
+  }, [showCopied, copiedAt])
 
   return (
-    <div className="vc">
-      <button
-        className={`cb ${isMicrophoneEnabled ? "active" : ""}`}
-        title="Микрофон"
-        onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <path d="M12 19v3" />
-        </svg>
-      </button>
-      <button
-        className={`cb ${isCameraEnabled ? "active" : ""}`}
-        title="Камера"
-        onClick={() => localParticipant.setCameraEnabled(!isCameraEnabled)}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m22 8-6 4 6 4V8Z" />
-          <rect width="14" height="12" x="2" y="6" rx="2" />
-        </svg>
-      </button>
-      <button
-        className={`cb ${isScreenShareEnabled ? "active" : ""}`}
-        title="Демонстрация"
-        onClick={() => localParticipant.setScreenShareEnabled(!isScreenShareEnabled)}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="20" height="14" x="2" y="3" rx="2" />
-          <line x1="8" x2="16" y1="21" y2="21" />
-          <line x1="12" x2="12" y1="17" y2="21" />
-        </svg>
-      </button>
-      <button
-        className={`cb ${sidebarOn ? "active" : ""}`}
-        title="Показать/скрыть чат"
-        onClick={onToggleSidebar}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="18" height="18" x="3" y="3" rx="2" />
-          <path d="M9 3v18" />
-        </svg>
-      </button>
-      {fullscreenSupported && onFullscreen && (
-        <button className="cb" title="Полноэкранный режим" onClick={onFullscreen}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-          </svg>
+    <div className="vc-bar">
+      <div className="vc-bar-cluster">
+        <button
+          type="button"
+          className={`vc-btn${showCopied ? " vc-btn--tip-lock" : ""}`}
+          aria-label="поделиться ссылкой"
+          onClick={shareLinkCopy}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-74.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">{showCopied ? "скопировано ✓" : "поделиться ссылкой"}</span>
         </button>
-      )}
-      <button className="cb danger" title="Завершить" onClick={onEnd}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-        </svg>
-      </button>
+        <button
+          type="button"
+          className="vc-btn"
+          aria-label="настройки"
+          onClick={onOpenSettings}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-75.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">настройки</span>
+        </button>
+      </div>
+
+      <div className="vc-bar-cluster vc-bar-cluster--center">
+        <button
+          type="button"
+          className={`vc-btn${isCameraEnabled ? " vc-btn--inline" : ""}`}
+          aria-label="камера"
+          onClick={() => localParticipant.setCameraEnabled(!isCameraEnabled)}
+        >
+          {isCameraEnabled ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m22 8-6 4 6 4V8Z" />
+              <rect width="14" height="12" x="2" y="6" rx="2" />
+            </svg>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/lesson/icons/btn-76.svg" alt="" aria-hidden />
+          )}
+          <span className="vc-btn-tip">камера</span>
+        </button>
+        <button
+          type="button"
+          className={`vc-btn${isMicrophoneEnabled ? " vc-btn--inline" : ""}`}
+          aria-label="звук"
+          onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
+        >
+          {isMicrophoneEnabled ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5 6 9H2v6h4l5 4V5z" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/lesson/icons/btn-77.svg" alt="" aria-hidden />
+          )}
+          <span className="vc-btn-tip">звук</span>
+        </button>
+        <button
+          type="button"
+          className="vc-btn"
+          aria-label="заметки"
+          onClick={onOpenNotes}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-78.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">заметки</span>
+        </button>
+        <button
+          type="button"
+          className={`vc-btn${lkChatOpen ? " vc-btn--inline" : ""}`}
+          aria-label="чат"
+          aria-pressed={!!lkChatOpen}
+          onClick={() => (onToggleLkChat ? onToggleLkChat() : onToggleSidebar())}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-79.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">чат</span>
+        </button>
+        <button
+          type="button"
+          className="vc-btn"
+          aria-label="демонстрация экрана"
+          onClick={() => localParticipant.setScreenShareEnabled(!isScreenShareEnabled)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-80.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">демонстрация экрана</span>
+        </button>
+      </div>
+
+      <div className="vc-bar-cluster">
+        <button
+          type="button"
+          className="vc-btn vc-btn--hangup"
+          aria-label="сбросить звонок"
+          onClick={onEnd}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lesson/icons/btn-81.svg" alt="" aria-hidden />
+          <span className="vc-btn-tip">сбросить звонок</span>
+        </button>
+      </div>
     </div>
   )
 }

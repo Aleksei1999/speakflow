@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { autoAssignTrial } from '@/lib/trial-lesson/auto-assign'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
+import { sendNotification } from '@/lib/notifications/service'
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, isLocale } from '@/i18n/config'
 
 export async function GET(request: Request) {
@@ -55,11 +57,14 @@ export async function GET(request: Request) {
   let resolvedRole: string | null = null
   let resolvedLanguage: string | null = null
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('role, language')
       .eq('id', user.id)
-      .single<{ role: string; language: string | null }>()
+      .maybeSingle<{ role: string; language: string | null }>()
+    if (profileErr) {
+      console.error('[auth/callback] profile lookup failed', { userId: user.id, err: profileErr.message })
+    }
     resolvedRole = profile?.role ?? null
     resolvedLanguage = profile?.language ?? null
   }
@@ -125,6 +130,24 @@ export async function GET(request: Request) {
       } catch (err) {
         console.error('[auth/callback] autoAssignTrial failed', err)
       }
+    }
+
+    // Welcome-email при первом входе (email confirm или OAuth signup).
+    // Идемпотентно: пропускаем, если уже есть запись notifications.type='welcome'.
+    try {
+      const admin = createAdminClient()
+      const { count } = await admin
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'welcome')
+      if (!count) {
+        void sendNotification(user.id, 'welcome', {}).catch((err) =>
+          console.error('[auth/callback] welcome send failed', err),
+        )
+      }
+    } catch (err) {
+      console.error('[auth/callback] welcome check failed', err)
     }
   }
 

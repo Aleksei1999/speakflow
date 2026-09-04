@@ -2,16 +2,8 @@
   "regions": ["fra1"],
   "crons": [
     {
-      "path": "/api/internal/cron/daily-challenge",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/internal/cron/streak-warning",
-      "schedule": "0 17 * * *"
-    },
-    {
-      "path": "/api/internal/cron/weekly-digest",
-      "schedule": "0 15 * * 0"
+      "path": "/api/internal/cron/google-calendar-sync",
+      "schedule": "0 3 * * *"
     }
   ]
 }

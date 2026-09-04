@@ -1,0 +1,248 @@
+/* ============================================================
+   Admin student modal — carte-de-visite ученика в стиле teacher.
+   Glass-контейнер (rgba white 20% + blur 8px), фото 366×366,
+   стрик, био от учителя, статы, контакты, баланс + действия.
+   ============================================================ */
+
+.asm-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 250;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+.asm {
+  position: relative;
+  width: min(920px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 29.5px;
+  padding: 32px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  display: flex; flex-direction: column;
+  gap: 28px;
+}
+
+.asm-close {
+  position: absolute; top: 16px; right: 20px;
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; color: #fff; cursor: pointer;
+  border-radius: 50%;
+  transition: background .15s ease;
+}
+.asm-close:hover { background: rgba(255,255,255,0.08); }
+
+.asm-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Photo column */
+.asm-photo-col { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.asm-photo {
+  position: relative;
+  width: 300px; height: 300px;
+  border-radius: 29.5px;
+  overflow: hidden;
+  background: #333;
+  border: 0; padding: 0; cursor: pointer;
+}
+.asm-photo:disabled { cursor: wait; opacity: 0.7; }
+.asm-photo > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.asm-avatar-fb {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 96px;
+  color: #fff;
+  letter-spacing: -0.05em;
+}
+.asm-photo-cam {
+  position: absolute;
+  left: 14px; bottom: 14px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: #CCE94E;
+  display: inline-flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.asm-upload-err {
+  color: #ff8b8b;
+  font-size: 13px;
+}
+
+.asm-flames { display: flex; gap: 4px; }
+.asm-flame { width: 30px; height: 34px; display: block; }
+
+/* Info column */
+.asm-info-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.asm-name {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+  color: #fff;
+}
+
+.asm-bio-wrap { display: flex; flex-direction: column; gap: 6px; }
+.asm-bio-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+.asm-bio {
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+  display: flex; flex-direction: column;
+}
+.asm-bio--empty { font-weight: 400; color: rgba(255,255,255,0.6); }
+.asm-bio-author {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Столбиком, каждая строка = «число label». По просьбе пользователя. */
+.asm-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+.asm-stat {
+  display: flex; align-items: baseline;
+  gap: 14px;
+}
+.asm-stat-num {
+  flex: 0 0 auto;
+  min-width: 42px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: #fff;
+}
+.asm-stat-label {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Footer */
+.asm-foot {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: 24px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.asm-contacts { display: flex; flex-direction: column; gap: 14px; min-width: 260px; }
+.asm-contact-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.asm-contact-val {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.asm-actions {
+  margin-left: auto;
+  display: flex; flex-direction: column; gap: 14px;
+  align-items: flex-end;
+  min-width: 297px;
+}
+/* Balance-pill — Figma node 4168:91.
+   Общий контейнер 296×71 с лаймовым полупрозрачным фоном,
+   слева тёмный колпачок 130×71 с надписью «баланс:». */
+.asm-balance-pill {
+  position: relative;
+  width: 296px;
+  max-width: 100%;
+  height: 71px;
+  border-radius: 29.5px;
+  background: rgba(223, 237, 140, 0.36);
+  display: flex; align-items: center;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+.asm-balance-cap {
+  flex: 0 0 130px;
+  height: 100%;
+  background: rgba(30, 30, 30, 0.79);
+  border-radius: 29.5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #DFED8C;
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: -0.05em;
+}
+.asm-balance-value {
+  flex: 1;
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 6px;
+  padding: 0 12px 0 4px;
+}
+.asm-balance-num {
+  color: #DFED8C;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.16;
+  letter-spacing: -0.05em;
+}
+.asm-balance-unit {
+  color: rgba(223, 237, 140, 0.7);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.05em;
+}
+
+.asm-btn {
+  width: 297px;
+  max-width: 100%;
+  height: 53px;
+  padding: 0 24px;
+  border-radius: 34px;
+  border: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s ease, transform .1s ease;
+}
+.asm-btn--schedule {
+  background: #DFED8C;
+  color: #1E1E1E;
+}
+.asm-btn--schedule:hover { background: #CCE94E; }
+
+@media (max-width: 780px) {
+  .asm-grid { grid-template-columns: 1fr; }
+  .asm-photo, .asm-photo > * { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+  .asm-photo { max-width: 360px; }
+  .asm-foot { flex-direction: column; align-items: stretch; }
+  .asm-actions { margin-left: 0; }
+  .asm-stats { grid-template-columns: 1fr 1fr; }
+}

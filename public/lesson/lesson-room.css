@@ -1,0 +1,842 @@
+/* ============================================================
+   Lesson room — стили видеозвонка (LiveKit).
+   Разделено на 4 области:
+     1) .vm/.vc — основной stage + control bar (owned by main-stage impl)
+     2) .vc-settings — settings modal
+     3) .vc-leave    — leave-call confirm modal
+     4) .vc-note     — post-lesson teacher note modal
+   Каждая секция помечена комментом-заголовком, редактируйте только свой блок.
+   ============================================================ */
+
+/* ---- SECTION 1: main stage + control bar (Figma 2208-1775, 2208-2201, 2208-2184) ---- */
+
+/* Полноэкранный минимальный wrapper (страница /lesson/[id]). */
+.lvr {
+  position: fixed;
+  inset: 0;
+  background: #1E1E1E;
+  color: #DFED8C;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+.lvr-topbar {
+  height: 88px;
+  padding: 24px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.lvr-logo {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+}
+.lvr-logo img {
+  display: block;
+  height: 48px;
+  width: auto;
+}
+.lvr-winbtns { display: flex; gap: 12px; }
+.lvr-winbtn {
+  width: 31px;
+  height: 31px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform .15s ease, opacity .15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lvr-winbtn > img { display: block; width: 31px; height: 31px; }
+.lvr-winbtn:hover:not(:disabled) { transform: translateY(-1px); opacity: 0.92; }
+.lvr-winbtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.lvr-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Прямой child .lvr-stage — либо LiveKitRoom (style уже flex:1 внутри
+   через inline-style), либо loading/error .vm-fallback. Растягиваем всё. */
+.lvr-stage > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lvr-stage > .vm {
+  position: relative;
+  background: #1E1E1E;
+  overflow: hidden;
+}
+/* LiveKit-stage grid — тайлы фиксированные 648×453 по Figma, центрируем. */
+/* CSS grid с точным N-колонок в зависимости от кол-ва участников (data-count).
+   Тайлы одинакового размера, aspect-ratio 16:9, ничего не срезается.
+   1: 1 колонка · 2: 2 · 3–4: 2×2 · 5–6: 3×2 · 7–9: 3×3 · 10: 5×2. */
+.lvr .lk-stage-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 30px;
+  background: #1E1E1E;
+  --cols: 1;
+  --rows: 1;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+}
+.lvr .lk-stage-grid[data-count="1"]  { --cols: 1; --rows: 1; }
+.lvr .lk-stage-grid[data-count="2"]  { --cols: 2; --rows: 1; }
+.lvr .lk-stage-grid[data-count="3"]  { --cols: 3; --rows: 1; }
+.lvr .lk-stage-grid[data-count="4"]  { --cols: 2; --rows: 2; }
+.lvr .lk-stage-grid[data-count="5"],
+.lvr .lk-stage-grid[data-count="6"]  { --cols: 3; --rows: 2; }
+.lvr .lk-stage-grid[data-count="7"],
+.lvr .lk-stage-grid[data-count="8"],
+.lvr .lk-stage-grid[data-count="9"]  { --cols: 3; --rows: 3; }
+.lvr .lk-stage-grid[data-count="10"] { --cols: 5; --rows: 2; }
+
+.lvr .lk-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #0a0a0a;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+}
+.lvr .lk-tile video { width: 100%; height: 100%; object-fit: cover; }
+/* Имя — сверху-слева, чтобы tooltip снизу не наезжал. */
+.lvr .lk-tile .lk-name {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  backdrop-filter: blur(8px);
+}
+.lvr .lk-tile .lk-ph {
+  width: 120px;
+  height: 120px;
+  background: #222;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 44px;
+  font-weight: 700;
+}
+/* Presentation mode (screen-share) — filmstrip сверху + большой экран снизу. */
+.lvr .lk-stage-presentation {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 30px;
+  gap: 12px;
+  background: #1E1E1E;
+  overflow: hidden;
+}
+.lvr .lk-filmstrip { display: flex; gap: 12px; height: 120px; flex-shrink: 0; overflow-x: auto; }
+.lvr .lk-filmstrip .lk-tile { flex: 0 0 200px; height: 120px; }
+.lvr .lk-screen { flex: 1; position: relative; min-height: 0; display: grid; gap: 12px; }
+.lvr .lk-screen .lk-tile { width: 100%; height: 100%; cursor: zoom-in; border-radius: 29.5px; }
+.lvr .lk-screen .lk-tile video { object-fit: contain; background: #000; }
+/* .vc-bar снизу — ширина = ширине области тайлов (648×2 + 24 gap = 1320),
+   центрируем через margin:auto. Кнопки-кластеры (left/right) выравниваются
+   ровно по краям видео-тайлов. Верхний padding — под tooltip (40+14=54). */
+.lvr .vc-bar {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 66px 0 30px;
+  background: #1E1E1E;
+}
+
+/* Top bar: Raw логотип слева + 3 window-control кнопки справа. Абсолютно
+   позиционируем поверх .vm — не съедает высоту у stage'а. */
+.vc-topbar {
+  position: absolute;
+  top: 24px;
+  left: 30px;
+  right: 30px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 12;
+  pointer-events: none;
+}
+.vc-topbar > * { pointer-events: auto; }
+.vc-logo {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: 'Inter', sans-serif;
+  color: #CC3A3A;
+  font-weight: 900;
+  font-size: 34px;
+  letter-spacing: -1.7px;
+  line-height: 0.85;
+  font-style: italic;
+}
+.vc-logo small {
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: -0.55px;
+  font-style: normal;
+  padding-bottom: 4px;
+}
+.vc-winbtns {
+  display: flex;
+  gap: 12px;
+}
+.vc-winbtn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform .15s ease, opacity .15s ease;
+}
+.vc-winbtn:hover { transform: translateY(-1px); opacity: 0.92; }
+.vc-winbtn--min { background: #DFED8C; color: #1E1E1E; }
+.vc-winbtn--exp { background: #A6D9B0; color: #1E1E1E; }
+.vc-winbtn--close { background: #CC3A3A; color: #FFF; }
+
+/* Bottom control bar — новый Figma-стиль. Отрисуется вместо старой .vc
+   через блок .vc-bar. Оставляем старую .vc в покое (Jitsi branch). */
+.vc-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 30px 22px;
+  gap: 24px;
+  flex-shrink: 0;
+  background: #1E1E1E;
+}
+.vc-bar-cluster {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.vc-bar-cluster--center {
+  flex: 1;
+  justify-content: center;
+}
+/* .vc-btn — контейнер 54×54, прозрачный. SVG внутри (либо <img> из
+   /public/lesson/icons/, либо inline <svg>) сам рисует круг. */
+.vc-btn {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1E1E1E;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s ease;
+}
+.vc-btn:hover:not(:disabled) { transform: translateY(-2px); }
+.vc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.vc-btn > img { display: block; width: 54px; height: 54px; }
+/* Инлайновый SVG (когда используем свой рендер: camera/sound ON) — на
+   лаймовом кружке. */
+.vc-btn > svg:not(:only-child), .vc-btn--inline > svg {
+  width: 24px;
+  height: 24px;
+}
+.vc-btn--inline {
+  background: #DFED8C;
+  border-radius: 50%;
+  color: #1E1E1E;
+}
+.vc-btn-tip {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: transparent;
+  border: 2px solid #DFED8C;
+  color: #DFED8C;
+  border-radius: 29.5px;
+  padding: 0 20px;
+  height: 40px;
+  min-width: 100px;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -1px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+.vc-btn:hover .vc-btn-tip,
+.vc-btn--tip-lock .vc-btn-tip { opacity: 1; }
+.vc-btn--hangup .vc-btn-tip {
+  border-color: #CC3A3A;
+  color: #CC3A3A;
+}
+/* Крайние tooltip-ы прижимаем к соответствующему краю кнопки —
+   центрированный tooltip уезжает за пределы бара/тайлов. */
+.vc-bar > .vc-bar-cluster:first-child > .vc-btn:first-child .vc-btn-tip {
+  left: 0;
+  transform: translateX(0);
+}
+.vc-bar > .vc-bar-cluster:last-child > .vc-btn:last-child .vc-btn-tip {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
+
+/* Stage layout для 2 участников — plечо к плечу, крупные тайлы 29.5 radius. */
+.lr .vm .lk-stage-grid[data-count="2"] {
+  padding: 84px 30px 20px;
+  gap: 24px;
+  background: #1E1E1E;
+}
+.lr .vm .lk-stage-grid[data-count="2"] .lk-tile {
+  border-radius: 29.5px;
+}
+.lr .vm { background: #1E1E1E; }
+
+
+/* ---- SECTION 2: settings modal (Figma 2208-3240) ---- */
+.vc-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: vc-settings-fade .18s ease;
+}
+@keyframes vc-settings-fade { from { opacity: 0 } to { opacity: 1 } }
+.vc-settings {
+  position: relative;
+  width: min(686px, calc(100vw - 40px));
+  max-height: min(1026px, calc(100vh - 40px));
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 60px 50px 50px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.vc-settings-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1E1E1E;
+}
+.vc-settings-close:hover { opacity: 0.7; }
+.vc-settings-hint {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: -0.9px;
+  line-height: 1.2;
+  color: #1E1E1E;
+  opacity: 0.75;
+  padding: 8px 12px;
+}
+.vc-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.vc-settings-group-title {
+  height: 46px;
+  border: 2px solid #1E1E1E;
+  background: transparent;
+  border-radius: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  color: #1E1E1E;
+}
+.vc-settings-empty {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -1px;
+  color: #1E1E1E;
+  opacity: 0.6;
+  padding: 6px 24px;
+}
+.vc-settings-option {
+  height: 46px;
+  padding: 0 20px 0 24px;
+  margin-bottom: 4px;
+  border: 0;
+  border-radius: 34px;
+  background: transparent;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: background .12s ease;
+}
+.vc-settings-option:hover { background: rgba(255, 255, 255, 0.28); }
+.vc-settings-option--selected {
+  background: rgba(255, 255, 255, 0.5);
+}
+.vc-settings-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+}
+
+/* ---- SECTION 3: leave call modal (Figma 2208-2922, 2208-2931) ---- */
+.vc-leave-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: vc-settings-fade .18s ease;
+}
+.vc-leave {
+  position: relative;
+  width: min(686px, calc(100vw - 40px));
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 60px 50px 50px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.vc-leave-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #1E1E1E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vc-leave-close:hover { opacity: 0.7; }
+.vc-leave-btn {
+  height: 70px;
+  border: 0;
+  border-radius: 45px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -1.4px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.vc-leave-btn--leave {
+  background: #1E1E1E;
+  color: #DFED8C;
+}
+.vc-leave-btn--leave:hover {
+  background: #6b6b3d;
+}
+.vc-leave-btn--end {
+  background: #CC3A3A;
+  color: #FFF;
+}
+.vc-leave-btn--end:hover {
+  background: #b03030;
+}
+
+/* ---- SECTION 4: post-lesson note modal (Figma 2208-3621) ---- */
+.vc-note-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: vc-settings-fade .18s ease;
+}
+.vc-note {
+  position: relative;
+  width: min(686px, calc(100vw - 40px));
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 36px 40px 40px;
+  box-sizing: border-box;
+}
+.vc-note-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #1E1E1E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vc-note-close:hover { opacity: 0.7; }
+.vc-note-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.vc-note-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #d9d9d9;
+  flex: 0 0 90px;
+}
+.vc-note-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vc-note-avatar-fb {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: #FFF;
+  background: #7a3a54;
+  text-transform: uppercase;
+}
+.vc-note-name {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
+  color: #1E1E1E;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vc-note-lvl {
+  flex: 0 0 auto;
+  min-width: 90px;
+  height: 50px;
+  padding: 0 20px;
+  background: #1E1E1E;
+  color: #DFED8C;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -1.4px;
+}
+.vc-note-title {
+  margin-top: 30px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -1.4px;
+  line-height: 1;
+  color: #1E1E1E;
+  margin-bottom: 20px;
+}
+.vc-note-area {
+  display: block;
+  width: 100%;
+  height: 164px;
+  padding: 24px 30px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 26px;
+  background: #FFF;
+  resize: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -1.1px;
+  line-height: 1.2;
+  color: #1E1E1E;
+  text-align: center;
+  outline: none;
+}
+.vc-note-area::placeholder {
+  color: rgba(30, 30, 30, 0.5);
+  text-align: center;
+}
+.vc-note-area:focus { box-shadow: 0 0 0 2px rgba(30, 30, 30, 0.15); }
+.vc-note-counter {
+  text-align: right;
+  margin-top: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: -0.9px;
+  color: rgba(30, 30, 30, 0.7);
+}
+.vc-note-btn {
+  display: block;
+  margin: 32px auto 0;
+  height: 64px;
+  min-width: 240px;
+  padding: 0 40px;
+  border: 0;
+  border-radius: 34px;
+  background: #CC3A3A;
+  color: #FFF;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.vc-note-btn:hover:not(:disabled) { background: #b03030; }
+.vc-note-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* In-call вариант «Заметки» — без хедера с аватаркой/уровнем. */
+.vc-note--incall { padding: 60px 40px 40px; }
+.vc-note--incall .vc-note-title { margin-top: 0; }
+.vc-note-area--tall { height: 260px; text-align: left; padding: 24px 30px; }
+.vc-note-area--tall::placeholder { text-align: left; }
+.vc-note-error {
+  margin-top: 12px;
+  color: #CC3A3A;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* ============================================================
+   In-call chat pill — плавающая кнопка в углу когда чат свёрнут.
+   Кликом раскрывает окно ChatModal обратно (variant="dock").
+   ============================================================ */
+.lvr-chat-pill {
+  position: fixed;
+  right: 24px;
+  bottom: 120px;
+  z-index: 255;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  background: #1E1E1E;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+  transition: transform .15s ease, background .15s ease;
+}
+.lvr-chat-pill:hover { background: #2a2a2a; transform: translateY(-1px); }
+.lvr-chat-pill-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #CCE94E;
+  box-shadow: 0 0 6px rgba(204,233,78,0.7);
+}
+
+/* ============================================================
+   In-call LiveKit chat sidebar — выезжает справа поверх stage.
+   Отдельный от dashboard-чата (ChatModal): ephemeral data-channel
+   сообщения, теряются после disconnect. Стилизуем под наш dark
+   theme + lime акценты.
+   ============================================================ */
+.lk-chat-side {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  max-width: 90vw;
+  z-index: 20;
+  background: #1E1E1E;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  animation: lk-chat-slide-in .18s ease;
+}
+@keyframes lk-chat-slide-in {
+  from { transform: translateX(20px); opacity: 0 }
+  to   { transform: translateX(0);    opacity: 1 }
+}
+.lk-chat-side-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #DFED8C;
+}
+.lk-chat-side-close {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; color: #fff; cursor: pointer;
+  border-radius: 50%;
+}
+.lk-chat-side-close:hover { background: rgba(255,255,255,0.08); }
+
+/* Стилизация LiveKit-контейнера. Официальные компоненты живут под
+   .lk-chat / .lk-chat-messages / .lk-chat-entry. */
+.lk-chat-side .lk-chat {
+  flex: 1;
+  display: flex; flex-direction: column;
+  min-height: 0;
+  background: transparent;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+}
+.lk-chat-side .lk-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+}
+.lk-chat-side .lk-chat-entry {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.lk-chat-side .lk-chat-entry .lk-message-body { color: #fff; }
+.lk-chat-side .lk-chat-entry .lk-participant-name {
+  color: #DFED8C;
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: block;
+}
+.lk-chat-side .lk-chat-entry .lk-message-metadata {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+}
+.lk-chat-side form {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px;
+  display: flex; gap: 8px;
+  background: rgba(0,0,0,0.25);
+}
+.lk-chat-side .lk-form-control,
+.lk-chat-side .lk-chat-form input,
+.lk-chat-side input[type="text"] {
+  flex: 1;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+  color: #fff !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 14px !important;
+  outline: none !important;
+}
+.lk-chat-side .lk-chat-form input:focus,
+.lk-chat-side input[type="text"]:focus {
+  border-color: rgba(223,237,140,0.5) !important;
+}
+.lk-chat-side .lk-button,
+.lk-chat-side button[type="submit"] {
+  background: #DFED8C !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0 18px !important;
+  height: 40px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+.lk-chat-side .lk-button:hover {
+  background: #CCE94E !important;
+}
+
+/* Скрываем встроенный заголовок «Messages» у LiveKit Chat. */
+.lk-chat-side .lk-chat > :first-child:not(.lk-chat-messages):not(form),
+.lk-chat-side .lk-chat > h2,
+.lk-chat-side .lk-chat > h3,
+.lk-chat-side .lk-chat > .lk-chat-header {
+  display: none !important;
+}
+/* Send-кнопка после патча — квадрат 40×40 с центрированным SVG. */
+.lk-chat-side button[type="submit"] {
+  width: 40px;
+  min-width: 40px;
+  padding: 0 !important;
+}

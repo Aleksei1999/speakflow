@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { transliterateRu } from '@/lib/transliterate'
+import { PASSWORD_MIN } from '@/lib/validations'
 
 function RegisterPageContent() {
   const router = useRouter()
@@ -29,7 +30,7 @@ function RegisterPageContent() {
     e.preventDefault()
     setErr('')
 
-    if (password.length < 8) { setErr('Пароль должен быть не короче 8 символов'); return }
+    if (password.length < PASSWORD_MIN) { setErr(`Пароль должен быть не короче ${PASSWORD_MIN} символов`); return }
     if (password !== password2) { setErr('Пароли не совпадают'); return }
     if (!agree) { setErr('Нужно согласие на обработку данных'); return }
 

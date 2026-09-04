@@ -313,7 +313,7 @@ export default function AdminSupportClient({
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel("admin-support-threads")
+      .channel(`admin-support-threads:${Date.now()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "support_threads" },
@@ -340,7 +340,13 @@ export default function AdminSupportClient({
           }
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        // Reconnect-safe: перечитываем список тредов на (re)подписке.
+        if (status === "SUBSCRIBED") refreshThreads()
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          console.warn("[admin-support] realtime status:", status, err ?? "")
+        }
+      })
     return () => {
       void supabase.removeChannel(channel)
     }

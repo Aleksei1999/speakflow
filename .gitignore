@@ -45,3 +45,28 @@ next-env.d.ts
 
 # local landing preview (dev-only static artifact)
 /public/landing-preview/
+
+# QA / one-off dev scripts (hardcoded UUID тест-юзеров, impersonation
+# через service-role, reset паролей). Не тащим в прод.
+scripts/qa-*.mjs
+scripts/impersonate*.mjs
+scripts/reset-pw*.mjs
+scripts/reset-admin-pw*.mjs
+scripts/test-admin-btn.mjs
+scripts/find-user.mjs
+scripts/create-test-student.mjs
+scripts/who-*.mjs
+scripts/all-t.mjs
+scripts/leads.mjs
+scripts/rec-check.mjs
+scripts/check-*.mjs
+scripts/clean-and-seed.mjs
+scripts/apply-lead-assign-migration.mjs
+
+# Backup файлы
+*.bak
+*.old
+
+# Playwright скриншоты / логи
+.playwright-mcp/
+reschedule-*.png

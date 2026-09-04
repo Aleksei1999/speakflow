@@ -40,11 +40,14 @@ export async function updateSession(request: NextRequest) {
     if (cached !== undefined) {
       role = cached
     } else {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle<{ role: string | null }>()
+      if (profileErr) {
+        console.error('[middleware] profile lookup failed', { userId: user.id, err: profileErr.message })
+      }
       role = profile?.role ?? null
 
       // Best-effort write; silently no-ops if RW_ROLE_COOKIE_SECRET is missing.

@@ -1,0 +1,40 @@
+/* ============================================================
+   Групповой чат — дополнения к chat-modal.css.
+   ============================================================ */
+
+/* Пустое состояние (нет сообщений) */
+.tr-groupchat-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+/* Обёртка «имя отправителя + бабл» */
+.tr-groupchat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Имя отправителя над foreign бабблом */
+.tr-groupchat-sender {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.7);
+  padding-left: 14px;
+  margin-top: 4px;
+  text-transform: none;
+}
+
+/* Счётчик участников (перекрашиваем level-pill из ChatModal) */
+.tr-chat .tr-chat-lvl {
+  min-width: 42px;
+  text-align: center;
+  cursor: help;
+}

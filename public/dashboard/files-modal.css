@@ -1,0 +1,157 @@
+/* ============================================================
+   FilesModal (Figma 2208:3749 «Вкладка с папками»)
+   ============================================================ */
+
+.files-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: files-modal-fade .18s ease;
+}
+@keyframes files-modal-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.files-modal {
+  position: relative;
+  width: min(1228px, calc(100vw - 40px));
+  height: min(837px, calc(100vh - 40px));
+  background: #DFED8C;
+  border-radius: 29.5px;
+  padding: 80px 89px 55px;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.files-modal-close {
+  position: absolute;
+  top: 27px;
+  right: 30px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #1E1E1E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.files-modal-close:hover { opacity: 0.7; }
+
+.files-modal-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 60px 90px;
+  overflow-y: auto;
+  padding-right: 20px;
+  margin-right: -20px;
+}
+/* Кастомный скролл — тёмный тонкий трек */
+.files-modal-grid::-webkit-scrollbar { width: 7px; }
+.files-modal-grid::-webkit-scrollbar-track {
+  background: rgba(30, 30, 30, 0.14);
+  border-radius: 3.5px;
+}
+.files-modal-grid::-webkit-scrollbar-thumb {
+  background: #1E1E1E;
+  border-radius: 3.5px;
+}
+.files-modal-grid { scrollbar-width: thin; scrollbar-color: #1E1E1E rgba(30,30,30,0.14); }
+
+.files-modal-empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  font-size: 22px;
+  letter-spacing: -1px;
+  line-height: 1.3;
+  text-align: center;
+  max-width: 600px;
+  padding: 40px 20px;
+  opacity: 0.7;
+}
+
+.files-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 39px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: transform .2s ease;
+}
+.files-item:not(:disabled):hover { transform: translateY(-2px); }
+.files-item:disabled { cursor: progress; }
+.files-icon { display: block; }
+.files-item-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  color: #1E1E1E;
+  text-align: center;
+  max-width: 187px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.files-modal-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-top: 30px;
+}
+/* «Добавить файл» — 222×46, обводка #1E1E1E */
+.files-modal-btn {
+  min-width: 160px;
+  height: 46px;
+  padding: 0 24px;
+  border: 2px solid #1E1E1E;
+  background: transparent;
+  border-radius: 34px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  color: #1E1E1E;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.files-modal-btn:hover:not(:disabled) { background: rgba(30, 30, 30, 0.08); }
+.files-modal-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.files-modal-btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+/* «Удалить» — 160×46, красная заливка без обводки */
+.files-modal-btn--danger {
+  background: #CC3A3A;
+  color: #FFF;
+  border-color: #CC3A3A;
+}
+.files-modal-btn--danger:hover:not(:disabled) {
+  background: #b03030;
+  border-color: #b03030;
+}
+
+/* В режиме выбора у карточки — не «hover=lift», а курсор pointer */
+.files-item--select-mode:not(:disabled):hover { transform: none; }
+.files-item.is-selected .files-item-name { font-weight: 700; }

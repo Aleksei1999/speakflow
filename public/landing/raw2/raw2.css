@@ -193,12 +193,12 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 }
 .raw2-carousel {
   display: flex; gap: 26px; overflow-x: auto; overflow-y: visible; scroll-snap-type: x proximity;
-  scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling: touch;
   padding: 140px 0 40px;
   scrollbar-width: none; cursor: grab; user-select: none; -webkit-user-select: none;
 }
 .raw2-carousel::-webkit-scrollbar { display: none; }
-.raw2-carousel.dragging { cursor: grabbing; scroll-behavior: auto; scroll-snap-type: none; }
+.raw2-carousel.dragging { cursor: grabbing; scroll-snap-type: none; }
 .raw2-carousel img { -webkit-user-drag: none; }
 /* Стрелки карусели — лайм-круг сидит ровно на ребре активной карточки: центр круга = ребро */
 .raw2-car-nav {
@@ -213,21 +213,16 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   position: relative; z-index: 2;
   width: 71px; height: 71px; border-radius: 50%;
   background: var(--lime);
+  box-shadow: 0 0 0 10px #fff;
   display: flex; align-items: center; justify-content: center;
   transition: background .18s, transform .18s;
 }
 .raw2-car-nav:hover .disc { background: var(--lime-deep); }
-.raw2-car-nav svg { width: 32px; height: auto; display: block; overflow: visible; }
-.raw2-car-nav svg path {
-  stroke: #fff; stroke-width: 6; paint-order: stroke;
-  stroke-linejoin: round; stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-/* активная карточка = 348.025 × 1.08 = 375.87px → её ребро в 187.93px от центра;
-   центр диска должен попасть на ребро, значит left/right = 50% − 187.93 − 71/2 */
-.raw2-car-nav.prev { left: calc(50% - 223.43px); }
+.raw2-car-nav svg { width: 32px; height: auto; display: block; }
+/* стрелки у крайних карточек: центр диска ровно на внешнем ребре клипа (1096.075/2 = 548.0375 от центра) */
+.raw2-car-nav.prev { left: calc(50% - 583.54px); }
 .raw2-car-nav.prev svg { transform: scaleX(-1); }
-.raw2-car-nav.next { right: calc(50% - 223.43px); }
+.raw2-car-nav.next { right: calc(50% - 583.54px); }
 
 .raw2-fcard {
   position: relative; background: var(--lime); border-radius: var(--radius-card);
@@ -259,12 +254,13 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
    ============================================================ */
 .raw2-quiz { background: var(--red-hi); padding: 90px 0; }
 .raw2-quiz .card {
-  background: #fff; border-radius: var(--radius-card); padding: 54px 56px;
+  background: #fff; border-radius: var(--radius-card); padding: 48px 54px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+  max-width: 1228px; margin: 0 auto;
 }
 /* title Figma: 40px, 700, -2px, 117.3% */
 /* «Проверь свою прожарку» Figma: 48px / 700 / -2px / 117.3% */
-.raw2-quiz h2 { font-size: clamp(1.8rem,3.4vw,48px); letter-spacing: -0.05em; line-height: 1.173; }
+.raw2-quiz h2 { font-size: clamp(1.6rem,2.9vw,40px); letter-spacing: -0.05em; line-height: 1.173; }
 /* "Level up или stay raw?" Figma: 28px, 700, -1.4px, 111.3% */
 /* «Level up или stay raw?» Figma: ~32px (h=33 на 1 строке → font ~32) */
 .raw2-quiz .lvlup { font-size: clamp(1.4rem,2.4vw,32px); font-weight: 700; letter-spacing: -0.05em; line-height: 1.113; margin: 33px 0; text-transform: none; }
@@ -274,7 +270,7 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 /* Figma: 24px / 500 / -1.2px / 96% */
 .raw2-quiz .desc { font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; color: var(--ink); text-transform: none; line-height: 0.96; letter-spacing: -0.05em; }
 .raw2-quiz .desc b { color: var(--red-accent); font-weight: 700; }
-.raw2-quiz .right { display: flex; flex-direction: column; gap: 26px; }
+.raw2-quiz .right { display: flex; flex-direction: column; gap: 40px; align-items: flex-end; }
 .raw2-quiz .metrics { display: flex; gap: 30px; align-items: center; }
 .raw2-quiz .metric { display: flex; align-items: center; gap: 14px; }
 .raw2-quiz .metric .mi { width: 82px; height: 74px; display: inline-flex; align-items: center; justify-content: center; color: var(--red-accent); flex: 0 0 auto; }
@@ -286,7 +282,7 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 /* label Figma: 15px, 500, -0.75px */
 .raw2-quiz .metric span { font-size: 15px; font-weight: 500; letter-spacing: -0.75px; color: var(--ink); display: block; }
 /* subnote Figma: 15px, 500, -0.75px, rgba(0,0,0,.7) */
-.raw2-quiz .subnote { font-size: 15px; font-weight: 500; letter-spacing: -0.75px; color: rgba(0,0,0,.7); text-transform: none; text-align: right; line-height: 1.2; }
+.raw2-quiz .subnote { font-size: 15px; font-weight: 500; letter-spacing: -0.75px; color: rgba(0,0,0,.7); text-transform: none; text-align: right; line-height: 1.2; max-width: 326px; }
 /* "НАЧАТЬ ИГРУ!" Figma: 35px, 700, -1.75px, 97.5% */
 .raw2-quiz .btn-red { align-self: flex-end; font-size: clamp(1.4rem,2.5vw,35px); padding: 20px 46px; }
 
@@ -299,25 +295,36 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .raw2-founder { position: relative; background: #1a1714 center/cover; padding: 90px 0 129px; color: #fff; min-height: clamp(600px, 74.2vw, 1069px); }
 .raw2-founder::before { content:''; position:absolute; inset:0; background: linear-gradient(90deg, rgba(15,13,11,.9) 0%, rgba(15,13,11,.55) 45%, rgba(15,13,11,.05) 75%); }
 .raw2-founder .wrap { position: relative; z-index: 2; }
-.raw2-founder .badge-title { margin-bottom: 46px; border-radius: 29.5px; text-align: left; }
+.raw2-founder .badge-title { margin-bottom: 46px; border-radius: 29.5px; text-align: left; padding: 31px 40px; }
 /* Figma: левая колонка 348×684, padding 45 43 45 53 */
 .raw2-founder .bio { display: grid; grid-template-columns: 348px 348px; gap: 26px; max-width: 722px; align-items: stretch; }
 .raw2-founder .bio-col { display: flex; flex-direction: column; gap: 26px; }
-/* bio Figma: 28px, 500, -1.4px, 96%; заливки: зелёная rgba(146,157,79,.39) / тёмная rgba(30,30,30,.58) */
+/* bio Figma Glass: Fill 929D4F 39% + Refraction 100 / Depth 81 / Dispersion 58 / Splay 100 / Light -45° 80%
+   CSS-приближение: сильный blur+saturate, светлая внутренняя рамка (highlight от -45°), диагональный gradient sheen */
 .raw2-founder .bio-card {
-  width: 348px; border-radius: 29.5px;
-  background: rgba(60, 60, 60, 0.39);
-  backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);
+  position: relative; width: 348px; border-radius: 29.5px; overflow: hidden;
+  backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
   font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; text-transform: none;
 }
-/* левая большая карточка (Два высших…) — Figma паддинги 51/43/45/53 */
-.raw2-founder .bio > .bio-card { min-height: 684px; padding: 51px 43px 45px 53px; }
-/* правая верхняя карточка (green, «Бабушка») Figma: 348×164, паддинги 41/48/41/48 */
-.raw2-founder .bio-col .bio-green { min-height: 164px; padding: 41px 48px; }
-/* правая нижняя карточка (dark) Figma: 348×497, паддинги 45/51/95/51 */
-.raw2-founder .bio-col .bio-dark { min-height: 497px; padding: 45px 51px 95px 51px; }
-.raw2-founder .bio-green,
-.raw2-founder .bio-dark { background: rgba(60, 60, 60, 0.39); }
+/* glass sheen — диагональный highlight (Figma Light -45°) */
+.raw2-founder .bio-card::after {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.raw2-founder .bio-card > * { position: relative; z-index: 1; }
+/* Figma Fill 929D4F 39% — зелёная тонировка; тёмная для второй карточки */
+.raw2-founder .bio-green { background: rgba(146, 157, 79, 0.39); }
+.raw2-founder .bio-dark  { background: rgba(30, 30, 30, 0.58); }
+/* Figma-паддинги bio-cards (top / right / bottom / left) */
+/* левая большая (Rectangle 174 «Два высших…») — 45 / 43 / 45 / 53 */
+.raw2-founder .bio > .bio-card { min-height: 684px; padding: 45px 43px 45px 53px; }
+/* правая верхняя (Rectangle 175 «Бабушка») — 41 / 48 / 42 / 48 */
+.raw2-founder .bio-col .bio-green { min-height: 164px; padding: 41px 48px 42px 48px; }
+/* правая нижняя (Rectangle 176 «Решила создать…») — 51 / 13 / 95 / 45 */
+.raw2-founder .bio-col .bio-dark { min-height: 497px; padding: 51px 13px 95px 45px; }
 .raw2-founder .bio-card ul { list-style: none; display: flex; flex-direction: column; gap: 20px; }
 .raw2-founder .bio-card li { padding-left: 20px; position: relative; }
 .raw2-founder .bio-card li::before { content:'•'; position:absolute; left: 0; color:#fff; }
@@ -385,31 +392,58 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 /* ============================================================
    SECTION: FAQ (red)
    ============================================================ */
-.raw2-faq { position: relative; background: var(--red-hi); padding: 90px 0 100px; overflow: hidden; }
-.raw2-faq .mascot { position: absolute; right: -20px; top: 90px; width: 420px; height: auto; aspect-ratio: 601 / 720; transform: rotate(8.163deg); z-index: 1; pointer-events: none; }
+.raw2-faq {
+  position: relative; background: var(--red-hi); overflow: hidden;
+  width: 1441px; max-width: 100%;
+  height: 1051px;
+  margin: 0 auto; padding: 90px 0 0;
+}
+.raw2-faq .mascot { position: absolute; right: -80px; top: 110px; width: 601px; height: 719.737px; transform: rotate(8.163deg); z-index: 1; pointer-events: none; }
 .raw2-faq .wrap { position: relative; z-index: 2; }
 .raw2-faq .badge-wrap { display: flex; justify-content: center; margin-bottom: 50px; }
 .raw2-faq .badge-title--outline-lime { border-color: var(--lime); color: #fff; }
-.raw2-faq-list { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; max-width: 900px; }
-.raw2-faq-item { background: transparent; width: fit-content; max-width: 100%; display: flex; flex-direction: column; align-items: stretch; }
+/* фикс-раскладка: item = 883×76, gap 66px, ответ раскрывается в потоке и толкает соседей вниз */
+.raw2-faq-list { display: flex; flex-direction: column; gap: 66px; align-items: flex-start; }
+.raw2-faq-item {
+  background: transparent; position: relative;
+  display: inline-flex; flex-direction: column; align-items: stretch;
+  width: min-content; max-width: 1100px; box-sizing: border-box;
+}
 .raw2-faq-q {
   text-align: left; background: #fff; border: none; cursor: pointer; font-family: inherit;
-  font-size: clamp(1rem, 1.9vw, 30px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink);
-  padding: 22px 40px; border-radius: 999px;
+  font-size: clamp(1rem, 2.4vw, 36px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink);
+  padding: 0 33px; border-radius: 69px;
+  height: 76px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: flex-start; gap: 16px;
   white-space: nowrap;
+  position: relative; z-index: 2;
 }
 .raw2-faq-q > span:first-child { flex: 0 1 auto; }
 .raw2-faq-q .chev { display: none; }
-.raw2-faq-item.open .raw2-faq-q { background: var(--lime); }
+.raw2-faq-item.open .raw2-faq-q {
+  background: var(--lime);
+}
 .raw2-faq-a {
   position: relative;
-  background: rgba(0,0,0,0.15);
-  border-radius: 22px; margin-top: 10px;
-  color: #fff; padding: 20px 66px 22px 34px;
-  font-size: clamp(1rem,1.6vw,22px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.2;
+  background: rgba(223, 237, 140, 0.29);
+  /* верхний radius = радиус капсулы пилюли (76/2 = 38) — кривые совпадают,
+     плашка полностью «задвинута» под пилюлю и её угол не выступает */
+  border-radius: 38px 38px 29.5px 29.5px;
+  color: #fff; padding: 106px 100px 33px 33px;
+  /* Figma: 24px medium, tracking -1.2 (=-0.05em), line-height ~93% */
+  font-size: clamp(1rem,1.66vw,24px); font-weight: 500; letter-spacing: -0.05em; line-height: 0.93;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: -76px; /* полное перекрытие пилюли; текст сдвинут вниз padding-top */
+  z-index: 1;
+  overflow-wrap: break-word;
 }
-.raw2-faq-a .chev-down { position: absolute; right: 24px; top: 22px; width: 26px; height: 16px; color: var(--red-accent); flex-shrink: 0; }
+.raw2-faq-a-text { display: block; }
+/* Figma: стрелка ▼ в правом верхнем углу body (y offset 43px от body top, right offset 39px) */
+.raw2-faq-a .chev-down {
+  position: absolute; right: 40px; top: 43px; transform: none;
+  width: 40px; height: 14px; color: #CC3A3A; flex-shrink: 0;
+}
 
 /* ============================================================
    SECTION: contact (lime) + footer

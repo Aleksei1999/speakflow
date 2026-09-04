@@ -1,0 +1,360 @@
+/* ============================================================
+   StudentAddLessonModal — pixel-perfect по Figma 2208-2469/3269/2638/2608/3346
+   Лаймовая (#DFED8C) карточка, белые пилюли-кнопки, красная CTA.
+   ============================================================ */
+
+.sal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(30, 30, 30, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  animation: salFade 0.15s ease-out;
+}
+@keyframes salFade { from { opacity: 0; } to { opacity: 1; } }
+
+.sal-card {
+  position: relative;
+  width: 686px;
+  max-width: 100%;
+  background: #DFED8C;
+  border-radius: 32px;
+  padding: 46px 56px 40px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
+  color: #1E1E1E;
+  animation: salIn 0.22s cubic-bezier(.2,.7,.2,1.1);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.sal-card--small { width: 503px; padding: 36px 40px 34px; }
+@keyframes salIn { from { transform: translateY(10px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.sal-close {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #1E1E1E;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sal-close:hover { opacity: 0.7; }
+
+.sal-timer {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  font-weight: 500;
+  color: #1E1E1E;
+  letter-spacing: 0.02em;
+}
+
+.sal-title {
+  margin: 6px 0 6px;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #1E1E1E;
+}
+
+/* ---------- Pill ---------- */
+.sal-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 62px;
+  padding: 0 24px;
+  background: #FFFFFF;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  color: #1E1E1E;
+  transition: transform 0.12s ease;
+}
+.sal-pill:hover:not(:disabled):not(.sal-pill--disabled) { transform: translateY(-1px); }
+.sal-pill:disabled,
+.sal-pill--disabled { opacity: 0.55; cursor: not-allowed; }
+.sal-pill--full { width: 100%; }
+.sal-pill--half { flex: 1; min-width: 0; }
+.sal-pill--head { background: #FFFFFF; }
+.sal-pill--option { background: #FFFFFF; }
+.sal-pill--option.is-expanded { border-radius: 32px 32px 0 0; }
+.sal-pill-placeholder { color: rgba(30, 30, 30, 0.55); }
+.sal-pill-value { color: #1E1E1E; font-weight: 500; }
+.sal-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sal-row {
+  display: flex;
+  gap: 16px;
+}
+.sal-row--picker { align-items: flex-start; }
+.sal-half { flex: 1; min-width: 0; }
+.sal-half--picker {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 32px;
+  padding: 6px 6px 12px;
+}
+
+/* ---------- Footer / CTA ---------- */
+.sal-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.sal-btn {
+  min-width: 200px;
+  height: 62px;
+  padding: 0 42px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  color: #FFFFFF;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.sal-btn--red { background: #CC3A3A; }
+.sal-btn--red:hover:not(:disabled) { transform: translateY(-1px); }
+.sal-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.sal-error {
+  padding: 8px 14px;
+  background: rgba(204, 58, 58, 0.12);
+  border-radius: 12px;
+  color: #7A1E1E;
+  font-size: 14px;
+  max-width: 100%;
+  text-align: center;
+}
+
+/* ---------- Event picker (3269) ---------- */
+.sal-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sal-lect-wrap { display: flex; flex-direction: column; }
+.sal-lect-body {
+  background: #FFFFFF;
+  border-radius: 0 0 32px 32px;
+  padding: 14px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: -1px;
+}
+.sal-lect-when {
+  font-size: 20px;
+  font-weight: 700;
+  color: #CC3A3A;
+}
+.sal-lect-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #1E1E1E;
+}
+.sal-lect-cta { align-self: center; margin-top: 6px; }
+.sal-lect-empty {
+  padding: 20px 18px;
+  text-align: center;
+  color: rgba(30, 30, 30, 0.65);
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+/* ---------- Teacher dropdown ---------- */
+.sal-dropdown {
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border-radius: 32px;
+  overflow: hidden;
+}
+.sal-dropdown .sal-pill--head {
+  border-radius: 32px 32px 0 0;
+}
+.sal-dropdown-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 0 12px;
+}
+.sal-dropdown-item {
+  width: 100%;
+  padding: 14px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  color: #1E1E1E;
+  text-align: center;
+}
+.sal-dropdown-item.has-divider { border-top: 1px solid rgba(30, 30, 30, 0.08); }
+.sal-dropdown-item.is-selected { font-weight: 700; }
+.sal-dropdown-item:hover { background: rgba(223, 237, 140, 0.4); }
+.sal-dropdown-empty {
+  padding: 24px;
+  text-align: center;
+  color: rgba(30, 30, 30, 0.55);
+  font-size: 15px;
+}
+
+/* ---------- Picker head (2608) ---------- */
+.sal-picker-head {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #FFFFFF;
+  border-radius: 999px;
+  padding: 0 24px;
+  font-size: 20px;
+  color: rgba(30, 30, 30, 0.55);
+  margin-bottom: 6px;
+}
+.sal-picker-back {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Wheel picker ---------- */
+.sal-wheel {
+  position: relative;
+  height: 204px;   /* 3 items visible */
+  overflow: hidden;
+  padding: 0 6px;
+}
+.sal-wheel-fade {
+  pointer-events: none;
+  position: absolute;
+  left: 0; right: 0;
+  height: 60px;
+  z-index: 2;
+}
+.sal-wheel-fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(223, 237, 140, 0.85), rgba(223, 237, 140, 0));
+}
+.sal-wheel-fade--bot {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(223, 237, 140, 0.85), rgba(223, 237, 140, 0));
+}
+.sal-wheel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: thin;
+}
+.sal-wheel-scroll::-webkit-scrollbar { width: 4px; }
+.sal-wheel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(30, 30, 30, 0.35);
+  border-radius: 2px;
+}
+.sal-wheel-spacer { height: 68px; }  /* = ITEM_H */
+.sal-wheel-item {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 22px;
+  color: rgba(30, 30, 30, 0.5);
+  width: 100%;
+}
+.sal-wheel-item.is-active {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1E1E1E;
+}
+
+/* ---------- Success (3346) ---------- */
+.sal-success-title {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.sal-success-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0;
+}
+.sal-success-note {
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.35;
+  color: #1E1E1E;
+  margin: 4px 0 6px;
+}
+.sal-success-back {
+  align-self: center;
+  margin-top: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+.sal-success-back:not(.is-disabled):hover { transform: translateY(-1px); }
+.sal-success-back.is-disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 560px) {
+  .sal-card { padding: 34px 22px 28px; border-radius: 24px; gap: 16px; }
+  .sal-card--small { padding: 28px 20px 24px; }
+  .sal-title { font-size: 24px; }
+  .sal-pill { height: 56px; font-size: 18px; padding: 0 20px; }
+  .sal-btn { height: 56px; font-size: 18px; padding: 0 30px; }
+  .sal-success-title { font-size: 22px; }
+  .sal-success-note { font-size: 16px; }
+}

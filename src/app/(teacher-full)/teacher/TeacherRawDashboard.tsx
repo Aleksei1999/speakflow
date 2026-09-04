@@ -2,13 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import StudentChat from "./StudentChat"
+import ChatModal from "@/components/dashboard/ChatModal"
+import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import AddLessonModal from "./AddLessonModal"
+import EditLessonModal from "./EditLessonModal"
 import SiteFooter from "@/components/dashboard/SiteFooter"
+import { HwPillList } from "@/components/dashboard/HwPillList"
+import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
+import { FilesModal, type FileItem } from "@/components/dashboard/FilesModal"
 import LessonRequestsModal from "./LessonRequestsModal"
 import type { ScheduleItem } from "./calendar-actions"
 import { disconnectGoogleCalendar } from "./calendar-actions"
+import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
 import type { LessonRequestRow } from "./request-actions"
+import { acceptTrialRequest, declineTrialRequest } from "./trial-request-actions"
+import { useRouter } from "next/navigation"
 
 /* ============================================================
    Teacher Dashboard — Raw English
@@ -194,6 +202,12 @@ function paletteFor(seed: string) {
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
   return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
 }
+function pluralize(n: number, one: string, few: string, many: string) {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
+  return many
+}
 function Avatar({ name, src, className = "" }: { name: string; src?: string; className?: string }) {
   const [failed, setFailed] = useState(!src)
   if (!src || failed) {
@@ -241,6 +255,54 @@ interface TeacherRawDashboardProps {
     earningsYtdKopecks: number
     monthLabel: string
   }
+  /** Список чатов teacher: 1:1 треды (peer любой роли) + групповые чаты.
+   *  Если undefined — preview (падаем на хардкод-моки в дизайне). */
+  initialChats?: Array<
+    | {
+        kind: "direct"
+        peerId: string
+        peerRole: "teacher" | "student" | "admin"
+        peerName: string
+        peerAvatar: string | null
+        lastText: string | null
+        lastSenderIsMe: boolean
+        lastAt: string | null
+        unreadCount: number
+      }
+    | {
+        kind: "group"
+        groupId: string
+        name: string
+        memberCount: number
+        memberAvatars: Array<{ avatar: string | null; name: string }>
+        lastText: string | null
+        lastSenderIsMe: boolean
+        lastAt: string | null
+        unreadCount: number
+      }
+  >
+  /** Заявки на пробный урок (из БД). Undefined → используем мок-APPLICATIONS. */
+  initialApplications?: Array<{
+    id: string
+    name: string
+    level: string
+    test: boolean
+    createdAt: string
+    /** Полный лог ответов на лендинг-квиз (для раскрытой карточки заявки). */
+    testAnswers?: Array<{
+      text: string
+      options: string[]
+      chosen: number
+      correct: number
+      lvl: 1 | 2 | 3 | 4
+    }>
+  }>
+  /** Глобальные тарифы (админ настраивает); отображаются в плашке «доход». */
+  teacherRates?: {
+    rate60Kopecks: number
+    rate90Kopecks: number
+    rateGroupKopecks: number
+  }
 }
 
 export default function TeacherRawDashboard({
@@ -250,6 +312,9 @@ export default function TeacherRawDashboard({
   calendarConnection,
   initialRequests,
   incomeStats,
+  initialChats,
+  initialApplications,
+  teacherRates,
 }: TeacherRawDashboardProps = {}) {
   const now = useClock()
   const timeStr = now ? now.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }) : "16:24"
@@ -258,10 +323,237 @@ export default function TeacherRawDashboard({
   // «Добавить новый урок» модалка. При открытии — свежий mount, чтобы state
   // не тащил старые значения между открытиями.
   const [addLessonOpen, setAddLessonOpen] = useState(false)
+  // Редактирование урока (иконка карандаша в строке расписания). Храним
+  // UUID урока + label + текущий scheduledAt, чтобы модалка предзаполнилась.
+  const [editLesson, setEditLesson] = useState<{
+    id: string
+    label: string
+    scheduledAtISO: string
+  } | null>(null)
   // «Как считается доход?» — info-модалка при клике на CTA в секции дохода.
   const [incomeInfoOpen, setIncomeInfoOpen] = useState(false)
   // «Запрос на урок» модалка (входящая очередь от учеников).
   const [requestsOpen, setRequestsOpen] = useState(false)
+  // Модалка «Библиотека Raw English» — public-материалы, видят все.
+  // Файлы тянутся из bucket teacher-materials через /api/teacher/materials.
+  const [hwFilesOpen, setHwFilesOpen] = useState(false)
+  const [hwFiles, setHwFiles] = useState<FileItem[]>([])
+  // Модалка «Домашние задания» — двухшаговая:
+  //   1) hwPickerOpen — список учеников (setHwPickerOpen)
+  //   2) hwStudentId — выбранный ученик → открываем FilesModal со scoped-списком
+  //      и upload'ы шарятся именно на этого ученика (target_type='student').
+  const [hwPickerOpen, setHwPickerOpen] = useState(false)
+  const [hwStudentId, setHwStudentId] = useState<string | null>(null)
+  const [hwStudentFiles, setHwStudentFiles] = useState<FileItem[]>([])
+
+  // Загрузка списка файлов при первом открытии модалки
+  useEffect(() => {
+    if (!hwFilesOpen) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/teacher/materials?limit=200", { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        setHwFiles(
+          (data.materials ?? []).map((m: any) => ({
+            id: m.id,
+            name: m.title,
+            status: "loaded" as const,
+            onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
+          })),
+        )
+      } catch (e) {
+        console.error("[hwFiles] fetch failed", e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [hwFilesOpen])
+
+  async function handleHwUpload(file: File) {
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    // 1) Оптимистично добавляем в список
+    setHwFiles((prev) => [
+      { id: tempId, name: file.name, status: "loading", progress: 0.05 },
+      ...prev,
+    ])
+    const setProgress = (p: number) =>
+      setHwFiles((prev) => prev.map((x) => (x.id === tempId ? { ...x, progress: p } : x)))
+
+    // Псевдо-прогресс во время upload (supabase-js .upload не даёт events).
+    const tick = setInterval(() => {
+      setHwFiles((prev) => prev.map((x) => {
+        if (x.id !== tempId || x.status !== "loading") return x
+        const next = Math.min(0.85, (x.progress ?? 0) + 0.08)
+        return { ...x, progress: next }
+      }))
+    }, 250)
+
+    try {
+      const { createClient: createSbClient } = await import("@/lib/supabase/client")
+      const supabase = createSbClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Не авторизован")
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
+      const storagePath = `${user.id}/${Date.now()}_${safeName}`
+
+      // 2) Заливаем в bucket
+      const { error: upErr } = await supabase.storage
+        .from("teacher-materials")
+        .upload(storagePath, file, { contentType: file.type, upsert: false })
+      if (upErr) throw upErr
+
+      setProgress(0.9)
+
+      // 3) POST метаданных → создаст row в materials + signed URL
+      const metaRes = await fetch("/api/teacher/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: file.name,
+          storage_path: storagePath,
+          file_name: file.name,
+          file_size: file.size,
+          mime_type: file.type || "application/octet-stream",
+          tags: [],
+          is_public: false,
+        }),
+      })
+      if (!metaRes.ok) {
+        const err = await metaRes.json().catch(() => ({}))
+        throw new Error(err.error || "Ошибка сохранения")
+      }
+      const created = await metaRes.json()
+
+      clearInterval(tick)
+      // 4) Заменяем temp-item на реальный
+      setHwFiles((prev) => prev.map((x) =>
+        x.id === tempId
+          ? {
+              id: created.id,
+              name: created.title,
+              status: "loaded",
+              onOpen: created.signed_url ? () => window.open(created.signed_url, "_blank") : undefined,
+            }
+          : x,
+      ))
+    } catch (e) {
+      console.error("[hwFiles] upload failed", e)
+      clearInterval(tick)
+      // Убираем неудачный item
+      setHwFiles((prev) => prev.filter((x) => x.id !== tempId))
+      alert(`Не удалось загрузить файл: ${e instanceof Error ? e.message : "неизвестная ошибка"}`)
+    }
+  }
+
+  // ------------------- HOMEWORK PER-STUDENT -------------------
+  // При выборе ученика загружаем его личный список материалов.
+  useEffect(() => {
+    if (!hwStudentId) { setHwStudentFiles([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/teacher/student-homework?studentId=${hwStudentId}`,
+          { cache: "no-store" },
+        )
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        setHwStudentFiles(
+          (data.materials ?? []).map((m: any) => ({
+            id: m.id,
+            name: m.title,
+            status: "loaded" as const,
+            onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
+          })),
+        )
+      } catch (e) {
+        console.error("[hwStudentFiles] fetch failed", e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [hwStudentId])
+
+  async function handleHwStudentUpload(file: File) {
+    if (!hwStudentId) return
+    const tempId = `tmp-hw-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    setHwStudentFiles((prev) => [
+      { id: tempId, name: file.name, status: "loading", progress: 0.05 },
+      ...prev,
+    ])
+    const setProgress = (p: number) =>
+      setHwStudentFiles((prev) => prev.map((x) => (x.id === tempId ? { ...x, progress: p } : x)))
+    const tick = setInterval(() => {
+      setHwStudentFiles((prev) => prev.map((x) => {
+        if (x.id !== tempId || x.status !== "loading") return x
+        const next = Math.min(0.85, (x.progress ?? 0) + 0.08)
+        return { ...x, progress: next }
+      }))
+    }, 250)
+    try {
+      const { createClient: createSbClient } = await import("@/lib/supabase/client")
+      const supabase = createSbClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Не авторизован")
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
+      const storagePath = `${user.id}/${Date.now()}_${safeName}`
+      const { error: upErr } = await supabase.storage
+        .from("teacher-materials")
+        .upload(storagePath, file, { contentType: file.type, upsert: false })
+      if (upErr) throw upErr
+      setProgress(0.85)
+      // 1) create material
+      const metaRes = await fetch("/api/teacher/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: file.name,
+          storage_path: storagePath,
+          file_name: file.name,
+          file_size: file.size,
+          mime_type: file.type || "application/octet-stream",
+          tags: [],
+          is_public: false,
+        }),
+      })
+      if (!metaRes.ok) {
+        const err = await metaRes.json().catch(() => ({}))
+        throw new Error(err.error || "Ошибка сохранения")
+      }
+      const created = await metaRes.json()
+      setProgress(0.95)
+      // 2) share to student
+      const shareRes = await fetch(`/api/teacher/materials/${created.id}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ students: [hwStudentId] }),
+      })
+      if (!shareRes.ok) {
+        // Материал уже создан — но не привязан. Оставляем в списке, показываем ошибку.
+        console.error("[hwStudentFiles] share failed", await shareRes.text().catch(() => ""))
+      }
+      clearInterval(tick)
+      setHwStudentFiles((prev) => prev.map((x) =>
+        x.id === tempId
+          ? {
+              id: created.id,
+              name: created.title,
+              status: "loaded",
+              onOpen: created.signed_url ? () => window.open(created.signed_url, "_blank") : undefined,
+            }
+          : x,
+      ))
+    } catch (e) {
+      console.error("[hwStudentFiles] upload failed", e)
+      clearInterval(tick)
+      setHwStudentFiles((prev) => prev.filter((x) => x.id !== tempId))
+      alert(`Не удалось загрузить файл: ${e instanceof Error ? e.message : "неизвестная ошибка"}`)
+    }
+  }
+
   const pendingRequestsCount = initialRequests?.length ?? 0
   const [sortId, setSortId] = useState<typeof SORT_OPTIONS[number]["id"]>("default")
   // Если пропс передан (даже пустой) — используем реальные данные из БД.
@@ -290,11 +582,174 @@ export default function TeacherRawDashboard({
   const [studentModalId, setStudentModalId] = useState<string | null>(null)
   const [levelPickerOpen, setLevelPickerOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
-  const [chatStudentId, setChatStudentId] = useState<string | null>(null)
-  const chatStudentData = chatStudentId ? studentsState.find(s => s.id === chatStudentId) : null
+  const [chatPeer, setChatPeer] = useState<
+    | {
+        id: string
+        role: "teacher" | "student" | "admin"
+        name: string
+        avatar: string | null
+        level?: string
+      }
+    | null
+  >(null)
+  // Оптимистично зануляем бейдж непрочитанных при открытии треда — server-side
+  // markThreadRead в fetchThreadMessages пометит их read_at, но без этого локального
+  // sink'а цифра осталась бы висеть до навигации.
+  const [chatUnreadOverride, setChatUnreadOverride] = useState<Record<string, number>>({})
+  // То же самое для групп: локальный sink для unread badge.
+  const [groupUnreadOverride, setGroupUnreadOverride] = useState<Record<string, number>>({})
+  // Открытый групповой чат — храним всё, что нужно модалке.
+  const [groupChat, setGroupChat] = useState<
+    | { id: string; name: string; memberCount: number }
+    | null
+  >(null)
+
+  // Realtime: живой badge непрочитанных для sidebar-чатов. Внутри модалки
+  // ChatModal сама подписана на INSERT'ы. Тут только обновляем счётчики
+  // когда модалка ЗАКРЫТА (иначе двойной инкремент).
+  useEffect(() => {
+    if (!teacherId) return
+    let cancelled = false
+    let cleanup: (() => void) | null = null
+    ;(async () => {
+      const { createClient: mkClient } = await import("@/lib/supabase/client")
+      if (cancelled) return
+      const supabase = mkClient()
+      const chatCh = supabase
+        .channel(`inbox:teacher:${teacherId}:${Date.now()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "chat_messages",
+            filter: `teacher_id=eq.${teacherId}`,
+          },
+          (payload: any) => {
+            const row = payload.new
+            if (!row || row.sender_id === teacherId) return
+            if (chatPeer?.id === row.sender_id) return
+            setChatUnreadOverride((prev) => ({
+              ...prev,
+              [row.sender_id]: (prev[row.sender_id] ?? 0) + 1,
+            }))
+          },
+        )
+        .subscribe((status, err) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("[inbox:teacher] realtime status:", status, err ?? "")
+          }
+        })
+      const groupIds = (initialChats ?? [])
+        .filter((c: any) => c.kind === "group")
+        .map((c: any) => c.groupId)
+      const groupCh = supabase
+        .channel(`inbox:teacher-groups:${teacherId}:${Date.now()}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "group_messages" },
+          (payload: any) => {
+            const row = payload.new
+            if (!row || row.sender_id === teacherId) return
+            if (!groupIds.includes(row.group_id)) return
+            if (groupChat?.id === row.group_id) return
+            setGroupUnreadOverride((prev) => ({
+              ...prev,
+              [row.group_id]: (prev[row.group_id] ?? 0) + 1,
+            }))
+          },
+        )
+        .subscribe((status, err) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("[inbox:teacher-groups] realtime status:", status, err ?? "")
+          }
+        })
+      cleanup = () => {
+        supabase.removeChannel(chatCh)
+        supabase.removeChannel(groupCh)
+      }
+    })()
+    return () => {
+      cancelled = true
+      cleanup?.()
+    }
+  }, [teacherId, chatPeer?.id, groupChat?.id, initialChats])
   const [transferTeacher, setTransferTeacher] = useState("")
   const [transferReason, setTransferReason] = useState("")
   const studentModalData = studentModalId ? studentsState.find(s => s.id === studentModalId) : null
+  // «О последнем уроке» — заметка (lesson_notes) от ЛЮБОГО учителя по любому
+  // уроку этого ученика. null = ещё грузится или заметок нет.
+  const [studentLatestNote, setStudentLatestNote] = useState<{
+    content: string
+    authorName: string | null
+    lessonAt: string | null
+  } | null>(null)
+  // «Об ученике» — общая заметка, любой teacher/admin может редактировать
+  // (см. миграцию 20260901030000_student_shared_notes.sql).
+  const [studentBio, setStudentBio] = useState<{
+    content: string
+    updatedByName: string | null
+    updatedAt: string
+  } | null>(null)
+  const [bioEditing, setBioEditing] = useState(false)
+  const [bioDraft, setBioDraft] = useState("")
+  const [bioSaving, setBioSaving] = useState(false)
+  useEffect(() => {
+    if (!studentModalId) {
+      setStudentLatestNote(null)
+      setStudentBio(null)
+      setBioEditing(false)
+      setBioDraft("")
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [noteRes, bioRes] = await Promise.all([
+          fetch(`/api/teacher/students/${studentModalId}/latest-note`, { cache: 'no-store' }),
+          fetch(`/api/teacher/students/${studentModalId}/bio`, { cache: 'no-store' }),
+        ])
+        if (cancelled) return
+        if (noteRes.ok) {
+          const data = await noteRes.json()
+          setStudentLatestNote(data.note ?? null)
+        }
+        if (bioRes.ok) {
+          const data = await bioRes.json()
+          setStudentBio(data.note ?? null)
+          setBioDraft(data.note?.content ?? "")
+        }
+      } catch (e) {
+        console.error('[student-modal] fetch failed', e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [studentModalId])
+
+  async function saveBio() {
+    if (!studentModalId || bioSaving) return
+    const content = bioDraft.trim().slice(0, 500)
+    setBioSaving(true)
+    try {
+      const res = await fetch(`/api/teacher/students/${studentModalId}/bio`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || `HTTP ${res.status}`)
+        return
+      }
+      setStudentBio(data.note ?? null)
+      setBioDraft(data.note?.content ?? "")
+      setBioEditing(false)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Ошибка сохранения")
+    } finally {
+      setBioSaving(false)
+    }
+  }
   useEffect(() => {
     if (!studentModalId) return
     const onKey = (e: KeyboardEvent) => {
@@ -329,26 +784,105 @@ export default function TeacherRawDashboard({
     setTransferReason("")
   }
   const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const
-  function changeStudentLevel(newLevel: string) {
+  async function changeStudentLevel(newLevel: string) {
     if (!studentModalData) return
-    setStudentsState(prev => prev.map(s => s.id === studentModalData.id ? { ...s, level: newLevel } : s))
+    const target = studentModalData
+    const prevLevel = target.level
+    // Оптимистично меняем в UI и закрываем picker.
+    setStudentsState(prev => prev.map(s => s.id === target.id ? { ...s, level: newLevel } : s))
     setLevelPickerOpen(false)
-    // Через 60 сек — послать ученику уведомление в личный кабинет.
-    // В preview просто консоль; в проде — insert в notifications БД.
-    setTimeout(() => {
-      // eslint-disable-next-line no-console
-      console.log(`[MOCK NOTIFY] "${studentModalData.name}": ваш уровень изменён на ${newLevel}`)
-    }, 60_000)
+    try {
+      const res = await fetch(`/api/teacher/students/${target.id}/level`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: newLevel }),
+      })
+      if (!res.ok) {
+        // Откатываем UI при ошибке.
+        setStudentsState(prev => prev.map(s => s.id === target.id ? { ...s, level: prevLevel } : s))
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || `Не удалось сохранить уровень (HTTP ${res.status})`)
+        return
+      }
+      // Ре-запрашиваем SSR-данные, чтобы initialStudents тоже подтянул
+      // новый уровень (иначе F5 показывал старый до истечения 60с TTL).
+      router.refresh()
+    } catch (e) {
+      setStudentsState(prev => prev.map(s => s.id === target.id ? { ...s, level: prevLevel } : s))
+      alert(e instanceof Error ? e.message : "Ошибка сети при сохранении уровня")
+    }
   }
-  const visibleApps = appsExpanded ? APPLICATIONS : APPLICATIONS.slice(0, APPLICATIONS_VISIBLE)
-  const remainingApps = APPLICATIONS.length - visibleApps.length
-  const qTotalPages = Math.ceil(SAMPLE_QUESTIONS.length / Q_PER_PAGE)
-  const currentQuestions = SAMPLE_QUESTIONS.slice(qPage * Q_PER_PAGE, (qPage + 1) * Q_PER_PAGE)
+  const router = useRouter()
+  const [trialActionPending, setTrialActionPending] = useState<string | null>(null)
+  // Локальный оптимистичный dismiss для мгновенного UI-фидбека — server-refresh
+  // подтянет актуальный список из БД.
+  const [dismissedTrialIds, setDismissedTrialIds] = useState<Set<string>>(new Set())
+  const applications = (initialApplications ?? APPLICATIONS).filter((a) => !dismissedTrialIds.has(a.id))
+  const visibleApps = appsExpanded ? applications : applications.slice(0, APPLICATIONS_VISIBLE)
+  const remainingApps = applications.length - visibleApps.length
+
+  const handleAcceptTrial = async (id: string) => {
+    setTrialActionPending(id)
+    try {
+      const res = await acceptTrialRequest(id)
+      if (!res.ok) {
+        alert(res.error ?? "Не удалось взять ученика")
+        return
+      }
+      setDismissedTrialIds((s) => new Set(s).add(id))
+      router.refresh()
+    } finally {
+      setTrialActionPending(null)
+    }
+  }
+
+  const handleDeclineTrial = async (id: string) => {
+    setTrialActionPending(id)
+    try {
+      const res = await declineTrialRequest(id)
+      if (!res.ok) {
+        alert(res.error ?? "Не удалось отклонить заявку")
+        return
+      }
+      setDismissedTrialIds((s) => new Set(s).add(id))
+      router.refresh()
+    } finally {
+      setTrialActionPending(null)
+    }
+  }
+  // Реальные ответы теста берём из initialApplications[expandedAppId].testAnswers
+  // (если тест пройден). Иначе фолбэчимся на SAMPLE_QUESTIONS (mock).
+  // Формат из БД: {text: string, options: string[], chosen, correct}. Приводим
+  // к рендер-формату {text: string[], options: string[], chosen, correct} —
+  // многострочный текст пока не режем, оборачиваем в 1-элемент.
+  type UiQuestion = { text: string[]; options: string[]; chosen: number; correct: number }
+  const expandedApp = expandedAppId
+    ? (initialApplications ?? []).find((a) => a.id === expandedAppId)
+    : null
+  const questions: UiQuestion[] = useMemo(() => {
+    if (expandedApp?.testAnswers && expandedApp.testAnswers.length > 0) {
+      return expandedApp.testAnswers.map((it) => ({
+        text: [it.text],
+        options: it.options,
+        chosen: it.chosen,
+        correct: it.correct,
+      }))
+    }
+    return SAMPLE_QUESTIONS
+  }, [expandedApp])
+  const qTotalPages = Math.max(1, Math.ceil(questions.length / Q_PER_PAGE))
+  const currentQuestions = questions.slice(qPage * Q_PER_PAGE, (qPage + 1) * Q_PER_PAGE)
   useEffect(() => { setQPage(0) }, [expandedAppId])
   const [groupStep, setGroupStep] = useState<null | "participants" | "name" | "success">(null)
   const [groupSel, setGroupSel] = useState<Set<string>>(new Set())
   const [groupName, setGroupName] = useState("")
   const [backEnabled, setBackEnabled] = useState(false)
+  // POST /api/teacher/groups в процессе — блокируем «Готово» + отдельно ошибку.
+  const [groupSubmitting, setGroupSubmitting] = useState(false)
+  const [groupSubmitError, setGroupSubmitError] = useState<string | null>(null)
+  // Пометка «в этой сессии создан хотя бы 1 group» — чтобы closeGroupModal
+  // сделал router.refresh() и группа появилась в списке чатов.
+  const [groupJustCreated, setGroupJustCreated] = useState(false)
   const groupOpen = groupStep !== null
   useEffect(() => {
     if (groupStep !== "success") { setBackEnabled(false); return }
@@ -378,6 +912,42 @@ export default function TeacherRawDashboard({
     setGroupStep(null)
     setGroupSel(new Set())
     setGroupName("")
+    setGroupSubmitError(null)
+    // Если хотя бы одна группа была создана — обновляем данные с сервера,
+    // чтобы initialChats подтянул её и она появилась в блоке «Чат с учениками».
+    if (groupJustCreated) {
+      setGroupJustCreated(false)
+      router.refresh()
+    }
+  }
+  // POST /api/teacher/groups с текущим именем/участниками. Переводит в step
+  // 'success' при успехе; иначе — оставляет на 'name' с error.
+  async function submitCreateGroup() {
+    const trimmed = groupName.trim()
+    if (!trimmed || groupSel.size < 2 || groupSubmitting) return
+    setGroupSubmitting(true)
+    setGroupSubmitError(null)
+    try {
+      const res = await fetch('/api/teacher/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmed,
+          student_ids: Array.from(groupSel),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setGroupSubmitError(err.error || 'Не удалось создать группу')
+        return
+      }
+      setGroupJustCreated(true)
+      setGroupStep('success')
+    } catch (e) {
+      setGroupSubmitError(e instanceof Error ? e.message : 'Не удалось создать группу')
+    } finally {
+      setGroupSubmitting(false)
+    }
   }
   useEffect(() => {
     if (!sortOpen) return
@@ -408,20 +978,27 @@ export default function TeacherRawDashboard({
           const d = new Date(s.startAt)
           const time = d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })
           const date = d.toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "2-digit" })
+          // Для урока из БД — редиректим на нашу комнату /lesson/[id];
+          // meetingUrl используем только если явно задан (Google Meet и т.п.).
+          // s.id приходит с префиксом "lesson:" (см. calendar-actions.ts:141) —
+          // снимаем его, иначе получится /lesson/lesson:UUID и /lesson/[id] упадёт на "/".
+          const lessonUuid = s.id.startsWith("lesson:") ? s.id.slice("lesson:".length) : s.id
+          const roomHref = s.source === "lesson" ? `/lesson/${lessonUuid}` : null
           return {
             id: s.id,
             source: s.source,
             time,
             date,
+            startAt: s.startAt,
             label: s.title || (s.source === "google" ? "Событие календаря" : "Урок"),
-            callHref: s.meetingUrl ?? null,
+            callHref: s.meetingUrl ?? roomHref,
             studentName: s.studentName ?? null,
             studentAvatar: s.studentAvatar ?? null,
           }
         })
     }
     if (initialSchedule && initialSchedule.length === 0) {
-      return [] as Array<{ id: string; source: "google" | "lesson"; time: string; date: string; label: string; callHref: string | null; studentName: string | null; studentAvatar: string | null }>
+      return [] as Array<{ id: string; source: "google" | "lesson"; time: string; date: string; startAt: string; label: string; callHref: string | null; studentName: string | null; studentAvatar: string | null }>
     }
     // Preview-режим: пропс не пришёл → mock.
     return LESSONS.map((l) => ({
@@ -429,6 +1006,7 @@ export default function TeacherRawDashboard({
       source: "lesson" as const,
       time: l.time,
       date: l.date,
+      startAt: new Date().toISOString(),
       label: l.label,
       callHref: null as string | null,
       studentName: null as string | null,
@@ -438,8 +1016,13 @@ export default function TeacherRawDashboard({
 
   return (
     <div className="tr">
+      {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260823-21" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260902-gap" />
+      {/* eslint-disable-next-line @next/next/no-css-tags */}
+      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
+      {/* eslint-disable-next-line @next/next/no-css-tags */}
+      <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
 
       {/* ================== HERO: nav + dark backdrop that hosts STUDENTS ================== */}
       <div className="tr-hero">
@@ -609,11 +1192,16 @@ export default function TeacherRawDashboard({
                 <button
                   type="button"
                   className="tr-modal-done"
-                  onClick={() => setGroupStep("success")}
-                  disabled={!groupName.trim()}
+                  onClick={submitCreateGroup}
+                  disabled={!groupName.trim() || groupSubmitting}
                 >
-                  Готово
+                  {groupSubmitting ? 'Создаём…' : 'Готово'}
                 </button>
+                {groupSubmitError && (
+                  <div className="tr-add-lesson-error" role="alert" style={{ marginTop: 12 }}>
+                    {groupSubmitError}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -717,17 +1305,89 @@ export default function TeacherRawDashboard({
 
             <div className="tr-stu-modal-section">
               <div className="tr-stu-modal-title">Об ученике</div>
-              <div className="tr-stu-modal-card">Интересуется баснями и поэзией</div>
-              <div className="tr-stu-modal-count">27/500</div>
+              {bioEditing ? (
+                <>
+                  <textarea
+                    className="tr-stu-modal-card tr-stu-modal-card--edit"
+                    maxLength={500}
+                    placeholder="Расскажите об ученике: интересы, цели, особенности…"
+                    value={bioDraft}
+                    onChange={(e) => setBioDraft(e.target.value)}
+                    autoFocus
+                    disabled={bioSaving}
+                  />
+                  <div className="tr-stu-modal-count">{bioDraft.length}/500</div>
+                  <div className="tr-stu-modal-bio-actions">
+                    <button
+                      type="button"
+                      className="tr-stu-modal-bio-save"
+                      onClick={saveBio}
+                      disabled={bioSaving}
+                    >
+                      {bioSaving ? "Сохраняем…" : "Сохранить"}
+                    </button>
+                    <button
+                      type="button"
+                      className="tr-stu-modal-bio-cancel"
+                      onClick={() => {
+                        setBioEditing(false)
+                        setBioDraft(studentBio?.content ?? "")
+                      }}
+                      disabled={bioSaving}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={`tr-stu-modal-card tr-stu-modal-card--clickable${!studentBio ? " tr-stu-modal-card--empty" : ""}`}
+                    onClick={() => {
+                      setBioDraft(studentBio?.content ?? "")
+                      setBioEditing(true)
+                    }}
+                    title="Нажмите чтобы редактировать"
+                  >
+                    {studentBio?.content
+                      ? studentBio.content.split(/\r?\n/).map((line, i) => (
+                          <span key={i}>{line}</span>
+                        ))
+                      : "Добавьте информацию об ученике…"}
+                  </button>
+                  {studentBio?.updatedByName && (
+                    <div className="tr-stu-modal-count">
+                      {studentBio.updatedByName}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="tr-stu-modal-section">
               <div className="tr-stu-modal-title">О последнем уроке</div>
-              <div className="tr-stu-modal-card">
-                <span>Плохо запомнил времена,</span>
-                <span>нужно повторить</span>
-              </div>
-              <div className="tr-stu-modal-count">35/500</div>
+              {studentLatestNote ? (
+                <>
+                  <div className="tr-stu-modal-card">
+                    {studentLatestNote.content.split(/\r?\n/).map((line, i) => (
+                      <span key={i}>{line}</span>
+                    ))}
+                  </div>
+                  {studentLatestNote.authorName && (
+                    <div className="tr-stu-modal-count">
+                      {studentLatestNote.authorName}
+                      {studentLatestNote.lessonAt && (
+                        <> · {new Date(studentLatestNote.lessonAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' })}</>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="tr-stu-modal-card tr-stu-modal-card--empty">
+                  Пока нет заметок о прошедших уроках.
+                </div>
+              )}
             </div>
 
             <div className="tr-stu-modal-actions">
@@ -735,9 +1395,9 @@ export default function TeacherRawDashboard({
                 type="button"
                 className="tr-stu-modal-chat"
                 onClick={() => {
-                  const id = studentModalData.id
+                  const s = studentModalData
                   setStudentModalId(null)
-                  setChatStudentId(id)
+                  setChatPeer({ id: s.id, role: "student", name: s.name, avatar: s.avatar ?? null, level: s.level })
                 }}
               >
                 Открыть чат
@@ -792,15 +1452,29 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      {/* ================== STUDENT CHAT (клик по «Открыть чат» в модалке ученика) ================== */}
-      {chatStudentData && (
-        <StudentChat
-          studentId={chatStudentData.id}
-          studentName={chatStudentData.name}
-          studentLevel={chatStudentData.level}
-          studentAvatar={chatStudentData.avatar}
-          teacherId={teacherId}
-          onClose={() => setChatStudentId(null)}
+      {/* ================== CHAT MODAL (universal: teacher↔any) ================== */}
+      {chatPeer && (
+        <ChatModal
+          peerId={chatPeer.id}
+          peerRole={chatPeer.role}
+          peerName={chatPeer.name}
+          peerLevel={chatPeer.level}
+          peerAvatar={chatPeer.avatar ?? undefined}
+          currentUserId={teacherId}
+          currentRole="teacher"
+          onClose={() => setChatPeer(null)}
+        />
+      )}
+
+      {/* ================== GROUP CHAT MODAL ================== */}
+      {groupChat && teacherId && (
+        <GroupChatModal
+          groupId={groupChat.id}
+          groupName={groupChat.name}
+          memberCount={groupChat.memberCount}
+          currentUserId={teacherId}
+          currentRole="teacher"
+          onClose={() => setGroupChat(null)}
         />
       )}
 
@@ -812,6 +1486,21 @@ export default function TeacherRawDashboard({
           </span>
         </div>
         <p className="tr-sub">Ученики, с которыми нужно назначить пробное занятие.</p>
+        {applications.length === 0 ? (
+          <div className="tr-apps-empty" role="status">
+            <img
+              className="tr-apps-empty-icon"
+              src="/dashboard/empty-states/no-students.svg"
+              alt=""
+              aria-hidden
+            />
+            <div className="tr-apps-empty-title">На данный момент учеников нет.</div>
+            <div className="tr-apps-empty-sub">
+              Проверяйте страницу несколько раз в день,<br />
+              чтобы не пропустить учеников.
+            </div>
+          </div>
+        ) : (
         <div className="tr-apps">
           <div className="tr-apps-list">
           {visibleApps.map((a) => {
@@ -838,8 +1527,8 @@ export default function TeacherRawDashboard({
                       <path d="M2 5l14 12L30 5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 32 18" width="32" height="18" fill="none" aria-hidden>
-                      <path d="M30 9H3M10 2L3 9l7 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg viewBox="0 0 37 37" width="32" height="32" fill="none" aria-hidden style={{ transform: "scaleX(-1)" }}>
+                      <path d="M2.5 15.9099C1.11929 15.9099 0 17.0292 0 18.4099C0 19.7906 1.11929 20.9099 2.5 20.9099V18.4099V15.9099ZM36.2678 20.1777C37.2441 19.2014 37.2441 17.6184 36.2678 16.6421L20.3579 0.732233C19.3816 -0.244078 17.7986 -0.244078 16.8223 0.732233C15.846 1.70854 15.846 3.29146 16.8223 4.26777L30.9645 18.4099L16.8223 32.552C15.846 33.5283 15.846 35.1113 16.8223 36.0876C17.7986 37.0639 19.3816 37.0639 20.3579 36.0876L36.2678 20.1777ZM2.5 18.4099V20.9099H34.5V18.4099V15.9099H2.5V18.4099Z" fill="#1E1E1E"/>
                     </svg>
                   )}
                 </button>
@@ -906,8 +1595,22 @@ export default function TeacherRawDashboard({
                       )}
                     </div>
                     <div className="tr-app-actions">
-                      <button type="button" className="tr-app-accept">Взять ученика</button>
-                      <button type="button" className="tr-app-decline">Не могу взять</button>
+                      <button
+                        type="button"
+                        className="tr-app-accept"
+                        disabled={trialActionPending === a.id}
+                        onClick={() => handleAcceptTrial(a.id)}
+                      >
+                        {trialActionPending === a.id ? "..." : "Взять ученика"}
+                      </button>
+                      <button
+                        type="button"
+                        className="tr-app-decline"
+                        disabled={trialActionPending === a.id}
+                        onClick={() => handleDeclineTrial(a.id)}
+                      >
+                        Не могу взять
+                      </button>
                     </div>
                   </>
                 )}
@@ -940,6 +1643,7 @@ export default function TeacherRawDashboard({
             </div>
           )}
         </div>
+        )}
       </section>
 
       {/* ================== SCHEDULE (dark) ================== */}
@@ -967,7 +1671,19 @@ export default function TeacherRawDashboard({
                     <div className="dd">{l.date}</div>
                   </div>
                   <div className="tr-lesson-label">{l.label}</div>
-                  <button type="button" className="tr-lesson-edit" aria-label="Изменить">
+                  <button
+                    type="button"
+                    className="tr-lesson-edit"
+                    aria-label="Изменить дату и время"
+                    disabled={l.source !== "lesson"}
+                    title={l.source === "lesson" ? "Изменить дату и время" : "Событие Google Calendar редактируется в Google"}
+                    onClick={() => {
+                      if (l.source !== "lesson") return
+                      // s.id имеет формат "lesson:UUID" — снимаем префикс.
+                      const uuid = l.id.startsWith("lesson:") ? l.id.slice("lesson:".length) : l.id
+                      setEditLesson({ id: uuid, label: l.label, scheduledAtISO: l.startAt })
+                    }}
+                  >
                     <EditIcon />
                   </button>
                   {l.callHref ? (
@@ -988,7 +1704,7 @@ export default function TeacherRawDashboard({
               ))
             )}
           </div>
-          <div className="tr-schedule-actions">
+          <div id="calendar" className="tr-schedule-actions">
             {calendarConnection?.connected ? (
               <a
                 className="tr-sched-btn lime"
@@ -1031,28 +1747,29 @@ export default function TeacherRawDashboard({
         <div className="tr-inner">
           <div className="tr-income-card">
             <div className="tr-income-left">
-              <div className="tr-income-title">
-                Ваш доход
-                <br />
-                <span className="c-red">на платформе</span>
+              <div className="tr-income-header">
+                <div className="tr-income-title">
+                  Ваш доход
+                  <br />
+                  <span className="c-red">на платформе</span>
+                </div>
+                <div className="tr-income-metric tr-income-metric--book">
+                  <img className="tr-income-icon" src="/dashboard/income/book-red.svg" alt="" aria-hidden />
+                  <div className="stack">
+                    <div className="value">{incomeStats?.lessonsThisMonth ?? 0}</div>
+                    <span className="label">уроков<br />проведено</span>
+                  </div>
+                </div>
               </div>
               <button type="button" className="tr-income-cta" onClick={() => setIncomeInfoOpen(true)}>КАК СЧИТАЕТСЯ ДОХОД?</button>
-            </div>
-
-            <div className="tr-income-metric tr-income-metric--book">
-              <img className="tr-income-icon" src="/dashboard/income/book-red.svg" alt="" aria-hidden />
-              <div className="stack">
-                <div className="value">{incomeStats?.lessonsThisMonth ?? 5}</div>
-                <span className="label">уроков<br />проведено</span>
-              </div>
             </div>
 
             <div className="tr-income-metric tr-income-metric--money">
               <div className="tr-income-row">
                 <img className="tr-income-icon tr-income-icon--wallet" src="/dashboard/income/wallet-red.svg" alt="" aria-hidden />
                 <div className="stack">
-                  <span className="caption red">за {incomeStats?.monthLabel ?? "август"}</span>
-                  <div className="value">{formatRub(incomeStats?.earningsThisMonthKopecks ?? 5_540_000)}</div>
+                  <span className="caption red">за {incomeStats?.monthLabel ?? new Date().toLocaleDateString("ru", { month: "long" })}</span>
+                  <div className="value">{formatRub(incomeStats?.earningsThisMonthKopecks ?? 0)}</div>
                   <span className="label">рублей</span>
                 </div>
               </div>
@@ -1060,7 +1777,7 @@ export default function TeacherRawDashboard({
                 <img className="tr-income-icon tr-income-icon--wallet" src="/dashboard/income/wallet-lime.svg" alt="" aria-hidden />
                 <div className="stack">
                   <span className="caption mut">с начала года</span>
-                  <div className="value">{formatRub(incomeStats?.earningsYtdKopecks ?? 34_600_000)}</div>
+                  <div className="value">{formatRub(incomeStats?.earningsYtdKopecks ?? 0)}</div>
                   <span className="label">рублей</span>
                 </div>
               </div>
@@ -1069,72 +1786,129 @@ export default function TeacherRawDashboard({
         </div>
       </section>
 
-      {/* ================== CHATS (Figma 4096:81, 1:1 absolute) ================== */}
+      {/* ================== CHATS ================== */}
       <section id="chats" className="tr-section">
         <div className="tr-chats-frame">
-          {/* Бейдж «ЧАТ С УЧЕНИКАМИ» — 452×83, top:0 (frame top:71 → в разделе выше) */}
           <div className="tr-chats-badge">
             ЧАТ С <span className="c-lime">УЧЕНИКАМИ</span>
           </div>
 
-          {/* Тёмная карточка 1228×837 (frame top:242 → local top:171) */}
-          <div className="tr-chats-card">
-            {/* Scroll-трек справа */}
-            <div className="tr-chats-track" />
-            <div className="tr-chats-thumb" />
+          <div className="tr-chats-card tr-chats-card--flow">
+            {(!initialChats || initialChats.length === 0) && (
+              <div className="tr-chats-empty">Пока нет ни одного чата. Как только ученик напишет — он появится здесь.</div>
+            )}
 
-            {/* Ряд 1: unread lime — Вадим Думович */}
-            <div className="tr-chat-row tr-chat-row--lime tr-chat-row--r1">
-              <div className="tr-chat-badge">1 новое сообщение</div>
-              <div className="tr-chat-avatar-big"><img src="/dashboard/chats/avatar-vadim.png" alt="" /></div>
-              <div className="tr-chat-name">Вадим Думович</div>
-              <div className="tr-chat-preview">
-                Текст последнего сообщения от ученика, которое еще<br />не прочитано
-              </div>
-              <button type="button" className="tr-chat-arrow-btn tr-chat-arrow-btn--red" aria-label="Открыть чат">
-                <img src="/dashboard/chats/arrow-icon-white.svg" alt="" aria-hidden />
-              </button>
-            </div>
-
-            {/* Ряд 2: unread lime — Кристина Кирова */}
-            <div className="tr-chat-row tr-chat-row--lime tr-chat-row--r2">
-              <div className="tr-chat-badge">1 новое сообщение</div>
-              <div className="tr-chat-avatar-big"><img src="/dashboard/chats/avatar-kristina.png" alt="" /></div>
-              <div className="tr-chat-name">Кристина Кирова</div>
-              <div className="tr-chat-preview">
-                Текст последнего сообщения от ученика, которое еще<br />не прочитано
-              </div>
-              <button type="button" className="tr-chat-arrow-btn tr-chat-arrow-btn--red" aria-label="Открыть чат">
-                <img src="/dashboard/chats/arrow-icon-white.svg" alt="" aria-hidden />
-              </button>
-            </div>
-
-            {/* Ряд 3: read lime — Вадим Думович */}
-            <div className="tr-chat-row tr-chat-row--lime tr-chat-row--r3">
-              <div className="tr-chat-avatar-big"><img src="/dashboard/chats/avatar-vadim.png" alt="" /></div>
-              <div className="tr-chat-name">Вадим Думович</div>
-              <div className="tr-chat-preview tr-chat-preview--1line">
-                Текст последнего сообщения от ученика, которое прочитано
-              </div>
-              <button type="button" className="tr-chat-arrow-btn tr-chat-arrow-btn--red" aria-label="Открыть чат">
-                <img src="/dashboard/chats/arrow-icon-white.svg" alt="" aria-hidden />
-              </button>
-            </div>
-
-            {/* Ряд 4: group red — Группа 1 */}
-            <div className="tr-chat-row tr-chat-row--red tr-chat-row--r4">
-              <div className="tr-chat-avatar-big"><img src="/dashboard/chats/avatar-group1.png" alt="" /></div>
-              <div className="tr-chat-avatar-mini"><img src="/dashboard/chats/avatar-kristina.png" alt="" /></div>
-              <div className="tr-chat-avatar-nano"><img src="/dashboard/chats/avatar-vadim.png" alt="" /></div>
-              <div className="tr-chat-count"><span>9</span></div>
-              <div className="tr-chat-name tr-chat-name--white">Группа 1</div>
-              <div className="tr-chat-preview tr-chat-preview--white tr-chat-preview--1line">
-                <b>Вы: </b>Текст последнего сообщения, которое прочитано
-              </div>
-              <button type="button" className="tr-chat-arrow-btn tr-chat-arrow-btn--lime" aria-label="Открыть чат">
-                <img src="/dashboard/chats/arrow-icon-dark.svg" alt="" aria-hidden />
-              </button>
-            </div>
+            {initialChats?.map((c) => {
+              if (c.kind === "direct") {
+                const cnt = chatUnreadOverride[c.peerId] ?? c.unreadCount
+                return (
+                  <div
+                    key={`d:${c.peerId}`}
+                    className={`tr-chat-row tr-chat-row--lime${cnt > 0 ? " tr-chat-row--unread" : ""}`}
+                  >
+                    {cnt > 0 && (
+                      <div className="tr-chat-badge">
+                        {cnt} {pluralize(cnt, "новое", "новых", "новых")}{" "}
+                        {pluralize(cnt, "сообщение", "сообщения", "сообщений")}
+                      </div>
+                    )}
+                    <div className="tr-chat-avatar-big">
+                      {c.peerAvatar ? (
+                        <img src={c.peerAvatar} alt="" />
+                      ) : (
+                        <div className="tr-chat-avatar-fallback">{initialsOf(c.peerName)}</div>
+                      )}
+                    </div>
+                    <div className="tr-chat-name">{c.peerName}</div>
+                    <div className="tr-chat-preview">
+                      {c.lastSenderIsMe && <b>Вы: </b>}
+                      {c.lastText || "Нет сообщений"}
+                    </div>
+                    <button
+                      type="button"
+                      className="tr-chat-arrow-btn tr-chat-arrow-btn--red"
+                      aria-label={`Открыть чат с ${c.peerName}`}
+                      onClick={() => {
+                        setChatUnreadOverride((s) => ({ ...s, [c.peerId]: 0 }))
+                        setChatPeer({
+                          id: c.peerId,
+                          role: c.peerRole,
+                          name: c.peerName,
+                          avatar: c.peerAvatar,
+                        })
+                      }}
+                    >
+                      <img src="/dashboard/chats/arrow-icon-white.svg" alt="" aria-hidden />
+                    </button>
+                  </div>
+                )
+              }
+              // kind === "group"
+              const gUnread = groupUnreadOverride[c.groupId] ?? c.unreadCount
+              return (
+                <div
+                  key={`g:${c.groupId}`}
+                  className={`tr-chat-row tr-chat-row--red${gUnread > 0 ? " tr-chat-row--unread" : ""}`}
+                >
+                  <div className="tr-chat-avatar-big">
+                    {c.memberAvatars[0]?.avatar ? (
+                      <img src={c.memberAvatars[0].avatar} alt="" />
+                    ) : (
+                      <div className="tr-chat-avatar-fallback">
+                        {initialsOf(c.memberAvatars[0]?.name ?? c.name)}
+                      </div>
+                    )}
+                  </div>
+                  {c.memberAvatars[1] && (
+                    <div className="tr-chat-avatar-mini">
+                      {c.memberAvatars[1].avatar ? (
+                        <img src={c.memberAvatars[1].avatar} alt="" />
+                      ) : (
+                        <div className="tr-chat-avatar-fallback">
+                          {initialsOf(c.memberAvatars[1].name)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {c.memberAvatars[2] && (
+                    <div className="tr-chat-avatar-nano">
+                      {c.memberAvatars[2].avatar ? (
+                        <img src={c.memberAvatars[2].avatar} alt="" />
+                      ) : (
+                        <div className="tr-chat-avatar-fallback">
+                          {initialsOf(c.memberAvatars[2].name)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {gUnread > 0 && (
+                    <div className="tr-chat-count"><span>{gUnread}</span></div>
+                  )}
+                  <div className="tr-chat-name tr-chat-name--white">{c.name}</div>
+                  <div className="tr-chat-preview tr-chat-preview--white">
+                    {c.lastText ? (
+                      <>
+                        {c.lastSenderIsMe && <b>Вы: </b>}
+                        {c.lastText}
+                      </>
+                    ) : (
+                      <>Групповой чат — {c.memberCount} {pluralize(c.memberCount, "участник", "участника", "участников")}</>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="tr-chat-arrow-btn tr-chat-arrow-btn--lime"
+                    aria-label={`Открыть групповой чат ${c.name}`}
+                    onClick={() => {
+                      setGroupUnreadOverride((s) => ({ ...s, [c.groupId]: 0 }))
+                      setGroupChat({ id: c.groupId, name: c.name, memberCount: c.memberCount })
+                    }}
+                  >
+                    <img src="/dashboard/chats/arrow-icon-dark.svg" alt="" aria-hidden />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -1146,26 +1920,19 @@ export default function TeacherRawDashboard({
             ДОМАШНИЕ ЗАДАНИЯ И <span className="c-red">БИБЛИОТЕКА</span>
           </span>
         </div>
-        <div className="tr-hw-list">
-          <button type="button" className="tr-hw-pill">
-            Домашние задания
-            <span className="arrow-btn sm" aria-hidden>
-              <ArrowRight size={28} />
-            </span>
-          </button>
-          <button type="button" className="tr-hw-pill">
-            Библиотека <span className="raw">Raw English</span>
-            <span className="arrow-btn sm" aria-hidden>
-              <ArrowRight size={28} />
-            </span>
-          </button>
-          <button type="button" className="tr-hw-pill">
-            История занятий
-            <span className="arrow-btn sm" aria-hidden>
-              <ArrowRight size={28} />
-            </span>
-          </button>
-        </div>
+        <HwPillList
+          items={[
+            {
+              label: "Домашние задания",
+              onClick: () => setHwPickerOpen(true),
+            },
+            {
+              label: <>Библиотека <span className="raw">Raw English</span></>,
+              onClick: () => setHwFilesOpen(true),
+            },
+            { label: "История занятий", href: "/teacher/summaries" },
+          ]}
+        />
       </section>
 
       {/* ================== FOOTER ================== */}
@@ -1179,9 +1946,19 @@ export default function TeacherRawDashboard({
               </svg>
             </button>
             <p className="tr-income-info-text" id="tr-inc-info-title">
-              Ваш доход считается исходя из кол-ва часов, которые вы провели с учениками.
-              Каждый проведенный урок на 1 час стоит ______ рублей, каждый проведенный урок
-              на 1,5 часа стоит ______ рублей, каждое занятие с группой стоит ______ рублей.
+              {(() => {
+                const fmt = (k?: number) => (k && k > 0 ? Math.round(k / 100).toLocaleString("ru-RU") : "______")
+                const r60 = fmt(teacherRates?.rate60Kopecks)
+                const r90 = fmt(teacherRates?.rate90Kopecks)
+                const rG = fmt(teacherRates?.rateGroupKopecks)
+                return (
+                  <>
+                    Ваш доход считается исходя из кол-ва часов, которые вы провели с учениками.
+                    Каждый проведенный урок на 1 час стоит {r60} рублей, каждый проведенный урок
+                    на 1,5 часа стоит {r90} рублей, каждое занятие с группой стоит {rG} рублей.
+                  </>
+                )
+              })()}
             </p>
             <p className="tr-income-info-q">Остались вопросы?</p>
             <button type="button" className="tr-income-info-cta">Пиши администратору</button>
@@ -1189,7 +1966,21 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      <SiteFooter supportHref="/support" />
+      <SiteFooter
+        onSupportClick={async () => {
+          // «Написать в поддержку» → чат с админом. Сообщение падает в
+          // chat_messages, админ видит его в общем списке чатов.
+          try {
+            const r = await fetch("/api/support/admin-peer", { cache: "no-store" })
+            const j = await r.json()
+            if (r.ok && j.admin?.id) {
+              setChatPeer({ id: j.admin.id, role: "admin", name: j.admin.name, avatar: j.admin.avatar })
+            }
+          } catch {
+            /* fail-soft */
+          }
+        }}
+      />
 
       {/* ================== ADD LESSON MODAL ================== */}
       {addLessonOpen && (
@@ -1204,12 +1995,142 @@ export default function TeacherRawDashboard({
         />
       )}
 
+      {/* ================== EDIT LESSON MODAL ================== */}
+      {editLesson && (
+        <EditLessonModal
+          lesson={editLesson}
+          onClose={() => setEditLesson(null)}
+        />
+      )}
+
       {/* ================== LESSON REQUESTS MODAL ================== */}
       {requestsOpen && (
         <LessonRequestsModal
           requests={initialRequests ?? []}
           onClose={() => setRequestsOpen(false)}
-          onOpenChat={(studentId) => setChatStudentId(studentId)}
+          onOpenChat={(studentId) => {
+            const s = studentsState.find((x) => x.id === studentId)
+            if (!s) return
+            setChatPeer({ id: s.id, role: "student", name: s.name, avatar: s.avatar ?? null, level: s.level })
+          }}
+        />
+      )}
+
+      {/* ================== LIBRARY FILES MODAL ================== */}
+      {hwFilesOpen && (
+        <FilesModal
+          title="Библиотека Raw English"
+          files={hwFiles}
+          onClose={() => setHwFilesOpen(false)}
+          onFilePicked={handleHwUpload}
+          multiple
+          onDelete={async (ids) => {
+            const results = await Promise.allSettled(
+              ids.map((id) =>
+                fetch(`/api/teacher/materials/${id}`, { method: "DELETE" }),
+              ),
+            )
+            const failedCount = results.filter(
+              (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok),
+            ).length
+            if (failedCount > 0) {
+              alert(`Не удалось удалить ${failedCount} из ${ids.length} файлов`)
+            }
+            const deletedIds = new Set(
+              ids.filter((_, i) => {
+                const r = results[i]
+                return r.status === "fulfilled" && r.value.ok
+              }),
+            )
+            setHwFiles((prev) => prev.filter((x) => !deletedIds.has(x.id)))
+          }}
+        />
+      )}
+
+      {/* ================== HOMEWORK STUDENT PICKER ================== */}
+      {hwPickerOpen && (
+        <div className="tr-modal-backdrop" onClick={() => setHwPickerOpen(false)}>
+          <div
+            className="tr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tr-hw-picker-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="tr-modal-close"
+              aria-label="Закрыть"
+              onClick={() => setHwPickerOpen(false)}
+            >
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
+                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+            <h2 id="tr-hw-picker-title" className="tr-modal-title">
+              Выберите ученика
+            </h2>
+            <div className="tr-modal-list">
+              {sortedStudents.length === 0 ? (
+                <div className="tr-modal-empty">Учеников пока нет</div>
+              ) : (
+                sortedStudents.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="tr-modal-row"
+                    onClick={() => {
+                      setHwStudentId(s.id)
+                      setHwPickerOpen(false)
+                    }}
+                  >
+                    <div className="tr-stu tr-stu--modal">
+                      <div className="tr-stu-avatar">
+                        <Avatar name={s.name} src={s.avatar} />
+                      </div>
+                      <div className="tr-stu-name">
+                        {s.name.split(/\s+/).map((part, i) => (
+                          <span key={i} className="tr-stu-name-line">{part}</span>
+                        ))}
+                      </div>
+                      <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================== HOMEWORK PER-STUDENT FILES MODAL ================== */}
+      {hwStudentId && (
+        <FilesModal
+          title={`Домашка — ${studentsState.find((s) => s.id === hwStudentId)?.name ?? "ученик"}`}
+          files={hwStudentFiles}
+          onClose={() => setHwStudentId(null)}
+          onFilePicked={handleHwStudentUpload}
+          multiple
+          onDelete={async (ids) => {
+            const results = await Promise.allSettled(
+              ids.map((id) =>
+                fetch(`/api/teacher/materials/${id}`, { method: "DELETE" }),
+              ),
+            )
+            const failedCount = results.filter(
+              (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok),
+            ).length
+            if (failedCount > 0) {
+              alert(`Не удалось удалить ${failedCount} из ${ids.length} файлов`)
+            }
+            const deletedIds = new Set(
+              ids.filter((_, i) => {
+                const r = results[i]
+                return r.status === "fulfilled" && r.value.ok
+              }),
+            )
+            setHwStudentFiles((prev) => prev.filter((x) => !deletedIds.has(x.id)))
+          }}
         />
       )}
     </div>

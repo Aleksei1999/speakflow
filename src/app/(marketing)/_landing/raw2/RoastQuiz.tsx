@@ -79,6 +79,9 @@ const GROUPS: Variant[][] = [
 ];
 
 const LEVEL_LOGOS = ["raw", "rare", "medium-rare", "medium", "medium-well", "well-done"];
+// Формат ровно как в БД (level_tests.level) — чтобы админка через
+// fromRoastLevel() смогла показать CEFR-тег на заявке.
+const ROAST_DB_NAMES = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"];
 const LIVES = 3;
 const TIME = 120; // 2:00
 
@@ -109,6 +112,8 @@ const Heart = ({ on }: { on: boolean }) => (
   </svg>
 );
 
+type LogItem = { text: string; options: string[]; chosen: number; correct: number; lvl: 1 | 2 | 3 };
+
 export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [qs, setQs] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
@@ -117,11 +122,12 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
   const [timeLeft, setTimeLeft] = useState(TIME);
   const [picked, setPicked] = useState<number | null>(null);
   const [done, setDone] = useState(false);
+  const [log, setLog] = useState<LogItem[]>([]);
 
   useEffect(() => {
     if (open) {
       setQs(buildQuiz());
-      setIdx(0); setByTier([0, 0, 0]); setLives(LIVES); setTimeLeft(TIME); setPicked(null); setDone(false);
+      setIdx(0); setByTier([0, 0, 0]); setLives(LIVES); setTimeLeft(TIME); setPicked(null); setDone(false); setLog([]);
     }
   }, [open]);
 
@@ -140,6 +146,25 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
   }, [open, done]);
   useEffect(() => { if (open && !done && timeLeft <= 0) setDone(true); }, [timeLeft, open, done]);
 
+  // Persist result to sessionStorage so форма заявки (LandingRaw2.onSubmit)
+  // сможет догнать его до /api/landing/lead и создать level_tests с email.
+  // log[] нужен админке — она рендерит «Вопрос N / варианты / выбранное+правильное».
+  useEffect(() => {
+    if (!done) return;
+    try {
+      const idx = levelIndex(byTier[0], byTier[1], byTier[2]);
+      sessionStorage.setItem(
+        "raw2_roast_quiz",
+        JSON.stringify({
+          level: ROAST_DB_NAMES[idx],
+          tierScores: byTier,
+          log,
+          ts: Date.now(),
+        }),
+      );
+    } catch {}
+  }, [done, byTier, log]);
+
   if (!open || qs.length === 0) return null;
 
   const q = qs[idx];
@@ -149,6 +174,7 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
     setPicked(i);
     const correct = i === q.correct;
     const livesAfter = correct ? lives : lives - 1;
+    setLog((prev) => [...prev, { text: q.q, options: q.options, chosen: i, correct: q.correct, lvl: (q.tier + 1) as 1 | 2 | 3 }]);
     if (correct) {
       setByTier((prev) => {
         const next: [number, number, number] = [...prev];
@@ -178,16 +204,19 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
             <p className="rq-top">Ваш результат прожарки</p>
             <img src={`/landing/raw2/levels/${logo}.svg`} className="rq-logo" alt={logo} />
             <p className="rq-bot">Мы уже подбираем<br />вам план обучения!</p>
+            <a
+              href="#contact"
+              className="btn btn-red rq-cta"
+              onClick={onClose}
+            >
+              Выучить английский
+            </a>
           </div>
         ) : (
           <>
             <div className="rq-bar">
               <div className="rq-lives">
                 {[0, 1, 2].map((i) => <Heart key={i} on={i < lives} />)}
-              </div>
-              <div className="rq-timer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><circle cx="12" cy="13" r="8" /><path d="M12 13V9M9 3h6" strokeLinecap="round" /></svg>
-                {mm}:{ss}
               </div>
             </div>
             <p className="rq-q">{q.q}</p>

@@ -10,6 +10,8 @@
    на существующие подроуты `/student/schedule` и т.д.
    ============================================================ */
 
+.st { scroll-behavior: smooth; }
+.st [id] { scroll-margin-top: 24px; }
 .st, .st *, .st *::before, .st *::after { box-sizing: border-box; }
 .st *, .st ul, .st p, .st h1, .st h2, .st h3 { margin: 0; padding: 0; }
 .st ul { list-style: none; }
@@ -94,7 +96,8 @@
   align-items: center;
   justify-content: center;
   height: 48px;
-  padding: 0;
+  padding: 0 18px;
+  margin: 0 -18px;
   border-radius: 29.5px;
   color: var(--white);
   background: transparent;
@@ -109,8 +112,8 @@
 .st-nav-links a:hover,
 .st-nav-links a:focus-visible,
 .st-nav-links a:active {
-  color: #DFED8C;
-  background: transparent;
+  color: #1E1E1E;
+  background: #DFED8C;
   outline: none;
 }
 /* Порядок: [аватар] 15px [часы].
@@ -203,8 +206,11 @@
   position: relative;
   display: flex; align-items: center;
   gap: clamp(16px, 2vw, 30px);
-  background: var(--panel-grey);
-  border-radius: var(--radius-card);
+  background: rgba(30, 30, 30, 0.52);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 30px;
   min-height: clamp(110px, 10.5vw, 149px);
   padding: clamp(16px, 2vw, 28px) clamp(20px, 2.5vw, 40px);
 }
@@ -273,14 +279,17 @@
   color: rgba(255, 255, 255, 0.65);
   font-family: 'Inter', sans-serif;
   font-size: 18px;
-  background: var(--panel-grey);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-card);
 }
 
 .st-schedule-actions {
   display: flex;
   gap: clamp(40px, 8vw, 105px);
-  justify-content: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   max-width: 1164px;
   margin: 0 auto;
@@ -304,6 +313,80 @@
 .st-sched-btn.lime:hover { background: var(--lime-deep) !important; }
 .st-sched-btn.red { background: var(--red) !important; color: var(--white) !important; }
 .st-sched-btn.red:hover { background: var(--red-deep) !important; }
+
+/* ============================================================
+   Google Calendar banner (student)
+   Аналог tr-варианта: статус подключения + CTA.
+   ============================================================ */
+.st-gcal-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+  margin: 0 auto 20px;
+  max-width: 1164px;
+  border-radius: 20px;
+  background: rgba(223, 237, 140, 0.08);
+  border: 1px solid rgba(223, 237, 140, 0.25);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.st-gcal-banner--ok {
+  background: rgba(223, 237, 140, 0.14);
+  border-color: rgba(223, 237, 140, 0.45);
+}
+.st-gcal-banner-text {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-gcal-banner-btn {
+  flex: 0 0 auto;
+  height: 48px;
+  width: auto;
+  padding: 0 24px;
+  font-size: 16px;
+  text-transform: none;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.st-gcal-banner-unlink {
+  flex: 0 0 auto;
+  height: 44px;
+  min-width: 128px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--white) !important;
+  border: 1px solid rgba(255,255,255,0.24);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-gcal-banner-unlink:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.4);
+}
+.st-gcal-banner-unlink:disabled { opacity: .5; cursor: not-allowed; }
+.st-gcal-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+}
+.st-gcal-dot--ok { background: var(--lime); }
 
 /* ============================================================
    HOMEWORK + LIBRARY — lime bars on white
@@ -355,7 +438,7 @@
 .st-chats-section {
   position: relative;
   padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px);
-  margin-top: clamp(40px, 5vw, 80px);
+  margin: clamp(40px, 5vw, 80px) auto 0 !important;
   background: var(--dark-bg) url('/dashboard/bg-chat.jpg') center/cover no-repeat;
   color: var(--white);
   overflow: hidden;
@@ -373,6 +456,40 @@
   gap: clamp(14px, 1.6vw, 22px);
   max-width: 1108px;
   margin: 0 auto;
+}
+.st-chats-card {
+  width: 100%;
+  max-width: 1228px;
+  padding: 58px 60px 56px;
+  background: rgba(30, 30, 30, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 29.5px;
+  gap: 37px;
+}
+@media (max-width: 1000px) {
+  .st-chats-card { padding: 32px 24px; gap: 22px; border-radius: 22px; }
+}
+.st-chats-card .st-chat {
+  min-height: 153px;
+  padding: 25px 110px 25px 34px;
+  gap: 22px;
+}
+@media (max-width: 1000px) {
+  .st-chats-card .st-chat { min-height: 120px; padding: 20px 90px 20px 20px; }
+}
+.st-chats-card .st-chat-avatar {
+  width: 103px; height: 103px;
+}
+@media (max-width: 1000px) {
+  .st-chats-card .st-chat-avatar { width: 74px; height: 74px; }
+}
+.st-chats-empty {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(14px, 1.5vw, 20px);
+  text-align: center;
+  padding: 40px 20px;
 }
 .st-chat {
   position: relative;
@@ -456,6 +573,9 @@
   border-radius: 50%;
   background: var(--red);
   color: var(--white);
+  border: none;
+  padding: 0;
+  cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .2s, transform .2s;
 }
@@ -472,8 +592,8 @@
   max-width: 1228px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 365px 365px;
   gap: clamp(20px, 2vw, 32px);
 }
 .st-lect-card {
@@ -481,76 +601,123 @@
   background: var(--ink);
   color: var(--white);
   border-radius: var(--radius-card);
-  padding: clamp(24px, 3vw, 38px);
+  padding: clamp(22px, 2.6vw, 38px);
   overflow: hidden;
-  min-height: 365px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0; /* let grid rows set height */
 }
-.st-lect-card.tall { grid-row: span 2; min-height: 770px; }
+/* MAIN: 2/3 ширины, 1-я строка */
+.st-lect-card--main {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+}
+/* TALL: 3-я колонка, 2 строки */
+.st-lect-card.tall {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
 .st-lect-card.red { background: var(--red); }
+
+.st-lect-body {
+  min-width: 0;
+  /* оставляем справа полосу под badges/tag чтобы текст не наезжал */
+  padding-right: clamp(80px, 10vw, 140px);
+}
+.st-lect-card--main .st-lect-body {
+  padding-right: clamp(140px, 16vw, 220px);
+}
+
 .st-lect-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(24px, 2.4vw, 32px);
+  font-size: clamp(22px, 2.2vw, 32px);
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 1.05;
   color: var(--lime);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .st-lect-card.red .st-lect-title { color: var(--white); }
 .st-lect-author {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(20px, 2vw, 30px);
+  font-size: clamp(18px, 1.7vw, 28px);
   letter-spacing: -0.05em;
-  line-height: 1.063;
+  line-height: 1.05;
   color: var(--white);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .st-lect-desc {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(15px, 1.7vw, 24px);
+  font-size: clamp(14px, 1.3vw, 20px);
   letter-spacing: -0.05em;
-  line-height: 1.063;
+  line-height: 1.18;
   color: var(--white);
+  margin: 0;
 }
-.st-lect-badges {
-  position: absolute;
-  right: clamp(16px, 2vw, 32px);
-  bottom: clamp(16px, 2vw, 32px);
+
+/* нижний ряд: время + дата, слева */
+.st-lect-foot {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
   align-items: flex-end;
+  gap: 10px;
+  margin-top: 14px;
   z-index: 1;
 }
+/* кэтэгори-плашка в правом-верхнем углу (по фигме — «торчит» слегка) */
+.st-lect-tag--top {
+  position: absolute;
+  top: clamp(14px, 1.6vw, 22px);
+  right: clamp(14px, 1.6vw, 24px);
+  transform: rotate(-3deg);
+  z-index: 2;
+}
+
 .st-lect-tag {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 10px 22px;
+  padding: 8px 18px;
   border-radius: 29.5px;
   background: rgba(30, 30, 30, 0.65);
   color: var(--lime);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 24px;
+  font-size: clamp(14px, 1.3vw, 20px);
   letter-spacing: -0.05em;
   line-height: 1;
-  transform: rotate(-2.5deg);
+  white-space: nowrap;
 }
 .st-lect-card.red .st-lect-tag { background: rgba(30, 30, 30, 0.65); color: var(--lime); }
+
 .st-lect-time {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 10px 22px;
+  padding: 8px 18px;
   border-radius: 29.5px;
   background: rgba(223, 237, 140, 0.33);
   color: var(--white);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 32px;
+  font-size: clamp(18px, 1.7vw, 26px);
   letter-spacing: -0.05em;
   transform: rotate(4deg);
+  white-space: nowrap;
 }
-.st-lect-card.tall .st-lect-tag { transform: rotate(-4deg); }
+.st-lect-date {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 6px 14px;
+  border-radius: 24px;
+  background: rgba(30, 30, 30, 0.65);
+  color: var(--lime);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: clamp(13px, 1.1vw, 18px);
+  letter-spacing: -0.05em;
+  line-height: 1;
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+.st-lect-card.tall .st-lect-tag--top { transform: rotate(-4deg); }
 
 /* ============================================================
    BALANCE + STATS (dark, bg-hero)
@@ -597,6 +764,32 @@
   flex: 0 0 158px;
 }
 .st-bal-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Кликабельная версия — сбрасываем button-стили + hover-подсветка. */
+.st-bal-avatar--btn {
+  padding: 0;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.st-bal-avatar--btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(223, 237, 140, 0.35);
+}
+.st-bal-avatar--btn:disabled { opacity: 0.6; cursor: wait; }
+
+/* Ряд «огоньков» — 6 штук в строку, filled по currentStreak.
+   Пропорции 22.5×30 (по спеке Figma — вертикальный огонь, не квадрат). */
+.st-flame-row {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.st-flame {
+  width: 22.5px;
+  height: 30px;
+  display: block;
+  user-select: none;
+}
 .st-bal-name {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
@@ -607,9 +800,22 @@
   flex: 1;
 }
 .st-bal-name span { display: block; }
+.st-bal-money {
+  margin-left: auto;
+  width: 203px;
+  height: 152px;
+  border-radius: 29.5px;
+  background: rgba(223, 237, 140, 0.36);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  flex-shrink: 0;
+}
 .st-bal-caption {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 12px 26px;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  height: 51px;
   border-radius: 29.5px;
   background: rgba(30, 30, 30, 0.79);
   color: var(--white);
@@ -618,20 +824,28 @@
   font-size: 24px;
   letter-spacing: -0.05em;
   line-height: 1.29;
-  align-self: flex-start;
+  box-sizing: border-box;
 }
 .st-bal-value {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(32px, 3.5vw, 40px);
+  font-size: 40px;
   letter-spacing: -0.05em;
   line-height: 1.16;
   color: var(--lime);
+  text-align: center;
 }
 .st-bal-value small {
   display: block;
   font-weight: 500;
-  font-size: clamp(18px, 1.8vw, 24px);
+  font-size: 24px;
+  line-height: 1.16;
 }
 .st-bal-stats {
   display: flex; flex-direction: column; gap: 20px;
@@ -639,7 +853,10 @@
 }
 .st-bal-stat {
   display: flex; align-items: center; gap: clamp(14px, 1.6vw, 22px);
-  background: var(--panel-lime-soft);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-card);
   padding: 24px 30px;
   min-height: 152px;
@@ -753,6 +970,12 @@
   min-width: 198px;
 }
 .st-topup-btn:hover { background: var(--lime-deep) !important; }
+.st-topup-btn:disabled {
+  background: rgba(255,255,255,0.10) !important;
+  color: rgba(255,255,255,0.35) !important;
+  cursor: not-allowed;
+}
+.st-topup-btn:disabled:hover { background: rgba(255,255,255,0.10) !important; }
 
 .st-level-card {
   background: var(--lime);
@@ -786,6 +1009,16 @@
   line-height: 0.975;
   text-transform: uppercase;
   text-align: center;
+}
+/* SVG-логотип «прожарки» — композит (все цвета уже внутри одного файла).
+   Разные уровни имеют разные пропорции (Raw ~2.2:1, Medium Rare ~2:1 и т.д.);
+   height:auto сохраняет ratio. */
+.st-level-svg {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  user-select: none;
 }
 
 /* ============================================================
@@ -855,8 +1088,14 @@
 @media (max-width: 1100px) {
   .st-balance-grid { grid-template-columns: 1fr; }
   .st-bal-side { max-width: none; justify-self: stretch; }
-  .st-lectory-grid { grid-template-columns: 1fr; }
-  .st-lect-card.tall { grid-row: auto; min-height: 400px; }
+  .st-lectory-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(320px, auto));
+  }
+  .st-lect-card--main { grid-column: 1; grid-row: auto; }
+  .st-lect-card.tall { grid-column: 1; grid-row: auto; min-height: 400px; }
+  .st-lect-body,
+  .st-lect-card--main .st-lect-body { padding-right: 100px; }
 }
 @media (max-width: 780px) {
   .st-nav { grid-template-columns: auto 1fr auto; }
@@ -868,5 +1107,7 @@
   .st-footer-left, .st-footer-right { text-align: center; align-items: center; }
   .st-lesson { flex-wrap: wrap; }
   .st-chat { padding-right: clamp(60px, 12vw, 90px); }
-  .st-lect-badges { position: static; margin-top: 20px; align-items: flex-start; }
+  .st-lect-body,
+  .st-lect-card--main .st-lect-body { padding-right: 80px; }
+  .st-lect-foot { flex-wrap: wrap; }
 }

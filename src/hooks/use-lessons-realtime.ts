@@ -66,9 +66,23 @@ export function useLessonsRealtime({
       }, debounceMs)
     }
 
+    // Общий subscribe-callback: при (re)connect дёргаем onChange,
+    // чтобы parent перечитал снимок и не потерял события, случившиеся
+    // во время разрыва. Ошибки логируем — supabase-js сам ретраит.
+    const onStatus = (label: string) => (status: string, err?: unknown) => {
+      if (status === 'SUBSCRIBED') trigger()
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.warn(`[lessons-realtime:${label}] status:`, status, err ?? '')
+      }
+    }
+
+    // Уникальный суффикс — защита от кеша supabase-js: в React StrictMode
+    // (dev) первый mount делает subscribe+cleanup, второй получает канал
+    // с тем же именем из кеша и SUBSCRIBED не приходит.
+    const nonce = Date.now()
     if (teacherId) {
       const chan = supabase
-        .channel(`lessons:teacher:${teacherId}`)
+        .channel(`lessons:teacher:${teacherId}:${nonce}`)
         .on(
           'postgres_changes',
           {
@@ -79,13 +93,13 @@ export function useLessonsRealtime({
           },
           trigger
         )
-        .subscribe()
+        .subscribe(onStatus(`teacher:${teacherId}`))
       channels.push(chan)
     }
 
     if (studentId) {
       const chan = supabase
-        .channel(`lessons:student:${studentId}`)
+        .channel(`lessons:student:${studentId}:${nonce}`)
         .on(
           'postgres_changes',
           {
@@ -96,7 +110,7 @@ export function useLessonsRealtime({
           },
           trigger
         )
-        .subscribe()
+        .subscribe(onStatus(`student:${studentId}`))
       channels.push(chan)
     }
 
