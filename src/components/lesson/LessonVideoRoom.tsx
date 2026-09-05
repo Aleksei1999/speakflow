@@ -10,7 +10,7 @@
    Никаких stats, sidebar, homework карточек.
    ============================================================ */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 
@@ -18,7 +18,8 @@ import SettingsModal from "@/components/lesson/SettingsModal"
 import LeaveCallModal from "@/components/lesson/LeaveCallModal"
 import PostLessonNoteModal from "@/components/lesson/PostLessonNoteModal"
 import LessonNotesModal from "@/components/lesson/LessonNotesModal"
-import ChatModal from "@/components/dashboard/ChatModal"
+import ChatModal, { CALL_MARKERS } from "@/components/dashboard/ChatModal"
+import { sendMessage as sendChatMessage } from "@/lib/chat/actions"
 
 const LiveKitLessonStage = dynamic(
   () => import("@/components/lesson/livekit-stage").then((m) => m.LiveKitLessonStage),
@@ -75,9 +76,28 @@ export default function LessonVideoRoom({
     setFsSupported(typeof document !== "undefined" && !!document.fullscreenEnabled)
   }, [])
 
+  // Отсылаем маркер «звонок начался» одной стороной (учителем) — иначе
+  // при заходе обоих участников получим два системных сообщения подряд.
+  // Ученик получит pill через realtime как обычное сообщение.
+  const callStartSentRef = useRef(false)
+  useEffect(() => {
+    if (!canChat || !isTeacher || callStartSentRef.current) return
+    callStartSentRef.current = true
+    sendChatMessage({ peerId: peer.id, text: CALL_MARKERS.started }).catch((e) =>
+      console.warn("[lvr] send call:started failed", e),
+    )
+  }, [canChat, isTeacher, peer.id])
+
+  const callEndSentRef = useRef(false)
   const doLeave = () => {
     setLeaveOpen(false)
     setLkHangupSignal((v) => v + 1)
+    if (canChat && isTeacher && !callEndSentRef.current) {
+      callEndSentRef.current = true
+      sendChatMessage({ peerId: peer.id, text: CALL_MARKERS.ended }).catch((e) =>
+        console.warn("[lvr] send call:ended failed", e),
+      )
+    }
     if (isTeacher) {
       setPostNoteOpen(true)
     } else {

@@ -154,6 +154,20 @@ function PersonIcon() {
   )
 }
 
+// System-события звонка. Пишем в chat_messages.text как маркер — не требует
+// новой колонки в БД. Рендерим как pill (Figma 2522:6800 / 2522:6803).
+export const CALL_MARKERS = {
+  started: "__call:started",
+  ended: "__call:ended",
+} as const
+
+function parseCallMarker(text: string): "active" | "ended" | null {
+  const t = (text ?? "").trim()
+  if (t === CALL_MARKERS.started) return "active"
+  if (t === CALL_MARKERS.ended) return "ended"
+  return null
+}
+
 function initialsOf(name: string) {
   return name
     .split(/\s+/)
@@ -461,7 +475,7 @@ export default function ChatModal({
 
   return (
     <>
-    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260905-icons3" />
+    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260905-callpill" />
     <div
       className={`tr-chat-backdrop${variant === "dock" ? " tr-chat-backdrop--dock" : ""}`}
       onClick={variant === "dock" ? undefined : onClose}
@@ -548,6 +562,20 @@ export default function ChatModal({
 
         <div className="tr-chat-body" ref={bodyRef}>
           {messages.map((m) => {
+            // System-события звонка: рендерим как pill вместо bubble.
+            // Маркер приходит в text как "__call:started" / "__call:ended".
+            const callKind = parseCallMarker(m.text)
+            if (callKind) {
+              return (
+                <div
+                  key={m.id}
+                  className={`tr-chat-call-pill tr-chat-call-pill--${callKind}`}
+                  role="status"
+                >
+                  {callKind === "ended" ? "Звонок окончен" : "Звонок"}
+                </div>
+              )
+            }
             const mine = isMine(m)
             return (
               <div

@@ -223,6 +223,36 @@
   text-align: left;
 }
 
+/* ---------- Call-state pills (Figma 2522:6800 / 2522:6803) ----------
+   Появляются в ленте чата как system-события: «Звонок» (идёт/был) и
+   «Звонок окончен». Всегда по центру, отдельная строка. */
+.tr-chat-backdrop .tr-chat-call-pill {
+  align-self: center;
+  height: 60px;
+  padding: 0 40px;
+  border-radius: 29.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tr-chat-backdrop .tr-chat-call-pill--active {
+  background: rgba(223, 237, 140, 0.26);
+  color: #DFED8C;
+  min-width: 243px;
+}
+.tr-chat-backdrop .tr-chat-call-pill--ended {
+  background: #CC3A3A;
+  color: #FFFFFF;
+  min-width: 252px;
+}
+
 .tr-chat-backdrop .tr-chat-input-row {
   position: absolute;
   bottom: 0;
@@ -598,6 +628,14 @@
   padding: 88px 20px 84px;
   gap: 10px;
 }
+.tr-chat-backdrop--dock .tr-chat-call-pill {
+  height: 40px;
+  padding: 0 22px;
+  font-size: 15px;
+  border-radius: 20px;
+}
+.tr-chat-backdrop--dock .tr-chat-call-pill--active { min-width: 140px; }
+.tr-chat-backdrop--dock .tr-chat-call-pill--ended { min-width: 160px; }
 .tr-chat-backdrop--dock .tr-chat-bubble {
   font-size: 15px;
   line-height: 1.35;
