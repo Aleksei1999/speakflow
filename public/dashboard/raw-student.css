@@ -601,9 +601,11 @@
   background: var(--ink);
   color: var(--white);
   border-radius: var(--radius-card);
-  /* padding-top оставляет место под tag (52px pill + ~14px отступ) */
-  padding: 90px 38px 38px;
-  overflow: hidden;
+  /* padding-top оставляет место под tag (который наполовину торчит сверху)
+     + описание/футер. */
+  padding: 64px 38px 38px;
+  /* overflow visible — иначе tag, выступающий за верхний край, будет клипнут. */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -659,11 +661,12 @@
 }
 
 /* Категория (CV / Travel / Marketing / Tecnolodgy) — top-left, без наклона,
-   pill 52px высотой. Красный на тёмных карточках, чёрный на красных. */
+   pill наполовину «наезжает» сверху на карточку (translateY(-50%)). */
 .st-lect-tag--top {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  top: 0;
+  left: 38px;
+  transform: translateY(-50%);
   z-index: 2;
 }
 .st-lect-tag {
@@ -1139,7 +1142,8 @@
   .st-lesson { flex-wrap: wrap; }
   .st-chat { padding-right: clamp(60px, 12vw, 90px); }
   /* На мобилке дадим карточкам расти по контенту, а footer перекинем вниз в поток. */
-  .st-lect-card { padding: 78px 20px 130px; }
+  .st-lect-card { padding: 46px 20px 130px; }
+  .st-lect-tag--top { left: 20px; }
   .st-lect-card--main { padding-right: 20px; }
   .st-lect-card--main .st-lect-foot { position: absolute; top: auto; bottom: 24px; right: 20px; }
   .st-lect-time { font-size: 40px; height: 52px; min-width: 150px; padding: 0 20px; }

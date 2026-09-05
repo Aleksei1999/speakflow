@@ -654,7 +654,7 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260905-lectory" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260905-lectory2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
@@ -994,8 +994,8 @@ export default function StudentRawDashboard({
                   <p className="st-lect-desc">{src.desc}</p>
                 </div>
                 <div className="st-lect-foot">
-                  <span className="st-lect-time">{src.time}</span>
                   <span className="st-lect-date">{src.date}</span>
+                  <span className="st-lect-time">{src.time}</span>
                 </div>
               </div>
             )
@@ -1014,8 +1014,8 @@ export default function StudentRawDashboard({
                   <p className="st-lect-desc">{src.desc}</p>
                 </div>
                 <div className="st-lect-foot">
-                  <span className="st-lect-time">{src.time}</span>
                   <span className="st-lect-date">{src.date}</span>
+                  <span className="st-lect-time">{src.time}</span>
                 </div>
               </div>
             )
@@ -1034,8 +1034,8 @@ export default function StudentRawDashboard({
                   <p className="st-lect-desc">{src.desc}</p>
                 </div>
                 <div className="st-lect-foot">
-                  <span className="st-lect-time">{src.time}</span>
                   <span className="st-lect-date">{src.date}</span>
+                  <span className="st-lect-time">{src.time}</span>
                 </div>
               </div>
             )
@@ -1054,8 +1054,8 @@ export default function StudentRawDashboard({
                   <p className="st-lect-desc">{src.desc}</p>
                 </div>
                 <div className="st-lect-foot">
-                  <span className="st-lect-time">{src.time}</span>
                   <span className="st-lect-date">{src.date}</span>
+                  <span className="st-lect-time">{src.time}</span>
                 </div>
               </div>
             )
