@@ -155,6 +155,9 @@ export function FilesModal({
     setCreating(true)
     try {
       await onCreateFolder()
+      // Если пользователь был внутри папки — возвращаем в корень, чтобы он
+      // увидел свою новую папку и мог сразу переименовать.
+      if (effectiveFolderId && !legacyMode) onOpenFolder(null)
     } finally {
       setCreating(false)
     }
@@ -274,7 +277,9 @@ export function FilesModal({
         </div>
 
         <div className="files-modal-footer">
-          {canManage && !inFolder && !selectMode && onCreateFolder && (
+          {/* «Создать папку» — доступна всегда, когда canManage. Создаёт папку
+              в корне; если пользователь внутри — возвращаемся туда после создания. */}
+          {canManage && !legacyMode && !selectMode && onCreateFolder && (
             <button
               type="button"
               className="files-modal-btn"
