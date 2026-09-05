@@ -9,7 +9,8 @@ import { HwPillList } from "@/components/dashboard/HwPillList"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import StudentAddLessonModal from "@/components/student/StudentAddLessonModal"
-import { FilesModal, type FileItem } from "@/components/dashboard/FilesModal"
+import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
+import { listFolders } from "@/lib/materials/folders"
 import type { ChatListItem } from "@/lib/chat/list"
 import { toRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
 import { normalizePhoneRu } from "@/lib/validators/contact"
@@ -233,6 +234,12 @@ export default function StudentRawDashboard({
   const [homeworkVersion, setHomeworkVersion] = useState(0) // bump → refetch
   const [hwUploading, setHwUploading] = useState(false)
 
+  // Папки Библиотеки и ДЗ — read-only для студента (нельзя создавать).
+  const [libFolders, setLibFolders] = useState<FolderItem[]>([])
+  const [libFolderId, setLibFolderId] = useState<string | null>(null)
+  const [hwFolders, setHwFolders] = useState<FolderItem[]>([])
+  const [hwFolderId, setHwFolderId] = useState<string | null>(null)
+
   // Реальные лекции из БД — приходят с сервера через /api/lectures.
   // Если пусто — используем placeholder-моки (LECTORY_*), чтобы дизайн-превью не пустовало.
   const [lectures, setLectures] = useState<Array<{
@@ -264,6 +271,7 @@ export default function StudentRawDashboard({
 
   async function handleStudentHwUpload(file: File) {
     if (!studentId) return
+    if (!hwFolderId) { alert("Сначала откройте папку"); return }
     if (file.size > 25 * 1024 * 1024) {
       alert("Файл больше 25 МБ")
       return
@@ -272,6 +280,7 @@ export default function StudentRawDashboard({
     try {
       const fd = new FormData()
       fd.append("file", file)
+      fd.append("folder_id", hwFolderId)
       const res = await fetch("/api/me/homework/upload", { method: "POST", body: fd })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`)
@@ -376,43 +385,74 @@ export default function StudentRawDashboard({
     })()
   }, [studentId])
 
+  // Список папок Библиотеки — грузим при открытии.
   useEffect(() => {
     if (!libraryOpen) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/student/materials?limit=200", { cache: "no-store" })
+        const rows = await listFolders("library")
+        if (cancelled) return
+        setLibFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[library folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [libraryOpen])
+
+  // Файлы внутри открытой папки Библиотеки.
+  useEffect(() => {
+    if (!libraryOpen || !libFolderId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/student/materials?limit=200&folder_id=${encodeURIComponent(libFolderId)}`,
+          { cache: "no-store" },
+        )
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
         setLibraryFiles(
           (data.materials ?? []).map((m: any) => {
-            // Не открываем `m.file_url` если это Supabase signed URL —
-            // они лежат в БД со времени загрузки и давно протухли (InvalidJWT).
-            // Полагаемся ТОЛЬКО на свежий signed_url с бэка.
             const storedIsSigned = !!m.file_url && /\/storage\/v1\/object\/sign\//.test(m.file_url)
             const openUrl = m.signed_url || (storedIsSigned ? null : m.file_url)
             return {
               id: m.id,
               name: m.title,
               status: "loaded" as const,
+              mime: m.mime_type ?? null,
               onOpen: openUrl ? () => window.open(openUrl, "_blank") : undefined,
             }
           }),
         )
       } catch (e) {
-        console.error("[library] fetch failed", e)
+        console.error("[library files] fetch failed", e)
       }
     })()
     return () => { cancelled = true }
-  }, [libraryOpen])
+  }, [libraryOpen, libFolderId])
 
+  // Список папок ДЗ (общий пул) — грузим при открытии.
   useEffect(() => {
     if (!homeworkOpen) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/me/homework", { cache: "no-store" })
+        const rows = await listFolders("homework")
+        if (cancelled) return
+        setHwFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[homework folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [homeworkOpen])
+
+  // Файлы внутри открытой папки ДЗ.
+  useEffect(() => {
+    if (!homeworkOpen || !hwFolderId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/me/homework?folder_id=${encodeURIComponent(hwFolderId)}`, { cache: "no-store" })
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
@@ -421,15 +461,16 @@ export default function StudentRawDashboard({
             id: m.id,
             name: m.title,
             status: "loaded" as const,
+            mime: m.mime_type ?? null,
             onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
           })),
         )
       } catch (e) {
-        console.error("[homework] fetch failed", e)
+        console.error("[homework files] fetch failed", e)
       }
     })()
     return () => { cancelled = true }
-  }, [homeworkOpen, homeworkVersion])
+  }, [homeworkOpen, hwFolderId, homeworkVersion])
   const [chatPeer, setChatPeer] = useState<
     | { id: string; role: "teacher" | "student" | "admin"; name: string; avatar: string | null }
     | null
@@ -910,19 +951,23 @@ export default function StudentRawDashboard({
       {libraryOpen && (
         <FilesModal
           title="Библиотека Raw English"
-          legacyMode
+          folders={libFolders}
           files={libraryFiles}
-          onClose={() => setLibraryOpen(false)}
+          activeFolderId={libFolderId}
+          onOpenFolder={setLibFolderId}
+          onClose={() => { setLibraryOpen(false); setLibFolderId(null) }}
         />
       )}
 
       {homeworkOpen && (
         <FilesModal
           title="Домашние задания"
-          legacyMode
-          canManage
+          folders={hwFolders}
           files={homeworkFiles}
-          onClose={() => setHomeworkOpen(false)}
+          activeFolderId={hwFolderId}
+          onOpenFolder={setHwFolderId}
+          canManage
+          onClose={() => { setHomeworkOpen(false); setHwFolderId(null) }}
           onFilePicked={handleStudentHwUpload}
           addLabel={hwUploading ? "Загружаем…" : "Загрузить работу"}
         />

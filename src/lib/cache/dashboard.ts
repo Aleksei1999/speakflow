@@ -255,7 +255,7 @@ export function getCachedStudentHomework(
 //   OR there's a material_shares row with target=group containing student
 const MATERIALS_SELECT =
   'id, teacher_id, title, description, file_type, mime_type, file_size, ' +
-  'level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at'
+  'level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at, folder_id'
 
 export type CachedStudentMaterialsSnapshot = {
   rows: any[]

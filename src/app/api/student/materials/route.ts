@@ -124,6 +124,10 @@ export async function GET(request: NextRequest) {
     }
 
     let filtered = all
+    const folderFilter = searchParams.get('folder_id')
+    if (folderFilter) {
+      filtered = filtered.filter((r: any) => r.folder_id === folderFilter)
+    }
     if (type !== 'all') {
       if (type === 'link') {
         filtered = filtered.filter(isLinkOnly)
@@ -182,6 +186,7 @@ export async function GET(request: NextRequest) {
       file_url: r.file_url,
       lesson_id: r.lesson_id,
       is_public: r.is_public,
+      folder_id: (r as any).folder_id ?? null,
       created_at: r.created_at,
       signed_url: r.storage_path ? signedMap[r.storage_path] || null : null,
     }))

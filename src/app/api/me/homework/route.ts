@@ -24,6 +24,7 @@ export async function GET(_request: NextRequest) {
     }
 
     const admin = createAdminClient() as any
+    const folderId = _request.nextUrl.searchParams.get('folder_id')
 
     const { data: shares } = await admin
       .from('material_shares')
@@ -31,17 +32,19 @@ export async function GET(_request: NextRequest) {
       .eq('target_type', 'student')
       .eq('target_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(500)
 
     const materialIds = ((shares ?? []) as Array<{ material_id: string }>)
       .map((s) => s.material_id)
       .filter(Boolean)
     if (!materialIds.length) return NextResponse.json({ materials: [] })
 
-    const { data: mats } = await admin
+    let matsQ = admin
       .from('materials')
-      .select('id, title, storage_path, file_url, mime_type, file_size, created_at')
+      .select('id, title, storage_path, file_url, mime_type, file_size, created_at, folder_id')
       .in('id', materialIds)
+    if (folderId) matsQ = matsQ.eq('folder_id', folderId)
+    const { data: mats } = await matsQ
 
     const rows = (mats ?? []) as Array<{
       id: string
