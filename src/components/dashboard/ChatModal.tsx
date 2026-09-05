@@ -89,18 +89,21 @@ function AttachIcon() {
     </svg>
   )
 }
+// Figma icons (Group 333 / 334): 54×54 с встроенным полупрозрачным кругом.
 function CameraIcon() {
   return (
-    <svg viewBox="0 0 30 24" width="26" height="22" fill="none" aria-hidden>
-      <path d="M4 6h5l2-3h8l2 3h5v14H4V6z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
-      <circle cx="15" cy="13" r="4.5" stroke="currentColor" strokeWidth="2.2" />
+    <svg viewBox="0 0 54 54" width="54" height="54" fill="none" aria-hidden xmlns="http://www.w3.org/2000/svg">
+      <circle cx="27" cy="27" r="27" fill="#DFED8C" fillOpacity="0.26" />
+      <path d="M38.9053 38.35H14.7094C13.217 38.35 12 37.1304 12 35.6204V21.1742C12 19.6787 13.2026 18.4591 14.6949 18.4591C16.4045 18.4446 18.5343 18.4446 19.8093 18.4156C20.1426 18.4156 20.5483 18.2123 20.7656 17.951C21.4755 17.1524 22.084 16.2813 22.7795 15.4828C22.9823 15.2505 23.359 15.0327 23.6633 15.0327C25.7641 14.9891 27.865 14.9891 29.9658 15.0327C30.2701 15.0327 30.6468 15.2505 30.8496 15.4828C31.5451 16.2813 32.1536 17.1524 32.8635 17.951C33.0809 18.1978 33.501 18.401 33.8198 18.401C35.5149 18.4301 37.1956 18.4301 38.9053 18.4301C40.3976 18.4301 41.6146 19.6497 41.6146 21.1451V35.6059C41.6146 37.1304 40.3976 38.35 38.9053 38.35ZM32.9794 28.0851C32.9939 24.6587 30.2411 21.8856 26.8363 21.8711C23.4315 21.8565 20.6497 24.6297 20.6497 28.0416C20.6352 31.4535 23.4025 34.2412 26.7928 34.2557C30.1832 34.2702 32.965 31.4971 32.9794 28.0851ZM38.4561 20.3611C37.6303 20.2885 36.8769 20.9419 36.8334 21.7694C36.7755 22.6551 37.4999 23.381 38.3692 23.352C39.195 23.323 39.8036 22.6986 39.8036 21.8565C39.8181 21.058 39.2385 20.4337 38.4561 20.3611Z" fill="#DFED8C" />
+      <path d="M31.3641 28.0986C31.3641 30.6202 29.3408 32.6547 26.8152 32.6547C24.2896 32.6547 22.2663 30.6345 22.252 28.1129C22.252 25.6057 24.304 23.5426 26.8009 23.5426C29.3121 23.5282 31.3641 25.5913 31.3641 28.0986Z" fill="#DFED8C" />
     </svg>
   )
 }
 function PhoneIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
-      <path d="M5 4l3-1 2 5-2 1a12 12 0 0 0 7 7l1-2 5 2-1 3a3 3 0 0 1-3 2A17 17 0 0 1 3 7a3 3 0 0 1 2-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <svg viewBox="0 0 54 54" width="54" height="54" fill="none" aria-hidden xmlns="http://www.w3.org/2000/svg">
+      <circle cx="27" cy="27" r="27" fill="#DFED8C" fillOpacity="0.26" />
+      <path d="M33.8724 40.35C31.6923 40.2919 29.5121 39.4489 27.5064 38.2861C21.9833 35.0595 17.6231 30.6411 14.5999 24.9727C13.6697 23.1995 13.0302 21.3101 13.0011 19.3043C12.9721 17.5893 13.4953 16.1068 14.8034 14.944C15.3266 14.4789 15.7917 13.9848 16.2859 13.5197C17.0417 12.822 18.0009 12.822 18.7277 13.5487C20.1811 14.9731 21.6345 16.4265 23.0589 17.88C23.7856 18.6357 23.7565 19.6241 23.0298 20.3799C22.6519 20.7577 22.274 21.1356 21.8961 21.5135C21.0241 22.4437 20.8787 23.6065 21.4892 24.7111C23.1752 27.7924 25.5588 30.176 28.6401 31.862C29.7156 32.4433 30.8783 32.298 31.7795 31.455C32.2155 31.0771 32.5934 30.6411 33.0004 30.2341C33.6689 29.5946 34.6863 29.5655 35.3549 30.205C36.8665 31.6875 38.349 33.17 39.8315 34.6816C40.5001 35.3502 40.471 36.3095 39.8315 37.0362C39.3664 37.5594 38.8432 38.0826 38.349 38.5768C37.1281 39.8558 35.9072 40.35 33.8724 40.35Z" fill="#DFED8C" />
     </svg>
   )
 }
@@ -449,7 +452,7 @@ export default function ChatModal({
 
   return (
     <>
-    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260904b" />
+    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260905-icons" />
     <div
       className={`tr-chat-backdrop${variant === "dock" ? " tr-chat-backdrop--dock" : ""}`}
       onClick={variant === "dock" ? undefined : onClose}
@@ -518,25 +521,19 @@ export default function ChatModal({
               </button>
             </div>
           ) : (
-            <>
-              {onToggleExpand && (
-                <button
-                  type="button"
-                  className="tr-chat-dockbtn tr-chat-dockbtn--collapse"
-                  aria-label="Свернуть окно"
-                  onClick={onToggleExpand}
-                >
-                  <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                    <path d="M9 5l-4 4M5 9h3.5M5 9V5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              )}
-              <button type="button" className="tr-chat-close" aria-label="Закрыть чат" onClick={onClose}>
+            // В modal-варианте отдельного крестика нет — окно закрывается по клику на backdrop / ESC (см. Figma).
+            onToggleExpand && (
+              <button
+                type="button"
+                className="tr-chat-dockbtn tr-chat-dockbtn--collapse"
+                aria-label="Свернуть окно"
+                onClick={onToggleExpand}
+              >
                 <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M9 5l-4 4M5 9h3.5M5 9V5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-            </>
+            )
           )}
         </header>
 

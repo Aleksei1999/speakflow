@@ -102,20 +102,25 @@
 
 .tr-chat-backdrop .tr-chat-actions {
   display: flex;
+  align-items: center;
   gap: 22px;
-  margin-right: 12px;
+  margin-right: 24px;
+  flex-shrink: 0;
 }
+/* Иконки Figma (Group 333/334) 54×54: круг + пиктограмма встроены в сам SVG,
+   кнопка полностью прозрачная. */
 .tr-chat-backdrop .tr-chat-icon-btn {
   width: 54px; height: 54px;
-  border-radius: 50%;
-  background: rgba(223, 237, 140, 0.14);
-  color: #DFED8C;
+  padding: 0;
   border: none;
+  background: transparent;
+  color: #DFED8C;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
-  transition: background .2s, transform .15s;
+  transition: transform .15s;
 }
-.tr-chat-backdrop .tr-chat-icon-btn:hover { background: rgba(223, 237, 140, 0.25); transform: translateY(-1px); }
+.tr-chat-backdrop .tr-chat-icon-btn:hover { transform: translateY(-1px); }
+.tr-chat-backdrop .tr-chat-icon-btn svg { display: block; width: 54px; height: 54px; }
 
 .tr-chat-backdrop .tr-chat-lvl {
   width: 135px;
@@ -623,8 +628,9 @@
 @media (max-width: 900px) {
   .tr-chat-backdrop .tr-chat-head { padding: 20px 60px 20px 20px; height: auto; gap: 14px; }
   .tr-chat-backdrop .tr-chat-name { font-size: 22px; }
-  .tr-chat-backdrop .tr-chat-actions { gap: 10px; }
+  .tr-chat-backdrop .tr-chat-actions { gap: 10px; margin-right: 12px; }
   .tr-chat-backdrop .tr-chat-icon-btn { width: 42px; height: 42px; }
+  .tr-chat-backdrop .tr-chat-icon-btn svg { width: 42px; height: 42px; }
   .tr-chat-backdrop .tr-chat-lvl { width: 80px; height: 50px; font-size: 22px; border-radius: 25px 0 0 25px; }
   .tr-chat-backdrop .tr-chat-body { padding: 20px; gap: 18px; }
   .tr-chat-backdrop .tr-chat-bubble { font-size: 16px; padding: 12px 20px; max-width: 78%; min-height: 44px; }
