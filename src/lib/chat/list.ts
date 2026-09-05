@@ -93,7 +93,8 @@ export async function fetchChatList(
 
     const existing = perPeer.get(peerId)
     if (!existing) {
-      const text = m.text ?? (m.attachment_type ? attachmentPlaceholder(m.attachment_type) : '')
+      const rawText = m.text ?? (m.attachment_type ? attachmentPlaceholder(m.attachment_type) : '')
+      const text = humanizeCallMarker(rawText)
       perPeer.set(peerId, {
         lastText: text,
         lastSenderIsMe: m.sender_id === meId,
@@ -276,8 +277,9 @@ async function fetchGroupsForUser(admin: any, userId: string): Promise<GroupChat
   // msgs отсортированы по DESC — первый попавшийся на group_id это последнее.
   for (const m of (msgs ?? []) as any[]) {
     if (!lastByGroup.has(m.group_id)) {
+      const rawText = m.text ?? (m.attachment_type ? attachmentPlaceholder(m.attachment_type) : '')
       lastByGroup.set(m.group_id, {
-        text: m.text ?? (m.attachment_type ? attachmentPlaceholder(m.attachment_type) : ''),
+        text: humanizeCallMarker(rawText),
         senderId: m.sender_id,
         createdAt: m.created_at,
       })
@@ -320,6 +322,14 @@ async function fetchGroupsForUser(admin: any, userId: string): Promise<GroupChat
 
 function isChatRole(x: unknown): x is ChatRole {
   return x === 'teacher' || x === 'student' || x === 'admin'
+}
+
+// Маркеры звонка не должны утекать в preview чата. См. ChatModal.CALL_MARKERS.
+function humanizeCallMarker(text: string): string {
+  const t = (text ?? '').trim()
+  if (t === '__call:started') return 'Звонок'
+  if (t === '__call:ended') return 'Звонок окончен'
+  return text
 }
 
 function attachmentPlaceholder(kind: string): string {
