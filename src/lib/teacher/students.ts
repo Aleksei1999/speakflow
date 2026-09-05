@@ -12,6 +12,7 @@
 // -----------------------------------------------------------------------------
 
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { fromRoastLevel } from "@/lib/levels/mapping"
 
 export interface TeacherStudentRow {
   id: string           // profiles.id (auth.uid студента) — используется для чата
@@ -103,7 +104,9 @@ export async function loadTeacherStudents(
   const levelByUser = new Map<string, string>()
   for (const row of (progressRes.data || []) as any[]) {
     if (row.english_level) {
-      levelByUser.set(row.user_id, String(row.english_level).toUpperCase())
+      // В БД после миграции 011 хранится roast-нотация ("Medium Rare");
+      // UI ожидает CEFR-код (A1..C2). Конвертим.
+      levelByUser.set(row.user_id, fromRoastLevel(String(row.english_level)))
     }
   }
 

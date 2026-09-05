@@ -10,6 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { fromRoastLevel } from '@/lib/levels/mapping'
 import type { ChatRole } from './types'
 
 export interface DirectChatItem {
@@ -128,7 +129,9 @@ export async function fetchChatList(
     }
     for (const row of (progress ?? []) as any[]) {
       if (row.english_level) {
-        levelByUser.set(row.user_id, String(row.english_level).toUpperCase())
+        // В БД после миграции 011 хранится roast-нотация ("Medium Rare"),
+        // а шапка чата рендерит короткий CEFR-код (A1..C2). Конвертим тут.
+        levelByUser.set(row.user_id, fromRoastLevel(String(row.english_level)))
       }
     }
   }
