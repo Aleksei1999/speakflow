@@ -11,7 +11,8 @@ import EditLessonModal from "./EditLessonModal"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
 import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
-import { FilesModal, type FileItem } from "@/components/dashboard/FilesModal"
+import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
+import { listFolders, createFolder, renameFolder, deleteFolders } from "@/lib/materials/folders"
 import LessonRequestsModal from "./LessonRequestsModal"
 import type { ScheduleItem } from "./calendar-actions"
 import { disconnectGoogleCalendar } from "./calendar-actions"
@@ -345,13 +346,41 @@ export default function TeacherRawDashboard({
   const [hwStudentId, setHwStudentId] = useState<string | null>(null)
   const [hwStudentFiles, setHwStudentFiles] = useState<FileItem[]>([])
 
-  // Загрузка списка файлов при первом открытии модалки
+  // Папки Библиотеки (общий пул). Верхний уровень — список папок, клик →
+  // файлы конкретной папки (принадлежащие учителю).
+  const [libFolders, setLibFolders] = useState<FolderItem[]>([])
+  const [libFolderId, setLibFolderId] = useState<string | null>(null)
+  const [libVersion, setLibVersion] = useState(0)
+
+  // Папки ДЗ ученика (общий пул). Открываются после выбора ученика.
+  const [hwFolders, setHwFolders] = useState<FolderItem[]>([])
+  const [hwFolderId, setHwFolderId] = useState<string | null>(null)
+  const [hwVersion, setHwVersion] = useState(0)
+
+  // Список папок Библиотеки — грузим при открытии модалки.
   useEffect(() => {
     if (!hwFilesOpen) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/teacher/materials?limit=200", { cache: "no-store" })
+        const rows = await listFolders("library")
+        if (cancelled) return
+        setLibFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[lib folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [hwFilesOpen, libVersion])
+
+  // Файлы конкретной папки Библиотеки — свои материалы учителя, фильтр по folder_id.
+  useEffect(() => {
+    if (!hwFilesOpen || !libFolderId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/teacher/materials?limit=200&folder_id=${encodeURIComponent(libFolderId)}`,
+          { cache: "no-store" },
+        )
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
@@ -360,6 +389,7 @@ export default function TeacherRawDashboard({
             id: m.id,
             name: m.title,
             status: "loaded" as const,
+            mime: m.mime_type ?? null,
             onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
           })),
         )
@@ -368,7 +398,7 @@ export default function TeacherRawDashboard({
       }
     })()
     return () => { cancelled = true }
-  }, [hwFilesOpen])
+  }, [hwFilesOpen, libFolderId, libVersion])
 
   async function handleHwUpload(file: File) {
     const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -418,6 +448,7 @@ export default function TeacherRawDashboard({
           mime_type: file.type || "application/octet-stream",
           tags: [],
           is_public: false,
+          folder_id: libFolderId,
         }),
       })
       if (!metaRes.ok) {
@@ -434,6 +465,7 @@ export default function TeacherRawDashboard({
               id: created.id,
               name: created.title,
               status: "loaded",
+              mime: created.mime_type ?? null,
               onOpen: created.signed_url ? () => window.open(created.signed_url, "_blank") : undefined,
             }
           : x,
@@ -448,14 +480,28 @@ export default function TeacherRawDashboard({
   }
 
   // ------------------- HOMEWORK PER-STUDENT -------------------
-  // При выборе ученика загружаем его личный список материалов.
+  // Список папок ДЗ (общий пул) — грузим при открытии для ученика.
   useEffect(() => {
-    if (!hwStudentId) { setHwStudentFiles([]); return }
+    if (!hwStudentId) { setHwFolders([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await listFolders("homework")
+        if (cancelled) return
+        setHwFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[hw folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [hwStudentId, hwVersion])
+
+  // Файлы конкретной папки ДЗ для выбранного ученика.
+  useEffect(() => {
+    if (!hwStudentId || !hwFolderId) { setHwStudentFiles([]); return }
     let cancelled = false
     ;(async () => {
       try {
         const res = await fetch(
-          `/api/teacher/student-homework?studentId=${hwStudentId}`,
+          `/api/teacher/student-homework?studentId=${hwStudentId}&folder_id=${encodeURIComponent(hwFolderId)}`,
           { cache: "no-store" },
         )
         if (!res.ok) return
@@ -466,6 +512,7 @@ export default function TeacherRawDashboard({
             id: m.id,
             name: m.title,
             status: "loaded" as const,
+            mime: m.mime_type ?? null,
             onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
           })),
         )
@@ -474,7 +521,7 @@ export default function TeacherRawDashboard({
       }
     })()
     return () => { cancelled = true }
-  }, [hwStudentId])
+  }, [hwStudentId, hwFolderId, hwVersion])
 
   async function handleHwStudentUpload(file: File) {
     if (!hwStudentId) return
@@ -504,7 +551,7 @@ export default function TeacherRawDashboard({
         .upload(storagePath, file, { contentType: file.type, upsert: false })
       if (upErr) throw upErr
       setProgress(0.85)
-      // 1) create material
+      // 1) create material — в текущей папке ДЗ.
       const metaRes = await fetch("/api/teacher/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -516,6 +563,7 @@ export default function TeacherRawDashboard({
           mime_type: file.type || "application/octet-stream",
           tags: [],
           is_public: false,
+          folder_id: hwFolderId,
         }),
       })
       if (!metaRes.ok) {
@@ -1981,10 +2029,25 @@ export default function TeacherRawDashboard({
       {hwFilesOpen && (
         <FilesModal
           title="Библиотека Raw English"
-          legacyMode
-          canManage
+          folders={libFolders}
           files={hwFiles}
-          onClose={() => setHwFilesOpen(false)}
+          activeFolderId={libFolderId}
+          onOpenFolder={setLibFolderId}
+          canManage
+          onCreateFolder={async () => {
+            const { id } = await createFolder("library")
+            setLibVersion((v) => v + 1)
+            return id
+          }}
+          onRenameFolder={async (id, name) => {
+            await renameFolder(id, name)
+            setLibVersion((v) => v + 1)
+          }}
+          onDeleteFolders={async (ids) => {
+            await deleteFolders(ids)
+            setLibVersion((v) => v + 1)
+          }}
+          onClose={() => { setHwFilesOpen(false); setLibFolderId(null) }}
           onFilePicked={handleHwUpload}
           multiple
           onDeleteFiles={async (ids) => {
@@ -2070,10 +2133,25 @@ export default function TeacherRawDashboard({
       {hwStudentId && (
         <FilesModal
           title={`Домашка — ${studentsState.find((s) => s.id === hwStudentId)?.name ?? "ученик"}`}
-          legacyMode
-          canManage
+          folders={hwFolders}
           files={hwStudentFiles}
-          onClose={() => setHwStudentId(null)}
+          activeFolderId={hwFolderId}
+          onOpenFolder={setHwFolderId}
+          canManage
+          onCreateFolder={async () => {
+            const { id } = await createFolder("homework")
+            setHwVersion((v) => v + 1)
+            return id
+          }}
+          onRenameFolder={async (id, name) => {
+            await renameFolder(id, name)
+            setHwVersion((v) => v + 1)
+          }}
+          onDeleteFolders={async (ids) => {
+            await deleteFolders(ids)
+            setHwVersion((v) => v + 1)
+          }}
+          onClose={() => { setHwStudentId(null); setHwFolderId(null) }}
           onFilePicked={handleHwStudentUpload}
           multiple
           onDeleteFiles={async (ids) => {

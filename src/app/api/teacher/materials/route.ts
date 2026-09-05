@@ -128,13 +128,16 @@ export async function GET(request: NextRequest) {
 
     // Fetch the full teacher library — table is bounded per-teacher and we need
     // accurate client-side counters across categories/levels.
-    const { data: allRows, error } = await supabase
+    const folderFilter = searchParams.get('folder_id')
+    let listQ = supabase
       .from('materials')
       .select(
-        'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at'
+        'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at, folder_id'
       )
       .eq('teacher_id', tp.id)
       .order('created_at', { ascending: false })
+    if (folderFilter) listQ = listQ.eq('folder_id', folderFilter)
+    const { data: allRows, error } = await listQ
     if (error) {
       console.error('Ошибка загрузки материалов:', error)
       return NextResponse.json({ error: 'Не удалось загрузить материалы' }, { status: 500 })
@@ -292,6 +295,7 @@ const postJsonSchema = z.object({
   file_name: z.string().trim().min(1).max(300),
   file_size: z.number().int().min(1).max(MAX_FILE_SIZE),
   mime_type: z.string().trim().min(1).max(150),
+  folder_id: z.string().uuid().optional().nullable(),
 })
 
 export async function POST(request: NextRequest) {
@@ -332,6 +336,7 @@ export async function POST(request: NextRequest) {
       file_name,
       file_size,
       mime_type,
+      folder_id,
     } = parsed.data
 
     // Storage path must start with `<user.id>/` — same constraint RLS enforces.
@@ -428,6 +433,7 @@ export async function POST(request: NextRequest) {
         tags,
         storage_path,
         mime_type,
+        folder_id: folder_id || null,
       })
       .select(
         'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at'

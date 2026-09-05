@@ -18,6 +18,7 @@ import { createSignedUrl } from '@/lib/supabase/signed-url'
 
 const querySchema = z.object({
   studentId: z.string().uuid(),
+  folder_id: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(200),
 })
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { studentId, limit } = parsed.data
+    const { studentId, folder_id: folderId, limit } = parsed.data
 
     const admin = createAdminClient() as any
 
@@ -76,9 +77,10 @@ export async function GET(request: NextRequest) {
 
     let matsQuery = admin
       .from('materials')
-      .select('id, title, storage_path, file_url, mime_type, file_size, created_at, teacher_id')
+      .select('id, title, storage_path, file_url, mime_type, file_size, created_at, teacher_id, folder_id')
       .in('id', materialIds)
     if (teacherProfileId) matsQuery = matsQuery.eq('teacher_id', teacherProfileId)
+    if (folderId) matsQuery = matsQuery.eq('folder_id', folderId)
 
     const { data: mats } = await matsQuery
     const rows = (mats ?? []) as Array<{
