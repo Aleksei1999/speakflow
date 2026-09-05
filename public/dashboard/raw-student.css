@@ -594,7 +594,9 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: 365px 365px;
-  gap: clamp(20px, 2vw, 32px);
+  /* row-gap 40px по Figma, column-gap оставляем адаптивным. */
+  row-gap: 40px;
+  column-gap: clamp(20px, 2vw, 32px);
 }
 .st-lect-card {
   position: relative;
