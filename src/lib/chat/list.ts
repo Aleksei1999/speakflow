@@ -18,6 +18,9 @@ export interface DirectChatItem {
   peerRole: ChatRole
   peerName: string
   peerAvatar: string | null
+  /** CEFR-уровень собеседника (для students). Учителю нужен, чтобы шапка чата
+   * рендерила пилюлю A1/A2/... — иначе пустое место. Null для teacher/admin. */
+  peerLevel: string | null
   lastText: string | null
   lastSenderIsMe: boolean
   lastAt: string | null
@@ -103,11 +106,18 @@ export async function fetchChatList(
 
   const peerIds = Array.from(perPeer.keys())
   const profiles = new Map<string, { name: string; avatar: string | null; role: ChatRole }>()
+  const levelByUser = new Map<string, string>()
   if (peerIds.length) {
-    const { data: profs } = await admin
-      .from('profiles')
-      .select('id, full_name, avatar_url, role')
-      .in('id', peerIds)
+    const [{ data: profs }, { data: progress }] = await Promise.all([
+      admin
+        .from('profiles')
+        .select('id, full_name, avatar_url, role')
+        .in('id', peerIds),
+      admin
+        .from('user_progress')
+        .select('user_id, english_level')
+        .in('user_id', peerIds),
+    ])
     for (const p of (profs ?? []) as any[]) {
       if (!isChatRole(p.role)) continue
       profiles.set(p.id, {
@@ -115,6 +125,11 @@ export async function fetchChatList(
         avatar: p.avatar_url,
         role: p.role,
       })
+    }
+    for (const row of (progress ?? []) as any[]) {
+      if (row.english_level) {
+        levelByUser.set(row.user_id, String(row.english_level).toUpperCase())
+      }
     }
   }
 
@@ -129,6 +144,7 @@ export async function fetchChatList(
       peerRole: prof.role,
       peerName: prof.name,
       peerAvatar: prof.avatar,
+      peerLevel: prof.role === 'student' ? levelByUser.get(pid) ?? null : null,
       lastText: m.lastText,
       lastSenderIsMe: m.lastSenderIsMe,
       lastAt: m.lastAt,

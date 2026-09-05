@@ -262,6 +262,7 @@ interface TeacherRawDashboardProps {
         peerRole: "teacher" | "student" | "admin"
         peerName: string
         peerAvatar: string | null
+        peerLevel: string | null
         lastText: string | null
         lastSenderIsMe: boolean
         lastAt: string | null
@@ -1794,6 +1795,7 @@ export default function TeacherRawDashboard({
                           role: c.peerRole,
                           name: c.peerName,
                           avatar: c.peerAvatar,
+                          level: c.peerLevel ?? undefined,
                         })
                       }}
                     >

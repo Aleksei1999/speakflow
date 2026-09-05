@@ -762,6 +762,7 @@ export default function AdminRawDashboard({
                           role: c.peerRole,
                           name: c.peerName,
                           avatar: c.peerAvatar,
+                          level: c.peerLevel ?? undefined,
                         })
                       }}
                     >
