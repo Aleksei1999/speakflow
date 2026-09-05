@@ -601,17 +601,19 @@
   background: var(--ink);
   color: var(--white);
   border-radius: var(--radius-card);
-  padding: clamp(22px, 2.6vw, 38px);
+  /* padding-top оставляет место под tag (52px pill + ~14px отступ) */
+  padding: 90px 38px 38px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 0; /* let grid rows set height */
+  min-height: 0;
 }
-/* MAIN: 2/3 ширины, 1-я строка */
+/* MAIN: 2/3 ширины, 1-я строка. Time/date стек — top-right, поэтому справа
+   резервируем полосу padding'ом. */
 .st-lect-card--main {
   grid-column: 1 / span 2;
   grid-row: 1;
+  padding-right: 220px;
 }
 /* TALL: 3-я колонка, 2 строки */
 .st-lect-card.tall {
@@ -622,102 +624,128 @@
 
 .st-lect-body {
   min-width: 0;
-  /* оставляем справа полосу под badges/tag чтобы текст не наезжал */
-  padding-right: clamp(80px, 10vw, 140px);
-}
-.st-lect-card--main .st-lect-body {
-  padding-right: clamp(140px, 16vw, 220px);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .st-lect-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.2vw, 32px);
+  font-size: 30px;
   letter-spacing: -0.05em;
-  line-height: 1.05;
+  line-height: 1.063;
   color: var(--lime);
-  margin-bottom: 10px;
+  margin: 0 0 12px;
 }
-.st-lect-card.red .st-lect-title { color: var(--white); }
+.st-lect-card.red .st-lect-title { color: var(--white); font-size: 32px; }
 .st-lect-author {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(18px, 1.7vw, 28px);
+  font-size: 30px;
   letter-spacing: -0.05em;
-  line-height: 1.05;
-  color: var(--white);
-  margin-bottom: 16px;
+  line-height: 1.063;
+  color: var(--lime);
+  margin: 0 0 20px;
 }
+.st-lect-card.red .st-lect-author { color: var(--white); font-size: 32px; }
 .st-lect-desc {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(14px, 1.3vw, 20px);
+  font-size: 24px;
   letter-spacing: -0.05em;
-  line-height: 1.18;
+  line-height: 1.063;
   color: var(--white);
   margin: 0;
 }
 
-/* нижний ряд: время + дата, слева */
-.st-lect-foot {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  margin-top: 14px;
-  z-index: 1;
-}
-/* кэтэгори-плашка в правом-верхнем углу (по фигме — «торчит» слегка) */
+/* Категория (CV / Travel / Marketing / Tecnolodgy) — top-left, без наклона,
+   pill 52px высотой. Красный на тёмных карточках, чёрный на красных. */
 .st-lect-tag--top {
   position: absolute;
-  top: clamp(14px, 1.6vw, 22px);
-  right: clamp(14px, 1.6vw, 24px);
-  transform: rotate(-3deg);
+  top: 24px;
+  left: 24px;
   z-index: 2;
 }
-
 .st-lect-tag {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 18px;
+  height: 52px;
+  padding: 0 26px;
   border-radius: 29.5px;
-  background: rgba(30, 30, 30, 0.65);
+  background: var(--red);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -0.05em;
+  line-height: 0.878;
+  white-space: nowrap;
+}
+/* Для CV — крупнее (40px). */
+.st-lect-card--main .st-lect-tag {
+  height: 52px; padding: 0 32px;
+  font-size: 40px; letter-spacing: -0.05em;
+}
+.st-lect-card.red .st-lect-tag { background: var(--ink); color: var(--lime); }
+
+/* ---------- Время + дата: стек из двух pill'ов ----------
+   На тёмной карточке (main / bottom-middle): фон лаймовый (0.33), дата — lime, время — белое.
+   На красной карточке (tall / bottom-left):  фон тёмный (0.33), дата — белая, время — lime. */
+.st-lect-foot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+  /* по-умолчанию у обычных карточек — bottom-right */
+  right: 24px;
+  bottom: 24px;
+}
+/* У главной (широкой) — top-right */
+.st-lect-card--main .st-lect-foot {
+  top: 28px;
+  bottom: auto;
+}
+
+.st-lect-date {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 39px;
+  min-width: 163px;
+  padding: 0 20px;
+  border-radius: 29.5px;
+  background: rgba(223, 237, 140, 0.33);
   color: var(--lime);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(14px, 1.3vw, 20px);
+  font-size: 24px;
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 1.29;
   white-space: nowrap;
 }
-.st-lect-card.red .st-lect-tag { background: rgba(30, 30, 30, 0.65); color: var(--lime); }
-
 .st-lect-time {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 18px;
+  height: 59px;
+  min-width: 181px;
+  padding: 0 26px;
   border-radius: 29.5px;
   background: rgba(223, 237, 140, 0.33);
   color: var(--white);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(18px, 1.7vw, 26px);
+  font-size: 50px;
   letter-spacing: -0.05em;
-  transform: rotate(4deg);
+  line-height: 1.29;
   white-space: nowrap;
 }
-.st-lect-date {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 6px 14px;
-  border-radius: 24px;
-  background: rgba(30, 30, 30, 0.65);
+/* Инверсия для красных карточек */
+.st-lect-card.red .st-lect-date {
+  background: rgba(30, 30, 30, 0.33);
+  color: var(--white);
+}
+.st-lect-card.red .st-lect-time {
+  background: rgba(30, 30, 30, 0.33);
   color: var(--lime);
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: clamp(13px, 1.1vw, 18px);
-  letter-spacing: -0.05em;
-  line-height: 1;
-  transform: rotate(-2deg);
-  white-space: nowrap;
 }
-.st-lect-card.tall .st-lect-tag--top { transform: rotate(-4deg); }
 
 /* ============================================================
    BALANCE + STATS (dark, bg-hero)
@@ -1097,10 +1125,8 @@
     grid-template-columns: 1fr;
     grid-template-rows: repeat(4, minmax(320px, auto));
   }
-  .st-lect-card--main { grid-column: 1; grid-row: auto; }
+  .st-lect-card--main { grid-column: 1; grid-row: auto; padding-right: 220px; }
   .st-lect-card.tall { grid-column: 1; grid-row: auto; min-height: 400px; }
-  .st-lect-body,
-  .st-lect-card--main .st-lect-body { padding-right: 100px; }
 }
 @media (max-width: 780px) {
   .st-nav { grid-template-columns: auto 1fr auto; }
@@ -1112,7 +1138,13 @@
   .st-footer-left, .st-footer-right { text-align: center; align-items: center; }
   .st-lesson { flex-wrap: wrap; }
   .st-chat { padding-right: clamp(60px, 12vw, 90px); }
-  .st-lect-body,
-  .st-lect-card--main .st-lect-body { padding-right: 80px; }
-  .st-lect-foot { flex-wrap: wrap; }
+  /* На мобилке дадим карточкам расти по контенту, а footer перекинем вниз в поток. */
+  .st-lect-card { padding: 78px 20px 130px; }
+  .st-lect-card--main { padding-right: 20px; }
+  .st-lect-card--main .st-lect-foot { position: absolute; top: auto; bottom: 24px; right: 20px; }
+  .st-lect-time { font-size: 40px; height: 52px; min-width: 150px; padding: 0 20px; }
+  .st-lect-date { font-size: 20px; height: 34px; min-width: 140px; padding: 0 16px; }
+  .st-lect-tag { font-size: 22px; height: 42px; padding: 0 20px; }
+  .st-lect-card--main .st-lect-tag { font-size: 26px; height: 46px; padding: 0 24px; }
+  .st-lect-title, .st-lect-card.red .st-lect-title { font-size: 22px; }
 }
