@@ -1,19 +1,20 @@
 "use client"
 
-// Модалка «Файлы / Папки» — Figma 2208:3749 (Вкладка с папками).
-// Сетка карточек-папок 4×N + кнопки «Добавить файл» и «Выбрать».
-// 4 состояния иконки:
-//   default   — закрытая папка + маленький ↓-бейдж
-//   open      — открытая папка (при клике/hover)
-//   loading   — в процессе загрузки, круг заполняется по progress (0..1)
-//   loaded    — файл загружен, крупная ↓-стрелка в центре
+// Модалка «Файлы / Папки» — Figma 2208:3749.
 //
-// «Добавить файл» открывает file picker (accept — из props); при выборе
-// файла вызывает onFilePicked. Загрузку/POST метаданных делает родитель.
+// Двухуровневая навигация:
+//   • Корень (view='folders')   — список папок. Кнопка «Создать папку» вместо
+//     «Добавить файл». Новая папка сразу появляется как карточка с inline-инпутом,
+//     авто-сохранение по debounce (без «Сохранить/Отмена»).
+//   • Внутри папки (view='files') — файлы этой папки. Появляется «Назад»,
+//     «Добавить файл», «Выбрать» / «Удалить» — как было раньше.
 //
-// Стили — public/dashboard/files-modal.css.
+// Права: студент — read-only (`canManage=false`). Учитель/админ создают
+// папки, добавляют/удаляют файлы.
+//
+// Иконки файлов подбираются по MIME/расширению (см. `fileTypeIcon`).
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 export type FileItemStatus = "default" | "open" | "loading" | "loaded"
@@ -24,48 +25,83 @@ export interface FileItem {
   status: FileItemStatus
   /** 0..1, только для status="loading". */
   progress?: number
+  /** MIME-тип файла — используется, чтобы отрисовать нужную PDF/WORD/PNG иконку. */
+  mime?: string | null
+  /** Расширение (без точки), если mime не помогает угадать. */
+  ext?: string | null
   onOpen?: () => void
+}
+
+export interface FolderItem {
+  id: string
+  name: string
+  /** Кол-во файлов в папке — показываем маленьким бейджем над названием (optional). */
+  count?: number
 }
 
 interface FilesModalProps {
   title?: string
+  folders?: FolderItem[]
+  /** Файлы текущей открытой папки. Родитель фильтрует/подгружает при смене folderId. */
   files: FileItem[]
+  /** ID открытой папки. null → показываем корень (список папок).
+   *  Игнорируется в legacyMode. */
+  activeFolderId?: string | null
+  onOpenFolder?: (folderId: string | null) => void
+  /** Обратная совместимость: старый flat-file режим (без папок). Показываем
+   *  сразу список файлов, без breadcrumb / «Создать папку». */
+  legacyMode?: boolean
+  /** Создать папку. Возвращает id новой папки (родитель сам вставляет в список). */
+  onCreateFolder?: () => Promise<string>
+  /** Переименовать. Родитель авто-обновляет `folders`. */
+  onRenameFolder?: (folderId: string, name: string) => Promise<void>
+  /** Удалить папки. */
+  onDeleteFolders?: (ids: string[]) => Promise<void>
   onClose: () => void
-  /** Вызывается когда пользователь выбрал файл через picker. */
   onFilePicked?: (file: File) => void
-  /** MIME-фильтр для <input type="file" accept="...">. */
   accept?: string
-  /** Разрешить множественный выбор. Если true, onFilePicked дёргается для каждого. */
   multiple?: boolean
-  /** Обработчик удаления. Получает ids выбранных файлов. Если не задан —
-   *  кнопка «Выбрать» не отображается. */
-  onDelete?: (ids: string[]) => Promise<void> | void
+  onDeleteFiles?: (ids: string[]) => Promise<void> | void
+  /** true → пользователь может создавать папки, добавлять/удалять файлы. */
+  canManage?: boolean
   addLabel?: string
   selectLabel?: string
   deleteLabel?: string
   cancelLabel?: string
-  /** Скрыть кнопку «Добавить файл» — например для read-only библиотеки ученика. */
-  hideAdd?: boolean
+  createFolderLabel?: string
 }
+
+const DEBOUNCE_MS = 600
 
 export function FilesModal({
   title,
+  folders = [],
   files,
+  activeFolderId = null,
+  onOpenFolder = () => {},
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolders,
   onClose,
   onFilePicked,
   accept,
   multiple = false,
-  onDelete,
+  onDeleteFiles,
+  canManage = false,
   addLabel = "Добавить файл",
   selectLabel = "Выбрать",
   deleteLabel = "Удалить",
   cancelLabel = "Отмена",
-  hideAdd = false,
+  createFolderLabel = "Создать папку",
+  legacyMode = false,
 }: FilesModalProps) {
+  // В legacy-режиме принудительно «в папке» — файлы рендерим сразу, без корня.
+  const effectiveFolderId = legacyMode ? "__legacy__" : activeFolderId
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -75,13 +111,19 @@ export function FilesModal({
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
 
-  // Если файлы вдруг закончились — выходим из режима выбора
+  // Сбрасываем выбор при смене «view».
   useEffect(() => {
-    if (files.length === 0 && selectMode) {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }, [effectiveFolderId])
+
+  useEffect(() => {
+    const current = effectiveFolderId ? files : folders
+    if (current.length === 0 && selectMode) {
       setSelectMode(false)
       setSelectedIds(new Set())
     }
-  }, [files.length, selectMode])
+  }, [effectiveFolderId, files.length, folders.length, selectMode, files, folders])
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -92,11 +134,15 @@ export function FilesModal({
     })
   }
 
-  const handleDelete = async () => {
-    if (!onDelete || selectedIds.size === 0) return
+  const handleDeleteConfirm = async () => {
+    if (selectedIds.size === 0) return
     setDeleting(true)
     try {
-      await onDelete(Array.from(selectedIds))
+      if (effectiveFolderId) {
+        await onDeleteFiles?.(Array.from(selectedIds))
+      } else {
+        await onDeleteFolders?.(Array.from(selectedIds))
+      }
       setSelectedIds(new Set())
       setSelectMode(false)
     } finally {
@@ -104,10 +150,23 @@ export function FilesModal({
     }
   }
 
-  const hasFiles = files.length > 0
-  const showSelect = hasFiles && !!onDelete
+  const handleCreateFolder = async () => {
+    if (!onCreateFolder || creating) return
+    setCreating(true)
+    try {
+      await onCreateFolder()
+    } finally {
+      setCreating(false)
+    }
+  }
 
   if (!mounted) return null
+
+  const inFolder = effectiveFolderId !== null
+  const activeFolder = inFolder ? folders.find((f) => f.id === effectiveFolderId) ?? null : null
+  const hasItems = inFolder ? files.length > 0 : folders.length > 0
+  const canDelete = inFolder ? !!onDeleteFiles : !!onDeleteFolders
+  const showSelect = hasItems && canManage && canDelete
 
   return createPortal(
     <div className="files-modal-backdrop" onClick={onClose}>
@@ -124,6 +183,22 @@ export function FilesModal({
           </svg>
         </button>
 
+        {inFolder && !legacyMode && (
+          <div className="files-modal-crumbs">
+            <button
+              type="button"
+              className="files-modal-back"
+              onClick={() => onOpenFolder(null)}
+              aria-label="Назад к папкам"
+            >
+              <svg viewBox="0 0 20 14" width="20" height="14" fill="none" aria-hidden>
+                <path d="M7 1L1 7l6 6M1 7h18" stroke="#1E1E1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>{activeFolder?.name ?? "Папка"}</span>
+            </button>
+          </div>
+        )}
+
         {/* скрытый <input type="file"> — открывается программно */}
         <input
           ref={inputRef}
@@ -132,18 +207,24 @@ export function FilesModal({
           multiple={multiple}
           style={{ display: "none" }}
           onChange={(e) => {
-            const files = e.target.files ? Array.from(e.target.files) : []
-            files.forEach((f) => onFilePicked?.(f))
+            const list = e.target.files ? Array.from(e.target.files) : []
+            list.forEach((f) => onFilePicked?.(f))
             e.target.value = ""
           }}
         />
 
         <div className="files-modal-grid">
-          {!hasFiles ? (
+          {!hasItems ? (
             <div className="files-modal-empty">
-              Пока нет ни одного файла. Нажми «Добавить файл» чтобы загрузить с компьютера или телефона.
+              {inFolder
+                ? canManage
+                  ? "В этой папке пока нет файлов. Нажми «Добавить файл»."
+                  : "В этой папке пока нет файлов."
+                : canManage
+                  ? "Пока нет ни одной папки. Нажми «Создать папку»."
+                  : "Здесь пока пусто."}
             </div>
-          ) : (
+          ) : inFolder ? (
             files.map((f) => {
               const isSelected = selectedIds.has(f.id)
               const isLoading = f.status === "loading"
@@ -163,21 +244,48 @@ export function FilesModal({
                   aria-label={f.name}
                   aria-pressed={selectMode ? isSelected : undefined}
                 >
-                  <FileIcon
+                  <FileTypeIcon
                     status={f.status}
                     progress={f.progress ?? 0}
                     selecting={selectMode}
                     selected={isSelected}
+                    mime={f.mime ?? null}
+                    ext={f.ext ?? null}
+                    name={f.name}
                   />
                   <span className="files-item-name">{f.name}</span>
                 </button>
               )
             })
+          ) : (
+            folders.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                selectMode={selectMode}
+                selected={selectedIds.has(folder.id)}
+                canManage={canManage}
+                onOpen={() => onOpenFolder(folder.id)}
+                onToggleSelect={() => toggleSelected(folder.id)}
+                onRename={(name) => onRenameFolder?.(folder.id, name)}
+              />
+            ))
           )}
         </div>
 
         <div className="files-modal-footer">
-          {!hideAdd && (
+          {canManage && !inFolder && !selectMode && onCreateFolder && (
+            <button
+              type="button"
+              className="files-modal-btn"
+              onClick={handleCreateFolder}
+              disabled={creating || deleting}
+            >
+              {creating ? "Создаём…" : createFolderLabel}
+            </button>
+          )}
+
+          {canManage && inFolder && !selectMode && (
             <button
               type="button"
               className="files-modal-btn"
@@ -214,7 +322,7 @@ export function FilesModal({
               <button
                 type="button"
                 className="files-modal-btn files-modal-btn--danger"
-                onClick={handleDelete}
+                onClick={handleDeleteConfirm}
                 disabled={deleting || selectedIds.size === 0}
               >
                 {deleting ? "Удаление…" : `${deleteLabel}${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
@@ -228,30 +336,173 @@ export function FilesModal({
   )
 }
 
-// ---------- иконка папки в 4 состояниях ----------
+// ---------------------------------------------------------------------------
+// Folder card — inline-editable name (debounced auto-save, без «Сохранить»).
+// ---------------------------------------------------------------------------
+function FolderCard({
+  folder,
+  selectMode,
+  selected,
+  canManage,
+  onOpen,
+  onToggleSelect,
+  onRename,
+}: {
+  folder: FolderItem
+  selectMode: boolean
+  selected: boolean
+  canManage: boolean
+  onOpen: () => void
+  onToggleSelect: () => void
+  onRename?: (name: string) => Promise<void> | void
+}) {
+  const [draft, setDraft] = useState(folder.name)
+  const savedRef = useRef(folder.name)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-function FileIcon({
+  // Синхронизация draft ← props (например, кто-то переименовал папку из
+  // другой сессии, или после reload).
+  useEffect(() => {
+    setDraft(folder.name)
+    savedRef.current = folder.name
+  }, [folder.name])
+
+  const scheduleSave = useCallback(
+    (next: string) => {
+      if (!onRename) return
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(async () => {
+        const trimmed = next.trim() || "Новая папка"
+        if (trimmed === savedRef.current) return
+        try {
+          await onRename(trimmed)
+          savedRef.current = trimmed
+        } catch (err) {
+          console.error("[FilesModal] rename folder failed", err)
+        }
+      }, DEBOUNCE_MS)
+    },
+    [onRename],
+  )
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
+
+  return (
+    <div
+      className={`files-item files-item--folder${selectMode ? " files-item--select-mode" : ""}${
+        selected ? " is-selected" : ""
+      }`}
+      onClick={(e) => {
+        // Клик по инпуту — не открываем папку.
+        if ((e.target as HTMLElement).tagName === "INPUT") return
+        if (selectMode) onToggleSelect()
+        else onOpen()
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.target as HTMLElement).tagName === "INPUT") return
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          if (selectMode) onToggleSelect()
+          else onOpen()
+        }
+      }}
+      aria-label={folder.name}
+      aria-pressed={selectMode ? selected : undefined}
+    >
+      {selectMode ? <IconFolderSelect selected={selected} /> : <IconFolderDefault />}
+      {canManage && !selectMode ? (
+        <input
+          className="files-item-name files-item-name--input"
+          value={draft}
+          onChange={(e) => {
+            const v = e.target.value
+            setDraft(v)
+            scheduleSave(v)
+          }}
+          onBlur={() => scheduleSave(draft)}
+          onClick={(e) => e.stopPropagation()}
+          maxLength={80}
+          aria-label="Название папки"
+        />
+      ) : (
+        <span className="files-item-name">{folder.name}</span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// FileTypeIcon — выбирает нужную SVG по mime/расширению файла.
+// Loading/select-mode рендерят папочные состояния (progress-круг и чекбокс),
+// т.к. эти состояния нужны только внутри папки перед завершением загрузки.
+// ---------------------------------------------------------------------------
+function FileTypeIcon({
   status,
   progress,
-  selecting = false,
-  selected = false,
+  selecting,
+  selected,
+  mime,
+  ext,
+  name,
 }: {
   status: FileItemStatus
   progress: number
-  selecting?: boolean
-  selected?: boolean
+  selecting: boolean
+  selected: boolean
+  mime: string | null
+  ext: string | null
+  name: string
 }) {
-  // В режиме выбора любая папка рендерится плоской + чекбокс-круг снизу
-  // (Figma 4105:74 / 4105:75).
-  if (selecting) return <IconFolderSelect selected={selected} />
-  if (status === "open") return <IconFolderOpen />
-  if (status === "loading") return <IconFolderLoading progress={progress} />
-  if (status === "loaded") return <IconFolderLoaded />
-  return <IconFolderDefault />
+  if (selecting) return <IconFileSelect selected={selected} kind={fileTypeIcon(mime, ext, name)} />
+  if (status === "loading") return <IconFileLoading progress={progress} />
+  const kind = fileTypeIcon(mime, ext, name)
+  return <IconFileType kind={kind} />
 }
 
+type FileKind = "pdf" | "word" | "excel" | "image" | "generic"
+
+export function fileTypeIcon(mime: string | null, ext: string | null, name?: string): FileKind {
+  const extLower = (ext ?? name?.split(".").pop() ?? "").toLowerCase()
+  const mimeLower = (mime ?? "").toLowerCase()
+  if (mimeLower.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "heic"].includes(extLower)) {
+    return "image"
+  }
+  if (mimeLower === "application/pdf" || extLower === "pdf") return "pdf"
+  if (
+    mimeLower.includes("wordprocessing") ||
+    mimeLower === "application/msword" ||
+    ["doc", "docx", "rtf", "odt"].includes(extLower)
+  ) {
+    return "word"
+  }
+  if (
+    mimeLower.includes("spreadsheet") ||
+    mimeLower === "application/vnd.ms-excel" ||
+    ["xls", "xlsx", "csv", "ods"].includes(extLower)
+  ) {
+    return "excel"
+  }
+  return "generic"
+}
+
+function IconFileType({ kind }: { kind: FileKind }) {
+  const src = `/dashboard/file-types/${kind}.svg`
+  const isImage = kind === "image"
+  // По ТЗ: обычные файлы 112.031×138.111, картинки 146×132.619.
+  const width = isImage ? 146 : 112
+  const height = isImage ? 133 : 138
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" aria-hidden className="files-icon files-icon--file" width={width} height={height} />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Иконки папки (без файлов) — оставлены как раньше.
+// ---------------------------------------------------------------------------
 function IconFolderSelect({ selected }: { selected: boolean }) {
-  // Figma: unselected = 4105:74 (белый круг), selected = 4106:76 (тёмный круг + галочка)
   return (
     <svg viewBox="0 0 146 160" width="146" height="160" className="files-icon" aria-hidden>
       <FolderShape />
@@ -277,7 +528,6 @@ function IconFolderSelect({ selected }: { selected: boolean }) {
   )
 }
 
-// Общая база — плоская закрытая папка 146×140. Используется в default/loading/loaded.
 function FolderShape() {
   return (
     <path
@@ -289,45 +539,58 @@ function FolderShape() {
 
 function IconFolderDefault() {
   return (
-    <svg viewBox="0 0 146 175" width="146" height="175" className="files-icon" aria-hidden>
+    <svg viewBox="0 0 146 140" width="146" height="140" className="files-icon" aria-hidden>
       <FolderShape />
-      {/* маленький бейдж-круг с ↓ в правом-нижнем углу */}
-      <g transform="translate(94, 122)">
-        <circle cx="18" cy="17.5" r="17" fill="#1E1E1E" stroke="#DFED8C" strokeWidth="2" />
-        <path
-          d="M19.5 9C19.5 8.17157 18.8284 7.5 18 7.5C17.1716 7.5 16.5 8.17157 16.5 9L18 9L19.5 9ZM16.9393 27.0607C17.5251 27.6464 18.4749 27.6464 19.0607 27.0607L28.6066 17.5147C29.1924 16.9289 29.1924 15.9792 28.6066 15.3934C28.0208 14.8076 27.0711 14.8076 26.4853 15.3934L18 23.8787L9.51472 15.3934C8.92893 14.8076 7.97919 14.8076 7.3934 15.3934C6.80761 15.9792 6.80761 16.9289 7.3934 17.5147L16.9393 27.0607ZM18 9L16.5 9L16.5 26L18 26L19.5 26L19.5 9L18 9Z"
-          fill="#DFED8C"
-        />
-      </g>
     </svg>
   )
 }
 
-function IconFolderOpen() {
+// ---------------------------------------------------------------------------
+// File icons — loading (progress) + select-mode (checkbox круг).
+// ---------------------------------------------------------------------------
+function IconFileSelect({ selected, kind }: { selected: boolean; kind: FileKind }) {
+  const src = `/dashboard/file-types/${kind}.svg`
+  const isImage = kind === "image"
+  const w = isImage ? 146 : 112
+  const h = isImage ? 133 : 138
   return (
-    <svg viewBox="0 0 166 175" width="166" height="175" className="files-icon" aria-hidden>
-      <path
-        d="M159.971 56.0912C155.797 52.7166 149.899 50.9837 142.277 50.9837H56.8927C48.0003 50.9837 40.1062 57.3681 38.2007 66.1238L28.1288 112.091C27.6751 114.189 25.7696 115.648 23.6826 115.648C23.3197 115.648 23.0474 115.648 22.6845 115.557C20.2346 115.01 18.692 112.547 19.2364 110.085L29.3083 64.0261C32.1212 51.2573 43.7357 41.8632 56.8927 41.8632H142.277C143.638 41.8632 144.999 41.9544 146.27 42.0456V38.0326C146.27 25.6287 136.288 15.5961 123.948 15.5961H98.0877C89.2861 15.5961 80.666 12.5863 73.8607 6.9316C68.9608 2.91857 64.9683 0 58.7982 0H22.3215C9.98118 0 0 10.0326 0 22.4365V38.0326V117.564C0 129.967 9.98118 140 22.3215 140H46.8208H58.7982H123.948H132.84C144.092 140 153.801 132.065 156.069 121.029L165.506 74.9707C166.504 70.0456 165.96 65.2117 164.145 61.0163C163.056 59.101 161.604 57.4593 159.971 56.0912Z"
-        fill="#1E1E1E"
-      />
-    </svg>
+    <div className="files-icon files-icon--file-wrap" style={{ width: w, height: h + 22, position: "relative" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" aria-hidden width={w} height={h} style={{ display: "block" }} />
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 34 34"
+        style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)" }}
+        fill="none"
+        aria-hidden
+      >
+        <circle cx="17" cy="17" r="16" fill={selected ? "#1E1E1E" : "#FFFFFF"} stroke="#DFED8C" strokeWidth="2" />
+        {selected && (
+          <path
+            d="M9 17.5L15 23L25 12"
+            stroke="#DFED8C"
+            strokeWidth="3.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        )}
+      </svg>
+    </div>
   )
 }
 
-// Loading: папка + круг, который заполняется по progress (0..1).
-// Реализовано через stroke-dasharray/offset на круге (r=39, C ≈ 245).
-function IconFolderLoading({ progress }: { progress: number }) {
-  const CIRC = 245 // 2πr при r≈39
+function IconFileLoading({ progress }: { progress: number }) {
+  const CIRC = 245
   const clamped = Math.max(0, Math.min(1, progress))
   return (
-    <svg viewBox="0 0 146 175" width="146" height="175" className="files-icon" aria-hidden>
-      <FolderShape />
-      {/* задник — тонкий тёмный круг */}
-      <circle cx="74" cy="82.5" r="39" fill="none" stroke="rgba(223,237,140,0.25)" strokeWidth="6" />
-      {/* progress-arc */}
+    <svg viewBox="0 0 112 138" width="112" height="138" className="files-icon" aria-hidden>
+      <rect x="4" y="4" width="104" height="130" rx="14" fill="#1E1E1E" />
+      <circle cx="56" cy="69" r="39" fill="none" stroke="rgba(223,237,140,0.25)" strokeWidth="6" />
       <circle
-        cx="74"
-        cy="82.5"
+        cx="56"
+        cy="69"
         r="39"
         fill="none"
         stroke="#DFED8C"
@@ -335,29 +598,9 @@ function IconFolderLoading({ progress }: { progress: number }) {
         strokeLinecap="round"
         strokeDasharray={CIRC}
         strokeDashoffset={CIRC * (1 - clamped)}
-        transform="rotate(-90 74 82.5)"
+        transform="rotate(-90 56 69)"
         style={{ transition: "stroke-dashoffset .3s linear" }}
       />
-      {/* ↓ стрелка в центре */}
-      <path
-        d="M77 66C77 64.3431 75.6569 63 74 63C72.3431 63 71 64.3431 71 66L74 66L77 66ZM71.8787 102.121C73.0503 103.293 74.9497 103.293 76.1213 102.121L95.2132 83.0294C96.3848 81.8579 96.3848 79.9584 95.2132 78.7868C94.0416 77.6152 92.1421 77.6152 90.9706 78.7868L74 95.7574L57.0294 78.7868C55.8579 77.6152 53.9584 77.6152 52.7868 78.7868C51.6152 79.9584 51.6152 81.8579 52.7868 83.0294L71.8787 102.121ZM74 66L71 66L71 100L74 100L77 100L77 66L74 66Z"
-        fill="#DFED8C"
-      />
-    </svg>
-  )
-}
-
-function IconFolderLoaded() {
-  return (
-    <svg viewBox="0 0 146 175" width="146" height="175" className="files-icon" aria-hidden>
-      <FolderShape />
-      {/* Крупная ↓-стрелка в центре папки (arrow-down-thin из Figma, повёрнута 90°) */}
-      <g transform="translate(52, 55) rotate(90 20 22.09)">
-        <path
-          d="M3 19.0919C1.34315 19.0919 0 20.435 0 22.0919C0 23.7487 1.34315 25.0919 3 25.0919V22.0919V19.0919ZM39.1213 24.2132C40.2929 23.0416 40.2929 21.1421 39.1213 19.9706L20.0294 0.878681C18.8579 -0.292892 16.9584 -0.292892 15.7868 0.878681C14.6152 2.05025 14.6152 3.94975 15.7868 5.12132L32.7574 22.0919L15.7868 39.0624C14.6152 40.234 14.6152 42.1335 15.7868 43.3051C16.9584 44.4767 18.8579 44.4767 20.0294 43.3051L39.1213 24.2132ZM3 22.0919V25.0919H37V22.0919V19.0919H3V22.0919Z"
-          fill="#DFED8C"
-        />
-      </g>
     </svg>
   )
 }

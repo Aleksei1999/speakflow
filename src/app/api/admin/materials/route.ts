@@ -21,11 +21,14 @@ export async function GET(_req: NextRequest) {
     }
 
     const admin = createAdminClient() as any
-    const { data: mats } = await admin
+    const folderId = _req.nextUrl.searchParams.get('folder_id')
+    let q = admin
       .from('materials')
-      .select('id, title, storage_path, file_url, mime_type, file_size, created_at')
+      .select('id, title, storage_path, file_url, mime_type, file_size, created_at, folder_id')
       .order('created_at', { ascending: false })
       .limit(200)
+    if (folderId) q = q.eq('folder_id', folderId)
+    const { data: mats } = await q
 
     const rows = (mats ?? []) as any[]
     const materials = await Promise.all(
@@ -45,6 +48,7 @@ export async function GET(_req: NextRequest) {
           created_at: m.created_at,
           signed_url,
           file_url: m.file_url,
+          folder_id: m.folder_id ?? null,
         }
       }),
     )

@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     const fd = await request.formData()
     const file = fd.get('file')
+    const folderId = String(fd.get('folder_id') ?? '') || null
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: 'Файл не передан' }, { status: 400 })
     }
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
         mime_type: file.type || null,
         file_size: file.size,
         is_public: true,   // публичный → виден всем
+        folder_id: folderId,
       })
       .select('id')
       .single()

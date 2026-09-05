@@ -17,7 +17,8 @@ import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
 import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
 import ChatModal from "@/components/dashboard/ChatModal"
-import { FilesModal, type FileItem } from "@/components/dashboard/FilesModal"
+import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
+import { listFolders, createFolder, renameFolder, deleteFolders } from "@/lib/materials/folders"
 import type { ChatListItem } from "@/lib/chat/list"
 import AdminAddLessonModal from "./AdminAddLessonModal"
 import AdminAddLectureModal from "./AdminAddLectureModal"
@@ -268,12 +269,19 @@ export default function AdminRawDashboard({
   const [libraryVersion, setLibraryVersion] = useState(0)
   const [libraryUploading, setLibraryUploading] = useState(false)
 
+  // Папки Библиотеки (миграция 20260905100000). Верхний уровень = список папок,
+  // клик по папке → activeFolderId → показываем файлы этой папки.
+  const [libraryFolders, setLibraryFolders] = useState<FolderItem[]>([])
+  const [libraryFolderId, setLibraryFolderId] = useState<string | null>(null)
+
   async function handleAdminLibraryUpload(file: File) {
+    if (!libraryFolderId) { alert("Сначала откройте папку"); return }
     if (file.size > 50 * 1024 * 1024) { alert("Файл больше 50 МБ"); return }
     setLibraryUploading(true)
     try {
       const fd = new FormData()
       fd.append("file", file)
+      fd.append("folder_id", libraryFolderId)
       const res = await fetch("/api/admin/library/upload", { method: "POST", body: fd })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`)
@@ -347,12 +355,30 @@ export default function AdminRawDashboard({
     }
   }
 
+  // Refetch folders when library modal opens or something changed.
   useEffect(() => {
     if (!libraryOpen) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/admin/materials?limit=200", { cache: "no-store" })
+        const rows = await listFolders("library")
+        if (cancelled) return
+        setLibraryFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[admin library folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [libraryOpen, libraryVersion])
+
+  // Refetch files INSIDE the currently-open folder.
+  useEffect(() => {
+    if (!libraryOpen || !libraryFolderId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/materials?limit=200&folder_id=${encodeURIComponent(libraryFolderId)}`,
+          { cache: "no-store" },
+        )
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
@@ -364,14 +390,15 @@ export default function AdminRawDashboard({
               id: m.id,
               name: m.title,
               status: "loaded" as const,
+              mime: m.mime_type ?? null,
               onOpen: openUrl ? () => window.open(openUrl, "_blank") : undefined,
             }
           }),
         )
-      } catch (e) { console.error("[admin library]", e) }
+      } catch (e) { console.error("[admin library files]", e) }
     })()
     return () => { cancelled = true }
-  }, [libraryOpen, libraryVersion])
+  }, [libraryOpen, libraryFolderId, libraryVersion])
 
   useEffect(() => {
     if (!homeworkOpen) return
@@ -1157,20 +1184,46 @@ export default function AdminRawDashboard({
       {libraryOpen && (
         <FilesModal
           title="Библиотека Raw English"
+          folders={libraryFolders}
           files={libraryFiles}
-          onClose={() => setLibraryOpen(false)}
+          activeFolderId={libraryFolderId}
+          onOpenFolder={setLibraryFolderId}
+          canManage
+          onCreateFolder={async () => {
+            const { id } = await createFolder("library")
+            setLibraryVersion((v) => v + 1)
+            return id
+          }}
+          onRenameFolder={async (id, name) => {
+            await renameFolder(id, name)
+            setLibraryVersion((v) => v + 1)
+          }}
+          onDeleteFolders={async (ids) => {
+            await deleteFolders(ids)
+            setLibraryVersion((v) => v + 1)
+          }}
+          onClose={() => { setLibraryOpen(false); setLibraryFolderId(null) }}
           addLabel={libraryUploading ? "Загружаем…" : "Добавить файл"}
           onFilePicked={handleAdminLibraryUpload}
+          onDeleteFiles={async (ids) => {
+            const results = await Promise.allSettled(
+              ids.map((id) => fetch(`/api/teacher/materials/${id}`, { method: "DELETE" })),
+            )
+            const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)).length
+            if (failed > 0) alert(`Не удалось удалить ${failed} из ${ids.length} файлов`)
+            setLibraryVersion((v) => v + 1)
+          }}
         />
       )}
 
       {homeworkOpen && !hwUploadTarget && (
         <FilesModal
           title="Домашние задания (все ученики)"
+          legacyMode
+          canManage
           files={homeworkFiles}
           onClose={() => setHomeworkOpen(false)}
           onFilePicked={() => {
-            // Открываем picker: сначала выберите ученика
             setHomeworkOpen(false)
             setTimeout(() => (window as any).__openHwPicker?.(), 50)
           }}
@@ -1181,6 +1234,8 @@ export default function AdminRawDashboard({
       {hwUploadTarget && (
         <FilesModal
           title={`Загрузка ДЗ для: ${sortedStudents.find((s) => s.id === hwUploadTarget)?.name ?? "ученика"}`}
+          legacyMode
+          canManage
           files={homeworkFiles.filter((f) => f.name.includes(sortedStudents.find((s) => s.id === hwUploadTarget)?.name ?? "__none__"))}
           onClose={() => setHwUploadTarget(null)}
           onFilePicked={handleAdminHwUpload}

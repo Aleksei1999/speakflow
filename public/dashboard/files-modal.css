@@ -155,3 +155,48 @@
 /* В режиме выбора у карточки — не «hover=lift», а курсор pointer */
 .files-item--select-mode:not(:disabled):hover { transform: none; }
 .files-item.is-selected .files-item-name { font-weight: 700; }
+
+/* Крошка «← Название папки» — над сеткой, отступ снизу. */
+.files-modal-crumbs {
+  flex: 0 0 auto;
+  padding: 0 0 22px;
+}
+.files-modal-back {
+  background: transparent;
+  border: none;
+  padding: 6px 10px 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -1px;
+  transition: opacity .15s;
+}
+.files-modal-back:hover { opacity: .7; }
+
+/* Inline-инпут названия папки — без бордера, авто-сохранение. */
+.files-item-name--input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: center;
+  width: 187px;
+  max-width: 187px;
+  cursor: text;
+}
+.files-item-name--input:focus { text-decoration: underline; text-decoration-color: rgba(30,30,30,.35); }
+
+/* Обёртка для «file + чекбокс» — svg-круг рисуется абсолютно, растягиваем зону выделения. */
+.files-icon--file-wrap { pointer-events: none; }
+.files-icon--file { display: block; }

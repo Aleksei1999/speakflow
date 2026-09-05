@@ -910,15 +910,17 @@ export default function StudentRawDashboard({
       {libraryOpen && (
         <FilesModal
           title="Библиотека Raw English"
+          legacyMode
           files={libraryFiles}
           onClose={() => setLibraryOpen(false)}
-          hideAdd
         />
       )}
 
       {homeworkOpen && (
         <FilesModal
           title="Домашние задания"
+          legacyMode
+          canManage
           files={homeworkFiles}
           onClose={() => setHomeworkOpen(false)}
           onFilePicked={handleStudentHwUpload}

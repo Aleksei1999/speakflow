@@ -1981,11 +1981,13 @@ export default function TeacherRawDashboard({
       {hwFilesOpen && (
         <FilesModal
           title="Библиотека Raw English"
+          legacyMode
+          canManage
           files={hwFiles}
           onClose={() => setHwFilesOpen(false)}
           onFilePicked={handleHwUpload}
           multiple
-          onDelete={async (ids) => {
+          onDeleteFiles={async (ids) => {
             const results = await Promise.allSettled(
               ids.map((id) =>
                 fetch(`/api/teacher/materials/${id}`, { method: "DELETE" }),
@@ -2068,11 +2070,13 @@ export default function TeacherRawDashboard({
       {hwStudentId && (
         <FilesModal
           title={`Домашка — ${studentsState.find((s) => s.id === hwStudentId)?.name ?? "ученик"}`}
+          legacyMode
+          canManage
           files={hwStudentFiles}
           onClose={() => setHwStudentId(null)}
           onFilePicked={handleHwStudentUpload}
           multiple
-          onDelete={async (ids) => {
+          onDeleteFiles={async (ids) => {
             const results = await Promise.allSettled(
               ids.map((id) =>
                 fetch(`/api/teacher/materials/${id}`, { method: "DELETE" }),
