@@ -82,13 +82,15 @@ interface ChatModalProps {
   hideCallActions?: boolean
 }
 
-// Figma Group 335-2: «плюс» на полупрозрачной лаймовой пилюле (34×34 в UI).
+// Figma Group 335-2 (адаптировано под 34×34): «плюс» строго по центру круга.
+// Оригинал был 38×35 — при uniform-scale в 34×34 плюс уезжал по вертикали,
+// поэтому пересчитано в квадратный viewBox 34×34 с идеальным центром (17,17).
 function AttachIcon() {
   return (
-    <svg viewBox="0 0 38 35" width="34" height="34" fill="none" aria-hidden xmlns="http://www.w3.org/2000/svg">
-      <rect width="38" height="35" rx="17.5" fill="#DFED8C" fillOpacity="0.26" />
-      <path d="M10.6406 17.4966H28.1206" stroke="#DFED8C" strokeWidth="3" strokeLinecap="round" />
-      <path d="M19.3828 8.75977L19.3828 26.2398" stroke="#DFED8C" strokeWidth="3" strokeLinecap="round" />
+    <svg viewBox="0 0 34 34" width="34" height="34" fill="none" aria-hidden xmlns="http://www.w3.org/2000/svg">
+      <circle cx="17" cy="17" r="17" fill="#DFED8C" fillOpacity="0.26" />
+      <path d="M9 17H25" stroke="#DFED8C" strokeWidth="3" strokeLinecap="round" />
+      <path d="M17 9V25" stroke="#DFED8C" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }
@@ -459,7 +461,7 @@ export default function ChatModal({
 
   return (
     <>
-    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260905-icons2" />
+    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260905-icons3" />
     <div
       className={`tr-chat-backdrop${variant === "dock" ? " tr-chat-backdrop--dock" : ""}`}
       onClick={variant === "dock" ? undefined : onClose}
