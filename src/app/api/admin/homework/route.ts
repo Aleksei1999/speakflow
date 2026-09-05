@@ -20,19 +20,31 @@ export async function GET(_req: NextRequest) {
     }
 
     const admin = createAdminClient() as any
-    const { data: shares } = await admin
+    const url = new URL(_req.url)
+    const folderId = url.searchParams.get('folder_id')
+    const studentIdFilter = url.searchParams.get('student_id')
+
+    let sharesQ = admin
       .from('material_shares')
       .select('material_id, target_id, created_at')
       .eq('target_type', 'student')
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(500)
+    if (studentIdFilter) sharesQ = sharesQ.eq('target_id', studentIdFilter)
+    const { data: shares } = await sharesQ
 
     const materialIds = Array.from(new Set(((shares ?? []) as any[]).map((s) => s.material_id).filter(Boolean)))
     const studentIds = Array.from(new Set(((shares ?? []) as any[]).map((s) => s.target_id).filter(Boolean)))
     if (!materialIds.length) return NextResponse.json({ materials: [] })
 
+    let matsQ = admin
+      .from('materials')
+      .select('id, title, storage_path, file_url, mime_type, file_size, created_at, folder_id')
+      .in('id', materialIds)
+    if (folderId) matsQ = matsQ.eq('folder_id', folderId)
+
     const [matsRes, profRes] = await Promise.all([
-      admin.from('materials').select('id, title, storage_path, file_url, mime_type, file_size, created_at').in('id', materialIds),
+      matsQ,
       studentIds.length ? admin.from('profiles').select('id, full_name').in('id', studentIds) : Promise.resolve({ data: [] }),
     ])
     const matById = new Map(((matsRes.data ?? []) as any[]).map((m) => [m.id, m]))
@@ -57,6 +69,7 @@ export async function GET(_req: NextRequest) {
           mime_type: m.mime_type,
           created_at: s.created_at,
           signed_url,
+          folder_id: m.folder_id ?? null,
         }
       }),
     )

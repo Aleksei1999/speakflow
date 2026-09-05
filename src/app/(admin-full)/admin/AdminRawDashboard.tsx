@@ -274,6 +274,11 @@ export default function AdminRawDashboard({
   const [libraryFolders, setLibraryFolders] = useState<FolderItem[]>([])
   const [libraryFolderId, setLibraryFolderId] = useState<string | null>(null)
 
+  // Папки Домашки (общий пул). Показываем после выбора ученика — файлы внутри
+  // фильтруются по (folder_id, target_id=ученик).
+  const [homeworkFolders, setHomeworkFolders] = useState<FolderItem[]>([])
+  const [homeworkFolderId, setHomeworkFolderId] = useState<string | null>(null)
+
   async function handleAdminLibraryUpload(file: File) {
     if (!libraryFolderId) { alert("Сначала откройте папку"); return }
     if (file.size > 50 * 1024 * 1024) { alert("Файл больше 50 МБ"); return }
@@ -400,31 +405,64 @@ export default function AdminRawDashboard({
     return () => { cancelled = true }
   }, [libraryOpen, libraryFolderId, libraryVersion])
 
+  // Верхний триггер: если админ кликнул на ДЗ без выбранного ученика — сразу
+  // открываем student-picker (иначе непонятно куда грузить).
   useEffect(() => {
-    if (!homeworkOpen) return
+    if (!homeworkOpen || hwUploadTarget) return
+    setHomeworkOpen(false)
+    const t = setTimeout(() => (window as any).__openHwPicker?.(), 50)
+    return () => clearTimeout(t)
+  }, [homeworkOpen, hwUploadTarget])
+
+  // Список папок Homework (общий пул). Загружаем как только открылся picker
+  // ученика или уже выбран ученик — папки одни и те же.
+  useEffect(() => {
+    if (!homeworkOpen && !hwUploadTarget) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch("/api/admin/homework?limit=200", { cache: "no-store" })
+        const rows = await listFolders("homework")
+        if (cancelled) return
+        setHomeworkFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
+      } catch (e) { console.error("[admin homework folders]", e) }
+    })()
+    return () => { cancelled = true }
+  }, [homeworkOpen, hwUploadTarget, homeworkVersion])
+
+  // Файлы конкретной папки для конкретного ученика.
+  useEffect(() => {
+    if (!hwUploadTarget || !homeworkFolderId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/homework?folder_id=${encodeURIComponent(homeworkFolderId)}&student_id=${encodeURIComponent(hwUploadTarget)}`,
+          { cache: "no-store" },
+        )
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
         setHomeworkFiles(
           (data.materials ?? []).map((m: any) => ({
             id: m.id,
-            name: `${m.title}${m.student_name ? ` → ${m.student_name}` : ""}`,
+            name: m.title,
             status: "loaded" as const,
+            mime: m.mime_type ?? null,
             onOpen: m.signed_url ? () => window.open(m.signed_url, "_blank") : undefined,
           })),
         )
-      } catch (e) { console.error("[admin homework]", e) }
+      } catch (e) { console.error("[admin homework files]", e) }
     })()
     return () => { cancelled = true }
-  }, [homeworkOpen, homeworkVersion])
+  }, [hwUploadTarget, homeworkFolderId, homeworkVersion])
 
   async function handleAdminHwUpload(file: File) {
     if (!hwUploadTarget) {
       alert("Сначала выберите ученика")
+      return
+    }
+    if (!homeworkFolderId) {
+      alert("Сначала откройте папку")
       return
     }
     if (file.size > 25 * 1024 * 1024) { alert("Файл больше 25 МБ"); return }
@@ -433,6 +471,7 @@ export default function AdminRawDashboard({
       const fd = new FormData()
       fd.append("file", file)
       fd.append("studentId", hwUploadTarget)
+      fd.append("folder_id", homeworkFolderId)
       const res = await fetch("/api/admin/homework/upload", { method: "POST", body: fd })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`)
@@ -1216,30 +1255,41 @@ export default function AdminRawDashboard({
         />
       )}
 
-      {homeworkOpen && !hwUploadTarget && (
-        <FilesModal
-          title="Домашние задания (все ученики)"
-          legacyMode
-          canManage
-          files={homeworkFiles}
-          onClose={() => setHomeworkOpen(false)}
-          onFilePicked={() => {
-            setHomeworkOpen(false)
-            setTimeout(() => (window as any).__openHwPicker?.(), 50)
-          }}
-          addLabel="Загрузить для ученика"
-        />
-      )}
+      {/* Верхний вход в ДЗ у админа: без выбора ученика сразу показываем
+          student-picker — основной сценарий «загрузить ДЗ для ученика X». */}
 
       {hwUploadTarget && (
         <FilesModal
-          title={`Загрузка ДЗ для: ${sortedStudents.find((s) => s.id === hwUploadTarget)?.name ?? "ученика"}`}
-          legacyMode
+          title={`ДЗ для: ${sortedStudents.find((s) => s.id === hwUploadTarget)?.name ?? "ученика"}`}
+          folders={homeworkFolders}
+          files={homeworkFiles}
+          activeFolderId={homeworkFolderId}
+          onOpenFolder={setHomeworkFolderId}
           canManage
-          files={homeworkFiles.filter((f) => f.name.includes(sortedStudents.find((s) => s.id === hwUploadTarget)?.name ?? "__none__"))}
-          onClose={() => setHwUploadTarget(null)}
+          onCreateFolder={async () => {
+            const { id } = await createFolder("homework")
+            setHomeworkVersion((v) => v + 1)
+            return id
+          }}
+          onRenameFolder={async (id, name) => {
+            await renameFolder(id, name)
+            setHomeworkVersion((v) => v + 1)
+          }}
+          onDeleteFolders={async (ids) => {
+            await deleteFolders(ids)
+            setHomeworkVersion((v) => v + 1)
+          }}
+          onClose={() => { setHwUploadTarget(null); setHomeworkFolderId(null) }}
           onFilePicked={handleAdminHwUpload}
-          addLabel={hwUploading ? "Загружаем…" : "Загрузить файл"}
+          addLabel={hwUploading ? "Загружаем…" : "Добавить файл"}
+          onDeleteFiles={async (ids) => {
+            const results = await Promise.allSettled(
+              ids.map((id) => fetch(`/api/teacher/materials/${id}`, { method: "DELETE" })),
+            )
+            const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)).length
+            if (failed > 0) alert(`Не удалось удалить ${failed} из ${ids.length} файлов`)
+            setHomeworkVersion((v) => v + 1)
+          }}
         />
       )}
 
