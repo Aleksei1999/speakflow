@@ -24,7 +24,7 @@ interface Props {
   onClose: () => void
 }
 
-type State = 'empty' | 'picking-datetime' | 'picking-tag' | 'filled' | 'creating' | 'success' | 'error'
+type State = 'empty' | 'picking-datetime' | 'picking-tag' | 'picking-host' | 'filled' | 'creating' | 'success' | 'error'
 
 // Категории событий (Figma 2522:10819 «Тип события»). Значение сохраняем в
 // lectures.tag и рендерим как пилюлю на карточке лектория у ученика.
@@ -42,7 +42,25 @@ export default function AdminAddLectureModal({ onClose }: Props) {
 
   const [state, setState] = useState<State>('empty')
   const [title, setTitle] = useState('')
+  // host — имя выбранного преподавателя (сохраняется в lectures.host_name).
   const [host, setHost] = useState('')
+  const [teachers, setTeachers] = useState<Array<{ key: string; label: string }>>([])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/booking/teachers', { cache: 'no-store' })
+        if (!r.ok) return
+        const j = await r.json()
+        if (cancelled) return
+        const rows = ((j.teachers ?? []) as any[])
+          .map((t) => ({ key: String(t.name ?? '').trim(), label: String(t.name ?? '').trim() }))
+          .filter((t) => t.key.length > 0)
+        setTeachers(rows)
+      } catch (e) { console.error('[lecture modal] teachers', e) }
+    })()
+    return () => { cancelled = true }
+  }, [])
   const [desc, setDesc] = useState('')
   const [dateKey, setDateKey] = useState<string | null>(null)
   const [timeKey, setTimeKey] = useState<string | null>(null)
@@ -58,7 +76,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (state === 'picking-datetime' || state === 'picking-tag') setState(canCreate ? 'filled' : 'empty')
+      if (state === 'picking-datetime' || state === 'picking-tag' || state === 'picking-host') setState(canCreate ? 'filled' : 'empty')
       else handleClose()
     }
     document.addEventListener('keydown', onKey)
@@ -81,7 +99,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   }, [state])
 
   useEffect(() => {
-    if (['creating', 'success', 'error', 'picking-datetime', 'picking-tag'].includes(state)) return
+    if (['creating', 'success', 'error', 'picking-datetime', 'picking-tag', 'picking-host'].includes(state)) return
     setState(canCreate ? 'filled' : 'empty')
   }, [canCreate, state])
 
@@ -159,21 +177,54 @@ export default function AdminAddLectureModal({ onClose }: Props) {
               />
             </div>
 
-            {/* ФИО организатора */}
-            <div className="tr-add-lesson-pill tr-add-lesson-pill--full"
-              style={{ padding: 0, background: '#FFF' }}>
-              <input
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                placeholder="введите ФИО организатора"
-                style={{
-                  width: '100%', height: '100%', border: 0, outline: 0, background: 'transparent',
-                  padding: '0 40px', textAlign: 'center',
-                  fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 24,
-                  letterSpacing: '-1.2px', color: '#1E1E1E',
+            {/* Преподаватель — picker из существующих учителей (сохраняем имя
+                в lectures.host_name, как раньше). */}
+            {state === 'picking-host' ? (
+              <div className="tr-add-lesson-row tr-add-lesson-row--picker">
+                <div className="tr-add-lesson-half tr-add-lesson-half--picker" style={{ flex: 1, maxWidth: '100%' }}>
+                  <div className="tr-add-lesson-picker-head">
+                    <span className="tr-add-lesson-pill-placeholder">преподаватель</span>
+                    <button
+                      type="button"
+                      className="tr-add-lesson-picker-back"
+                      aria-label="Свернуть"
+                      onClick={() => setState(canCreate ? 'filled' : 'empty')}
+                    >
+                      <ArrowLeftLime />
+                    </button>
+                  </div>
+                  {teachers.length > 0 ? (
+                    <WheelPicker
+                      items={teachers}
+                      value={host || teachers[0].key}
+                      onChange={setHost}
+                      ariaLabel="Преподаватель"
+                    />
+                  ) : (
+                    <div style={{
+                      padding: 24, textAlign: 'center', color: 'rgba(30,30,30,0.7)',
+                      fontFamily: 'Inter, sans-serif', fontSize: 20,
+                    }}>
+                      Загружаем список преподавателей…
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="tr-add-lesson-pill tr-add-lesson-pill--full"
+                onClick={() => {
+                  if (!host && teachers[0]) setHost(teachers[0].key)
+                  setState('picking-host')
                 }}
-              />
-            </div>
+              >
+                {host
+                  ? <span className="tr-add-lesson-pill-value">{host}</span>
+                  : <span className="tr-add-lesson-pill-placeholder">преподаватель</span>}
+                <ArrowDown />
+              </button>
+            )}
 
             {/* Тип события (Figma 2522:10819) — WheelPicker с фиксированным
                 списком категорий, сохраняется в lectures.tag. */}
