@@ -24,7 +24,16 @@ interface Props {
   onClose: () => void
 }
 
-type State = 'empty' | 'picking-datetime' | 'filled' | 'creating' | 'success' | 'error'
+type State = 'empty' | 'picking-datetime' | 'picking-tag' | 'filled' | 'creating' | 'success' | 'error'
+
+// Категории событий (Figma 2522:10819 «Тип события»). Значение сохраняем в
+// lectures.tag и рендерим как пилюлю на карточке лектория у ученика.
+const TAG_OPTIONS = [
+  { key: 'Marketing', label: 'Marketing' },
+  { key: 'CV', label: 'CV' },
+  { key: 'Travel', label: 'Travel' },
+  { key: 'Tecnolodgy', label: 'Tecnolodgy' },
+] as const
 
 export default function AdminAddLectureModal({ onClose }: Props) {
   const router = useRouter()
@@ -37,6 +46,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   const [desc, setDesc] = useState('')
   const [dateKey, setDateKey] = useState<string | null>(null)
   const [timeKey, setTimeKey] = useState<string | null>(null)
+  const [tagKey, setTagKey] = useState<string | null>(null)
   const [price, setPrice] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successRemaining, setSuccessRemaining] = useState(60)
@@ -48,7 +58,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (state === 'picking-datetime') setState(canCreate ? 'filled' : 'empty')
+      if (state === 'picking-datetime' || state === 'picking-tag') setState(canCreate ? 'filled' : 'empty')
       else handleClose()
     }
     document.addEventListener('keydown', onKey)
@@ -71,7 +81,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   }, [state])
 
   useEffect(() => {
-    if (['creating', 'success', 'error', 'picking-datetime'].includes(state)) return
+    if (['creating', 'success', 'error', 'picking-datetime', 'picking-tag'].includes(state)) return
     setState(canCreate ? 'filled' : 'empty')
   }, [canCreate, state])
 
@@ -93,6 +103,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
       fd.append('scheduled_at', dt.toISOString())
       fd.append('slot', 'small')
       fd.append('duration_minutes', '60')
+      if (tagKey) fd.append('tag', tagKey)
       if (price) fd.append('price', price)
       const res = await fetch('/api/lectures', { method: 'POST', body: fd })
       const j = await res.json().catch(() => ({}))
@@ -163,6 +174,49 @@ export default function AdminAddLectureModal({ onClose }: Props) {
                 }}
               />
             </div>
+
+            {/* Тип события (Figma 2522:10819) — WheelPicker с фиксированным
+                списком категорий, сохраняется в lectures.tag. */}
+            {state === 'picking-tag' ? (
+              <div className="tr-add-lesson-row tr-add-lesson-row--picker">
+                <div
+                  className="tr-add-lesson-half tr-add-lesson-half--picker"
+                  style={{ flex: 1, maxWidth: '100%' }}
+                >
+                  <div className="tr-add-lesson-picker-head">
+                    <span className="tr-add-lesson-pill-placeholder">тип события</span>
+                    <button
+                      type="button"
+                      className="tr-add-lesson-picker-back"
+                      aria-label="Свернуть"
+                      onClick={() => setState(canCreate ? 'filled' : 'empty')}
+                    >
+                      <ArrowLeftLime />
+                    </button>
+                  </div>
+                  <WheelPicker
+                    items={TAG_OPTIONS as unknown as { key: string; label: string }[]}
+                    value={tagKey ?? TAG_OPTIONS[0].key}
+                    onChange={setTagKey}
+                    ariaLabel="Тип события"
+                  />
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="tr-add-lesson-pill tr-add-lesson-pill--full"
+                onClick={() => {
+                  if (!tagKey) setTagKey(TAG_OPTIONS[0].key)
+                  setState('picking-tag')
+                }}
+              >
+                {tagKey
+                  ? <span className="tr-add-lesson-pill-value">{tagKey}</span>
+                  : <span className="tr-add-lesson-pill-placeholder">тип события</span>}
+                <ArrowDown />
+              </button>
+            )}
 
             {/* Дата + Время */}
             {state === 'picking-datetime' ? (
