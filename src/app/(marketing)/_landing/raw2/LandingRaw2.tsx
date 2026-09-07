@@ -33,7 +33,7 @@ const Chevron = () => (
 const FEATURES = [
   { icon: "ic-bubble.svg", iconActive: "ic-bubble-red.svg", title: <>Разговорные<br />клубы</>, body: <>Speaking club<br /><b>с носителями</b><br />каждый день.</> },
   { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: <>CV / резюме</>, body: <>Составляем резюме<br />на английском<br /><b>вместе с вами</b><br />для трудоустройства.</> },
-  { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: <>Индивидуальные<br />уроки</>, body: <>Никаких больших<br />групп. Всё внимание —<br /><b>только вам.</b></> },
+  { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: <>Индивидуальные<br />уроки</>, body: <>Никаких больших<br />групп. Всё внимание –<br /><b>только вам.</b></> },
   { icon: "ic-psy.svg", iconActive: "ic-psy-red.svg", title: <>Работа<br />с психологом</>, body: <>Преодолевай<br />языковой барьер,<br /><b>избавляйся<br />от страха</b><br />со специалистом.</> },
   { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: <>Лекции</>, body: <>Развивайся<br /><b>в профессии и хобби</b><br />с нашими лекциями<br />на английском языке.</> },
 ];
@@ -60,10 +60,15 @@ const PRICES = [
   },
 ];
 
+// Типографика: короткие предлоги/союзы не оставляем в конце строки — приклеиваем к следующему слову
+// неразрывным пробелом (просьба заказчика для блока FAQ).
+const NBSP_WORDS = /(^|[\s(«])(в|во|с|со|и|а|но|на|не|ни|к|ко|о|об|от|до|за|из|по|под|при|у|же|бы|ли|для|как|что|кто|те|вы|мы|я)\s+/gi;
+const nb = (s: string) => s.replace(NBSP_WORDS, (_m, pre: string, w: string) => `${pre}${w}\u00A0`);
+
 const FAQ = [
-  { q: "У меня страх говорить. Как вы с этим помогаете?", a: "Мы начинаем с бережных форматов: индивидуальные уроки и небольшие клубы, где ошибаться — норма. Преподаватель ведёт тебя от простого к сложному, поэтому страх уходит уже на первых занятиях." },
-  { q: "Через сколько я буду знать английский?", a: "Всё индивидуально и зависит от старта и регулярности. Первые результаты в разговоре видны через 1–2 месяца системных занятий — а план обучения мы строим под твою цель." },
-  { q: "Как узнать свою прожарку? Что эти уровни вообще значат?", a: "Пройди бесплатный тест из 12 вопросов — он определит твой уровень «прожарки» от Raw до Well Done. Это игровая шкала твоего английского с персональным планом, что подтянуть." },
+  { q: "У меня страх говорить. Как вы с этим помогаете?", a: "Мы начинаем с бережных форматов: индивидуальные уроки и небольшие клубы, где ошибаться – норма. Преподаватель ведёт тебя от простого к сложному, поэтому страх уходит уже на первых занятиях." },
+  { q: "Через сколько я буду знать английский?", a: "Всё индивидуально и зависит от старта и регулярности. Первые результаты в разговоре видны через 1–2 месяца системных занятий – а план обучения мы строим под твою цель." },
+  { q: "Как узнать свою прожарку? Что эти уровни вообще значат?", a: "Пройди бесплатный тест из 12 вопросов – он определит твой уровень «прожарки» от Raw до Well Done. Это игровая шкала твоего английского с персональным планом, что подтянуть." },
   { q: "Кто ведёт уроки и клубы? Это носители языка?", a: "Мы индивидуально подбираем преподавателей для учеников. Это носители языка и те, кто много лет обучают английскому. Профессионалы, которые точно дадут результат, а уроки с ними будут интересными." },
 ];
 
@@ -472,7 +477,7 @@ export default function LandingRaw2() {
   return (
     <div className="raw2">
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260907-zoom" />
+      <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260908-glass" />
 
       {/* ============ NAV ============ */}
       <nav className="raw2-nav">
@@ -495,7 +500,7 @@ export default function LandingRaw2() {
       <header className="raw2-hero" style={{ backgroundImage: "url(/landing/raw2/hero.webp)" }}>
         <div className="wrap">
           <div className="glass">
-            <h1>Преврати<br />сырой английский<br />в <span className="c-lime">сочный<br />разговорный</span></h1>
+            <h1>ПРЕВРАТИ<br />СЫРОЙ АНГЛИЙСКИЙ<br />В <span className="c-lime">СОЧНЫЙ<br />РАЗГОВОРНЫЙ</span></h1>
             <p className="lede">Без скуки, без зубрёжки,<br />в компании таких же голодных<br />до языка людей.</p>
             <button type="button" className="cta-red" onClick={() => setQuizOpen(true)}>
               <span className="free">бесплатно</span>
@@ -503,18 +508,18 @@ export default function LandingRaw2() {
             </button>
             <div className="cta-row">
               <button type="button" className="btn btn-lime" onClick={() => setQuizOpen(true)}>пройти тест</button>
-              <button type="button" className="btn btn-arrow" onClick={() => setQuizOpen(true)} aria-label="Пройти тест"><ArrowRightFilled /></button>
+              <button type="button" className="btn btn-arrow" onClick={() => setQuizOpen(true)} aria-label="Пройти тест"><img src="/landing/raw2/ic-arrow.svg" alt="" aria-hidden /></button>
             </div>
           </div>
         </div>
-        <div className="bubble">Ты пройдёшь путь от страха сказать слово до умения шутить на английском.</div>
+        <div className="bubble">Ты пройдешь путь от страха<br />сказать слово до умения<br />шутить на английском.</div>
       </header>
 
       {/* ============ SYSTEM ============ */}
       <section id="system" className="raw2-system">
         <div className="wrap">
           <div className="badge-wrap">
-            <span className="badge-title badge-title--outline-lime" style={{ borderRadius: "41.5px", border: "4px solid #DFED8C", color: "#1E1E1E" }}>
+            <span className="badge-title badge-title--outline-lime" style={{ width: 1043, color: "#1E1E1E" }}>
               Система, в которую заходишь <span className="c-red">с пользой</span>:
             </span>
           </div>
@@ -576,20 +581,20 @@ export default function LandingRaw2() {
           <div className="bio">
             <div className="bio-card bio-green">
               <ul>
-                <li>Два высших<br />образования:<br />маркетинг,<br />в университете<br /><b className="lime">Хартфордшира,<br />Великобритания</b><br />и филологический<br />факультет<br />педагогического<br />направления<br />в <b className="lime">Южном<br />федеральном<br />университете.</b></li>
-                <li>Начинала преподавать<br />по объявлению, затем работала<br /><b className="lime">в самой популярной школе</b> английского<br />в Ростове.</li>
+                <li>{nb('Два высших образования: маркетинг, в университете ')}<b className="lime">{nb('Хартфордшира, Великобритания')}</b>{nb(' и филологический факультет педагогического направления в ')}<b className="lime">{nb('Южном федеральном университете')}</b>.</li>
+                <li>{nb('Начинала преподавать по объявлению, затем работала ')}<b className="lime">{nb('в самой популярной школе')}</b>{nb(' английского в Ростове.')}</li>
               </ul>
             </div>
             <div className="bio-col">
               <div className="bio-card bio-green">
                 <ul>
-                  <li>Бабушка учила<br />её английскому<br /><b className="lime">с 5 лет.</b></li>
+                  <li>Бабушка учила<br />её английскому<br /><b className="lime">{nb('с 5 лет')}</b>.</li>
                 </ul>
               </div>
               <div className="bio-card bio-dark">
                 <ul>
-                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="red">учится с<br />удовольствием.</b></li>
-                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="red">помогать<br />бизнесу расти</b><br />через английский.</li>
+                  <li>{nb('Решила создать')}<br />{nb('школу,')}<br />{nb('где английский становится частью жизни и ')}<b className="red">{nb('учится с удовольствием')}</b>.</li>
+                  <li>{nb('В планах – выход')}<br />{nb('на новый уровень:')}<br />{nb('обучать сотрудников')}<br />{nb('компаний, ')}<b className="red">помогать<br />{nb('бизнесу расти')}</b><br />{nb('через английский.')}</li>
                 </ul>
               </div>
             </div>
@@ -597,7 +602,7 @@ export default function LandingRaw2() {
         </div>
         <div className="tags">
           <span className="tag-name">Валерия, 29 лет</span>
-          <span className="tag-mission"><span className="mi">миссия</span>учить языку в лёгкости</span>
+          <span className="tag-mission"><span className="mi">миссия</span>обучать языку в лёгкости</span>
         </div>
       </section>
 
@@ -605,7 +610,7 @@ export default function LandingRaw2() {
       <section className="raw2-free">
         <div className="wrap">
           <div className="badge-wrap">
-            <span className="badge-title badge-title--outline">Первое <span className="c-red">бесплатное</span> занятие</span>
+            <span className="badge-title badge-title--outline" style={{ width: 734 }}>Первое <span className="c-red">бесплатное</span> занятие</span>
           </div>
           <div className="bento">
             {FREE_CARDS.map((c, i) => (
@@ -621,7 +626,7 @@ export default function LandingRaw2() {
       <section id="price" className="raw2-price" style={{ backgroundImage: "url(/landing/raw2/pricing-bg.jpg)" }}>
         <div className="wrap">
           <div className="badge-wrap">
-            <span className="badge-title badge-title--outline">Цены</span>
+            <span className="badge-title badge-title--outline" style={{ width: 280 }}>Цены</span>
           </div>
           <div className="cards">
             {PRICES.map((p) => (
@@ -647,20 +652,18 @@ export default function LandingRaw2() {
         <img src="/landing/raw2/mascot-r.svg" alt="" aria-hidden className="mascot" />
         <div className="wrap">
           <div className="badge-wrap">
-            <span className="badge-title badge-title--outline-lime">Популярные вопросы</span>
+            <span className="badge-title badge-title--outline-lime" style={{ width: 574 }}>Популярные вопросы</span>
           </div>
           <div className="raw2-faq-list">
             {FAQ.map((f, i) => (
               <div className={`raw2-faq-item ${openFaq === i ? "open" : ""}`} key={i}>
                 <button className="raw2-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                  <span>{f.q}</span>
+                  <span>{nb(f.q)}</span>
                 </button>
                 {openFaq === i && (
                   <div className="raw2-faq-a">
-                    <span className="raw2-faq-a-text">{f.a}</span>
-                    <svg viewBox="0 0 48 22" fill="none" className="chev-down" aria-hidden>
-                      <path d="M4.00037 4.00049L24.0004 18.0005L44.0004 4.00049" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <span className="raw2-faq-a-text">{nb(f.a)}</span>
+                    <img src="/landing/raw2/ic-faq-arrow.svg" alt="" aria-hidden className="chev-down" />
                   </div>
                 )}
               </div>

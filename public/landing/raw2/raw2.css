@@ -84,23 +84,27 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .raw2 .btn.busy, .raw2 .btn.busy:disabled, .raw2 .btn.busy:hover { background: #1E1E1E !important; color: var(--lime) !important; opacity: 1 !important; transform: none; cursor: progress; }
 
 /* section-title badge — Figma: Inter 700, 40px, letter-spacing -5%, line-height 117% */
+/* section-title badge — Figma (2522:785 / 885 / 832 / 840): h 83, обводка 4px, r 41.5, Inter 700 40px / -2px / 117%,
+   ширина у каждого заголовка своя (фикс. прямоугольник в макете) — задаётся inline в разметке */
 .raw2 .badge-title {
-  display: inline-block; text-align: center; line-height: 1.17;
-  font-weight: 700; text-transform: uppercase; letter-spacing: -0.05em;
+  box-sizing: border-box; display: inline-block; height: 83px; text-align: center; line-height: 75px; /* 83 − 2×4 border; inline-block, чтобы не терять пробелы вокруг <span> */
+  font-weight: 700; text-transform: uppercase; letter-spacing: -2px;
   font-size: clamp(1.5rem, 3.2vw, 40px);
-  padding: 16px 40px; border-radius: var(--radius-pill);
+  padding: 0 40px; border-radius: 41.5px;
 }
 .raw2 .badge-title--lime   { background: var(--lime); color: var(--ink); }
-.raw2 .badge-title--outline { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
-.raw2 .badge-title--outline-lime { background: transparent; border: 2px solid var(--lime); color: #fff; }
+.raw2 .badge-title--outline { background: transparent; border: 4px solid var(--ink); color: var(--ink); }
+.raw2 .badge-title--outline-lime { background: transparent; border: 4px solid var(--lime); color: #fff; }
 
 /* ============================================================
    NAV
    ============================================================ */
+/* Figma 4003:167 (1441×171): лого 171×98 at (73,63); тексты пунктов top 100, x 300/444/635/791/953 (между текстами 56);
+   «Личный кабинет» 183×48 r29.5 at (1153,87), текст x=1176 top 100 */
 .raw2-nav {
   position: absolute; top: 0; left: 0; right: 0; z-index: 40;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 24px; padding: 26px 40px;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  gap: 0; padding: 63px 105px 0 73px; height: 171px; box-sizing: border-box;
 }
 .raw2-nav::before {
   content: '';
@@ -112,13 +116,21 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 /* Figma: 171×98 */
 .raw2-nav .brand .logo-img { width: 171px; height: 98px; display: block; }
 /* Figma: расстояние между текстами пунктов = 56px (замерил) → gap 16 + padding 20×2 */
-.raw2-nav .nav-links { display: flex; align-items: center; gap: 16px; list-style: none; }
+/* box первого пункта = 300 − padding 20 = 280 → margin-left 280 − 244 (правый край лого) = 36; top 100 − 11 = 89 → margin-top 26 */
+.raw2-nav .nav-links { display: flex; align-items: center; gap: 16px; list-style: none; margin: 28px 0 0 36px; }
+/* ширины пунктов = ширина текста в Figma + 2×20 padding, чтобы x текстов совпали (300/444/635/791/953) независимо от метрик шрифта */
+.raw2-nav .nav-links a { display: inline-block; box-sizing: border-box; text-align: left; }
+.raw2-nav .nav-links li:nth-child(1) a { width: 127.87px; }
+.raw2-nav .nav-links li:nth-child(2) a { width: 175.11px; }
+.raw2-nav .nav-links li:nth-child(3) a { width: 140px; }
+.raw2-nav .nav-links li:nth-child(4) a { width: 146.77px; }
+.raw2-nav .nav-links li:nth-child(5) a { width: 216.68px; }
 /* hover/active state (Figma «при нажатии»): lime pill + dark text */
 .raw2-nav .nav-links a { color: var(--ink); font-size: 18px; font-weight: 500; letter-spacing: -0.9px; line-height: 0.975; padding: 11px 20px; border-radius: var(--radius-pill); transition: background .2s, color .2s; }
 .raw2-nav .nav-links a:hover { background: var(--lime); color: var(--ink); }
-.raw2-nav .nav-actions { display: flex; align-items: center; gap: 14px; }
+.raw2-nav .nav-actions { display: flex; align-items: center; gap: 14px; margin-left: auto; margin-top: 24px; }
 .raw2-nav .pill {
-  padding: 13px 26px; border-radius: var(--radius-pill);
+  box-sizing: border-box; display: inline-flex; align-items: flex-start; width: 183px; height: 48px; padding: 15px 0 0 23px; text-align: left; border-radius: 29.5px;
   font-weight: 500; font-size: 18px; letter-spacing: -0.9px; line-height: 0.975;
   transition: transform .18s ease, background .18s ease;
 }
@@ -136,19 +148,32 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
    ============================================================ */
 /* Figma frame: 1441×1121 → держим точный aspect на всех широких экранах,
    не даём растянуться по высоте при wide viewport (иначе фото режется по бокам) */
+/* Figma 4003:172: карточка 677×753 at (107, 223) в hero 1441×1121 */
 .raw2-hero {
-  position: relative; aspect-ratio: 1441 / 1121; min-height: 600px; display: flex; align-items: center;
-  background-size: cover; background-position: center;
-  padding: 140px 0 90px;
+  position: relative; aspect-ratio: 1441 / 1121; min-height: 600px; display: flex; align-items: flex-start;
+  /* Figma 2522:734: фото 2017×1237 (ширина 139.97% от 1441) at (−274, −37) — срез 274 слева, 302 справа, 37 сверху */
+  background-size: 139.97% auto; background-position: -274px -37px;
+  padding: 223px 0 0;
 }
 .raw2-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.15) 55%, rgba(0,0,0,0) 100%); z-index: 1; }
-.raw2-hero .wrap { position: relative; z-index: 2; }
+.raw2-hero .wrap { position: relative; z-index: 2; max-width: 1441px; padding: 0 107px; }
 /* Figma: 677×753, border-radius 29.5 */
+/* Figma 2522:745: rgba(30,30,30,.45), без обводки и блюра; текст от углов 87 / 74; низ 976 − 897 = 79 */
+/* Glass как у карточек преподавателя (Figma Glass-эффект): blur+saturate, светлая рамка, диагональный блик */
 .raw2-hero .glass {
-  width: 677px; max-width: 100%; min-height: 753px; padding: 74px 80px 74px 87px; border-radius: 29.5px;
-  background: rgba(20,16,14,.34); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,.14);
+  position: relative; overflow: hidden;
+  box-sizing: border-box; width: 677px; max-width: 100%; min-height: 753px; padding: 74px 80px 79px 87px; border-radius: 29.5px;
+  background: rgba(30,30,30,.45);
+  backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
 }
+.raw2-hero .glass::after {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.raw2-hero .glass > * { position: relative; z-index: 1; }
 /* Figma: 48px, 700, -2.4px, 96.96% */
 /* Figma: 48px / 700 / -2.4px (-0.05em) / uppercase.
    Внутренняя leading 96.96%, но baseline-to-baseline между <p> ≈ 1.115
@@ -156,35 +181,44 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .raw2-hero h1 { font-size: clamp(2rem, 4.2vw, 48px); color: #fff; font-weight: 700; letter-spacing: -0.05em; line-height: 1.12; text-transform: uppercase; }
 .raw2-hero h1 .c-lime { color: var(--lime); }
 /* subtitle Figma: 30px, 500, -1.5px, 97.5% */
-.raw2-hero .lede { margin: 26px 0 34px; color: #fff; font-size: clamp(1.2rem,2.2vw,30px); font-weight: 500; line-height: 0.975; letter-spacing: -1.5px; text-transform: none; }
+/* Figma: h1 297…511, lede top 552 → 41; cta top 680, lede bottom 639.75 → 40.25 */
+.raw2-hero .lede { margin: 41px 0 40.25px; color: #fff; font-size: clamp(1.2rem,2.2vw,30px); font-weight: 500; line-height: 0.975; letter-spacing: -1.5px; text-transform: none; }
 /* CTA "узнай свой уровень" Figma: Inter 40px/700, line-height 106.282%, letter-spacing -2px, uppercase */
 .raw2-hero .cta-red {
   position: relative; display: inline-flex; align-items: center; justify-content: flex-start; text-align: left;
   background: var(--red); color: #fff;
-  font-weight: 700; text-transform: uppercase; font-size: clamp(1.5rem,2.9vw,40px); line-height: 1.06282;
-  letter-spacing: -2px; padding: 22px 30px; border-radius: 34px;
+  /* Figma 2522:754: текст at (227, 701) в кнопке (194, 680) → padding 21 / 33; box 86 на 2 строки → line-height 1.075 */
+  align-items: flex-start; font-weight: 700; text-transform: uppercase; font-size: clamp(1.5rem,2.9vw,40px); line-height: 1.075;
+  letter-spacing: -2px; padding: 21px 38px 0 33px; border-radius: 34px;
   width: 486px; height: 129px; max-width: 100%; white-space: nowrap;
 }
 /* «бесплатно» Figma: 20px / 500 / -1px + плашка 135.56×35.856 / rotate(5.203deg) */
 .raw2-hero .cta-red .free {
-  position: absolute; top: -18px; right: 20px; background: var(--lime); color: var(--ink);
-  font-size: 20px; font-weight: 500; letter-spacing: -1px; text-transform: none;
+  /* Figma 2522:755: bbox 138.25×48 at (512.25, 666) → в координатах кнопки (194, 680): центр (387.4, 10) → left 319.6, top −7.93 */
+  position: absolute; top: -7.93px; left: 319.6px; background: var(--lime); color: var(--ink);
+  font-size: 20px; font-weight: 500; letter-spacing: -1px; line-height: 0.8782; text-transform: none;
   width: 135.56px; height: 35.856px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 999px; transform: rotate(5.203deg);
+  border-radius: 20.5px; transform: rotate(5.2deg); transform-origin: center;
 }
-.raw2-hero .cta-row { display: flex; align-items: center; gap: 0; margin-top: 22px; }
+/* Figma: «пройти тест» 240×68 at (194, 829): 20px под CTA; круг 67×68 вплотную */
+.raw2-hero .cta-row { display: flex; align-items: center; gap: 0; margin-top: 20px; }
 /* "пройти тест" Figma: 32px, 700, -1.6px, lowercase */
-.raw2-hero .cta-row .btn-lime { text-transform: none; font-weight: 700; font-size: clamp(1.3rem,2.3vw,32px); letter-spacing: -0.05em; }
+.raw2-hero .cta-row .btn-lime { box-sizing: border-box; width: 240px; height: 68px; padding: 0; text-transform: none; font-weight: 700; font-size: clamp(1.3rem,2.3vw,32px); letter-spacing: -0.05em; line-height: 0.8053; }
+/* стрелка — экспорт Figma 2522:760 (ic-arrow.svg 37×36.82), по центру круга */
+.raw2-hero .cta-row .btn-arrow img { width: 37px; height: 36.82px; display: block; }
 
-/* speech bubble Figma: 20px, 700, -1px, 97.46%, #DFED8C, 327.401×108.396, rotate -3.237 */
+/* speech bubble — Figma 4003:168: прямоугольник 327.401×108.396 r29.5 rgba(30,30,30,.39), rotate −7.5°,
+   bbox после поворота 338.75×150.22 at (997, 830.76) от верха hero (1441×1121) → центр (1166.4, 905.9),
+   неповёрнутый top-left (1002.7, 851.7) = 69.58% / 75.98%. Текст Inter 700 20px / −1px / 97.5%, #DFED8C,
+   отступ текста от угла 31.7×29.2, три строки как в макете. */
 .raw2-hero .bubble {
-  position: absolute; right: 3%; bottom: 26%; z-index: 2;
+  position: absolute; left: 69.58%; top: 75.98%; z-index: 2; box-sizing: border-box;
   width: 327.401px; height: 108.396px;
-  background: rgba(30,30,30,.42); backdrop-filter: blur(8px); color: #DFED8C;
-  padding: 16px 22px; border-radius: 29.5px;
-  display: flex; align-items: center;
-  font-size: 20px; font-weight: 700; line-height: 97.46%; letter-spacing: -1px;
-  transform: rotate(-3.237deg);
+  background: rgba(30,30,30,.39); backdrop-filter: blur(8px); color: #DFED8C;
+  padding: 29.2px 20.6px 20.7px 31.7px; border-radius: 29.5px;
+  white-space: nowrap;
+  font-size: 20px; font-weight: 700; line-height: 0.975; letter-spacing: -1px;
+  transform: rotate(-7.5deg); transform-origin: center;
 }
 
 /* ============================================================
@@ -307,13 +341,15 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 /* Figma frame: 1441×1069 → aspect-ratio 1441/1069 ≈ 74.2vw
    Держим пропорцию до 1441px, потом капим на 1069.
    padding-bottom 129px — расстояние от bio-карточек до низа секции (замер Figma). */
-.raw2-founder { position: relative; background: #1a1714 center/cover; padding: 90px 0 129px; color: #fff; min-height: clamp(600px, 74.2vw, 1069px); }
+/* Figma 4003:173 (1441×1073): заголовок 722×156 at (107,77); карточки 348 at (107,260) / (481,260) / (481,447); низ 1073 − 944 = 129 */
+.raw2-founder { position: relative; background: #1a1714 center/cover; padding: 77px 0 129px; color: #fff; min-height: clamp(600px, 74.5vw, 1073px); }
 .raw2-founder::before { content:''; position:absolute; inset:0; background: linear-gradient(90deg, rgba(15,13,11,.9) 0%, rgba(15,13,11,.55) 45%, rgba(15,13,11,.05) 75%); }
-.raw2-founder .wrap { position: relative; z-index: 2; }
-.raw2-founder .badge-title { margin-bottom: 46px; border-radius: 29.5px; text-align: left; padding: 31px 40px; }
+.raw2-founder .wrap { position: relative; z-index: 2; max-width: 1441px; padding: 0 107px; }
+/* Figma 2522:888/889: 722×156, обводка 4, текст at (160,108) → padding 27/49 + border 4; Inter 700 40px / −2px / 117.3% */
+.raw2-founder .badge-title { box-sizing: border-box; width: 722px; height: 156px; margin-bottom: 27px; border-radius: 29.5px; text-align: left; padding: 27px 16px 0 49px; line-height: 1.173; display: inline-block; border-width: 4px; letter-spacing: -2px; white-space: nowrap; }
 /* Figma: левая колонка 348×684, padding 45 43 45 53 */
 .raw2-founder .bio { display: grid; grid-template-columns: 348px 348px; gap: 26px; max-width: 722px; align-items: stretch; }
-.raw2-founder .bio-col { display: flex; flex-direction: column; gap: 26px; }
+.raw2-founder .bio-col { display: flex; flex-direction: column; gap: 23px; }
 /* bio Figma Glass: Fill 929D4F 39% + Refraction 100 / Depth 81 / Dispersion 58 / Splay 100 / Light -45° 80%
    CSS-приближение: сильный blur+saturate, светлая внутренняя рамка (highlight от -45°), диагональный gradient sheen */
 .raw2-founder .bio-card {
@@ -321,7 +357,8 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
-  font-size: clamp(1.05rem,1.7vw,24px); font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; text-transform: none;
+  /* Figma: Inter 500 28px / −1.4px / 96% */
+  font-size: clamp(1.05rem,1.95vw,28px); font-weight: 500; line-height: 0.96; letter-spacing: -1.4px; text-transform: none;
 }
 /* glass sheen — диагональный highlight (Figma Light -45°) */
 .raw2-founder .bio-card::after {
@@ -340,19 +377,20 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .raw2-founder .bio-col .bio-green { min-height: 164px; padding: 41px 48px 42px 48px; }
 /* правая нижняя (Rectangle 176 «Решила создать…») — 51 / 13 / 95 / 45 */
 .raw2-founder .bio-col .bio-dark { min-height: 497px; padding: 51px 13px 95px 45px; }
-.raw2-founder .bio-card ul { list-style: none; display: flex; flex-direction: column; gap: 20px; }
-.raw2-founder .bio-card li { padding-left: 20px; position: relative; }
-.raw2-founder .bio-card li::before { content:'•'; position:absolute; left: 0; color:#fff; }
+/* абзацы разделены пустой строкой (26.88px); буллит — Figma Ellipse 25 (11.5px, белый) на 9px левее текста, первая строка с отступом «  » */
+.raw2-founder .bio-card ul { list-style: none; display: flex; flex-direction: column; gap: 26.88px; }
+.raw2-founder .bio-card li { position: relative; text-indent: 14px; }
+.raw2-founder .bio-card li::before { content: ''; position: absolute; left: -9px; top: 10px; width: 11.5px; height: 11.5px; background: url(/landing/raw2/ic-bullet.svg) no-repeat center / contain; }
 .raw2-founder .bio-card b.lime { color: var(--lime); font-weight: 700; }
 .raw2-founder .bio-card b.red  { color: var(--red-accent); font-weight: 700; }
 /* tags Figma: 24px, 700, -1.2px — «Валерия» слева, «учить языку» справа-ниже
    (не в одной колонке справа, а раскиданы по нижней части фото) */
 .raw2-founder .tags { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .raw2-founder .tags > * { pointer-events: auto; }
-.raw2-founder .tag-name { position: absolute; right: 26%; bottom: 22%; width: 218.819px; height: 53.713px; display: inline-flex; align-items: center; justify-content: center; background: var(--red-accent); color: #fff; font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 0; border-radius: 999px; transform: rotate(-3.079deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
-.raw2-founder .tag-mission { position: absolute; right: 5%; bottom: 10%; width: 342.708px; height: 53.774px; display: inline-flex; align-items: center; justify-content: center; background: var(--lime); color: var(--ink); font-weight: 700; font-size: clamp(1.1rem,1.6vw,24px); letter-spacing: -0.05em; padding: 0; border-radius: 999px; transform: rotate(6.381deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.raw2-founder .tag-name { position: absolute; left: 866.3px; top: 798.6px; /* Figma bbox (865, 792.75) 221.4×65.4, rotate −3.08° */ width: 218.819px; height: 53.713px; display: inline-flex; align-items: center; justify-content: center; background: var(--red-accent); color: #fff; font-weight: 700; font-size: 24px; letter-spacing: -1.2px; line-height: 0.8782; padding: 0; border-radius: 29.5px; transform: rotate(-3.08deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.raw2-founder .tag-mission { position: absolute; left: 1033.3px; top: 874.5px; /* Figma bbox (1031, 859) 347.3×84.8, rotate 5.24° */ width: 342.708px; height: 53.774px; display: inline-flex; align-items: center; justify-content: center; background: var(--lime); color: var(--ink); font-weight: 700; font-size: 24px; letter-spacing: -1.2px; line-height: 0.8782; padding: 0; border-radius: 29.5px; transform: rotate(5.24deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
 /* "миссия" Figma: 20px, 500, -1px — на верхнем-правом углу лаймовой плашки */
-.raw2-founder .tag-mission .mi { position: absolute; top: -22px; right: -8px; width: 105.498px; height: 35.856px; display: inline-flex; align-items: center; justify-content: center; background: var(--red-accent); color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -1px; padding: 0; border-radius: 999px; transform: rotate(15.311deg); box-shadow: 0 4px 4px rgba(0,0,0,.25); }
+.raw2-founder .tag-mission .mi { position: absolute; top: -24.2px; left: 248.6px; /* Figma bbox (1281.5, 849) 111.2×62.4, абсолютный поворот 15.31° = 5.24° родителя + 10.07° */ width: 105.498px; height: 35.856px; display: inline-flex; align-items: center; justify-content: center; background: var(--red-accent); color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -1px; padding: 0; border-radius: 999px; transform: rotate(10.07deg); box-shadow: 0 4px 4px rgba(0,0,0,.25); }
 
 /* ============================================================
    SECTION: первое бесплатное занятие (lime)
@@ -418,11 +456,13 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
      контент обрезается когда шрифт на Windows другой. */
   width: 100%;
   min-height: 1051px;
-  padding: 90px 0 0;
+  padding: 82px 0 0; /* Figma 4003:165: заголовок top 82 */
 }
 .raw2-faq .mascot { position: absolute; right: -80px; top: 110px; width: 601px; height: 719.737px; transform: rotate(8.163deg); z-index: 1; pointer-events: none; }
-.raw2-faq .wrap { position: relative; z-index: 2; }
-.raw2-faq .badge-wrap { display: flex; justify-content: center; margin-bottom: 50px; }
+/* Figma: вопросы от x=106 при 1441 */
+.raw2-faq .wrap { position: relative; z-index: 2; max-width: 1441px; padding: 0 106px; }
+/* заголовок 82…165, первый вопрос top 238 → 73 */
+.raw2-faq .badge-wrap { display: flex; justify-content: center; margin-bottom: 73px; }
 .raw2-faq .badge-title--outline-lime { border-color: var(--lime); color: #fff; }
 /* фикс-раскладка: item = 883×76, gap 66px, ответ раскрывается в потоке и толкает соседей вниз */
 .raw2-faq-list { display: flex; flex-direction: column; gap: 66px; align-items: flex-start; }
@@ -433,8 +473,9 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 }
 .raw2-faq-q {
   text-align: left; background: #fff; border: none; cursor: pointer; font-family: inherit;
-  font-size: clamp(1rem, 2.4vw, 36px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink);
-  padding: 0 33px; border-radius: 69px;
+  /* Figma: Inter 600 36px / -1.8px; текст x=139 (33 от края), справа 36 */
+  font-size: clamp(1rem, 2.5vw, 36px); font-weight: 600; letter-spacing: -0.05em; line-height: 1.0; color: var(--ink);
+  padding: 0 36px 0 33px; border-radius: 69px;
   height: 76px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: flex-start; gap: 16px;
   white-space: nowrap;
@@ -450,10 +491,11 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   background: rgba(223, 237, 140, 0.29);
   /* верхний radius = радиус капсулы пилюли (76/2 = 38) — кривые совпадают,
      плашка полностью «задвинута» под пилюлю и её угол не выступает */
-  border-radius: 38px 38px 29.5px 29.5px;
-  color: #fff; padding: 106px 100px 33px 33px;
+  border-radius: 41px 39px 29.5px 29.5px; /* Figma 2522:881 */
+  min-height: 247px; /* Figma: блок ответа 663…910 */
+  color: #fff; padding: 106px 104px 33px 33px;
   /* Figma: 24px medium, tracking -1.2 (=-0.05em), line-height ~93% */
-  font-size: clamp(1rem,1.66vw,24px); font-weight: 500; letter-spacing: -0.05em; line-height: 0.93;
+  font-size: clamp(1rem,1.7vw,24px); font-weight: 500; letter-spacing: -0.05em; line-height: 0.9333;
   box-sizing: border-box;
   width: 100%;
   margin-top: -76px; /* полное перекрытие пилюли; текст сдвинут вниз padding-top */
@@ -461,10 +503,11 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   overflow-wrap: break-word;
 }
 .raw2-faq-a-text { display: block; }
-/* Figma: стрелка ▼ в правом верхнем углу body (y offset 43px от body top, right offset 39px) */
+/* Figma 2522:884: стрелка ▼ 40×14 (svg 48×22 со штрихом 8) at x=874 y=782 в блоке 106..953 × 663..910
+   → top 782−663−4 = 115, right 953−914−4 = 35. Раньше стояла на 43px и пряталась под пилюлей. */
 .raw2-faq-a .chev-down {
-  position: absolute; right: 40px; top: 43px; transform: none;
-  width: 40px; height: 14px; color: #CC3A3A; flex-shrink: 0;
+  position: absolute; right: 35px; top: 115px; transform: none;
+  width: 48px; height: 22px; display: block; flex-shrink: 0;
 }
 
 /* ============================================================
