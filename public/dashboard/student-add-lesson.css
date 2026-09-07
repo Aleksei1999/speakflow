@@ -329,11 +329,21 @@
   justify-content: center;
   margin: 6px 0;
 }
-.sal-success-note {
+.sal-success-sub {
   text-align: center;
   font-family: 'Inter', sans-serif;
   font-size: 24px;
   font-weight: 500;
+  line-height: 0.9746;
+  letter-spacing: -1.2px;
+  color: #1E1E1E;
+  margin: 4px 0 2px;
+}
+.sal-success-note {
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
   line-height: 0.9746;
   letter-spacing: -1.2px;
   color: #1E1E1E;

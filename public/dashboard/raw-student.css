@@ -82,15 +82,12 @@
 /* Индивидуальные отступы между пунктами меню (Figma):
    Расписание→Домашка 35 · Домашка→Библиотека 38 · Библиотека→Чаты 47 · Чаты→Звонки 43 */
 .st-nav-links {
-  display: flex; align-items: center; justify-content: flex-end;
-  gap: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: clamp(40px, 4vw, 70px);
   list-style: none;
   padding: 0; margin: 0;
 }
-.st-nav-links li + li { margin-left: 35px; }
-.st-nav-links li:nth-child(3) { margin-left: 38px; }
-.st-nav-links li:nth-child(4) { margin-left: 47px; }
-.st-nav-links li:nth-child(5) { margin-left: 43px; }
+.st-nav-links li + li { margin-left: 0; }
 .st-nav-links a {
   display: inline-flex;
   align-items: center;
@@ -751,6 +748,99 @@
   background: rgba(30, 30, 30, 0.33);
   color: var(--lime);
 }
+/* карточки-плашки кликабельны — курсор pointer */
+.st-lect-card { cursor: pointer; }
+.st-lect-card:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+
+/* ---------- Lecture teacher modal ---------- */
+.st-lect-modal-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0, 0, 0, 0.66);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: st-lect-fade .15s ease-out;
+}
+@keyframes st-lect-fade { from { opacity: 0 } to { opacity: 1 } }
+.st-lect-modal {
+  position: relative;
+  width: min(880px, 100%);
+  max-height: min(720px, 92vh);
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 28px;
+  padding: 28px 32px 28px 28px;
+  background: #1E1E1E;
+  color: #fff;
+  border-radius: 29.5px;
+  font-family: 'Inter', sans-serif;
+}
+.st-lect-modal-close {
+  position: absolute; top: 14px; right: 18px;
+  width: 34px; height: 34px; padding: 0;
+  background: transparent; border: 0; color: #fff;
+  font-size: 26px; line-height: 1; cursor: pointer; opacity: .7;
+}
+.st-lect-modal-close:hover { opacity: 1; }
+.st-lect-modal-photo {
+  width: 340px; height: 340px;
+  border-radius: 24px; overflow: hidden; background: #333;
+  display: flex; align-items: center; justify-content: center;
+}
+.st-lect-modal-photo img { width: 100%; height: 100%; object-fit: cover; }
+.st-lect-modal-initials {
+  font-size: 96px; font-weight: 700; color: #DFED8C; letter-spacing: -0.05em;
+}
+.st-lect-modal-body {
+  display: flex; flex-direction: column; gap: 14px;
+  min-width: 0;
+}
+.st-lect-modal-name {
+  font-size: 30px; font-weight: 700; letter-spacing: -0.05em; line-height: 1.05;
+}
+.st-lect-modal-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 500; letter-spacing: -0.03em; color: rgba(255,255,255,.75);
+}
+.st-lect-modal-tag-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 5px;
+  background: #DFED8C; color: #1E1E1E; font-weight: 700; font-size: 14px;
+}
+.st-lect-modal-desc {
+  margin: 0; padding: 14px 16px;
+  border: 2px solid #DFED8C; border-radius: 16px;
+  font-size: 17px; font-weight: 500; letter-spacing: -0.03em; line-height: 1.28;
+  color: #fff;
+}
+.st-lect-modal-sub {
+  margin-top: 8px;
+  font-size: 15px; color: rgba(255,255,255,.65);
+}
+.st-lect-modal-bio {
+  margin: 0;
+  font-size: 17px; font-weight: 500; letter-spacing: -0.03em; line-height: 1.22;
+}
+.st-lect-modal-err {
+  color: #FF7676; font-size: 14px;
+}
+.st-lect-modal-cta {
+  align-self: flex-end;
+  margin-top: auto;
+  padding: 14px 40px;
+  background: #DFED8C; color: #1E1E1E;
+  border: 0; border-radius: 34px;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px;
+  cursor: pointer;
+  transition: transform .12s ease, opacity .12s ease;
+}
+.st-lect-modal-cta:not(:disabled):hover { transform: translateY(-1px); }
+.st-lect-modal-cta:disabled { opacity: .7; cursor: default; }
+@media (max-width: 720px) {
+  .st-lect-modal { grid-template-columns: 1fr; padding: 22px; }
+  .st-lect-modal-photo { width: 100%; height: 260px; }
+  .st-lect-modal-cta { align-self: stretch; }
+}
 
 /* ============================================================
    BALANCE + STATS (dark, bg-hero)
@@ -989,7 +1079,7 @@
   line-height: 0.975;
   color: rgba(255, 255, 255, .44);
   text-align: center;
-  margin: 60px 0 0 !important;
+  margin: 22px 0 0 !important;
 }
 .st-topup-btn {
   height: 68px;

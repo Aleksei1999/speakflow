@@ -25,6 +25,7 @@ function RegisterPageContent() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [checkEmail, setCheckEmail] = useState('')
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -42,7 +43,7 @@ function RegisterPageContent() {
       const fullLatin = [first, last].filter(Boolean).join(' ').trim() || email.trim()
       const originalFull = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ').trim()
 
-      const { error } = await supabase.auth.signUp({
+      const { data: res, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -60,6 +61,12 @@ function RegisterPageContent() {
       })
       if (error) {
         setErr(error.message.includes('already') ? 'Такой email уже зарегистрирован' : 'Не удалось зарегистрироваться')
+        setBusy(false)
+        return
+      }
+      // Confirm email включён — сессии нет, показываем «проверьте почту».
+      if (!res?.session) {
+        setCheckEmail(email.trim())
         setBusy(false)
         return
       }
@@ -85,21 +92,37 @@ function RegisterPageContent() {
           <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => setRole('teacher')}>Учитель</button>
         </div>
 
-        <div className="raw2-login-title">Регистрация для входа в ЛК</div>
+        {checkEmail ? (
+          <>
+            <div className="raw2-login-title">Проверьте почту</div>
+            <p className="raw2-login-check-msg">
+              Мы отправили ссылку для подтверждения на<br />
+              <b>{checkEmail}</b>.<br />
+              Перейдите по ссылке из письма, чтобы войти в личный кабинет.
+            </p>
+            <Link href="/login" className="btn btn-red" style={{ alignSelf: 'center', marginTop: 8, textAlign: 'center' }}>
+              Ок
+            </Link>
+          </>
+        ) : (
+          <>
+            <div className="raw2-login-title">Регистрация для входа в ЛК</div>
 
-        <form className="raw2-login-form" onSubmit={onSubmit}>
-          <input name="first_name" type="text" placeholder="имя" required autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} />
-          <input name="last_name" type="text" placeholder="фамилия" required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} />
-          <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input name="password" type="password" placeholder="пароль" required autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
-          <input name="password2" type="password" placeholder="повтор пароля" required autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} />
-          <TurnstileWidget onToken={setCaptchaToken} />
-          <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Регистрируем…' : 'Зарегистрироваться'}</button>
-          {err && <p className="raw2-login-err">{err}</p>}
-          <label className="raw2-check"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>Согласен с обработкой персональных данных</span></label>
-          <label className="raw2-check"><input type="checkbox" checked={marketing} onChange={e => setMarketing(e.target.checked)} /><span>Согласен получать рекламные материалы</span></label>
-          <Link href="/login" className="raw2-login-reg">Уже есть аккаунт? Войти</Link>
-        </form>
+            <form className="raw2-login-form" onSubmit={onSubmit}>
+              <input name="first_name" type="text" placeholder="имя" required autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} />
+              <input name="last_name" type="text" placeholder="фамилия" required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} />
+              <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
+              <input name="password" type="password" placeholder="пароль" required autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} />
+              <input name="password2" type="password" placeholder="повтор пароля" required autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} />
+              <TurnstileWidget onToken={setCaptchaToken} />
+              <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Регистрируем…' : 'Зарегистрироваться'}</button>
+              {err && <p className="raw2-login-err">{err}</p>}
+              <label className="raw2-check"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>Согласен с обработкой персональных данных</span></label>
+              <label className="raw2-check"><input type="checkbox" checked={marketing} onChange={e => setMarketing(e.target.checked)} /><span>Согласен получать рекламные материалы</span></label>
+              <Link href="/login" className="raw2-login-reg">Уже есть аккаунт? Войти</Link>
+            </form>
+          </>
+        )}
       </div>
 
       <style jsx global>{`

@@ -39,8 +39,8 @@ const FEATURES = [
   { icon: "ic-bubble.svg", iconActive: "ic-bubble-red.svg", title: <>Разговорные<br />клубы</>, body: <>Speaking club<br /><b>с носителями</b><br />каждый день.</> },
   { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: <>CV / резюме</>, body: <>Составляем резюме<br />на английском<br /><b>вместе с вами</b><br />для трудоустройства.</> },
   { icon: "ic-cap.png", iconActive: "ic-cap-red.png", title: <>Индивидуальные<br />уроки</>, body: <>Никаких больших<br />групп. Всё внимание —<br /><b>только вам.</b></> },
-  { icon: "ic-psy.svg", iconActive: "ic-psy-red.svg", title: <>Работа<br />с психологом</>, body: <>Преодолевай<br />языковой барьер,<br /><b>избавляйся<br />от страха</b><br />со специалистом</> },
-  { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: <>Лекции</>, body: <>Развивайся<br /><b>в профессии и хобби</b><br />с нашими лекциями<br />на английском языке</> },
+  { icon: "ic-psy.svg", iconActive: "ic-psy-red.svg", title: <>Работа<br />с психологом</>, body: <>Преодолевай<br />языковой барьер,<br /><b>избавляйся<br />от страха</b><br />со специалистом.</> },
+  { icon: "ic-lecture.png", iconActive: "ic-lecture-red.png", title: <>Лекции</>, body: <>Развивайся<br /><b>в профессии и хобби</b><br />с нашими лекциями<br />на английском языке.</> },
 ];
 
 const FREE_CARDS = [
@@ -53,15 +53,15 @@ const FREE_CARDS = [
 const PRICES = [
   {
     title: "Занятия", hot: false, price: "от 2.000 ₽",
-    items: [<>Занятия <b>один на один</b> с преподавателем</>, <>Один или полтора часа <b>на выбор</b></>, <>Адаптивное изучение <b>под ваши цели</b></>],
+    items: [<>Занятия<br /><b>один на один</b><br />с преподавателем</>, <>Один или полтора<br />часа <b>на выбор</b></>, <>Адаптивное<br />изучение<br /><b>под ваши цели</b></>],
   },
   {
     title: "Группы", hot: false, price: "1.800 ₽",
-    items: [<>Поддержка группы <b>помогает</b> продолжать заниматься</>, <>Успехи других <b>мотивируют</b> двигаться дальше и быстрее</>, <>Вместе учиться интереснее <b>и эффективнее</b></>],
+    items: [<>Поддержка группы<br /><b>помогает</b><br />продолжать<br />заниматься</>, <>Успехи других<br /><b>мотивируют</b><br />двигаться дальше<br />и быстрее</>, <>Вместе учиться<br />интереснее<br /><b>и эффективнее</b></>],
   },
   {
-    title: "Разговорный клуб с носителями языка", hot: true, price: "1.500 ₽",
-    items: [<><b>Ускорь обучение</b> непринужденным форматом</>, <><b>Открой доступ</b> к игровому формату обучения, клубам и призам</>, <><b>Разнообразь</b> обучение новым функционалом</>],
+    title: <>Разговорный клуб<br />с носителями<br />языка</>, hot: true, price: "1.500 ₽",
+    items: [<><b>Ускорь обучение</b><br />непринужденным форматом</>, <><b>Открой доступ</b> к игровому<br />формату обучения, клубам<br />и призам</>, <><b>Разнообразь обучение</b><br />новым функционалом</>],
   },
 ];
 
@@ -83,6 +83,7 @@ export default function LandingRaw2() {
   const [loginRole, setLoginRole] = useState<"student" | "teacher">("student");
   const [loginErr, setLoginErr] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [registerCheckEmail, setRegisterCheckEmail] = useState("");
 
   function openAuth() {
     setAuthMode("login");
@@ -108,10 +109,11 @@ export default function LandingRaw2() {
       return;
     }
     setLoginBusy(true);
+    const email = String(data.get("email") || "").trim();
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
-        email: String(data.get("email") || "").trim(),
+      const { data: res, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           data: {
@@ -125,6 +127,14 @@ export default function LandingRaw2() {
       });
       if (error) {
         setLoginErr(error.message.includes("already") ? "Такой email уже зарегистрирован" : "Не удалось зарегистрироваться");
+        setLoginBusy(false);
+        return;
+      }
+      // Если у Supabase включено «Confirm email» — сессии ещё нет, юзеру ушла
+      // ссылка подтверждения. Показываем «проверьте почту», не редиректим,
+      // иначе middleware выкинет обратно на логин и это выглядит как баг.
+      if (!res?.session) {
+        setRegisterCheckEmail(email);
         setLoginBusy(false);
         return;
       }
@@ -462,7 +472,7 @@ export default function LandingRaw2() {
         <div className="raw2-carousel-outer">
           <button type="button" className="raw2-car-nav prev" onClick={() => scrollCards(-1)} aria-label="Назад">
             <span className="notch" aria-hidden />
-            <span className="disc"><ArrowRightFilled /></span>
+            <span className="disc"><ArrowIcon direction="left" size="100%" /></span>
           </button>
           <div className="raw2-carousel-clip">
             <div className="raw2-carousel" ref={carRef} onScroll={onCarScroll}>
@@ -528,8 +538,8 @@ export default function LandingRaw2() {
               </div>
               <div className="bio-card bio-dark">
                 <ul>
-                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="lime">учится с<br />удовольствием.</b></li>
-                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="lime">помогать<br />бизнесу расти</b><br />через английский.</li>
+                  <li>Решила создать<br />школу, где<br />английский<br />становится частью<br />жизни и <b className="red">учится с<br />удовольствием.</b></li>
+                  <li>В планах — выход<br />на новый уровень:<br />обучать<br />сотрудников<br />компаний, <b className="red">помогать<br />бизнесу расти</b><br />через английский.</li>
                 </ul>
               </div>
             </div>
@@ -565,7 +575,7 @@ export default function LandingRaw2() {
           </div>
           <div className="cards">
             {PRICES.map((p) => (
-              <article className={`raw2-prc ${p.hot ? "raw2-prc--hot" : ""}`} key={p.title}>
+              <article className={`raw2-prc ${p.hot ? "raw2-prc--hot" : ""}`} key={p.price}>
                 <h3>{p.title}</h3>
                 <ul>{p.items.map((it, i) => <li key={i}>{it}</li>)}</ul>
                 <span className="price-wrap">
@@ -681,6 +691,22 @@ export default function LandingRaw2() {
                   <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("register"); }}>Регистрация</button>
                 </form>
               </>
+            ) : registerCheckEmail ? (
+              <>
+                <div className="raw2-login-title">Проверьте почту</div>
+                <p className="raw2-login-check-msg">
+                  Мы отправили ссылку для подтверждения на<br />
+                  <b>{registerCheckEmail}</b>.<br />
+                  Перейдите по ссылке из письма, чтобы войти в личный кабинет.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-red"
+                  onClick={() => { setRegisterCheckEmail(""); setAuthMode("login"); }}
+                >
+                  Ок
+                </button>
+              </>
             ) : (
               <>
                 <div className="raw2-login-title">Регистрация для входа в ЛК</div>
@@ -720,7 +746,7 @@ export default function LandingRaw2() {
         </div>
       )}
 
-      <RoastQuiz open={quizOpen} onClose={() => setQuizOpen(false)} />
+      {quizOpen && <RoastQuiz onClose={() => setQuizOpen(false)} />}
     </div>
   );
 }

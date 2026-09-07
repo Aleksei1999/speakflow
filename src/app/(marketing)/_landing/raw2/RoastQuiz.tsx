@@ -107,15 +107,15 @@ function levelIndex(a1: number, a2: number, b1: number) {
 }
 
 const Heart = ({ on }: { on: boolean }) => (
-  <svg viewBox="0 0 24 24" aria-hidden fill={on ? "#cc3a3a" : "none"} stroke={on ? "#cc3a3a" : "#5a5a5a"} strokeWidth="2">
-    <path d="M12 20.3 4.2 12.5a4.6 4.6 0 0 1 6.5-6.5l1.3 1.3 1.3-1.3a4.6 4.6 0 0 1 6.5 6.5L12 20.3Z" strokeLinejoin="round" />
+  <svg viewBox="0 0 39 33" aria-hidden fill={on ? "#CC3A3A" : "none"} stroke="#CC3A3A" strokeWidth="5" strokeLinejoin="round">
+    <path d="M19.5092 5.01562C22.3226 2.67627 26.3272 1.81831 29.7406 3.09082C33.9595 4.66 36.4763 8.24249 36.4994 12.7236L36.4965 13.0547C36.4114 16.4449 34.699 19.059 32.9633 21.1025L32.9642 21.1035C29.9833 24.6576 26.3047 27.3392 22.5355 29.6182L22.5365 29.6191C20.8571 30.6353 18.6158 30.9172 16.6469 29.7061V29.7051C12.2624 27.0612 7.85993 23.9147 4.71619 19.3311L4.41541 18.8818C1.82465 14.9219 1.79162 9.81952 4.74646 6.24609C8.52659 1.66017 15.0547 1.33677 19.5092 5.01562Z" />
   </svg>
 );
 
 type LogItem = { text: string; options: string[]; chosen: number; correct: number; lvl: 1 | 2 | 3 };
 
-export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [qs, setQs] = useState<Question[]>([]);
+export default function RoastQuiz({ onClose }: { onClose: () => void }) {
+  const [qs] = useState<Question[]>(() => buildQuiz());
   const [idx, setIdx] = useState(0);
   const [byTier, setByTier] = useState<[number, number, number]>([0, 0, 0]);
   const [lives, setLives] = useState(LIVES);
@@ -125,26 +125,18 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
   const [log, setLog] = useState<LogItem[]>([]);
 
   useEffect(() => {
-    if (open) {
-      setQs(buildQuiz());
-      setIdx(0); setByTier([0, 0, 0]); setLives(LIVES); setTimeLeft(TIME); setPicked(null); setDone(false); setLog([]);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
-  }, [open, onClose]);
+  }, [onClose]);
 
   // countdown
   useEffect(() => {
-    if (!open || done) return;
+    if (done) return;
     const id = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000);
     return () => clearInterval(id);
-  }, [open, done]);
-  useEffect(() => { if (open && !done && timeLeft <= 0) setDone(true); }, [timeLeft, open, done]);
+  }, [done]);
+  useEffect(() => { if (!done && timeLeft <= 0) setDone(true); }, [timeLeft, done]);
 
   // Persist result to sessionStorage so форма заявки (LandingRaw2.onSubmit)
   // сможет догнать его до /api/landing/lead и создать level_tests с email.
@@ -165,7 +157,7 @@ export default function RoastQuiz({ open, onClose }: { open: boolean; onClose: (
     } catch {}
   }, [done, byTier, log]);
 
-  if (!open || qs.length === 0) return null;
+  if (qs.length === 0) return null;
 
   const q = qs[idx];
 

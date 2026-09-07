@@ -16,6 +16,7 @@ import { toRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
 import { normalizePhoneRu } from "@/lib/validators/contact"
 import { disconnectStudentGoogleCalendar } from "./calendar-actions"
 import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
+import StudentLectureModal, { type LectureForModal } from "@/components/dashboard/StudentLectureModal"
 
 // Roast-level → композитный SVG (все цвета уже внутри одного файла).
 const ROAST_LEVEL_SVG: Record<string, string> = {
@@ -245,7 +246,9 @@ export default function StudentRawDashboard({
   const [lectures, setLectures] = useState<Array<{
     id: string; title: string; host_name: string | null; description: string | null;
     tag: string | null; scheduled_at: string; slot: 'main' | 'tall' | 'small'; cover_url: string | null;
+    teacher?: { name: string; avatar_url: string | null; bio: string | null } | null;
   }>>([])
+  const [openLecture, setOpenLecture] = useState<LectureForModal | null>(null)
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -654,7 +657,7 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260905-lectory3" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260907-topup22" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
@@ -665,7 +668,7 @@ export default function StudentRawDashboard({
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
       {/* StudentAddLessonModal — модалка добавления урока. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260904-typo" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260905-success" />
 
       {/* ================== HERO: nav + SCHEDULE ================== */}
       <div className="st-hero">
@@ -948,6 +951,11 @@ export default function StudentRawDashboard({
         onCreated={() => router.refresh()}
       />
 
+      <StudentLectureModal
+        lecture={openLecture}
+        onClose={() => setOpenLecture(null)}
+      />
+
       {libraryOpen && (
         <FilesModal
           title="Библиотека Raw English"
@@ -986,7 +994,13 @@ export default function StudentRawDashboard({
             const l = lecMain
             const src = l ? { tag: l.tag ?? "", title: l.title, author: l.host_name ?? "", desc: l.description ?? "", ...lecFmt(l.scheduled_at) } : LECTORY_MAIN
             return (
-              <div className="st-lect-card st-lect-card--main">
+              <div
+                className="st-lect-card st-lect-card--main"
+                role={l ? "button" : undefined}
+                tabIndex={l ? 0 : undefined}
+                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
+                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+              >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
                   <div className="st-lect-title">{src.title}</div>
@@ -1007,7 +1021,13 @@ export default function StudentRawDashboard({
             const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_TALL.tag, title: LECTORY_TALL.author, desc: LECTORY_TALL.desc, time: LECTORY_TALL.time, date: LECTORY_TALL.date }
             return (
-              <div className="st-lect-card red tall">
+              <div
+                className="st-lect-card red tall"
+                role={l ? "button" : undefined}
+                tabIndex={l ? 0 : undefined}
+                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
+                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+              >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
                   <div className="st-lect-title">{src.title}</div>
@@ -1027,7 +1047,13 @@ export default function StudentRawDashboard({
             const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_LEFT.tag, title: LECTORY_LEFT.title, desc: LECTORY_LEFT.desc, time: LECTORY_LEFT.time, date: LECTORY_LEFT.date }
             return (
-              <div className="st-lect-card red">
+              <div
+                className="st-lect-card red"
+                role={l ? "button" : undefined}
+                tabIndex={l ? 0 : undefined}
+                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
+                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+              >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
                   <div className="st-lect-title">{src.title}</div>
@@ -1047,7 +1073,13 @@ export default function StudentRawDashboard({
             const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_RIGHT.tag, title: LECTORY_RIGHT.title, desc: LECTORY_RIGHT.desc, time: LECTORY_RIGHT.time, date: LECTORY_RIGHT.date }
             return (
-              <div className="st-lect-card red">
+              <div
+                className="st-lect-card red"
+                role={l ? "button" : undefined}
+                tabIndex={l ? 0 : undefined}
+                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
+                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+              >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
                   <div className="st-lect-title">{src.title}</div>

@@ -114,6 +114,14 @@
   gap: 20px;
   padding-top: 30px;
 }
+/* Правая группа кнопок ("Добавить файл" + "Выбрать" / "Отмена" + "Удалить") —
+   прижата вправо: margin-left:auto когда есть «Создать папку» слева. */
+.files-modal-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
 /* «Добавить файл» — 222×46, обводка #1E1E1E */
 .files-modal-btn {
   min-width: 160px;

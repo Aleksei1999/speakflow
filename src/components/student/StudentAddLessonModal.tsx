@@ -459,7 +459,7 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
   return createPortal(
     <>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260904-typo" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260905-success" />
       <div
         className="sal-backdrop"
         onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
@@ -485,8 +485,10 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                 Ваша заявка<br />на урок отправлена!
               </h2>
               <div className="sal-success-check"><CheckIcon /></div>
+              <div className="sal-success-sub">
+                Преподаватель напишет вам
+              </div>
               <div className="sal-success-note">
-                Преподаватель напишет вам<br />
                 в <b>чат или вы увидите<br />
                 упоминание в календаре</b>,<br />
                 что ваше время принято.

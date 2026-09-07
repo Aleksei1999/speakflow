@@ -277,8 +277,8 @@ export function FilesModal({
         </div>
 
         <div className="files-modal-footer">
-          {/* «Создать папку» — доступна всегда, когда canManage. Создаёт папку
-              в корне; если пользователь внутри — возвращаемся туда после создания. */}
+          {/* «Создать папку» — слева. «Добавить файл» + «Выбрать» — вместе справа.
+              В selectMode: «Отмена» слева от «Удалить» и вся пара справа. */}
           {canManage && !legacyMode && !selectMode && onCreateFolder && (
             <button
               type="button"
@@ -290,50 +290,52 @@ export function FilesModal({
             </button>
           )}
 
-          {canManage && inFolder && !selectMode && (
-            <button
-              type="button"
-              className="files-modal-btn"
-              onClick={() => inputRef.current?.click()}
-              disabled={deleting}
-            >
-              {addLabel}
-            </button>
-          )}
-
-          {showSelect && !selectMode && (
-            <button
-              type="button"
-              className="files-modal-btn"
-              onClick={() => setSelectMode(true)}
-            >
-              {selectLabel}
-            </button>
-          )}
-
-          {selectMode && (
-            <div className="files-modal-btn-group">
+          <div className="files-modal-footer-right">
+            {canManage && inFolder && !selectMode && (
               <button
                 type="button"
                 className="files-modal-btn"
-                onClick={() => {
-                  setSelectMode(false)
-                  setSelectedIds(new Set())
-                }}
+                onClick={() => inputRef.current?.click()}
                 disabled={deleting}
               >
-                {cancelLabel}
+                {addLabel}
               </button>
+            )}
+
+            {showSelect && !selectMode && (
               <button
                 type="button"
-                className="files-modal-btn files-modal-btn--danger"
-                onClick={handleDeleteConfirm}
-                disabled={deleting || selectedIds.size === 0}
+                className="files-modal-btn"
+                onClick={() => setSelectMode(true)}
               >
-                {deleting ? "Удаление…" : `${deleteLabel}${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
+                {selectLabel}
               </button>
-            </div>
-          )}
+            )}
+
+            {selectMode && (
+              <>
+                <button
+                  type="button"
+                  className="files-modal-btn"
+                  onClick={() => {
+                    setSelectMode(false)
+                    setSelectedIds(new Set())
+                  }}
+                  disabled={deleting}
+                >
+                  {cancelLabel}
+                </button>
+                <button
+                  type="button"
+                  className="files-modal-btn files-modal-btn--danger"
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting || selectedIds.size === 0}
+                >
+                  {deleting ? "Удаление…" : `${deleteLabel}${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>,

@@ -17,6 +17,7 @@ function sanitize(raw: string) {
 
 export async function GET() {
   const supabase = await createClient()
+  const admin = createAdminClient() as any
   const nowIso = new Date().toISOString()
 
   const { data, error } = await (supabase as any)
@@ -27,7 +28,45 @@ export async function GET() {
     .order('scheduled_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ lectures: data ?? [] })
+
+  // Обогащаем host_name → { avatar_url, bio } для рендера карточки препода
+  // при клике на плашку лектория (StudentLectureModal).
+  const names = Array.from(
+    new Set((data ?? []).map((l: any) => (l.host_name ?? '').trim()).filter(Boolean)),
+  )
+  const teacherByName: Record<string, { name: string; avatar_url: string | null; bio: string | null }> = {}
+  if (names.length > 0) {
+    const { data: profs } = await admin
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('full_name', names)
+    const profRows = (profs ?? []) as Array<{ id: string; full_name: string; avatar_url: string | null }>
+    const userIds = profRows.map((p) => p.id)
+    let bioById: Record<string, string | null> = {}
+    if (userIds.length > 0) {
+      const { data: tps } = await admin
+        .from('teacher_profiles')
+        .select('user_id, bio')
+        .in('user_id', userIds)
+      for (const tp of (tps ?? []) as Array<{ user_id: string; bio: string | null }>) {
+        bioById[tp.user_id] = tp.bio ?? null
+      }
+    }
+    for (const p of profRows) {
+      teacherByName[p.full_name] = {
+        name: p.full_name,
+        avatar_url: p.avatar_url,
+        bio: bioById[p.id] ?? null,
+      }
+    }
+  }
+
+  const lectures = (data ?? []).map((l: any) => ({
+    ...l,
+    teacher: teacherByName[(l.host_name ?? '').trim()] ?? null,
+  }))
+
+  return NextResponse.json({ lectures })
 }
 
 export async function POST(request: NextRequest) {

@@ -119,29 +119,29 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* Столбиком, каждая строка = «число label». По просьбе пользователя. */
+/* 1 сверху (full width), 2 снизу (2 колонки). */
 .asm-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  row-gap: 20px;
   padding-top: 4px;
 }
+.asm-stat:first-child { grid-column: 1 / -1; }
 .asm-stat {
-  display: flex; align-items: baseline;
-  gap: 14px;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 8px;
 }
 .asm-stat-num {
-  flex: 0 0 auto;
-  min-width: 42px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 34px;
-  line-height: 1;
+  font-size: 40px;
+  line-height: 0.9;
   letter-spacing: -0.05em;
   color: #fff;
 }
 .asm-stat-label {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.2;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -244,5 +244,5 @@
   .asm-photo { max-width: 360px; }
   .asm-foot { flex-direction: column; align-items: stretch; }
   .asm-actions { margin-left: 0; }
-  .asm-stats { grid-template-columns: 1fr 1fr; }
+  .asm-stats { grid-template-columns: 1fr 1fr; column-gap: 16px; }
 }

@@ -12,6 +12,7 @@
    ============================================================ */
 
 import { useEffect, useRef, useState } from "react"
+import { fromRoastLevel } from "@/lib/levels/mapping"
 
 const AVATAR_PALETTE = ["#5f7a8b", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
 function initialsOf(n: string) {
@@ -137,10 +138,16 @@ export default function AdminStudentModal({
   const lessonsYear = data?.lessons_this_year ?? 0
   const bio = data?.bio_content
   const bioAuthor = data?.bio_author_name
+  // A1..C2 → 1..6 огоньков закрашено по уровню английского. english_level в
+  // БД хранит roast-строку ("Raw", "Rare", "Medium Rare", ...) — сначала
+  // конвертим в CEFR (fromRoastLevel), затем считаем позицию 1..6.
+  const CEFR = ["A1","A2","B1","B2","C1","C2"] as const
+  const cefr = fromRoastLevel(data?.english_level)
+  const litCount = Math.max(0, Math.min(6, (CEFR as readonly string[]).indexOf(cefr) + 1))
 
   return (
     <div className="asm-backdrop" onClick={onClose}>
-      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260901c" />
+      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260907-stats" />
       <div className="asm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <button type="button" className="asm-close" aria-label="Закрыть" onClick={onClose}>
           <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
@@ -175,10 +182,15 @@ export default function AdminStudentModal({
             />
             {uploadError && <div className="asm-upload-err">{uploadError}</div>}
 
-            <div className="asm-flames" aria-hidden>
+            <div className="asm-flames" aria-label={`Уровень ${cefr}`}>
               {Array.from({ length: 6 }, (_, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} className="asm-flame" src="/dashboard/student/flame/empty.svg" alt="" />
+                <img
+                  key={i}
+                  className="asm-flame"
+                  src={i < litCount ? "/dashboard/student/flame/filled.svg" : "/dashboard/student/flame/empty.svg"}
+                  alt=""
+                />
               ))}
             </div>
           </div>

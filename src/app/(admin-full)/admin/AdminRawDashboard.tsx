@@ -638,7 +638,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="/dashboard/raw-admin.css?v=20260902-libgap"
+        href="/dashboard/raw-admin.css?v=20260907-lvlcolor"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
@@ -647,7 +647,7 @@ export default function AdminRawDashboard({
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260904-arrows-lime" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260907-badgegap" />
 
       {/* ================== HERO: nav + dark card holding SCHEDULE ================== */}
       <div className="ad-hero">
@@ -904,10 +904,10 @@ export default function AdminRawDashboard({
                         setTeacherModal({ id: t.id, name: t.name, avatar: t.avatar })
                       }}
                     >
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden>
-                        <path d="M3 21h4l11-11-4-4L3 17v4z" stroke="#1E1E1E" strokeWidth="2" strokeLinejoin="round" fill="none" />
-                        <path d="M14 6l4 4" stroke="#1E1E1E" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
+                      {/* Универсальная иконка редактирования (карандаш+блокнот),
+                          та же что и во всех «edit»-действиях на сайте. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/icons/edit-pencil.svg" alt="" width={20} height={20} />
                     </button>
                   </div>
                 </div>
@@ -970,12 +970,7 @@ export default function AdminRawDashboard({
             </div>
             <div className="ad-students-scroll">
               <div className="ad-students-grid">
-                {sortedStudents.map((s) => {
-                  // A1..C2 → 1..6 огоньков закрашено.
-                  const CEFR = ["A1","A2","B1","B2","C1","C2"] as const
-                  const cefr = String(s.level ?? "A1").toUpperCase()
-                  const litCount = Math.max(0, Math.min(6, (CEFR as readonly string[]).indexOf(cefr) + 1))
-                  return (
+                {sortedStudents.map((s) => (
                   <div
                     className="ad-stu"
                     key={s.id}
@@ -994,16 +989,9 @@ export default function AdminRawDashboard({
                         </span>
                       ))}
                     </div>
-                    <div className="ad-stu-flames" aria-label={`Уровень ${cefr}`}>
-                      {[0,1,2,3,4,5].map((i) => (
-                        <svg key={i} className={`ad-stu-flame${i < litCount ? " lit" : ""}`} viewBox="0 0 24 24" width="14" height="16" aria-hidden>
-                          <path d="M12 2c1 3-2 4-2 7 0 2 1 3 2 4 2-2 5-5 5-9-1 1-2 1-3 0-1 1-1 2-2-2zm0 11c-3 0-6 3-6 6 0 3 3 5 6 5s6-2 6-5c0-3-3-6-6-6z" fill="currentColor"/>
-                        </svg>
-                      ))}
-                    </div>
                     <span className="ad-stu-lvl">{levelLabel(s.level)}</span>
                   </div>
-                )})}
+                ))}
               </div>
             </div>
             <div className="ad-panel-footer">
