@@ -20,6 +20,7 @@ const CSS = `
 .adm-leads .card .meta{font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
 .adm-leads .card .meta a{color:var(--text);text-decoration:none;font-weight:600}
 .adm-leads .card .meta a:hover{text-decoration:underline}
+.adm-leads .card .comment{font-size:13px;color:var(--text);margin-top:6px;white-space:pre-wrap}
 .adm-leads .card .meta .tag{background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--text)}
 .adm-leads .right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:180px}
 .adm-leads .stat{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:4px 10px;border-radius:999px}
@@ -38,6 +39,7 @@ type Lead = {
   email: string
   phone: string
   marketing_opt_in: boolean
+  comment: string | null
   source: string
   country: string | null
   status: "new" | "contacted" | "archived"
@@ -130,6 +132,7 @@ export default function AdminLeadsClient({ initial }: { initial: Lead[] }) {
                     {l.marketing_opt_in && <span className="tag">маркетинг ✓</span>}
                     <span className="tag">{l.source}</span>
                   </div>
+                  {l.comment && <div className="comment">💬 {l.comment}</div>}
                 </div>
                 <div className="right">
                   <span className={`stat ${l.status}`}>{l.status}</span>

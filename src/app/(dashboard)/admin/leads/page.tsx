@@ -25,7 +25,7 @@ export default async function AdminLeadsPage() {
   const admin = createAdminClient()
   const { data: leads } = await (admin as any)
     .from("landing_leads")
-    .select("id, name, email, phone, marketing_opt_in, source, country, status, admin_notes, created_at")
+    .select("id, name, email, phone, marketing_opt_in, comment, source, country, status, admin_notes, created_at")
     .order("created_at", { ascending: false })
     .limit(500)
 

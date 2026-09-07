@@ -19,6 +19,7 @@ const bodySchema = z.object({
   email: emailSchema,
   phone: phoneIntlSchema,
   marketing_opt_in: z.boolean().optional().default(false),
+  comment: z.string().trim().max(1000).optional(),
   country: z.string().trim().length(2).optional(),
   source: z.string().trim().max(50).optional().default("landing"),
   // Опциональный результат «Прожарки» с лендинга — сохраняем в level_tests
@@ -110,20 +111,30 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null
     const ip = getClientIp(request)
 
-    const { data: lead, error } = (await (admin as any)
-      .from("landing_leads")
-      .insert({
-        name: d.name,
-        email: d.email,
-        phone: d.phone,
-        marketing_opt_in: d.marketing_opt_in ?? false,
-        source: d.source ?? "landing",
-        country: d.country ?? null,
-        ip,
-        user_agent: userAgent,
-      })
-      .select("id")
-      .single()) as { data: { id: string } | null; error: any }
+    const row = {
+      name: d.name,
+      email: d.email,
+      phone: d.phone,
+      marketing_opt_in: d.marketing_opt_in ?? false,
+      source: d.source ?? "landing",
+      country: d.country ?? null,
+      ip,
+      user_agent: userAgent,
+    }
+    const insertLead = (withComment: boolean) =>
+      (admin as any)
+        .from("landing_leads")
+        .insert(withComment ? { ...row, comment: d.comment || null } : row)
+        .select("id")
+        .single() as Promise<{ data: { id: string } | null; error: { code?: string; message?: string } | null }>
+
+    let { data: lead, error } = await insertLead(true)
+    // Страховка на период до применения миграции 20260907220000 (колонка comment):
+    // если колонки ещё нет — пишем лид без комментария, а не теряем заявку.
+    if (error && /comment/i.test(String(error.message ?? "")) && (error.code === "42703" || error.code === "PGRST204")) {
+      console.error("[landing/lead] no `comment` column yet — retry without it:", error.message)
+      ;({ data: lead, error } = await insertLead(false))
+    }
 
     if (error || !lead) {
       console.error("[landing/lead] insert error:", error)
@@ -179,6 +190,7 @@ async function notifyAdmins(args: {
     email: string
     phone: string
     marketing_opt_in?: boolean
+    comment?: string
     country?: string
     source?: string
   }
@@ -198,6 +210,7 @@ async function notifyAdmins(args: {
     `📱 ${escapeHtml(args.data.phone)}\n` +
     (args.data.country ? `🌍 ${escapeHtml(args.data.country)}\n` : ``) +
     (args.data.marketing_opt_in ? `✅ согласен на маркетинг\n` : ``) +
+    (args.data.comment ? `💬 ${escapeHtml(args.data.comment)}\n` : ``) +
     `\n<i>id: ${args.leadId}</i>`
 
   await Promise.allSettled(

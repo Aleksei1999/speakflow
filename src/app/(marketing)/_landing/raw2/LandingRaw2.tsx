@@ -28,11 +28,6 @@ const Chevron = () => (
     <path d="M3 4.5 15 15.5 27 4.5" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const TgIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-    <path d="M11.94 2.02a10 10 0 1 0 .12 20 10 10 0 0 0-.12-20Zm4.62 6.9-1.55 7.3c-.11.52-.42.64-.86.4l-2.38-1.76-1.15 1.1c-.13.13-.24.24-.48.24l.17-2.42 4.4-3.98c.19-.17-.04-.27-.3-.1l-5.43 3.42-2.34-.73c-.51-.16-.52-.51.11-.76l9.14-3.53c.42-.15.8.1.66.75Z" />
-  </svg>
-);
 
 /* ---------- data ---------- */
 const FEATURES = [
@@ -79,6 +74,12 @@ export default function LandingRaw2() {
 
   // login / registration popup (Ученик / Учитель)
   const [loginOpen, setLoginOpen] = useState(false);
+  // Модалка «Форма для связи» (Figma 2522:2375) — открывается с CTA «Выучить английский» и «Связаться».
+  const [ctaOpen, setCtaOpen] = useState(false);
+  const [ctaBusy, setCtaBusy] = useState(false);
+  const [ctaErr, setCtaErr] = useState("");
+  const [ctaValid, setCtaValid] = useState(false);
+  const [ctaPhone, setCtaPhone] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [loginRole, setLoginRole] = useState<"student" | "teacher">("student");
   const [loginErr, setLoginErr] = useState("");
@@ -145,12 +146,31 @@ export default function LandingRaw2() {
     }
   }
 
+  // Макет нарисован под 1441px. На экранах шире масштабируем весь лендинг пропорционально
+  // (zoom = ширина / 1441, потолок 1.4), чтобы пропорции совпадали с Figma на больших мониторах.
   useEffect(() => {
-    if (!loginOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLoginOpen(false); };
+    const apply = () => {
+      const w = window.innerWidth;
+      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1;
+      document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4));
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!loginOpen && !ctaOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setLoginOpen(false); setCtaOpen(false); } };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [loginOpen]);
+  }, [loginOpen, ctaOpen]);
+
+  function openCta(e?: { preventDefault: () => void }) {
+    e?.preventDefault();
+    setCtaErr("");
+    setCtaOpen(true);
+  }
 
   async function onLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -333,13 +353,19 @@ export default function LandingRaw2() {
     return out;
   }
 
-  function onPhoneChange(e: ChangeEvent<HTMLInputElement>) {
+  function normalizePhoneInput(value: string): string {
     // Оставляем только цифры, отбрасываем всё лишнее (включая код страны)
-    let digits = e.target.value.replace(/\D/g, '');
+    let digits = value.replace(/\D/g, '');
     // Если начинается с кода страны — срезаем
     const codeDigits = phoneCfg.code.replace(/\D/g, '');
     if (codeDigits && digits.startsWith(codeDigits)) digits = digits.slice(codeDigits.length);
-    setPhoneValue(formatPhone(digits));
+    return formatPhone(digits);
+  }
+  function onPhoneChange(e: ChangeEvent<HTMLInputElement>) { setPhoneValue(normalizePhoneInput(e.target.value)); }
+  function onCtaPhoneChange(e: ChangeEvent<HTMLInputElement>) { setCtaPhone(normalizePhoneInput(e.target.value)); }
+  function isPhoneComplete(value: string): boolean {
+    const digits = value.replace(/\D/g, '').slice(phoneCfg.code.replace(/\D/g, '').length);
+    return digits.length === phoneCfg.digits;
   }
 
   const [submitBusy, setSubmitBusy] = useState(false);
@@ -350,6 +376,60 @@ export default function LandingRaw2() {
   const [loginValid, setLoginValid] = useState(false);
   const [registerValid, setRegisterValid] = useState(false);
 
+  // Если пользователь прошёл квиз в этой же сессии — прицепим результат,
+  // чтобы бек создал level_tests-строку с этим email.
+  // log[] нужен админке (AdminRawDashboard рендерит вопросы+варианты).
+  type QuizLog = { text: string; options: string[]; chosen: number; correct: number; lvl?: 1 | 2 | 3 };
+  type RoastQuizPayload = { level: string; tierScores: [number, number, number]; log?: QuizLog[] };
+  function readRoastQuiz(): RoastQuizPayload | undefined {
+    try {
+      const raw = sessionStorage.getItem('raw2_roast_quiz');
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw) as { level: string; tierScores: [number, number, number]; log?: QuizLog[]; ts: number };
+      // 2ч TTL — старые результаты не приклеиваем к новым заявкам.
+      if (parsed?.level && Array.isArray(parsed.tierScores) && Date.now() - (parsed.ts || 0) < 2 * 60 * 60 * 1000) {
+        const q: RoastQuizPayload = { level: parsed.level, tierScores: parsed.tierScores };
+        if (Array.isArray(parsed.log) && parsed.log.length > 0) q.log = parsed.log;
+        return q;
+      }
+    } catch {}
+    return undefined;
+  }
+
+  // Общая отправка лида для секции #contact и модалки «Форма для связи».
+  // Возвращает текст ошибки или null при успехе.
+  async function postLead(payload: { name: string; email: string; phone: string; marketing_opt_in: boolean; comment?: string; source: string }): Promise<string | null> {
+    const roastQuiz = readRoastQuiz();
+    try {
+      const res = await fetch('/api/landing/lead', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...payload, country: phoneCountry, ...(roastQuiz ? { roast_quiz: roastQuiz } : {}) }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        return j?.error || 'Не удалось отправить. Попробуй ещё раз.';
+      }
+      // Одноразовый прикреп: не приклеим тот же тест к следующему сабмиту.
+      try { sessionStorage.removeItem('raw2_roast_quiz'); } catch {}
+      return null;
+    } catch {
+      return 'Проблема с сетью. Попробуй ещё раз.';
+    }
+  }
+
+  // Клиентская валидация email/телефона с подсветкой полей; true если всё ок.
+  function validateLeadForm(form: HTMLFormElement, email: string, phone: string): boolean {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    const phoneOk = isPhoneComplete(phone);
+    const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement | null;
+    const phoneInput = form.querySelector('input[name="phone"]') as HTMLInputElement | null;
+    emailInput?.classList.toggle('invalid', !emailOk);
+    phoneInput?.classList.toggle('invalid', !phoneOk);
+    if (!emailOk || !phoneOk) { (emailOk ? phoneInput : emailInput)?.focus(); return false; }
+    return true;
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitErr('');
@@ -358,71 +438,41 @@ export default function LandingRaw2() {
     const name = String(fd.get('name') || '').trim();
     const email = String(fd.get('email') || '').trim();
     const marketing = fd.get('marketing') === 'on';
-
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-    const phoneDigits = phoneValue.replace(/\D/g, '').slice(phoneCfg.code.replace(/\D/g, '').length);
-    const phoneOk = phoneDigits.length === phoneCfg.digits;
-
-    const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement | null;
-    const phoneInput = form.querySelector('input[name="phone"]') as HTMLInputElement | null;
-    emailInput?.classList.toggle('invalid', !emailOk);
-    phoneInput?.classList.toggle('invalid', !phoneOk);
-    if (!emailOk || !phoneOk) { (emailOk ? phoneInput : emailInput)?.focus(); return; }
-
-    // Если пользователь прошёл квиз в этой же сессии — прицепим результат,
-    // чтобы бек создал level_tests-строку с этим email.
-    // log[] нужен админке (AdminRawDashboard рендерит вопросы+варианты).
-    type QuizLog = { text: string; options: string[]; chosen: number; correct: number; lvl?: 1 | 2 | 3 };
-    let roastQuiz: { level: string; tierScores: [number, number, number]; log?: QuizLog[] } | undefined;
-    try {
-      const raw = sessionStorage.getItem('raw2_roast_quiz');
-      if (raw) {
-        const parsed = JSON.parse(raw) as { level: string; tierScores: [number, number, number]; log?: QuizLog[]; ts: number };
-        // 2ч TTL — старые результаты не приклеиваем к новым заявкам.
-        if (parsed?.level && Array.isArray(parsed.tierScores) && Date.now() - (parsed.ts || 0) < 2 * 60 * 60 * 1000) {
-          roastQuiz = { level: parsed.level, tierScores: parsed.tierScores };
-          if (Array.isArray(parsed.log) && parsed.log.length > 0) roastQuiz.log = parsed.log;
-        }
-      }
-    } catch {}
+    if (!validateLeadForm(form, email, phoneValue)) return;
 
     setSubmitBusy(true);
-    try {
-      const res = await fetch('/api/landing/lead', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          email,
-          phone: phoneValue,
-          marketing_opt_in: marketing,
-          country: phoneCountry,
-          source: 'landing_raw2',
-          ...(roastQuiz ? { roast_quiz: roastQuiz } : {}),
-        }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setSubmitErr(j?.error || 'Не удалось отправить. Попробуй ещё раз.');
-        setSubmitBusy(false);
-        return;
-      }
-      form.reset();
-      setPhoneValue('');
-      setSent(true);
-      // Одноразовый прикреп: не приклеим тот же тест к следующему сабмиту.
-      try { sessionStorage.removeItem('raw2_roast_quiz'); } catch {}
-    } catch {
-      setSubmitErr('Проблема с сетью. Попробуй ещё раз.');
-    } finally {
-      setSubmitBusy(false);
-    }
+    const err = await postLead({ name, email, phone: phoneValue, marketing_opt_in: marketing, source: 'landing_raw2' });
+    setSubmitBusy(false);
+    if (err) { setSubmitErr(err); return; }
+    form.reset();
+    setPhoneValue('');
+    setSent(true);
+  }
+
+  async function onCtaSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setCtaErr('');
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const name = String(fd.get('name') || '').trim();
+    const email = String(fd.get('email') || '').trim();
+    const comment = String(fd.get('comment') || '').trim();
+    if (!validateLeadForm(form, email, ctaPhone)) return;
+
+    setCtaBusy(true);
+    const err = await postLead({ name, email, phone: ctaPhone, marketing_opt_in: false, ...(comment ? { comment } : {}), source: 'landing_raw2_modal' });
+    setCtaBusy(false);
+    if (err) { setCtaErr(err); return; }
+    form.reset();
+    setCtaPhone('');
+    setCtaOpen(false);
+    setSent(true);
   }
 
   return (
     <div className="raw2">
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260903-faq12" />
+      <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260907-zoom" />
 
       {/* ============ NAV ============ */}
       <nav className="raw2-nav">
@@ -434,7 +484,7 @@ export default function LandingRaw2() {
           <li><a href="#founder">Преподаватели</a></li>
           <li><a href="#price">Стоимость</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); setQuizOpen(true); }}>Пройти тест</a></li>
-          <li><a href={CONTACT_HREF}>Выучить английский</a></li>
+          <li><a href={CONTACT_HREF} onClick={openCta}>Выучить английский</a></li>
         </ul>
         <div className="nav-actions">
           <button type="button" className="pill pill-red" onClick={openAuth}>Личный кабинет</button>
@@ -442,7 +492,7 @@ export default function LandingRaw2() {
       </nav>
 
       {/* ============ HERO ============ */}
-      <header className="raw2-hero" style={{ backgroundImage: "url(/landing/raw2/hero.jpg)" }}>
+      <header className="raw2-hero" style={{ backgroundImage: "url(/landing/raw2/hero.webp)" }}>
         <div className="wrap">
           <div className="glass">
             <h1>Преврати<br />сырой английский<br />в <span className="c-lime">сочный<br />разговорный</span></h1>
@@ -587,7 +637,7 @@ export default function LandingRaw2() {
             ))}
           </div>
           <div className="cta-wrap">
-            <a href={CONTACT_HREF} className="btn btn-red">Выучить английский</a>
+            <a href={CONTACT_HREF} className="btn btn-red" onClick={openCta}>ВЫУЧИТЬ АНГЛИЙСКИЙ</a>
           </div>
         </div>
       </section>
@@ -623,7 +673,7 @@ export default function LandingRaw2() {
       <section id="contact" className="raw2-contact">
         <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
-          <h2>Оставь свои данные, чтобы могли связаться с тобой</h2>
+          <h2>Оставь свои данные,<br />чтобы могли связаться с тобой</h2>
           <form
             className="raw2-form"
             onSubmit={onSubmit}
@@ -632,12 +682,12 @@ export default function LandingRaw2() {
           >
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
-            <input type="tel" name="phone" placeholder={phoneCfg.placeholder} value={phoneValue} onChange={onPhoneChange} inputMode="tel" autoComplete="tel" required />
+            <input type="tel" name="phone" placeholder="номер телефона" value={phoneValue} onChange={onPhoneChange} inputMode="tel" autoComplete="tel" required />
             <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
-            <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы.</span></label>
+            <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>
             {submitErr && <p className="raw2-form-err">{submitErr}</p>}
-            <div className="submit-row"><button type="submit" className="btn btn-red" disabled={submitBusy || !contactValid}>{submitBusy ? 'Отправляем…' : 'Отправить'}</button></div>
-            <p className="raw2-form-consent">Нажимая «отправить» вы даёте своё согласие на обработку персональных данных.</p>
+            <div className="submit-row"><button type="submit" className={`btn btn-red${submitBusy ? " busy" : ""}`} disabled={submitBusy || !contactValid} aria-busy={submitBusy}>Отправить</button></div>
+            <p className="raw2-form-consent">Нажимая “отправить” вы даёте своё согласие<br />на обработку персональных данных.</p>
           </form>
         </div>
       </section>
@@ -647,13 +697,13 @@ export default function LandingRaw2() {
         <div className="wrap">
           <div className="inner">
             <div className="fcol fcol-links">
-              <a href="https://t.me/" target="_blank" rel="noopener noreferrer" className="tg"><TgIcon />Telegram</a>
-              <a href={CONTACT_HREF} className="fmut">Связаться</a>
+              <a href="https://t.me/" target="_blank" rel="noopener noreferrer" className="tg"><img src="/landing/raw2/ic-telegram.svg" alt="" aria-hidden />Telegram</a>
+              <a href={CONTACT_HREF} className="fmut" onClick={openCta}>Связаться</a>
               <Link href="/oferta" className="fmut">Договор-оферта</Link>
               <Link href="/privacy" className="fmut">Политика конфиденциальности</Link>
             </div>
             <div className="fcol-center">
-              <a href={CONTACT_HREF} className="btn btn-red">Выучить английский</a>
+              <a href={CONTACT_HREF} className="btn btn-red" onClick={openCta}>ВЫУЧИТЬ АНГЛИЙСКИЙ</a>
               <p className="copy">By V. Kratkovskaya © 2026</p>
             </div>
             <div className="legal">
@@ -670,7 +720,6 @@ export default function LandingRaw2() {
       {loginOpen && (
         <div className="raw2-modal-overlay" onClick={() => setLoginOpen(false)}>
           <div className="raw2-login" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <button type="button" className="raw2-login-close" onClick={() => setLoginOpen(false)} aria-label="Закрыть">×</button>
 
             {authMode === "login" ? (
               <>
@@ -687,7 +736,7 @@ export default function LandingRaw2() {
                   <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
                   <input name="password" type="password" placeholder="пароль" required autoComplete="current-password" />
                   {loginErr && <p className="raw2-login-err">{loginErr}</p>}
-                  <button type="submit" className="btn btn-red" disabled={loginBusy || !loginValid}>{loginBusy ? "Входим…" : "Войти"}</button>
+                  <button type="submit" className={`btn btn-red${loginBusy ? " busy" : ""}`} disabled={loginBusy || !loginValid} aria-busy={loginBusy}>Войти</button>
                   <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("register"); }}>Регистрация</button>
                 </form>
               </>
@@ -721,14 +770,36 @@ export default function LandingRaw2() {
                   <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
                   <input name="password" type="password" placeholder="пароль" required autoComplete="new-password" />
                   <input name="password2" type="password" placeholder="повтор пароля" required autoComplete="new-password" />
-                  <button type="submit" className="btn btn-red" disabled={loginBusy || !registerValid}>{loginBusy ? "Регистрируем…" : "Зарегистрироваться"}</button>
+                  <button type="submit" className={`btn btn-red${loginBusy ? " busy" : ""}`} disabled={loginBusy || !registerValid} aria-busy={loginBusy}>Зарегистрироваться</button>
                   {loginErr && <p className="raw2-login-err">{loginErr}</p>}
                   <label className="raw2-check"><input type="checkbox" name="agree" /><span>Согласен с обработкой персональных данных</span></label>
                   <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>
-                  <button type="button" className="raw2-login-reg" onClick={() => { setLoginErr(""); setAuthMode("login"); }}>Уже есть аккаунт? Войти</button>
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ============ CTA POPUP (Figma 2522:2375 «Форма для связи») ============ */}
+      {ctaOpen && (
+        <div className="raw2-modal-overlay" onClick={() => setCtaOpen(false)}>
+          <div className="raw2-cta" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <h3 className="raw2-cta-title">Оставь свои данные, чтобы могли связаться с тобой</h3>
+            <form
+              className="raw2-cta-form"
+              onSubmit={onCtaSubmit}
+              onChange={(e) => setCtaValid(e.currentTarget.checkValidity())}
+              onInput={(e) => setCtaValid(e.currentTarget.checkValidity())}
+            >
+              <input name="name" type="text" placeholder="имя" required autoComplete="name" />
+              <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
+              <input name="phone" type="tel" placeholder="номер телефона" value={ctaPhone} onChange={onCtaPhoneChange} inputMode="tel" autoComplete="tel" required />
+              <input name="comment" type="text" placeholder="комментарий" maxLength={1000} autoComplete="off" />
+              {ctaErr && <p className="raw2-form-err">{ctaErr}</p>}
+              <button type="submit" className={`btn btn-red${ctaBusy ? " busy" : ""}`} disabled={ctaBusy || !ctaValid} aria-busy={ctaBusy}>Отправить</button>
+              <p className="raw2-cta-consent">Соглашаясь отправить, вы даёте согласие на обработку персональных данных.</p>
+            </form>
           </div>
         </div>
       )}
@@ -739,14 +810,15 @@ export default function LandingRaw2() {
           <div className="raw2-sent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <p className="raw2-sent-msg">
               Спасибо!<br />
-              Ваша заявка принята, <b>мы свяжемся с вами</b> в ближайшее время.
+              Ваша заявка принята, <b>мы свяжемся</b><br />
+              <b>с вами</b> в ближайшее время.
             </p>
             <button type="button" className="btn btn-red" onClick={() => setSent(false)}>Ок</button>
           </div>
         </div>
       )}
 
-      {quizOpen && <RoastQuiz onClose={() => setQuizOpen(false)} />}
+      {quizOpen && <RoastQuiz onClose={() => setQuizOpen(false)} onCta={() => { setQuizOpen(false); openCta(); }} />}
     </div>
   );
 }

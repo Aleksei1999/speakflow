@@ -79,6 +79,8 @@ const GROUPS: Variant[][] = [
 ];
 
 const LEVEL_LOGOS = ["raw", "rare", "medium-rare", "medium", "medium-well", "well-done"];
+// Высота лого в модалке результата: масштаб ×1.7303 от viewBox (Figma 2522:2413: medium-rare 67.21 → 116.29).
+const LOGO_HEIGHTS: Record<string, number> = { raw: 109.4, rare: 109.4, "medium-rare": 116.3, medium: 109.7, "medium-well": 131.8, "well-done": 124.5 };
 // Формат ровно как в БД (level_tests.level) — чтобы админка через
 // fromRoastLevel() смогла показать CEFR-тег на заявке.
 const ROAST_DB_NAMES = ["Raw", "Rare", "Medium Rare", "Medium", "Medium Well", "Well Done"];
@@ -106,15 +108,14 @@ function levelIndex(a1: number, a2: number, b1: number) {
   return lvl;
 }
 
+// Сердца — экспорт из Figma: полное 2535:175, потерянная жизнь (контур) 2535:176. 29×23.
 const Heart = ({ on }: { on: boolean }) => (
-  <svg viewBox="0 0 39 33" aria-hidden fill={on ? "#CC3A3A" : "none"} stroke="#CC3A3A" strokeWidth="5" strokeLinejoin="round">
-    <path d="M19.5092 5.01562C22.3226 2.67627 26.3272 1.81831 29.7406 3.09082C33.9595 4.66 36.4763 8.24249 36.4994 12.7236L36.4965 13.0547C36.4114 16.4449 34.699 19.059 32.9633 21.1025L32.9642 21.1035C29.9833 24.6576 26.3047 27.3392 22.5355 29.6182L22.5365 29.6191C20.8571 30.6353 18.6158 30.9172 16.6469 29.7061V29.7051C12.2624 27.0612 7.85993 23.9147 4.71619 19.3311L4.41541 18.8818C1.82465 14.9219 1.79162 9.81952 4.74646 6.24609C8.52659 1.66017 15.0547 1.33677 19.5092 5.01562Z" />
-  </svg>
+  <img src={on ? "/landing/raw2/ic-heart-life.svg" : "/landing/raw2/ic-heart-lost.svg"} alt="" aria-hidden />
 );
 
 type LogItem = { text: string; options: string[]; chosen: number; correct: number; lvl: 1 | 2 | 3 };
 
-export default function RoastQuiz({ onClose }: { onClose: () => void }) {
+export default function RoastQuiz({ onClose, onCta }: { onClose: () => void; onCta?: () => void }) {
   const [qs] = useState<Question[]>(() => buildQuiz());
   const [idx, setIdx] = useState(0);
   const [byTier, setByTier] = useState<[number, number, number]>([0, 0, 0]);
@@ -189,20 +190,12 @@ export default function RoastQuiz({ onClose }: { onClose: () => void }) {
   return (
     <div className="raw2-modal-overlay" onClick={onClose}>
       <div className={`raw2-quiz-pop ${done ? "result" : ""}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <button type="button" className="raw2-quiz-close" onClick={onClose} aria-label="Закрыть">×</button>
-
         {done && logo ? (
           <div className="raw2-quiz-result">
             <p className="rq-top">Ваш результат прожарки</p>
-            <img src={`/landing/raw2/levels/${logo}.svg`} className="rq-logo" alt={logo} />
+            <img src={`/landing/raw2/levels/${logo}.svg`} className="rq-logo" alt={logo} style={{ height: LOGO_HEIGHTS[logo] ?? 116.3 }} />
             <p className="rq-bot">Мы уже подбираем<br />вам план обучения!</p>
-            <a
-              href="#contact"
-              className="btn btn-red rq-cta"
-              onClick={onClose}
-            >
-              Выучить английский
-            </a>
+            <a href="#contact" className="btn btn-red rq-cta" onClick={(e) => { if (onCta) { e.preventDefault(); onCta(); } else { onClose(); } }}>ВЫУЧИТЬ АНГЛИЙСКИЙ</a>
           </div>
         ) : (
           <>

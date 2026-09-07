@@ -84,7 +84,7 @@ export default function ForgotPasswordPage() {
         html:has(.raw2-auth-page) .auth-body { padding: 0 !important; }
 
         .raw2-auth-page { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; background: #1E1E1E; }
-        .raw2-auth-bg { position: fixed; inset: 0; z-index: 0; background-image: url(/landing/raw2/hero.jpg); background-size: cover; background-position: center; filter: blur(14px) brightness(.5); transform: scale(1.1); }
+        .raw2-auth-bg { position: fixed; inset: 0; z-index: 0; background-image: url(/landing/raw2/hero.webp); background-size: cover; background-position: center; filter: blur(14px) brightness(.5); transform: scale(1.1); }
         .raw2 .raw2-login--page { position: relative; z-index: 1; }
       `}</style>
     </div>
