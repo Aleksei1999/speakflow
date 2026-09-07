@@ -641,7 +641,7 @@ export default function AdminRawDashboard({
         href="/dashboard/raw-admin.css?v=20260907-lvlcolor"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»

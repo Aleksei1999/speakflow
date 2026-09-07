@@ -6,7 +6,6 @@
 // Стили — public/dashboard/shared-pills.css (класс .hw-pill-list).
 
 import Link from "next/link"
-import { ArrowIcon } from "@/components/icons/ArrowIcon"
 
 export interface HwPillItem {
   label: React.ReactNode
@@ -53,6 +52,8 @@ export function HwPillList({ items, className }: HwPillListProps) {
   )
 }
 
+// Стрелка — экспорт Figma (Vector 34, 37×36.8, повёрнута на 180° → «←»). Цвет через mask + currentColor,
+// чтобы hover перекрашивал её в белый как раньше.
 function HwPillArrow() {
-  return <ArrowIcon direction="left" size={32} />
+  return <span className="hw-pill-arrow-ic" />
 }

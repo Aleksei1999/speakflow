@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { fromLecturer } from "@/lib/ru/name-case"
 import Link from "next/link"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
 import { useRouter } from "next/navigation"
@@ -19,6 +20,16 @@ import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher
 import StudentLectureModal, { type LectureForModal } from "@/components/dashboard/StudentLectureModal"
 
 // Roast-level → композитный SVG (все цвета уже внутри одного файла).
+// Лого для модалки «уровень обновлён» — файлы лендинга (пропорции совпадают с группой в Figma 2522:2637);
+// высота = viewBox × 1.7303 (medium-rare 67.21 → 116.29).
+const ROAST_LEVEL_MODAL: Record<string, { src: string; h: number }> = {
+  Raw: { src: "/landing/raw2/levels/raw.svg", h: 109.4 },
+  Rare: { src: "/landing/raw2/levels/rare.svg", h: 109.4 },
+  "Medium Rare": { src: "/landing/raw2/levels/medium-rare.svg", h: 116.3 },
+  Medium: { src: "/landing/raw2/levels/medium.svg", h: 109.7 },
+  "Medium Well": { src: "/landing/raw2/levels/medium-well.svg", h: 131.8 },
+  "Well Done": { src: "/landing/raw2/levels/well-done.svg", h: 124.5 },
+}
 const ROAST_LEVEL_SVG: Record<string, string> = {
   Raw: "/dashboard/student/levels/raw.svg",
   Rare: "/dashboard/student/levels/rare.svg",
@@ -299,6 +310,72 @@ export default function StudentRawDashboard({
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement | null>(null)
   const effectiveAvatarUrl = avatarOverride ?? avatarUrl ?? null
+  // Модалка «уровень обновлён» (Figma 2522:2631). Показываем, когда текущий уровень отличается от последнего,
+  // который ученик видел на этом устройстве (localStorage); при первом визите просто запоминаем.
+  const [levelUpOpen, setLevelUpOpen] = useState(false)
+  const currentRoast = toRoastLevel(englishLevel)
+  useEffect(() => {
+    if (!studentId) return
+    const key = `raw_level_seen_${studentId}`
+    try {
+      const seen = localStorage.getItem(key)
+      if (seen && seen !== currentRoast) setLevelUpOpen(true)
+      else if (!seen) localStorage.setItem(key, currentRoast)
+    } catch {}
+  }, [studentId, currentRoast])
+  function closeLevelUp() {
+    try { localStorage.setItem(`raw_level_seen_${studentId}`, currentRoast) } catch {}
+    setLevelUpOpen(false)
+  }
+  useEffect(() => {
+    if (!levelUpOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeLevelUp() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelUpOpen])
+  // Модалка выбора способа оплаты (Figma 2522:2400) — открывается после валидации суммы/телефона.
+  const [payMethodOpen, setPayMethodOpen] = useState(false)
+  useEffect(() => {
+    if (!payMethodOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPayMethodOpen(false) }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [payMethodOpen])
+
+  // Кастомная полоса прокрутки карточки чатов (Figma 2522:1635: трек 7px на 18px от правого края,
+  // 58px сверху / 56px снизу карточки, thumb lime). Нативный скроллбар скрыт в CSS.
+  const chatsCardRef = useRef<HTMLDivElement | null>(null)
+  const [chatsScroll, setChatsScroll] = useState<{ visible: boolean; top: number; height: number }>({ visible: false, top: 0, height: 0 })
+  useEffect(() => {
+    const el = chatsCardRef.current
+    if (!el) return
+    const TRACK = 723
+    const update = () => {
+      const { scrollHeight, clientHeight, scrollTop } = el
+      if (scrollHeight <= clientHeight + 1) { setChatsScroll({ visible: false, top: 0, height: 0 }); return }
+      const height = Math.max(40, Math.round((clientHeight / scrollHeight) * TRACK))
+      const top = Math.round((scrollTop / (scrollHeight - clientHeight)) * (TRACK - height))
+      setChatsScroll({ visible: true, top, height })
+    }
+    update()
+    el.addEventListener("scroll", update, { passive: true })
+    const ro = new ResizeObserver(update); ro.observe(el)
+    return () => { el.removeEventListener("scroll", update); ro.disconnect() }
+  }, [initialChats])
+
+  // Макет кабинета нарисован под 1441px. На экранах шире масштабируем страницу пропорционально
+  // (zoom = ширина / 1441, потолок 1.4) — так же, как лендинг; иначе абсолютные px шапки разъезжаются.
+  useEffect(() => {
+    const apply = () => {
+      const w = window.innerWidth
+      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1
+      document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4))
+    }
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [])
 
   async function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -588,7 +665,7 @@ export default function StudentRawDashboard({
     .map((l) => ({
       id: `lec:${l.id}`,
       scheduledAt: l.scheduled_at,
-      label: l.host_name ? `лекция: ${l.title} (${l.host_name})` : `лекция: ${l.title}`,
+      label: `Лекция: ${l.title}`, // имя лектора в названии не показываем (просьба заказчика)
       callHref: null as string | null,
       teacherUserId: null as string | null,
       teacherName: l.host_name,
@@ -616,7 +693,8 @@ export default function StudentRawDashboard({
   const [topupBusy, setTopupBusy] = useState(false)
   const [topupError, setTopupError] = useState<string | null>(null)
 
-  async function submitTopup() {
+  // Шаг 1: валидация → модалка выбора способа оплаты. Шаг 2 (startPayment) — создание платежа.
+  function submitTopup() {
     setTopupError(null)
     const amountRub = Number.parseInt(topupAmount.replace(/\s+/g, ''), 10)
     if (!Number.isFinite(amountRub) || amountRub < 100) {
@@ -628,6 +706,12 @@ export default function StudentRawDashboard({
       setTopupError('Введите корректный номер телефона (11 цифр, +7…)')
       return
     }
+    setPayMethodOpen(true)
+  }
+
+  // Оба способа пока ведут в YooKassa (иностранные карты отдельным провайдером не подключены).
+  async function startPayment(_method: "mir" | "foreign") {
+    const amountRub = Number.parseInt(topupAmount.replace(/\s+/g, ''), 10)
     setTopupBusy(true)
     try {
       const res = await fetch('/api/balance/topup/create', {
@@ -650,6 +734,7 @@ export default function StudentRawDashboard({
       setTopupError(e instanceof Error ? e.message : 'Ошибка сети')
     } finally {
       setTopupBusy(false)
+      setPayMethodOpen(false)
     }
   }
 
@@ -657,9 +742,9 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260907-topup22" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260908-lvl" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260904-arrows-lime" />
@@ -674,7 +759,7 @@ export default function StudentRawDashboard({
       <div className="st-hero">
         <nav className="st-nav">
           <Link href="/student" className="st-brand" aria-label="Raw English">
-            <img src="/landing/raw2/logo-raw-word-white.svg" alt="Raw English" />
+            <img src="/dashboard/logo-raw-white.svg" alt="Raw English" />
           </Link>
           <ul className="st-nav-links">
             {NAV.map((n) => (
@@ -739,9 +824,7 @@ export default function StudentRawDashboard({
                         title={isLecture ? "Присоединиться к лекции" : "Присоединиться к звонку (комната откроется за 5 мин до начала)"}
                         aria-label="Начать звонок"
                       >
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden>
-                          <path d="M4.5 5.5c0-.55.45-1 1-1h2.7c.44 0 .82.29.95.71l1.14 3.62c.13.42-.01.88-.36 1.16l-1.63 1.3c1.13 2.24 2.99 4.1 5.23 5.23l1.3-1.63c.28-.35.74-.49 1.16-.36l3.62 1.14c.42.13.71.51.71.95v2.7c0 .55-.45 1-1 1C10.1 20.32 3.68 13.9 3.68 5.5" fill="#fff" />
-                        </svg>
+                        <img src="/dashboard/ic-phone.svg" alt="" aria-hidden />
                       </a>
                     )
                   })()}
@@ -793,11 +876,9 @@ export default function StudentRawDashboard({
       {/* Полностью повторяет teacher-блок (`.tr-chats-frame`). Стили в raw-teacher.css. */}
       <section id="chats" className="st-chats-section tr-section">
         <div className="tr-chats-frame">
-          <div className="tr-chats-badge">
-            ЧАТ С&nbsp;<span className="c-lime">УЧИТЕЛЯМИ</span>
-          </div>
+          <div className="tr-chats-badge">ЧАТЫ</div>
 
-          <div className="tr-chats-card tr-chats-card--flow">
+          <div className="tr-chats-card tr-chats-card--flow" ref={chatsCardRef}>
             {(!initialChats || initialChats.length === 0) && (
               <div className="tr-chats-empty">Пока нет ни одного чата.</div>
             )}
@@ -919,6 +1000,11 @@ export default function StudentRawDashboard({
               )
             })}
           </div>
+          {chatsScroll.visible && (
+            <div className="st-chat-scrollbar" aria-hidden>
+              <div className="st-chat-scrollbar-thumb" style={{ top: chatsScroll.top, height: chatsScroll.height }} />
+            </div>
+          )}
         </div>
       </section>
 
@@ -992,7 +1078,7 @@ export default function StudentRawDashboard({
           {/* MAIN — большая тёмная плашка (col 1-2, row 1) */}
           {(() => {
             const l = lecMain
-            const src = l ? { tag: l.tag ?? "", title: l.title, author: l.host_name ?? "", desc: l.description ?? "", ...lecFmt(l.scheduled_at) } : LECTORY_MAIN
+            const src = l ? { tag: l.tag ?? "", title: l.title, author: fromLecturer(l.host_name), desc: l.description ?? "", ...lecFmt(l.scheduled_at) } : LECTORY_MAIN
             return (
               <div
                 className="st-lect-card st-lect-card--main"
@@ -1018,7 +1104,7 @@ export default function StudentRawDashboard({
           {/* TALL — правая колонка, spans 2 rows */}
           {(() => {
             const l = lecTall
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
+            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_TALL.tag, title: LECTORY_TALL.author, desc: LECTORY_TALL.desc, time: LECTORY_TALL.time, date: LECTORY_TALL.date }
             return (
               <div
@@ -1044,7 +1130,7 @@ export default function StudentRawDashboard({
           {/* SMALL 1 — нижний левый */}
           {(() => {
             const l = lecSmall[0]
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
+            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_LEFT.tag, title: LECTORY_LEFT.title, desc: LECTORY_LEFT.desc, time: LECTORY_LEFT.time, date: LECTORY_LEFT.date }
             return (
               <div
@@ -1067,14 +1153,14 @@ export default function StudentRawDashboard({
             )
           })()}
 
-          {/* SMALL 2 — нижний средний */}
+          {/* SMALL 2 — нижний средний (Figma: тёмная карточка, красный тег) */}
           {(() => {
             const l = lecSmall[1]
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ?? l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
+            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
               : { tag: LECTORY_RIGHT.tag, title: LECTORY_RIGHT.title, desc: LECTORY_RIGHT.desc, time: LECTORY_RIGHT.time, date: LECTORY_RIGHT.date }
             return (
               <div
-                className="st-lect-card red"
+                className="st-lect-card"
                 role={l ? "button" : undefined}
                 tabIndex={l ? 0 : undefined}
                 onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
@@ -1170,9 +1256,6 @@ export default function StudentRawDashboard({
               </div>
             </div>
 
-            <Link href="/student/balance" className="st-bal-topup">
-              ПОПОЛНИТЬ БАЛАНС
-            </Link>
           </div>
 
           <div className="st-bal-side">
@@ -1217,8 +1300,7 @@ export default function StudentRawDashboard({
               )}
               <p className="st-topup-hint">
                 Соглашаясь отправить,<br />
-                вы даёте согласие на обработку<br />
-                персональных данных.
+                вы даёте согласие на обработку персональных данных.
               </p>
             </div>
 
@@ -1236,7 +1318,44 @@ export default function StudentRawDashboard({
             </div>
           </div>
         </div>
+        {/* Figma: кнопка под карточкой, по центру секции */}
+        <Link href="/student/balance" className="st-bal-topup">
+          ПОПОЛНИТЬ БАЛАНС
+        </Link>
       </section>
+
+      {/* ================== PAY METHOD MODAL — Figma 2522:2400 «Пополнение баланса (выбранный зелёный)» ================== */}
+      {payMethodOpen && (
+        <div className="st-pay-backdrop" onClick={() => !topupBusy && setPayMethodOpen(false)}>
+          <div className="st-pay-modal" role="dialog" aria-modal="true" aria-label="Способ оплаты" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="st-pay-close" aria-label="Закрыть" onClick={() => setPayMethodOpen(false)} disabled={topupBusy}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+            </button>
+            <button type="button" className="st-pay-option st-pay-option--mir" onClick={() => startPayment("mir")} disabled={topupBusy}>
+              Картой МИР российского банка
+            </button>
+            <button type="button" className="st-pay-option st-pay-option--foreign" onClick={() => startPayment("foreign")} disabled={topupBusy}>
+              Картой иностранного банка
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================== LEVEL UP MODAL — Figma 2522:2631 «Когда уровень повышается» ================== */}
+      {levelUpOpen && (
+        <div className="st-lvl-backdrop" onClick={closeLevelUp}>
+          <div className="st-lvl-modal" role="dialog" aria-modal="true" aria-label="Уровень обновлён" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="st-lvl-close" aria-label="Закрыть" onClick={closeLevelUp}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+            </button>
+            <p className="st-lvl-text">В личном кабинете ваш статус прожарки обновлён на:</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="st-lvl-logo" src={(ROAST_LEVEL_MODAL[currentRoast] ?? ROAST_LEVEL_MODAL.Raw).src} alt={currentRoast} style={{ height: (ROAST_LEVEL_MODAL[currentRoast] ?? ROAST_LEVEL_MODAL.Raw).h }} />
+          </div>
+        </div>
+      )}
 
       {/* ================== FOOTER ================== */}
       <SiteFooter

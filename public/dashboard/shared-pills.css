@@ -45,7 +45,9 @@
   justify-content: center;
   min-height: 137px;
   padding: 0 100px;
-  background: #1E1E1E;
+  /* чёрная база нужна только для hover-эффекта: в покое прозрачная, иначе на дробных
+     пикселях (zoom на широких экранах) она просвечивает тёмной линией по краю плашки */
+  background: transparent;
   border-radius: 29.5px;
   color: #1E1E1E;
   text-align: center;
@@ -70,7 +72,7 @@
 
 /* Hover / focus — на самом .hw-pill (потому что фокус ловит только он) */
 .hw-pill:hover .hw-pill-body,
-.hw-pill:focus-visible .hw-pill-body { color: #FFF; }
+.hw-pill:focus-visible .hw-pill-body { color: #FFF; background: #1E1E1E; }
 .hw-pill:focus-visible { outline: none; }
 .hw-pill:hover .hw-pill-body::before,
 .hw-pill:focus-visible .hw-pill-body::before {
@@ -96,6 +98,14 @@
   z-index: 3;
   transition: background .28s ease, color .28s ease, border-color .28s ease;
   pointer-events: none; /* клик должен идти в родительский .hw-pill */
+}
+/* сама стрелка: Figma Vector 34 (37×36.8), «←» = поворот 180°; закрашивается currentColor через mask */
+.hw-pill-arrow-ic {
+  display: block; width: 37px; height: 36.82px;
+  background: currentColor;
+  -webkit-mask: url(/dashboard/ic-arrow-right.svg) center / contain no-repeat;
+  mask: url(/dashboard/ic-arrow-right.svg) center / contain no-repeat;
+  transform: rotate(180deg);
 }
 .hw-pill:hover .hw-pill-arrow,
 .hw-pill:focus-visible .hw-pill-arrow {

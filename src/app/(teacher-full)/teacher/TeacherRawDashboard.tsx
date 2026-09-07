@@ -1088,7 +1088,7 @@ export default function TeacherRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260907-badgegap" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
 

@@ -19,6 +19,8 @@
 .st button { border: none; cursor: pointer; appearance: none; -webkit-appearance: none; padding: 0; background: transparent; color: inherit; }
 
 .st {
+  /* пропорциональный масштаб на экранах >1441 (см. useEffect в StudentRawDashboard) */
+  zoom: var(--raw2-zoom, 1);
   --red: #cc3a3a;
   --red-deep: #b63f37;
   --red-dark: #a52c26;
@@ -53,11 +55,16 @@
 /* ============================================================
    NAV — dark hero band (bg-hero image)
    ============================================================ */
+/* Figma 4003:163 (шапка ученика, 1441×208): лого 171×98 at (41,63); пункты меню — текст top 100,
+   боксы x/w: 277/210 · 522/165 · 725/106 · 878/55 · 976/71 (зазоры 35/38/47/43); аватар 93 at (1109,68),
+   обводка 5 lime; часы: правый край 1355, top 72, 16:24 Inter 700 40 / дата 500 24, lh 1.29, −1.2px */
 .st-hero {
   position: relative;
-  background: var(--dark-bg) url('/dashboard/bg-hero.jpg') center/cover no-repeat;
+  /* фото фона — Figma 2522:1500: нода 1696×1259 at x=−127 (по центру), фото 2882×2518 cover → 1696×1481, верх на −111 */
+  background: var(--dark-bg) url('/dashboard/bg-hero-student.webp') no-repeat;
+  background-size: 117.7% auto; background-position: center -111px;
   color: var(--white);
-  padding: clamp(20px, 3vw, 40px) clamp(20px, 3vw, 41px) clamp(90px, 12vw, 170px);
+  padding: 63px 41px 151px; /* Figma 4003:182: кнопки 1040…1108, низ фрейма 1259 */
   overflow: hidden;
 }
 .st-hero::before {
@@ -68,40 +75,44 @@
 }
 .st-nav {
   position: relative; z-index: 2;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0;
+  height: 98px;
 }
 .st-brand {
-  display: inline-block;
-  width: clamp(120px, 12vw, 171px);
+  display: block; position: absolute; left: 0; top: 0;
+  width: 171px; height: 98px;
 }
 .st-brand img { display: block; width: 100%; height: auto; }
 
-/* Индивидуальные отступы между пунктами меню (Figma):
-   Расписание→Домашка 35 · Домашка→Библиотека 38 · Библиотека→Чаты 47 · Чаты→Звонки 43 */
+/* пункты меню: абсолютные боксы по макету (x относительно .st-nav, который начинается на 41px) */
 .st-nav-links {
-  display: flex; align-items: center; justify-content: center;
-  gap: clamp(40px, 4vw, 70px);
-  list-style: none;
-  padding: 0; margin: 0;
+  position: absolute; left: 236px; top: 39px;
+  display: flex; align-items: flex-start; gap: 0;
+  list-style: none; padding: 0; margin: 0;
 }
-.st-nav-links li + li { margin-left: 0; }
+.st-nav-links li { flex: 0 0 auto; }
+.st-nav-links li:nth-child(1) { width: 210px; }
+.st-nav-links li:nth-child(2) { width: 165px; margin-left: 35px; }
+.st-nav-links li:nth-child(3) { width: 106px; margin-left: 38px; }
+.st-nav-links li:nth-child(4) { width: 55px; margin-left: 47px; }
+.st-nav-links li:nth-child(5) { width: 71px; margin-left: 43px; }
+.st-nav-links li:nth-child(1) a { width: 243px; margin-left: -16.5px; }
+.st-nav-links li:nth-child(2) a { width: 197px; margin-left: -16px; }
+.st-nav-links li:nth-child(3) a { width: 143px; margin-left: -18.5px; }
+.st-nav-links li:nth-child(4) a { width: 102px; margin-left: -23.5px; }
+.st-nav-links li:nth-child(5) a { width: 102px; margin-left: -15.5px; }
+/* ховер-пилюли — Figma 2522:4066/4072/4075/4069/4078: lime, h48, r29.5, ширины 243/197/143/102/102,
+   центрированы на тексте пункта (li = ширина текстового бокса) */
 .st-nav-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  padding: 0 18px;
-  margin: 0 -18px;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box; width: 100%; height: 48px; margin: -17px 0 0; /* пилюля 85…133, текст по центру */
+  padding: 0;
   border-radius: 29.5px;
   color: var(--white);
   background: transparent;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(14px, 1.25vw, 18px);
-  letter-spacing: -0.05em;
+  font-size: 18px;
+  letter-spacing: -0.9px;
   line-height: 0.975;
   transition: color .18s, background .18s;
   white-space: nowrap;
@@ -113,36 +124,34 @@
   background: #DFED8C;
   outline: none;
 }
-/* Порядок: [аватар] 15px [часы].
-   Аватар: 93×93, 5px lime border, отступ 62px от навигационного текста слева. */
-.st-nav-right {
-  display: flex; align-items: center; gap: 15px;
-  margin-left: 62px;
-  color: var(--white);
-}
+/* справа: аватар at (1109,68) → left 1068, top 5; часы правым краем на 1355 → right 45, top 9 */
+.st-nav-right { position: absolute; left: 1068px; top: 5px; right: 45px; height: 93px; color: var(--white); }
 .st-clock {
+  position: absolute; right: 0; top: 4px;
   text-align: right;
   color: var(--white);
   font-family: 'Inter', sans-serif;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   line-height: 1.29;
+  white-space: nowrap;
 }
 .st-clock .time {
   font-weight: 700;
-  font-size: clamp(24px, 2.8vw, 40px);
+  font-size: 40px;
 }
 .st-clock .date {
   font-weight: 500;
-  font-size: clamp(14px, 1.7vw, 24px);
+  font-size: 24px;
 }
 .st-nav-avatar {
+  position: absolute; left: 0; top: 0;
+  box-sizing: border-box;
   width: 93px;
   height: 93px;
   border-radius: 82px;
   overflow: hidden;
   border: 5px solid #DFED8C;
   background: #d9d9d9;
-  flex: 0 0 auto;
 }
 .st-nav-avatar img,
 .st-nav-avatar .st-avatar-fb {
@@ -184,61 +193,79 @@
 .st-badge.on-light-dark-outline { border-color: var(--ink); color: var(--ink); }
 
 /* ============================================================
-   SCHEDULE (inside hero dark card)
+   SCHEDULE (inside hero dark card) — Figma 4003:182 (1441×1259)
+   Плашка 650×83 top 270 (обводка 4, Inter 700 40 / −2px); карточки 1164×149 x=139, top 462/643/824 (gap 32),
+   rgba(60,60,60,.39) r29.5; блок времени 177×149 rgba(223,237,140,.36), текст (39, 35): 40 Bold + 24 Medium, lh 1.29;
+   название x=354 (32 Medium −1.6, lh 80.53%); «чат» 107×54 x=1086; звонок ⌀54 x=1204; кнопки 368×68 / 293×68 top 1040.
    ============================================================ */
 .st-schedule-wrap {
   position: relative; z-index: 2;
-  max-width: 1228px;
-  margin: clamp(40px, 6vw, 90px) auto 0;
-  padding: 0 clamp(20px, 3vw, 40px);
+  max-width: 1164px;
+  margin: 109px auto 0; /* nav 63+98=161 → плашка 270 */
+  padding: 0;
+}
+.st-schedule-wrap .st-badge {
+  box-sizing: border-box; width: 650px; height: 83px; padding: 0; line-height: 75px;
+  font-size: 40px; letter-spacing: -2px;
 }
 .st-schedule-list {
   display: flex; flex-direction: column;
-  gap: clamp(20px, 2.5vw, 32px);
-  margin-bottom: clamp(30px, 3.5vw, 50px);
+  gap: 32px;
+  margin-bottom: 67px; /* карточки 973 → кнопки 1040 */
   max-width: 1164px;
   margin-left: auto; margin-right: auto;
 }
+/* стиль карточки — как тёмная карточка преподавателя на лендинге (Figma 2522:863: rgba(30,30,30,.58) + Glass):
+   blur+saturate, светлая рамка, диагональный блик */
 .st-lesson {
-  position: relative;
+  position: relative; overflow: hidden;
   display: flex; align-items: center;
-  gap: clamp(16px, 2vw, 30px);
-  background: rgba(30, 30, 30, 0.52);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 30px;
-  min-height: clamp(110px, 10.5vw, 149px);
-  padding: clamp(16px, 2vw, 28px) clamp(20px, 2.5vw, 40px);
+  gap: 0;
+  background: rgba(30, 30, 30, 0.58);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
+  border-radius: 29.5px;
+  box-sizing: border-box;
+  height: 149px;
+  padding: 0 45px 0 0;
 }
+.st-lesson::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.st-lesson > * { position: relative; z-index: 1; }
 .st-lesson-time {
   flex: 0 0 auto;
-  min-width: clamp(120px, 12vw, 177px);
-  background: var(--panel-lime-soft);
-  border-radius: var(--radius-card);
-  padding: clamp(14px, 1.6vw, 22px) clamp(16px, 1.8vw, 26px);
-  align-self: stretch;
-  display: flex; flex-direction: column; justify-content: center;
+  box-sizing: border-box;
+  width: 177px; height: 147px; margin: -1px 0 0 -1px; /* компенсация рамки карточки */
+  background: rgba(146, 157, 79, 0.39); /* зелёный — как зелёная карточка преподавателя (Figma 2522:862) */
+  border-radius: 29.5px;
+  padding: 35px 0 0 39px;
+  display: flex; flex-direction: column; justify-content: flex-start;
   color: var(--lime);
   font-family: 'Inter', sans-serif;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   line-height: 1.29;
 }
 .st-lesson-time .hh {
   font-weight: 700;
-  font-size: clamp(28px, 2.8vw, 40px);
+  font-size: 40px;
 }
 .st-lesson-time .dd {
   font-weight: 500;
-  font-size: clamp(16px, 1.7vw, 24px);
+  font-size: 24px;
 }
 .st-lesson-label {
   flex: 1;
+  margin: 0 27px 0 38px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(20px, 2.4vw, 32px);
-  letter-spacing: -0.05em;
-  line-height: 0.975;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
   color: var(--white);
   word-break: break-word;
 }
@@ -247,21 +274,23 @@
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--red) !important;
   color: var(--white) !important;
-  border-radius: var(--radius-btn);
-  min-width: 107px;
+  border-radius: 34px;
+  box-sizing: border-box;
+  width: 107px;
   height: 54px;
-  padding: 0 22px;
+  padding: 0;
   font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 0.805;
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
   text-transform: lowercase;
   transition: background .2s;
-  gap: 12px;
 }
 .st-lesson-call:hover { background: var(--red-deep) !important; }
 .st-lesson-call-mini {
+  flex: 0 0 auto;
+  margin-left: 11px;
   width: 54px; height: 54px;
   border-radius: 50%;
   background: var(--red);
@@ -269,6 +298,8 @@
   color: var(--white);
   transition: background .2s;
 }
+/* иконка трубки — экспорт Figma (27.32×27.35) */
+.st-lesson-call-mini img { width: 27.32px; height: 27.35px; display: block; }
 .st-lesson-call-mini:hover { background: var(--red-deep); }
 .st-lesson-empty {
   padding: 24px;
@@ -291,17 +322,18 @@
   max-width: 1164px;
   margin: 0 auto;
 }
+/* Figma: «открыть календарь» 368×68 lime, «добавить урок» 293×68 red; Inter 700 32 / −1.6px, lowercase */
 .st-sched-btn {
   display: inline-flex; align-items: center; justify-content: center;
   height: 68px;
   width: 293px;
   padding: 0;
-  border-radius: var(--radius-btn);
+  border-radius: 34px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 0.805;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
   text-transform: lowercase;
   transition: background .2s;
 }
@@ -388,11 +420,21 @@
 /* ============================================================
    HOMEWORK + LIBRARY — lime bars on white
    ============================================================ */
+/* Figma 4005:184 (1441×1016): плашка 918×83 top 142.5 (обводка 4 lime, Inter 700 40 / −2px, «библиотека» красным);
+   ряды 1087×137 x=160, top 359/514/669 (gap 18); круг со стрелкой ⌀71 x=1209 (группа 160…1280 по центру); низ 210 */
 .st-bars-section {
   max-width: 1441px;
   margin: 0 auto;
-  padding: clamp(60px, 8vw, 120px) clamp(20px, 3vw, 40px) 0;
+  padding: 142.5px 0 210px;
 }
+.st-bars-section .st-badge-wrap { margin-bottom: 133.5px; }
+.st-bars-section .st-badge {
+  box-sizing: border-box; width: 918px; height: 83px; padding: 0; line-height: 75px;
+  font-size: 40px; letter-spacing: -2px; border-color: var(--lime); color: var(--ink);
+}
+.st-bars-section .hw-pill-list { max-width: 1120px; padding-right: 33px; box-sizing: border-box; }
+.st-bars-section .hw-pill { font-size: 40px; letter-spacing: -2px; }
+.st-bars-section .hw-pill-arrow { right: -33px; } /* Figma: круг 1209…1280 при ряде до 1247 */
 .st-bars {
   display: flex; flex-direction: column;
   gap: clamp(14px, 1.8vw, 18px);
@@ -432,22 +474,72 @@
 /* ============================================================
    CHATS SECTION (dark with photo bg)
    ============================================================ */
-.st-chats-section {
+/* Figma 4005:194 (1441×1185): плашка «ЧАТЫ» 251×83 top 48; карточка 1228×837 top 219; низ 129 */
+.st-chats-section, #chats.st-chats-section.tr-section {
   position: relative;
-  padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px);
-  margin: clamp(40px, 5vw, 80px) auto 0 !important;
-  background: var(--dark-bg) url('/dashboard/bg-chat.jpg') center/cover no-repeat;
+  padding: 48px 40px 129px;
+  margin: 0 auto !important;
+  /* фото фона — Figma 2522:1502: нода 1874×1249 at (−205, −43 от верха секции); фото 2882×2546 cover → 1874×1655, верх −246 */
+  background: var(--dark-bg) url('/dashboard/bg-chat-student.webp') -205px -246px / 130.05% auto no-repeat;
   color: var(--white);
   overflow: hidden;
 }
-.st-chats-section::before {
+/* затемнение — только сверху: Figma 2522:1510, прямоугольник 1545×297 at (−41, −26), градиент 180°
+   rgba(0,0,0,.77) 16.3% → прозрачный 99.3% */
+.st-chats-section::before, #chats.st-chats-section.tr-section::before {
   content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(26,23,20,.72), rgba(26,23,20,.86));
+  position: absolute; left: -41px; right: -63px; top: -26px; bottom: auto; height: 297px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.77) 16.3%, rgba(0,0,0,0) 99.26%);
   z-index: 0;
   pointer-events: none;
 }
 .st-chats-section > * { position: relative; z-index: 1; }
+.st-chats-section .tr-chats-badge { width: 251px; }
+/* карточка чатов — стекло как у карточек расписания / тёмной карточки преподавателя (Figma Glass):
+   blur+saturate, светлая рамка, диагональный блик (блик слоем фона — карточка скроллится, ::after нельзя) */
+.st-chats-section .tr-chats-card {
+  box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.08) 100%), rgba(30,30,30,0.58);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255,255,255,0.22); outline-offset: -1px; /* рамка без сдвига содержимого (абсолютные дети) */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
+}
+/* Figma: ряды top 277/467/657/847 → шаг 190 = 153 + 37; карточка 219…1056, последний ряд до 1000 → низ 56 */
+.st-chats-section .tr-chats-card--flow { gap: 37px; padding: 58px 60px 56px; }
+/* Figma: превью Inter 500 24 / −1.2px / 97.5% (2 строки = 46.8) */
+.st-chats-section .tr-chat-row .tr-chat-preview { line-height: 0.975; max-width: 637px; } /* ширина текстового бокса в макете */
+/* ряды чатов (Figma 2522:1508 lime .69 / 2522:1574 red .55) — стекло как у остальных карточек:
+   blur+saturate, светлая рамка, диагональный блик; overflow оставляем visible — плашка «новое сообщение» выступает над рядом */
+.st-chats-section .tr-chat-row {
+  box-sizing: border-box;
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255,255,255,0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15);
+}
+/* Figma: текст плашки «новое сообщение» от левого края (37px); стрелка — экспорт 37×36.8 по центру круга;
+   мини-аватары группы: 50px at (23, 80), 27px at (18, 66) */
+.st-chats-section .tr-chat-badge { justify-content: flex-start; }
+.st-chats-section .tr-chat-arrow-btn img { width: 37px; height: 36.82px; }
+.st-chats-section .tr-chat-avatar-mini { left: 23px; top: 80px; }
+.st-chats-section .tr-chat-avatar-nano { left: 18px; top: 66px; }
+/* Figma 2522:1635: трек скролла 7px, от 58px сверху карточки до 56px снизу (277…1000 при карточке 219…1056) */
+/* нативный скроллбар карточки скрыт, вместо него кастомный трек (см. .st-chat-scrollbar) */
+.st-chats-section .tr-chats-card { scrollbar-width: none; -ms-overflow-style: none; }
+.st-chats-section .tr-chats-card::-webkit-scrollbar { display: none !important; width: 0 !important; }
+/* Figma 2522:1635/1636/1637: трек 7×723 at x=1309 (карточка 106…1334 → 18px от правого края), top 277 (58 от верха карточки);
+   в .tr-chats-frame карточка на top 171 → трек top 229, left 1203 */
+.st-chat-scrollbar { position: absolute; left: 1203px; top: 229px; width: 7px; height: 723px; border-radius: 3.5px; background: rgba(255,255,255,0.14); pointer-events: none; z-index: 2; }
+.st-chat-scrollbar-thumb { position: absolute; left: 0; width: 7px; border-radius: 3.5px; background: #DFED8C; }
+/* превью: line-clamp режет выносные буквы второй строки при межстрочном 97.5% — даём запас снизу */
+.st-chats-section .tr-chat-row .tr-chat-preview { padding-bottom: 6px; }
+.st-chats-section .tr-chat-row::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.st-chats-section .tr-chat-row > * { z-index: 1; }
 .st-chats {
   display: flex; flex-direction: column;
   gap: clamp(14px, 1.6vw, 22px);
@@ -581,19 +673,25 @@
 /* ============================================================
    LECTORY (lime bg) — расписание лектория
    ============================================================ */
+/* Figma 4007:199 (1441×1068): плашка 595×83 top 59 (обводка 4 #1E1E1E); карточки: main 811×365 (107,197),
+   tall 386×770 (948,197), нижние 391×365 (107,602) / (528,602); колонки 391/391/386, зазор 30, ряды 40; низ 101 */
 .st-lectory-section {
   background: var(--lime);
-  padding: clamp(50px, 6vw, 90px) clamp(20px, 3vw, 40px) clamp(60px, 6vw, 100px);
+  padding: 59px 0 101px;
+}
+.st-lectory-section .st-badge-wrap { margin-bottom: 55px; }
+.st-lectory-section .st-badge {
+  box-sizing: border-box; width: 595px; height: 83px; padding: 0; line-height: 75px;
+  font-size: 40px; letter-spacing: -2px; border-color: var(--ink); color: var(--ink);
 }
 .st-lectory-grid {
   max-width: 1228px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 391px 391px 386px;
   grid-template-rows: 365px 365px;
-  /* row-gap 40px по Figma, column-gap оставляем адаптивным. */
   row-gap: 40px;
-  column-gap: clamp(20px, 2vw, 32px);
+  column-gap: 30px;
 }
 .st-lect-card {
   position: relative;
@@ -602,7 +700,8 @@
   border-radius: var(--radius-card);
   /* padding-top оставляет место под tag (который наполовину торчит сверху)
      + описание/футер. */
-  padding: 64px 38px 38px;
+  /* Figma: текст от верха 38 (main 43), слева 38 (tall и правая нижняя — 35) */
+  padding: 38px 38px 38px;
   /* overflow visible — иначе tag, выступающий за верхний край, будет клипнут. */
   overflow: visible;
   display: flex;
@@ -614,8 +713,9 @@
 .st-lect-card--main {
   grid-column: 1 / span 2;
   grid-row: 1;
-  padding-right: 220px;
+  padding: 43px 38px 38px;
 }
+.st-lect-card.tall, .st-lectory-grid > .st-lect-card:nth-child(4) { padding-left: 35px; }
 /* TALL: 3-я колонка, 2 строки */
 .st-lect-card.tall {
   grid-column: 3;
@@ -629,16 +729,19 @@
   min-height: 0;
 }
 
+/* main: заголовок Inter 500 30 lime + автор 700 30 lime (строки подряд), описание через 28;
+   боковые: автор 700 32 белый, line-height 32, описание через 21 (tall — 27) */
 .st-lect-title {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 30px;
+  font-size: 32px;
   letter-spacing: -0.05em;
-  line-height: 1.063;
-  color: var(--lime);
-  margin: 0 0 12px;
+  line-height: 32px;
+  color: var(--white);
+  margin: 0 0 21px;
 }
-.st-lect-card.red .st-lect-title { color: var(--white); font-size: 32px; }
+.st-lect-card.tall .st-lect-title { margin-bottom: 27px; }
+.st-lect-card--main .st-lect-title { font-weight: 500; font-size: 30px; line-height: 1.063; color: var(--lime); margin: 0; max-width: 387px; }
 .st-lect-author {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
@@ -646,9 +749,9 @@
   letter-spacing: -0.05em;
   line-height: 1.063;
   color: var(--lime);
-  margin: 0 0 20px;
+  margin: 0 0 28px;
+  max-width: 387px;
 }
-.st-lect-card.red .st-lect-author { color: var(--white); font-size: 32px; }
 .st-lect-desc {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -657,17 +760,22 @@
   line-height: 1.063;
   color: var(--white);
   margin: 0;
+  max-width: 320px;
 }
+.st-lect-card--main .st-lect-desc { line-height: 0.8782; max-width: 715px; }
 
 /* Категория (CV / Travel / Marketing / Tecnolodgy) — top-left, без наклона,
    pill наполовину «наезжает» сверху на карточку (translateY(-50%)). */
+/* Figma: тег над карточкой — main −20, нижняя левая −21, tall −28, нижняя правая −27; слева 38 / 35 */
 .st-lect-tag--top {
   position: absolute;
-  top: 0;
+  top: -21px;
   left: 38px;
-  transform: translateY(-50%);
   z-index: 2;
 }
+.st-lect-card--main .st-lect-tag--top { top: -20px; }
+.st-lect-card.tall .st-lect-tag--top { top: -28px; left: 35px; }
+.st-lectory-grid > .st-lect-card:nth-child(4) .st-lect-tag--top { top: -27px; left: 35px; }
 .st-lect-tag {
   display: inline-flex; align-items: center; justify-content: center;
   height: 52px;
@@ -696,24 +804,25 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end; /* Figma: дата и время выровнены по правому краю */
+  gap: 9px;
   z-index: 1;
-  /* по-умолчанию у обычных карточек — bottom-right */
-  right: 24px;
-  bottom: 24px;
+  /* Figma: нижние карточки — right 26 / bottom 25; tall — right 23 / bottom 24.5; main — right 29 / top 29, gap 13 */
+  right: 26px;
+  bottom: 25px;
 }
-/* У главной (широкой) — top-right */
+.st-lect-card.tall .st-lect-foot { right: 23px; bottom: 24.5px; }
 .st-lect-card--main .st-lect-foot {
-  top: 28px;
+  top: 29px; right: 29px;
   bottom: auto;
+  gap: 13px;
 }
 
 .st-lect-date {
   display: inline-flex; align-items: center; justify-content: center;
   height: 39px;
-  min-width: 163px;
-  padding: 0 20px;
+  width: 163px;
+  padding: 0;
   border-radius: 29.5px;
   background: rgba(223, 237, 140, 0.33);
   color: var(--lime);
@@ -727,8 +836,8 @@
 .st-lect-time {
   display: inline-flex; align-items: center; justify-content: center;
   height: 59px;
-  min-width: 181px;
-  padding: 0 26px;
+  width: 181px;
+  padding: 0;
   border-radius: 29.5px;
   background: rgba(223, 237, 140, 0.33);
   color: var(--white);
@@ -753,6 +862,72 @@
 .st-lect-card:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
 
 /* ---------- Lecture teacher modal ---------- */
+/* ============================================================
+   PAY METHOD MODAL — Figma 2522:2400: 686×294 #1E1E1E r29.5; кнопки 578×68 r34 at (54,67) и (54,160);
+   Inter 700 24 / −1.2px; крестик 13.3px at (639,36). «Выбранный зелёный»: невыбранная МИР — 50% (фон и текст).
+   ============================================================ */
+.st-pay-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0, 0, 0, 0.66);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: st-lect-fade .15s ease-out;
+}
+.st-pay-modal {
+  position: relative; box-sizing: border-box;
+  width: 686px; height: 294px;
+  background: #1E1E1E; border-radius: 29.5px;
+  padding: 67px 54px 0;
+  display: flex; flex-direction: column; gap: 25px;
+}
+.st-pay-option {
+  box-sizing: border-box; width: 578px; height: 68px; border-radius: 34px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -1.2px; line-height: 0.975;
+  cursor: pointer; transition: opacity .15s;
+}
+.st .st-pay-option--mir { background: #CC3A3A; color: #FFF; } /* .st button сбрасывает фон — нужна специфичность */
+.st .st-pay-option--foreign { background: #DFED8C; color: #1E1E1E; }
+.st-pay-modal:has(.st-pay-option:hover) .st-pay-option:not(:hover),
+.st-pay-modal:has(.st-pay-option:focus-visible) .st-pay-option:not(:focus-visible) { opacity: .5; }
+.st-pay-option:disabled { cursor: wait; }
+.st-pay-close {
+  position: absolute; top: 36px; right: 33.7px; width: 13.33px; height: 13.34px;
+  padding: 0; border: none; background: none; cursor: pointer;
+}
+.st-pay-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.st-pay-close:hover { opacity: .8; }
+
+/* ============================================================
+   LEVEL UP MODAL — Figma 2522:2631: 503×475 #DFED8C r29.5; текст 375 wide top 86 (Inter 500 32 / −1.6 / 97.5%);
+   лого 266.6×116.3 top 248 по центру; крестик 13.3 at (456,34)
+   ============================================================ */
+.st-lvl-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0, 0, 0, 0.66);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: st-lect-fade .15s ease-out;
+}
+.st-lvl-modal {
+  position: relative; box-sizing: border-box;
+  width: 503px; height: 475px;
+  background: #DFED8C; border-radius: 29.5px;
+  color: #1E1E1E;
+}
+.st-lvl-text {
+  position: absolute; left: 64px; top: 86px; width: 375px; margin: 0;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 32px; letter-spacing: -1.6px; line-height: 0.975;
+  text-align: center; color: #1E1E1E;
+}
+.st-lvl-logo { position: absolute; top: 248px; left: 50%; transform: translateX(-50%); width: auto; display: block; }
+.st-lvl-close {
+  position: absolute; top: 34px; right: 33.7px; width: 13.33px; height: 13.34px;
+  padding: 0; border: none; background: none; cursor: pointer;
+}
+.st-lvl-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.st-lvl-close:hover { opacity: .7; }
+
 .st-lect-modal-backdrop {
   position: fixed; inset: 0; z-index: 500;
   background: rgba(0, 0, 0, 0.66);
@@ -845,39 +1020,44 @@
 /* ============================================================
    BALANCE + STATS (dark, bg-hero)
    ============================================================ */
+/* Figma 4007:201 (1441×1258): фото как в первом блоке (1696×1258 по центру); тёмная карточка 787×895 at (106,174);
+   правая колонка 406 at x=928 (зазор 35): красная 610 at top 177, лаймовая 249 at top 820;
+   кнопка «ПОПОЛНИТЬ БАЛАНС» 477×76 под карточкой at top 1131 (по центру), низ 51. Затемнения в макете нет. */
 .st-balance-section {
   position: relative;
-  padding: clamp(50px, 6vw, 90px) clamp(20px, 3vw, 40px) clamp(60px, 8vw, 130px);
-  background: var(--dark-bg) url('/dashboard/bg-hero.jpg') center/cover no-repeat;
+  padding: 174px 0 51px;
+  background: var(--dark-bg) url('/dashboard/bg-hero-student.webp') no-repeat;
+  background-size: 117.7% auto; background-position: center -111px;
   color: var(--white);
   overflow: hidden;
-}
-.st-balance-section::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(26,23,20,.75), rgba(26,23,20,.9));
-  z-index: 0;
 }
 .st-balance-section > * { position: relative; z-index: 1; }
 .st-balance-grid {
   max-width: 1228px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 787px 1fr;
-  gap: 32px;
+  grid-template-columns: 787px 406px;
+  column-gap: 35px;
   align-items: start;
 }
+/* карточка: аватар (54,53); блок баланса правым краем на 722 (padding-right 65); ряды статистики top 290 (85 под шапкой) */
 .st-balance-card {
-  background: var(--panel-dark);
-  border-radius: var(--radius-card);
-  padding: clamp(40px, 4vw, 60px);
-  min-height: 895px;
+  box-sizing: border-box;
+  background: rgba(30, 30, 30, 0.58);
+  backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255,255,255,0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
+  border-radius: 29.5px;
+  padding: 53px 65px 53px 54px;
+  height: 895px;
   display: flex; flex-direction: column;
-  gap: clamp(20px, 2.4vw, 36px);
+  gap: 85px;
 }
+/* шапка: аватар → 54px → огни (top 70) и имя (top 115) */
 .st-bal-head {
-  display: flex; align-items: center; gap: clamp(16px, 2vw, 28px);
+  display: flex; align-items: flex-start; gap: 54px;
 }
+.st-bal-head > div:nth-child(3) { padding-top: 17px; }
 .st-bal-avatar {
   width: 158px; height: 152px;
   border-radius: 82px;
@@ -903,9 +1083,9 @@
    Пропорции 22.5×30 (по спеке Figma — вертикальный огонь, не квадрат). */
 .st-flame-row {
   display: inline-flex;
-  gap: 8px;
+  gap: 4.77px; /* Figma: шаг 27.27 при ширине 22.5 */
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 20px; /* имя на 115 от верха карточки */
 }
 .st-flame {
   width: 22.5px;
@@ -916,8 +1096,8 @@
 .st-bal-name {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(28px, 3vw, 36px);
-  letter-spacing: -0.05em;
+  font-size: 36px;
+  letter-spacing: -1.8px;
   line-height: 0.975;
   color: var(--white);
   flex: 1;
@@ -970,26 +1150,29 @@
   font-size: 24px;
   line-height: 1.16;
 }
+/* ряды 668×152, шаг 190.5; подпись (41,39) Inter 700 40 lime; плашка числа 128×75 справа на 56 */
 .st-bal-stats {
-  display: flex; flex-direction: column; gap: 20px;
-  margin-top: 8px;
+  display: flex; flex-direction: column; gap: 38.5px;
+  margin-top: 0;
 }
 .st-bal-stat {
-  display: flex; align-items: center; gap: clamp(14px, 1.6vw, 22px);
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between; gap: 22px;
   background: rgba(223, 237, 140, 0.36);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: none;
   border-radius: 29.5px;
-  padding: 24px 30px;
-  min-height: 152px;
+  padding: 0 56px 0 41px;
+  height: 152px;
 }
 .st-bal-stat-label {
   flex: 1;
+  max-width: 395px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(24px, 2.6vw, 40px);
-  letter-spacing: -0.05em;
+  font-size: 40px;
+  letter-spacing: -2px;
   line-height: 0.975;
   color: var(--lime);
 }
@@ -1007,39 +1190,39 @@
   letter-spacing: -0.05em;
   line-height: 1.16;
 }
+/* кнопка под карточкой: 477×76 r50, Inter 700 35 / −1.75px, 62px под карточкой, по центру секции */
 .st-bal-topup {
-  display: inline-flex; align-items: center; justify-content: center;
-  align-self: center;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box; width: 477px; height: 76px; padding: 0;
+  margin: 62px auto 0;
   background: var(--red) !important;
   color: var(--white) !important;
   border-radius: 50px;
-  height: 76px;
-  padding: 0 44px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.6vw, 35px);
-  letter-spacing: -0.05em;
+  font-size: 35px;
+  letter-spacing: -1.75px;
   line-height: 0.975;
   text-transform: uppercase;
   transition: background .2s;
-  margin-top: 20px;
 }
 .st-bal-topup:hover { background: var(--red-deep) !important; }
 
 /* Right column: Пополнение баланса + Ваш уровень */
 .st-bal-side {
   display: flex; flex-direction: column;
-  gap: 32px;
-  max-width: 406px;
-  justify-self: end;
+  gap: 33px;
+  width: 406px;
+  margin-top: 3px; /* Figma: красная карточка top 177 при тёмной 174 */
 }
 /* Figma node 4093:73: 406×610, padding 79/25/24, gaps 53/25/72/22 */
 .st-topup-card {
   background: var(--red);
   color: var(--white);
-  border-radius: var(--radius-card);
-  padding: 79px 25px 24px;
-  min-height: 610px;
+  box-sizing: border-box;
+  border-radius: 29.5px;
+  padding: 79px 32px 24px;
+  height: 610px;
   display: flex; flex-direction: column;
   align-items: center;
   gap: 0;
@@ -1052,7 +1235,7 @@
   line-height: 0.975;
   text-align: center;
   color: var(--white);
-  margin: 0 0 53px;
+  margin: 0 0 60.6px; /* Figma: заголовок 256…318, инпут 379 */
 }
 .st-topup-input {
   width: 100%;
@@ -1105,14 +1288,16 @@
 }
 .st-topup-btn:disabled:hover { background: rgba(255,255,255,0.10) !important; }
 
+/* Figma: 406×249, «Ваш уровень» top 36, лого 243 wide top 93 */
 .st-level-card {
+  box-sizing: border-box;
   background: var(--lime);
   color: var(--ink);
-  border-radius: var(--radius-card);
-  padding: 32px 24px 40px;
-  min-height: 249px;
+  border-radius: 29.5px;
+  padding: 36px 24px 0;
+  height: 249px;
   display: flex; flex-direction: column;
-  gap: 20px;
+  gap: 25.8px;
   align-items: center;
 }
 .st-level-card h3 {
@@ -1143,8 +1328,7 @@
    height:auto сохраняет ratio. */
 .st-level-svg {
   display: block;
-  width: 100%;
-  max-width: 240px;
+  width: 243px;
   height: auto;
   user-select: none;
 }
@@ -1224,7 +1408,8 @@
   .st-lect-card.tall { grid-column: 1; grid-row: auto; min-height: 400px; }
 }
 @media (max-width: 780px) {
-  .st-nav { grid-template-columns: auto 1fr auto; }
+  .st-nav { height: auto; display: flex; justify-content: space-between; align-items: center; }
+  .st-brand, .st-nav-right { position: static; }
   .st-nav-links { display: none; }
   .st-schedule-actions { gap: 20px; }
   .st-sched-btn,
