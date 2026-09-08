@@ -83,6 +83,11 @@ interface ChatModalProps {
    * По умолчанию false: на дашборде эти кнопки нужны.
    */
   hideCallActions?: boolean
+  /**
+   * Ссылка на комнату звонка (Figma 2522:4253 «Чат с учеником»: учитель может звонить ученику).
+   * Кнопки видео/аудио показываем только учителю в чате с учеником; null — урока нет, кнопки неактивны.
+   */
+  callHref?: string | null
 }
 
 // Иконки — экспорт Figma 2522:6073 «Чат с учителем» (public/dashboard/chat/*).
@@ -97,6 +102,9 @@ function SendIcon() { return <Ic src="/dashboard/chat/send-arrow.svg" w={19} h={
 function PhotoIcon() { return <Ic src="/dashboard/chat/ic-photo.svg" w={21.67} h={20} /> }          // Group 310
 function DocIcon() { return <Ic src="/dashboard/chat/ic-doc.svg" w={22} h={21} /> }                 // Vector
 function PersonIcon() { return <Ic src="/dashboard/chat/ic-person.svg" w={17.48} h={21.28} /> }     // Group 311
+// Figma 2522:4253: круги 54 (Ellipse 86, lime .26) на (909,53) и (984,53); камера Group 175 29.6×23.35, трубка Vector 27.3×27.35
+function VideoIcon() { return <Ic src="/dashboard/chat/ic-video.svg" w={29.61} h={23.35} /> }
+function PhoneIcon() { return <Ic src="/dashboard/chat/ic-phone.svg" w={27.32} h={27.35} /> }
 
 // System-события звонка. Пишем в chat_messages.text как маркер — не требует
 // новой колонки в БД. Рендерим как pill (Figma 2522:6800 / 2522:6803).
@@ -155,6 +163,7 @@ export default function ChatModal({
   onMinimize,
   onToggleExpand,
   hideCallActions = false,
+  callHref,
 }: ChatModalProps) {
   // Support-режим: не-админ пишет админу → это чат «в поддержку».
   // В нём: шапка «Поддержка» вместо имени + скрыты кнопки звонка (звонить в поддержку нельзя).
@@ -431,7 +440,7 @@ export default function ChatModal({
 
   return createPortal(
     <>
-    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260908-wide" />
+    <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260908-calls2" />
     <div
       className={`tr-chat-backdrop${variant === "dock" ? " tr-chat-backdrop--dock" : ""}`}
       style={variant === "dock" ? undefined : { zoom: fitZoom }}
@@ -450,7 +459,23 @@ export default function ChatModal({
             )}
           </div>
           <h2 className="tr-chat-name">{isSupport ? "Поддержка" : peerName}</h2>
-          {/* Кнопки аудио/видео-звонка убраны (Figma 2522:6073). Уровень прячем при hideCallActions. */}
+          {/* Учитель ↔ ученик (Figma 2522:4253): видео/аудио звонок — комната ближайшего урока с учеником */}
+          {currentRole === "teacher" && peerRole === "student" && !hideCallActions && variant !== "dock" && (
+            <div className="tr-chat-calls">
+              {callHref !== null && callHref !== undefined ? (
+                <>
+                  <a className="tr-chat-callbtn" href={callHref} aria-label="Видеозвонок" title="Видеозвонок"><VideoIcon /></a>
+                  <a className="tr-chat-callbtn" href={callHref} aria-label="Аудиозвонок" title="Аудиозвонок"><PhoneIcon /></a>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="tr-chat-callbtn" disabled aria-label="Видеозвонок" title="Нет запланированного урока с учеником"><VideoIcon /></button>
+                  <button type="button" className="tr-chat-callbtn" disabled aria-label="Аудиозвонок" title="Нет запланированного урока с учеником"><PhoneIcon /></button>
+                </>
+              )}
+            </div>
+          )}
+          {/* Уровень прячем при hideCallActions. */}
           {peerLevel && !isSupport && !hideCallActions && (
             <div className="tr-chat-lvl">
               {peerLevel === "A1" ? "А1" : peerLevel === "A2" ? "А2" : peerLevel}

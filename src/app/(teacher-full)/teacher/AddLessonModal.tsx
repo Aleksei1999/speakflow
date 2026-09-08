@@ -256,7 +256,7 @@ export function ArrowLeftLime() {
   )
 }
 
-function ArrowLeftRed() {
+export function ArrowLeftRed() {
   return (
     <span className="tr-al-back-ic" aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -267,7 +267,7 @@ function ArrowLeftRed() {
   )
 }
 
-function CheckIcon() {
+export function CheckIcon() {
   return (
     <span className="tr-al-check-ic" aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -311,7 +311,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
   const selectedStudent = students.find((s) => s.id === studentId) ?? null
   // Прошедшие слоты не показываем (как у ученика): для «сегодня» остаются только времена
   // позже текущего, а если на сегодня слотов не осталось — «сегодня» уходит из списка дат.
-  const nowMs = Date.now()
+  const [nowMs] = useState(() => Date.now()) // фиксируем на время жизни модалки: чистый рендер
   const slotMs = (d: DateOption, t: TimeOption) => new Date(d.y, d.m, d.d, t.h, t.min, 0, 0).getTime()
   const dateOptions = allDateOptions.filter((d) => allTimeOptions.some((t) => slotMs(d, t) > nowMs))
   const selectedDate = dateKey ? dateOptions.find((d) => d.key === dateKey) ?? null : null

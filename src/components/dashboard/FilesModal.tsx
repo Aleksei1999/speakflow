@@ -68,7 +68,6 @@ interface FilesModalProps {
   addLabel?: string
   selectLabel?: string
   deleteLabel?: string
-  cancelLabel?: string
   createFolderLabel?: string
 }
 
@@ -92,7 +91,6 @@ export function FilesModal({
   addLabel = "Добавить файл",
   selectLabel = "Выбрать",
   deleteLabel = "Удалить",
-  cancelLabel = "Отмена",
   createFolderLabel = "Создать папку",
   legacyMode = false,
 }: FilesModalProps) {
@@ -292,7 +290,7 @@ export function FilesModal({
           {canManage && !legacyMode && !inFolder && !selectMode && onCreateFolder && (
             <button
               type="button"
-              className="files-modal-btn"
+              className="files-modal-btn files-modal-btn--add" /* 222×46 (2522:4113) */
               onClick={handleCreateFolder}
               disabled={creating || deleting}
             >
@@ -323,6 +321,8 @@ export function FilesModal({
               </button>
             )}
 
+            {/* Figma 2522:4140: «Удалить» 160×46 red на (957,718) без счётчика; «Отмена» слева от неё оставлена
+                по просьбе заказчика, чтобы выходить из режима выбора без закрытия модалки */}
             {selectMode && (
               <>
                 <button
@@ -334,7 +334,7 @@ export function FilesModal({
                   }}
                   disabled={deleting}
                 >
-                  {cancelLabel}
+                  Отмена
                 </button>
                 <button
                   type="button"
@@ -342,7 +342,7 @@ export function FilesModal({
                   onClick={handleDeleteConfirm}
                   disabled={deleting || selectedIds.size === 0}
                 >
-                  {deleting ? "Удаление…" : `${deleteLabel}${selectedIds.size ? ` (${selectedIds.size})` : ""}`}
+                  {deleting ? "Удаление…" : deleteLabel}
                 </button>
               </>
             )}

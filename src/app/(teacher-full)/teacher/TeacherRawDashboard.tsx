@@ -6,7 +6,8 @@ import CustomScroll from "@/components/dashboard/CustomScroll"
 import { nameInstrumental } from "@/lib/ru/name-case"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
-import AddLessonModal from "./AddLessonModal"
+import AddLessonModal, { CloseIcon as FigmaCloseIcon } from "./AddLessonModal"
+import { nb } from "@/lib/ru/typo"
 import EditLessonModal from "./EditLessonModal"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
@@ -332,6 +333,19 @@ export default function TeacherRawDashboard({
   } | null>(null)
   // «Как считается доход?» — info-модалка при клике на CTA в секции дохода.
   const [incomeInfoOpen, setIncomeInfoOpen] = useState(false)
+  // «Написать в поддержку» (подвал) и «Пиши администратору» (модалка дохода) → чат с админом.
+  // Сообщение падает в chat_messages, админ видит его в общем списке чатов.
+  const openAdminChat = async () => {
+    try {
+      const r = await fetch("/api/support/admin-peer", { cache: "no-store" })
+      const j = await r.json()
+      if (r.ok && j.admin?.id) {
+        setChatPeer({ id: j.admin.id, role: "admin", name: j.admin.name, avatar: j.admin.avatar })
+      }
+    } catch {
+      /* fail-soft */
+    }
+  }
   // «Запрос на урок» модалка (входящая очередь от учеников).
   const [requestsOpen, setRequestsOpen] = useState(false)
   // Модалка «Библиотека Raw English» — public-материалы, видят все.
@@ -629,6 +643,18 @@ export default function TeacherRawDashboard({
   const [studentModalId, setStudentModalId] = useState<string | null>(null)
   const [levelPickerOpen, setLevelPickerOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
+  // Комната звонка для чата с учеником: ближайший урок из БД с этим учеником (начался не раньше часа назад)
+  const lessonCallHrefFor = (studentId: string): string | null => {
+    const now = Date.now()
+    const candidates = (initialSchedule ?? [])
+      .filter((s) => s.source === "lesson" && s.studentId === studentId && new Date(s.startAt).getTime() >= now - 60 * 60 * 1000)
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    const next = candidates[0]
+    if (!next) return null
+    const uuid = next.id.startsWith("lesson:") ? next.id.slice("lesson:".length) : next.id
+    return next.meetingUrl ?? `/lesson/${uuid}`
+  }
+
   const [chatPeer, setChatPeer] = useState<
     | {
         id: string
@@ -1116,7 +1142,7 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-success" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-edit" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
@@ -1524,6 +1550,7 @@ export default function TeacherRawDashboard({
           peerAvatar={chatPeer.avatar ?? undefined}
           currentUserId={teacherId}
           currentRole="teacher"
+          callHref={chatPeer.role === "student" ? lessonCallHrefFor(chatPeer.id) : null}
           onClose={() => setChatPeer(null)}
         />
       )}
@@ -1840,8 +1867,10 @@ export default function TeacherRawDashboard({
               <button type="button" className="tr-income-cta" onClick={() => setIncomeInfoOpen(true)}>КАК СЧИТАЕТСЯ ДОХОД?</button>
             </div>
 
+            {/* Figma 4033:224: вертикальный разделитель Vector 43 (6×288, скруглённые концы) на x=832.5 */}
+            <img className="tr-income-divider" src="/dashboard/income/divider-vert.svg" alt="" aria-hidden width={6} height={294} />
             <div className="tr-income-metric tr-income-metric--money">
-              <div className="tr-income-row">
+              <div className="tr-income-row tr-income-row--month">
                 <img className="tr-income-icon tr-income-icon--wallet" src="/dashboard/income/wallet-red.svg" alt="" aria-hidden />
                 <div className="stack">
                   <span className="caption red">за {incomeStats?.monthLabel ?? new Date().toLocaleDateString("ru", { month: "long" })}</span>
@@ -1849,8 +1878,8 @@ export default function TeacherRawDashboard({
                   <span className="label">рублей</span>
                 </div>
               </div>
-              <div className="tr-income-row">
-                <img className="tr-income-icon tr-income-icon--wallet" src="/dashboard/income/wallet-lime.svg" alt="" aria-hidden />
+              <div className="tr-income-row tr-income-row--ytd">
+                <img className="tr-income-icon tr-income-icon--coins" src="/dashboard/income/coins-lime.svg" alt="" aria-hidden />
                 <div className="stack">
                   <span className="caption mut">с начала года</span>
                   <div className="value">{formatRub(incomeStats?.earningsYtdKopecks ?? 0)}</div>
@@ -1866,10 +1895,13 @@ export default function TeacherRawDashboard({
       <section id="chats" className="tr-section">
         <div className="tr-chats-frame">
           <div className="tr-chats-badge">
-            ЧАТ С <span className="c-lime">УЧЕНИКАМИ</span>
+            {/* один span: во flex-контейнере пробел между текстом и вложенным span схлопывается */}
+            <span>ЧАТ С <span className="c-lime">УЧЕНИКАМИ</span></span>
           </div>
 
-          <div className="tr-chats-card tr-chats-card--flow">
+          {/* Figma 4033:225: карточка 1228×837, ряды 1108×153 с зазором 37, трек скролла 7×723 на (1203,58) */}
+          <div className="tr-chats-card">
+           <CustomScroll className="tr-chats-list" track={723} ariaLabel="Чаты">
             {(!initialChats || initialChats.length === 0) && (
               <div className="tr-chats-empty">Пока нет ни одного чата. Как только ученик напишет — он появится здесь.</div>
             )}
@@ -1898,7 +1930,7 @@ export default function TeacherRawDashboard({
                     <div className="tr-chat-name">{c.peerName}</div>
                     <div className="tr-chat-preview">
                       {c.lastSenderIsMe && <b>Вы: </b>}
-                      {c.lastText || "Нет сообщений"}
+                      {nb(c.lastText) || "Нет сообщений"}
                     </div>
                     <button
                       type="button"
@@ -1966,7 +1998,7 @@ export default function TeacherRawDashboard({
                     {c.lastText ? (
                       <>
                         {c.lastSenderIsMe && <b>Вы: </b>}
-                        {c.lastText}
+                        {nb(c.lastText)}
                       </>
                     ) : (
                       <>Групповой чат — {c.memberCount} {pluralize(c.memberCount, "участник", "участника", "участников")}</>
@@ -1986,6 +2018,7 @@ export default function TeacherRawDashboard({
                 </div>
               )
             })}
+           </CustomScroll>
           </div>
         </div>
       </section>
@@ -2018,9 +2051,7 @@ export default function TeacherRawDashboard({
         <div className="tr-modal-backdrop" onClick={() => setIncomeInfoOpen(false)}>
           <div className="tr-income-info" role="dialog" aria-modal="true" aria-labelledby="tr-inc-info-title" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="tr-income-info-close" aria-label="Закрыть" onClick={() => setIncomeInfoOpen(false)}>
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <FigmaCloseIcon />
             </button>
             <p className="tr-income-info-text" id="tr-inc-info-title">
               {(() => {
@@ -2030,34 +2061,22 @@ export default function TeacherRawDashboard({
                 const rG = fmt(teacherRates?.rateGroupKopecks)
                 return (
                   <>
-                    Ваш доход считается исходя из кол-ва часов, которые вы провели с учениками.
-                    Каждый проведенный урок на 1 час стоит {r60} рублей, каждый проведенный урок
-                    на 1,5 часа стоит {r90} рублей, каждое занятие с группой стоит {rG} рублей.
+                    {nb("Ваш доход считается исходя из кол-ва часов, которые вы провели с учениками.")}
+                    <br />
+                    {nb(`Каждый проведенный урок на 1 час стоит ${r60} рублей, каждый проведенный урок`)}
+                    <br />
+                    {nb(`на 1,5 часа стоит ${r90} рублей, каждое занятие с группой стоит ${rG} рублей.`)}
                   </>
                 )
               })()}
             </p>
             <p className="tr-income-info-q">Остались вопросы?</p>
-            <button type="button" className="tr-income-info-cta">Пиши администратору</button>
+            <button type="button" className="tr-income-info-cta" onClick={() => { setIncomeInfoOpen(false); void openAdminChat() }}>Пиши администратору</button>
           </div>
         </div>
       )}
 
-      <SiteFooter
-        onSupportClick={async () => {
-          // «Написать в поддержку» → чат с админом. Сообщение падает в
-          // chat_messages, админ видит его в общем списке чатов.
-          try {
-            const r = await fetch("/api/support/admin-peer", { cache: "no-store" })
-            const j = await r.json()
-            if (r.ok && j.admin?.id) {
-              setChatPeer({ id: j.admin.id, role: "admin", name: j.admin.name, avatar: j.admin.avatar })
-            }
-          } catch {
-            /* fail-soft */
-          }
-        }}
-      />
+      <SiteFooter variant="teacher" onSupportClick={openAdminChat} />
 
       {/* ================== ADD LESSON MODAL ================== */}
       {addLessonOpen && (
@@ -2144,8 +2163,10 @@ export default function TeacherRawDashboard({
       {/* ================== HOMEWORK STUDENT PICKER ================== */}
       {hwPickerOpen && (
         <div className="tr-modal-backdrop" onClick={() => setHwPickerOpen(false)}>
+          {/* Как «Создание группы» (Figma 2522:2822: 686×869, заголовок 79, ряды 539×139 с 183 шагом 178),
+              но без чекбоксов и без кнопки — клик по ряду открывает домашние задания ученика */}
           <div
-            className="tr-modal"
+            className="tr-modal tr-modal--group"
             role="dialog"
             aria-modal="true"
             aria-labelledby="tr-hw-picker-title"
@@ -2157,9 +2178,8 @@ export default function TeacherRawDashboard({
               aria-label="Закрыть"
               onClick={() => setHwPickerOpen(false)}
             >
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
             </button>
             <h2 id="tr-hw-picker-title" className="tr-modal-title">
               Выберите ученика

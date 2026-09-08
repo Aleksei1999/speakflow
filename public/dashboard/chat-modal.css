@@ -100,7 +100,23 @@
   text-overflow: ellipsis;
 }
 
-/* Кнопки аудио/видео-звонка из шапки убраны (Figma 2522:6073). */
+/* Кнопки звонка — только у учителя в чате с учеником (Figma 2522:4253):
+   круги 54 (Ellipse 86, lime .26) на x=909 и 984 (зазор 21), до плашки уровня 55; камера на (12,15), трубка на (13,13) */
+.tr-chat-backdrop .tr-chat-calls { display: flex; gap: 21px; margin-right: 33px; flex-shrink: 0; } /* 55 до плашки уровня = 33 + gap шапки 22 */
+.tr-chat-backdrop .tr-chat-callbtn {
+  position: relative;
+  display: block;
+  width: 54px; height: 54px;
+  padding: 0; border: 0;
+  background: url('/dashboard/chat/call-circle.svg') 0 0 / 54px 54px no-repeat;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.tr-chat-backdrop .tr-chat-callbtn img { position: absolute; display: block; max-width: none; }
+.tr-chat-backdrop .tr-chat-callbtn:nth-child(1) img { left: 12px; top: 15px; }
+.tr-chat-backdrop .tr-chat-callbtn:nth-child(2) img { left: 13px; top: 13px; }
+.tr-chat-backdrop .tr-chat-callbtn:hover:not(:disabled) { opacity: .8; }
+.tr-chat-backdrop .tr-chat-callbtn:disabled { opacity: .4; cursor: not-allowed; }
 
 .tr-chat-backdrop .tr-chat-lvl {
   width: 135px;

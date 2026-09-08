@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // LessonRequestsModal — очередь входящих запросов на урок.
 //
-// Дизайн: Figma YSwlSQF1n6QIpGTOohlMOd
-//   • 2208:2435 — карточка запроса («Кристина Кирова запрашивает урок …»
+// Дизайн: Figma ghFti8MoCQgrMqLZu3gu0I
+//   • 2522:2492 — карточка запроса («Кристина Кирова запрашивает урок …»
 //     + кнопки «Нет / Чат / Да»)
 //   • 2208:2686 — success («В ваш календарь добавлен урок»)
 //
@@ -26,6 +26,8 @@ import {
   rejectLessonRequest,
   type LessonRequestRow,
 } from './request-actions'
+// Иконки — экспорты из Figma (крестик 2522:2503, галочка и «назад» из 2522:2566), общие с AddLessonModal
+import { ArrowLeftRed, CheckIcon, CloseIcon } from './AddLessonModal'
 
 interface LessonRequestsModalProps {
   requests: LessonRequestRow[]
@@ -55,53 +57,6 @@ function formatTime(iso: string): string {
   const h = d.getHours()
   const m = d.getMinutes()
   return `${h}:${String(m).padStart(2, '0')}`
-}
-
-// -----------------------------------------------------------------------------
-// SVG-и (в стиле AddLessonModal — inline, без сторонних иконок).
-// -----------------------------------------------------------------------------
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-      <path
-        d="M1 1l12 12M13 1L1 13"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-      <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-      <path
-        d="M20 35l10 10 20-22"
-        stroke="#FFFFFF"
-        strokeWidth="4.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function ArrowLeftRed() {
-  return (
-    <svg viewBox="0 0 46 47" width="46" height="47" fill="none" aria-hidden>
-      <ellipse cx="23" cy="23.5" rx="23" ry="23.5" fill="#CC3A3A" />
-      <path
-        d="M32 23.5H14m0 0l7-7m-7 7l7 7"
-        stroke="#FFFFFF"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 // -----------------------------------------------------------------------------
@@ -136,10 +91,10 @@ export default function LessonRequestsModal({
   const current = queue[index] ?? null
 
   // Успех-таймер (60→0). Просто UI, авто-закрытия нет.
-  const [successRemaining, setSuccessRemaining] = useState(60)
+  const [successRemaining, setSuccessRemaining] = useState(59)
   useEffect(() => {
     if (state !== 'success') return
-    setSuccessRemaining(60)
+    setSuccessRemaining(59)
     const id = window.setInterval(() => {
       setSuccessRemaining((r) => (r <= 1 ? 0 : r - 1))
     }, 1000)

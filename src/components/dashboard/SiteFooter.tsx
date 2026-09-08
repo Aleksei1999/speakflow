@@ -10,12 +10,14 @@ import Link from "next/link"
 interface Props {
   supportHref?: string
   onSupportClick?: () => void
+  /** teacher — Figma 4033:232: та же раскладка, но фрейм 266 (контент с 52), а не 330 (с 101) */
+  variant?: "default" | "teacher"
 }
-export default function SiteFooter({ supportHref = "/support", onSupportClick }: Props) {
+export default function SiteFooter({ supportHref = "/support", onSupportClick, variant = "default" }: Props) {
   return (
-    <footer className="sf-footer">
+    <footer className={`sf-footer${variant === "teacher" ? " sf-footer--teacher" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260908-figma" />
+      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260908-teacher" />
 
       <div className="sf-inner">
         <div className="sf-col sf-col-links">

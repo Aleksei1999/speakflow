@@ -76,18 +76,24 @@
    ============================================================ */
 /* Figma 4019:213 (1441×185): логотип 171×98 at (41,63); пункты меню 18px на y=100 — x 336/492/724/869/1009
    (ширины 74/150/63/58/96, шаг между ними 82); часы правым краем на 1355, top 72 (40 bold / 24, lh 1.29). */
+/* Фон — Figma 4035:236: экспорт фото 1548×1016 (уже затемнён в макете), нода 1519×1350 на (−39, −25) cover →
+   картинка 2057×1350 по центру; сверху затемнение 1545×395 на (−41, −146), градиент 180.2°: #000 16.3% → прозрачный 99.26%.
+   Сплошного затемнения по всей секции в макете нет. */
 .tr-hero {
   position: relative;
-  background: var(--dark-bg) url('/dashboard/bg-hero.jpg') center/cover no-repeat;
+  background: var(--dark-bg) url('/dashboard/bg-hero-teacher.webp') center -25px / auto 1350px no-repeat;
   color: var(--white);
   padding: 63px 41px 126px; /* Figma 4020:217: карточка учеников до 1196, фрейм 1322 */
   overflow: hidden;
 }
 .tr-hero::before {
   content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(26,23,20,.72) 55%, rgba(26,23,20,.88) 100%);
+  position: absolute;
+  left: -41px; top: -146px;
+  width: 1545px; height: 395px;
+  background: linear-gradient(180.22deg, #000 16.3%, rgba(0,0,0,0) 99.26%);
   z-index: 0;
+  pointer-events: none;
 }
 .tr-nav {
   position: relative; z-index: 2;
@@ -443,7 +449,7 @@
   background: var(--red);
   color: var(--white);
   max-width: none;
-  padding: clamp(60px, 8vw, 107px) 0 clamp(50px, 6vw, 90px);
+  padding: 104px 0 107px; /* Figma 4033:224: 562 = 104 + карточка 351 + 107 */
   margin: 0;
   overflow: hidden;
 }
@@ -1411,48 +1417,85 @@
 /* ============================================================
    INCOME (red) — Figma node 4088:72 (card 1228×351)
    ============================================================ */
+/* Figma 4033:224 «Ваш доход на платформе»: секция 1441×562, карточка 1228×351 на (106,104) r29.5.
+   Координаты ниже — относительно карточки (x−106, y−104):
+   заголовок 40/700 uppercase на (54,48); книга 105×70 на (433,66); «5» 40/700 на (561,66), «уроков проведено» 15 на (561,105);
+   кнопка 512×76 на (54,222); разделитель 6×288 на x=726.5, y 32…320; кошелёк 88×76 на (773,58), монеты 89×85 на (772,213);
+   подписи на x=883: «за август» 54 / сумма 72 / «рублей» 117; «с начала года» 210 / сумма 229 / «рублей» 276 */
 .tr-income-card {
+  position: relative;
+  box-sizing: border-box;
+  width: 1228px;
+  max-width: 100%;
+  height: 351px;
+  margin: 0 auto;
+  padding: 0;
   background: var(--white);
   color: var(--ink);
   border-radius: 29.5px;
-  max-width: 1228px;
-  margin: 0 auto;
-  padding: clamp(30px, 3.5vw, 48px) clamp(24px, 3vw, 40px);
-  display: grid;
-  grid-template-columns: minmax(640px, 1.6fr) minmax(280px, 1fr);
-  gap: clamp(20px, 2vw, 32px);
-  align-items: stretch;
-  position: relative;
-}
-.tr-income-left {
-  display: flex; flex-direction: column;
-  justify-content: space-between;
-  gap: clamp(24px, 3vw, 48px);
-}
-/* Верхний ряд левой колонки: заголовок + иконка книги + число уроков */
-.tr-income-header {
-  display: flex;
-  align-items: center;
-  gap: clamp(24px, 3vw, 48px);
-  flex-wrap: wrap;
-}
-.tr-income-title {
   font-family: 'Inter', sans-serif;
+}
+/* обёртки не создают боксов — все листья позиционируются от карточки */
+.tr-income-left, .tr-income-header, .tr-income-metric, .tr-income-row, .tr-income-metric .stack { display: contents; }
+.tr-income-title {
+  position: absolute; left: 54px; top: 48px;
+  margin: 0;
   font-weight: 700;
-  font-size: clamp(24px, 2.9vw, 40px);
-  letter-spacing: -0.05em;
+  font-size: 40px;
+  letter-spacing: -2px;
   line-height: 1.173;
   text-transform: uppercase;
   color: var(--ink);
+  white-space: nowrap;
 }
 .tr-income-title .c-red { color: var(--red); }
-/* Figma: точный размер 512×76, Inter 700 35px, tracking -1.75px, line-height 97.46% */
+.tr-income-icon { position: absolute; display: block; max-width: none; }
+.tr-income-metric--book .tr-income-icon { left: 433px; top: 66px; width: 105px; height: 70px; }
+.tr-income-icon--wallet { left: 773px; top: 58px; width: 88px; height: 76px; }
+.tr-income-icon--coins { left: 772px; top: 213px; width: 89px; height: 85px; }
+.tr-income-divider { position: absolute; left: 723.5px; top: 29px; width: 6px; height: 294px; display: block; max-width: none; }
+
+.tr-income-metric .value {
+  position: absolute; left: 883px;
+  margin: 0;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: -2px;
+  line-height: 0.8053;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tr-income-metric .caption, .tr-income-metric .label {
+  position: absolute; left: 883px;
+  display: block;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.75px;
+  line-height: 0.9197;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tr-income-metric .caption.red { color: var(--red); }
+.tr-income-metric .caption.mut { color: #AEB96C; }
+/* книга: число и подпись */
+.tr-income-metric--book .value { left: 561px; top: 66px; }
+.tr-income-metric--book .label { left: 561px; top: 105px; }
+/* за месяц */
+.tr-income-row--month .caption { top: 54px; }
+.tr-income-row--month .value { top: 72px; }
+.tr-income-row--month .label { top: 117px; }
+/* с начала года */
+.tr-income-row--ytd .caption { top: 210px; }
+.tr-income-row--ytd .value { top: 229px; }
+.tr-income-row--ytd .label { top: 276px; }
+
+/* кнопка 512×76 r50, Inter 700 35 / -1.75 / lh .975, текст по центру */
 .tr-income-cta {
+  position: absolute; left: 54px; top: 222px;
   display: inline-flex; align-items: center; justify-content: center;
-  align-self: flex-start;
   width: 512px;
   height: 76px;
-  max-width: 100%;
+  box-sizing: border-box;
   background: var(--red) !important;
   color: #FFF !important;
   border-radius: 50px;
@@ -1461,7 +1504,7 @@
   font-weight: 700;
   font-size: 35px;
   letter-spacing: -1.75px;
-  line-height: 0.9746;
+  line-height: 0.975;
   text-align: center;
   white-space: nowrap;
   transition: background .2s;
@@ -1470,100 +1513,50 @@
 }
 .tr-income-cta:hover { background: var(--red-deep) !important; }
 
-/* --- BOOK column: icon LEFT + [big number / label] RIGHT --- */
-.tr-income-metric {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: clamp(14px, 1.4vw, 22px);
-  padding-left: clamp(20px, 2vw, 30px);
-}
-/* красный вертикальный сепаратор (Figma: Vector 43, 6px, #CC3A3A) —
-   на всю высоту карточки, чуть тоньше и с закруглёнными концами */
-.tr-income-metric::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  border-radius: 6px;
-  background: #CC3A3A;
-}
-.tr-income-metric--book::before { display: none; }
-.tr-income-icon {
-  flex: 0 0 auto;
-  display: block;
-  width: clamp(56px, 5.5vw, 76px);
-  height: auto;
-}
-.tr-income-icon--wallet {
-  width: clamp(64px, 6vw, 84px);
-}
-
-/* --- MONEY column: two rows (wallet + stack), stacked vertically --- */
-.tr-income-metric--money {
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: clamp(20px, 2.4vw, 34px);
-}
-.tr-income-row {
-  display: flex;
-  align-items: center;
-  gap: clamp(14px, 1.4vw, 22px);
-}
-
-.tr-income-metric .caption {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: clamp(13px, 1.1vw, 15px);
-  letter-spacing: -0.05em;
-  line-height: 0.92;
-  color: var(--ink);
-  display: block;
-}
-.tr-income-metric .caption.red { color: var(--red); }
-.tr-income-metric .caption.mut { color: #AEB96C; }
-.tr-income-metric .value {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: clamp(28px, 2.9vw, 40px);
-  letter-spacing: -0.05em;
-  line-height: 0.805;
-  color: var(--ink);
-  margin: clamp(8px, 0.9vw, 12px) 0 clamp(6px, 0.7vw, 10px);
-}
-.tr-income-metric .label {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: clamp(13px, 1.1vw, 15px);
-  letter-spacing: -0.05em;
-  line-height: 0.92;
-  color: var(--ink);
-  display: block;
-}
-.tr-income-metric .stack {
-  display: flex; flex-direction: column;
-  min-width: 0;
-}
+/* ============================================================
+   HOMEWORK — Figma 4033:228 (1441×854): плашка 918×83 на 106, ряды 1087×137 на x=160 с 322.5 шагом 155,
+   текст 40/700/−2 lh .975, круг 71 (обводка 4) на 1209 при ряде до 1247, низ 84.5
+   ============================================================ */
+#homework.tr-section { padding: 106px 0 84.5px; }
+#homework .tr-badge-wrap { margin-bottom: 133.5px; } /* 322.5 − 189 */
+#homework .tr-badge { width: 918px; }
+#homework .hw-pill-list { max-width: 1120px; padding-right: 33px; box-sizing: border-box; } /* ряды 1087 от x=160.5 */
+#homework .hw-pill { font-size: 40px; letter-spacing: -2px; }
+#homework .hw-pill-body { padding: 0 100px 0 134px; } /* текст по центру страницы (721), а не плашки (704): +17 */
+#homework .hw-pill .raw { margin-left: 0; } /* в макете обычный пробел: «Библиотека Raw English» */
+#homework .hw-pill-arrow { right: -33px; } /* круг 1209…1280 при ряде до 1247 */
 
 /* ============================================================
    CHATS (dark warm bg with people photo)
    ============================================================ */
+/* Фон — Figma 4033:226: то же фото, что у ученика (d81e4b1a…, экспорт bg-chat-student.webp 2882×2546),
+   нода 1874×1249 на (−205, −19) от верха секции, cover, layer blur 6px; сверху затемнение 1545×395 на (−41, −140),
+   градиент 180.2°: #000 16.3% → прозрачный 99.26% */
 #chats.tr-section {
   position: relative;
   max-width: none;
   padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px) clamp(60px, 8vw, 130px);
   margin-top: 0;
-  background: var(--dark-bg) url('/dashboard/bg-chat.jpg') center/cover no-repeat;
+  background: var(--dark-bg);
   color: var(--white);
   overflow: hidden;
 }
 #chats.tr-section::before {
   content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(26,23,20,.72), rgba(26,23,20,.86));
+  position: absolute;
+  left: -205px; top: -19px;
+  width: 1874px; height: 1249px;
+  background: url('/dashboard/bg-chat-student.webp') center / cover no-repeat;
+  filter: blur(6px);
+  z-index: 0;
+  pointer-events: none;
+}
+#chats.tr-section::after {
+  content: '';
+  position: absolute;
+  left: -41px; top: -140px;
+  width: 1545px; height: 395px;
+  background: linear-gradient(180.22deg, #000 16.3%, rgba(0,0,0,0) 99.26%);
   z-index: 0;
   pointer-events: none;
 }
@@ -2430,9 +2423,7 @@
   .tr-nav { grid-template-columns: auto 1fr; }
   .tr-nav-links { display: none; }
   .tr-students-grid { grid-template-columns: 1fr; }
-  .tr-income-card { grid-template-columns: 1fr; }
-  .tr-income-metric { padding-left: 0; }
-  .tr-income-metric::before { display: none; }
+  .tr-income-card { height: auto; min-height: 351px; }
   .tr-schedule-actions { flex-direction: column; align-items: stretch; }
   .tr-sched-btn { width: 100%; }
   .tr-lesson { flex-wrap: wrap; }
@@ -2881,6 +2872,8 @@
 }
 .tr .tr-add-lesson-pill:hover { background: #FAFAFA !important; }
 .tr-add-lesson-pill--full { width: 100%; }
+.tr .tr-add-lesson-pill--static { cursor: default; }
+.tr .tr-add-lesson-pill--static:hover { background: #FFFFFF !important; }
 .tr-add-lesson-pill--half { flex: 1 1 0; }
 /* в пилюле «дата» круг стоит на 17px от правого края (Ellipse 38 at x=282 в 2522:2506 и 2522:2546), в остальных — 21 */
 .tr-add-lesson-row > .tr-add-lesson-pill--half:first-child .tr-al-arrow { right: 17px; }
@@ -3288,40 +3281,45 @@
   padding: 20px;
 }
 
+/* Figma 2522:2492 «Запрос на урок»: 686×518; заголовок 32 на 79 (2 строки), длительность на 196,
+   «Принимаете урок?» 36 на 313, кнопки 185×68 на 393 (x 52 / 251 / 448), низ 57; крестик 13.33 на (639,34) */
 .tr-lr-modal {
   position: relative;
   width: 686px;
   max-width: calc(100vw - 40px);
   background: #DFED8C;
   border-radius: 29.5px;
-  padding: 74px 54px 40px;
+  padding: 79px 54px 57px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
   display: flex; flex-direction: column; align-items: center;
-  gap: 26px;
+  gap: 0;
 }
+/* success — Figma 2522:2743 «В ваш календарь добавлен урок»: 503×475; таймер 0:59 на 33; заголовок на 86;
+   галочка 69 на 189; имя 36/700 на 270; дата 36/500 на 314; назад 46×47 на 387; низ 41 */
 .tr-lr-modal--success {
   width: 503px;
-  padding: 33px 54px 40px;
-  gap: 22px;
-  min-height: 475px;
+  padding: 86px 5px 41px;
+  gap: 0;
+  height: 475px;
 }
 
 .tr .tr-lr-close {
   position: absolute;
-  top: 28px; right: 34px;
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
+  top: 34px; right: 33.67px;
+  width: 13.33px; height: 13.34px;
+  display: block;
   background: transparent !important;
   color: #1E1E1E !important;
   border: 0 !important;
   padding: 0 !important;
   cursor: pointer;
-  transition: color .15s;
+  transition: opacity .15s;
   z-index: 2;
 }
-.tr .tr-lr-close:hover { color: #CC3A3A !important; }
+.tr .tr-lr-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
+.tr .tr-lr-close:hover { opacity: .7; }
 
 .tr-lr-counter {
   position: absolute;
@@ -3349,7 +3347,7 @@
 
 /* Длительность */
 .tr-lr-duration {
-  margin-top: 8px;
+  margin-top: 54.6px; /* 79 + 62.4 → 196 */
   font-weight: 500;
   font-size: 32px;
   line-height: 0.975;
@@ -3361,6 +3359,7 @@
 .tr-lr-duration b { font-weight: 700; }
 
 .tr-lr-message {
+  margin-top: 20px;
   align-self: stretch;
   padding: 14px 18px;
   border-radius: 18px;
@@ -3375,7 +3374,7 @@
 }
 
 .tr-lr-question {
-  margin-top: 6px;
+  margin-top: 54.6px; /* 258.4 → 313 */
   font-weight: 500;
   font-size: 36px;
   line-height: 0.975;
@@ -3386,10 +3385,13 @@
 
 /* Ряд из 3-х кнопок: Нет / Чат / Да */
 .tr-lr-actions {
-  margin-top: 8px;
+  margin-top: 44.9px; /* 348.1 → 393 */
+  align-self: flex-start;
+  margin-left: -2px; /* 54 − 2 = 52 */
   display: flex; gap: 14px; justify-content: center;
   align-items: center;
 }
+.tr-lr-actions .tr-lr-btn:last-child { margin-left: -2px; } /* «Да» на 448: зазор 12, а не 14 */
 .tr .tr-lr-btn {
   width: 185px;
   height: 68px;
@@ -3440,7 +3442,7 @@
   text-align: center;
 }
 .tr-lr-empty-sub {
-  margin: 0;
+  margin: 16px 0 0;
   font-weight: 500;
   font-size: 18px;
   line-height: 1.25;
@@ -3461,7 +3463,7 @@
   color: rgba(30, 30, 30, 0.7);
 }
 .tr-lr-success-title {
-  margin-top: 30px;
+  margin-top: 0;
   font-weight: 500;
   font-size: 32px;
   line-height: 0.975;
@@ -3470,11 +3472,11 @@
   text-align: center;
 }
 .tr-lr-success-check {
-  margin-top: 14px;
+  margin-top: 40.6px; /* 148.4 → 189 */
   display: flex; align-items: center; justify-content: center;
 }
 .tr-lr-success-name {
-  margin-top: 14px;
+  margin-top: 12px; /* 258 → 270 */
   font-weight: 700;
   font-size: 36px;
   line-height: 0.975;
@@ -3483,7 +3485,7 @@
   text-align: center;
 }
 .tr-lr-success-when {
-  margin-top: 12px;
+  margin-top: 8.9px; /* 305.1 → 314 */
   font-weight: 500;
   font-size: 36px;
   line-height: 0.975;
@@ -3492,7 +3494,7 @@
   text-align: center;
 }
 .tr .tr-lr-success-back {
-  margin-top: 22px;
+  margin-top: 37.9px; /* 349.1 → 387 */
   width: 46px; height: 47px;
   background: transparent !important;
   border: 0 !important;
@@ -3547,7 +3549,7 @@
   cursor: pointer;
   display: block;
 }
-.tr-income-info-close svg { width: 100%; height: 100%; display: block; }
+.tr-income-info-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
 .tr-income-info-close:hover { opacity: .7; }
 /* Figma: w:1130 h:126 top:55 left:49 (centered in 1228) */
 .tr-income-info-text {
@@ -3602,14 +3604,15 @@
    Все дочерние — position:absolute с точными Figma-координатами.
    Frame origin (0,0). Card local origin = (0, 0) внутри .tr-chats-card.
    ============================================================ */
-#chats.tr-section { padding-bottom: clamp(60px, 8vw, 130px); }
+/* секция: badge top 72, карточка 243…1080, низ 94 (frame 1174) */
+#chats.tr-section { padding: 72px 40px 94px; }
 .tr-chats-frame {
   position: relative;
   width: 1228px;
-  height: 1008px;         /* от badge top:71 до card bottom:1079 = 1008 */
+  height: 1008px;         /* от badge top:72 до card bottom:1080 = 1008 */
   margin: 0 auto;
 }
-/* Badge 452×83 centered horizontally (frame top:71 → local top:0) */
+/* Badge 452×83 по центру (frame top:72 → local top:0) */
 .tr-chats-badge {
   position: absolute;
   top: 0;
@@ -3632,8 +3635,8 @@
 }
 .tr-chats-badge .c-lime { color: #DFED8C; }
 
-/* Card 1228×837, top:171. Скроллим вертикально (нативный скроллбар
-   спрятан). Кастомный track/thumb — декоративные (пока статичны). */
+/* Card 1228×837, top:171 (frame 243 − 72). Список внутри — CustomScroll:
+   трек 7×723 на (1203,58) rgba(255,255,255,.14), ползунок #DFED8C (≈259.6 в макете) */
 .tr-chats-card {
   position: absolute;
   top: 171px;
@@ -3644,44 +3647,78 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 29.5px;
+  overflow: hidden;
+}
+/* Старая flow-раскладка — её использует блок чатов ученика (StudentRawDashboard, свои
+   переопределения в raw-student.css). Учительский блок перешёл на CustomScroll (.tr-chats-list). */
+.tr-chats-card--flow {
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+  padding: 58px 60px 80px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-color: #DFED8C rgba(255,255,255,.14);
   scrollbar-width: thin;
   scrollbar-gutter: stable;
 }
-.tr-chats-card::-webkit-scrollbar { width: 7px !important; display: block !important; }
-.tr-chats-card::-webkit-scrollbar-track {
+.tr-chats-card--flow::-webkit-scrollbar { width: 7px !important; display: block !important; }
+.tr-chats-card--flow::-webkit-scrollbar-track {
   background: rgba(255,255,255,.14);
   border-radius: 3.5px;
-  /* Figma: track top-offset 101.44px, bottom-offset 18px.
-     Через border на track — надёжнее чем margin, thumb рисуется внутри. */
   border-top: 101px solid transparent;
   border-bottom: 18px solid transparent;
   background-clip: padding-box;
 }
-.tr-chats-card::-webkit-scrollbar-thumb {
-  background: #DFED8C;
-  border-radius: 3.5px;
+.tr-chats-card--flow::-webkit-scrollbar-thumb { background: #DFED8C; border-radius: 3.5px; }
+.tr-chats-card--flow .tr-chat-row { align-self: center; }
+/* стекло — как у ученика (.st-chats-section): blur+saturate, светлая рамка, диагональный блик.
+   Карточка не скроллится (скроллится .tr-chats-list внутри), блик — слоем фона */
+#chats.tr-section .tr-chats-card {
+  box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.08) 100%), rgba(30,30,30,0.58);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255,255,255,0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
 }
-/* Flex-раскладка для динамического списка чатов (N рядов вместо фикс. 4).
-   Ряды больше не позиционируются абсолютно через --r1..r4; сепараторы
-   между ними — gap. */
-.tr-chats-card--flow {
+/* ряды: стекло + блик через ::after; overflow visible — плашка «новое сообщение» выступает над рядом */
+#chats.tr-section .tr-chat-row {
+  box-sizing: border-box;
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255,255,255,0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15);
+}
+#chats.tr-section .tr-chat-row::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+#chats.tr-section .tr-chat-row > * { z-index: 1; }
+.tr-chats-list { position: relative; height: 837px; }
+.tr-chats-list-scroll {
+  box-sizing: border-box;
+  height: 837px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  padding: 58px 66px 56px 54px; /* ряд x=160−106=54; последний ряд заканчивается за 56 до низа */
   display: flex;
   flex-direction: column;
-  gap: 60px;
-  padding: 58px 60px 80px;
+  gap: 37px; /* 491.07 − 454 */
 }
-.tr-chats-card--flow .tr-chat-row {
-  position: relative;
-  left: auto;
-  top: auto;
-  margin: 0;
-  width: 1108px;
-  align-self: center;
-  flex: 0 0 153px;
+.tr-chats-list-scroll::-webkit-scrollbar { display: none; }
+.tr-chats-list-bar {
+  position: absolute;
+  top: 58px;
+  right: 18px; /* 1334 − 1316 */
+  width: 7px;
+  border-radius: 3.5px;
+  background: rgba(255,255,255,0.14);
+  pointer-events: none;
 }
+.tr-chats-list-bar-thumb { width: 7px; border-radius: 3.5px; background: #DFED8C; will-change: transform; }
 .tr-chats-empty {
   color: rgba(255,255,255,0.7);
   font-family: 'Inter', sans-serif;
@@ -3702,58 +3739,14 @@
   font-size: 40px;
   letter-spacing: -0.5px;
 }
-/* Инициалы в mini/nano аватарах поменьше (67×67 и 27×27 соответственно). */
 .tr-chat-avatar-mini .tr-chat-avatar-fallback { font-size: 22px; }
 .tr-chat-avatar-nano .tr-chat-avatar-fallback { font-size: 11px; letter-spacing: -0.3px; }
 .tr-chat-arrow-btn:disabled { opacity: .55; cursor: not-allowed; }
-/* Реальные аватары ученика — не Figma-заглушки. object-fit:cover достаточно. */
-.tr-chats-card--flow .tr-chat-avatar-big img {
-  position: static;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  max-width: 100%;
-  left: auto;
-  top: auto;
-}
-.tr-chats-card--flow .tr-chat-avatar-mini img,
-.tr-chats-card--flow .tr-chat-avatar-nano img {
-  position: static;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  max-width: 100%;
-  left: auto;
-  top: auto;
-}
-/* WebKit scrollbar теперь виден — стили выше (track lime, thumb #DFED8C). */
-/* Scroll track/thumb (Figma: track w:7 h:723 top:58; thumb h:259.618 top:101.44) */
-.tr-chats-track {
-  position: absolute;
-  top: 58px;
-  left: 1203px;  /* frame 1309 - card offset 106 */
-  width: 7px;
-  height: 723px;
-  border-radius: 3.5px;
-  background: rgba(255,255,255,0.14);
-}
-.tr-chats-thumb {
-  position: absolute;
-  top: 101.44px;
-  left: 1203px;
-  width: 7px;
-  height: 259.618px;
-  border-radius: 3.5px;
-  background: #DFED8C;
-}
 
-/* Base row: 1108×153, radius 29.5. Left-offset — как в Figma
-   (calc(50%-560.5) = card_center 614 - 6.5 - row_half 554 = 53.5 от левого края).
-   Мы позиционируем через left:60 для перфекта в 1228, но Figma указывает
-   именно 53.5 → используем calc для 1:1. */
+/* Ряд 1108×153 r29.5 */
 .tr-chat-row {
-  position: absolute;
-  left: calc(50% - 560.5px);
+  position: relative;
+  flex: 0 0 153px;
   width: 1108px;
   height: 153px;
   border-radius: 29.5px;
@@ -3761,13 +3754,7 @@
 .tr-chat-row--lime { background: rgba(223,237,140,0.69); }
 .tr-chat-row--red  { background: rgba(204,58,58,0.55); }
 
-/* Y-позиции 4 рядов (Figma top → local = -242 offset от frame) */
-.tr-chat-row--r1 { top: 58px;  } /* 300 - 242 */
-.tr-chat-row--r2 { top: 248.07px; } /* 490.07 - 242 */
-.tr-chat-row--r3 { top: 438px; } /* 680 - 242 */
-.tr-chat-row--r4 { top: 628px; } /* 870 - 242 */
-
-/* Аватар 103×103, 34px от левого края плашки (Figma). */
+/* Аватар 103×103 на (34,25); группа: mini 50 на (23,80), nano 27 на (18,66) */
 .tr-chat-avatar-big {
   position: absolute;
   top: 25px;
@@ -3778,59 +3765,26 @@
   overflow: hidden;
   background: #d9d9d9;
 }
-.tr-chat-avatar-big img {
-  position: absolute;
-  display: block;
-  max-width: none;
+.tr-chat-avatar-big img, .tr-chat-avatar-mini img, .tr-chat-avatar-nano img {
+  display: block; width: 100%; height: 100%; object-fit: cover; max-width: 100%;
 }
-/* Vadim (imgRectangle253): w:248.23% h:185.15% left:-140.59% top:-22.73% */
-.tr-chat-row--r1 .tr-chat-avatar-big img,
-.tr-chat-row--r3 .tr-chat-avatar-big img {
-  width: 248.23%; height: 185.15%;
-  left: -140.59%; top: -22.73%;
-}
-/* Kristina (imgRectangle271): w:450.27% h:263.93% left:-205.13% top:-31.49% */
-.tr-chat-row--r2 .tr-chat-avatar-big img {
-  width: 450.27%; height: 263.93%;
-  left: -205.13%; top: -31.49%;
-}
-/* Group main (imgRectangle275): w:392.1% h:292.45% left:-284.45% top:-74.61% */
-.tr-chat-row--r4 .tr-chat-avatar-big img {
-  width: 392.1%; height: 292.45%;
-  left: -284.45%; top: -74.61%;
-}
-
-/* Mini avatar for group (50×50, top:950 in frame → -870=80 in row; left calc(50%-512.5)
-   frame; row calc(50%-560.5) → local = (calc(50%-512.5)) - (calc(50%-560.5)) = 48 */
 .tr-chat-avatar-mini {
   position: absolute;
   top: 80px;
-  left: 48px;
+  left: 23px; /* 183 − 160 */
   width: 50px; height: 50px;
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
-  /* Без обводки — сидит поверх big-аватара плотно, ободок выглядел лишним */
 }
-.tr-chat-avatar-mini img {
-  position: absolute; display: block; max-width: none;
-  width: 450.27%; height: 263.93%; left: -205.13%; top: -31.49%;
-}
-
-/* Nano avatar for group (27×27, top:936→66 in row; left calc(50%-529) frame
-   → local = calc(50%-529) - calc(50%-560.5) = 31.5) */
 .tr-chat-avatar-nano {
   position: absolute;
   top: 66px;
-  left: 31.5px;
+  left: 18px; /* 178 − 160 */
   width: 27px; height: 27px;
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
-}
-.tr-chat-avatar-nano img {
-  position: absolute; display: block; max-width: none;
-  width: 248.23%; height: 185.15%; left: -140.59%; top: -22.73%;
 }
 
 /* «9» count-pill for group (Figma bg 40×36 at left:265 top:964; text at 279,972)
@@ -3838,7 +3792,7 @@
            top = 964 - 870 = 94 */
 .tr-chat-count {
   position: absolute;
-  left: 105.5px;
+  left: 105px; /* 265 − 160 */
   top: 94px;
   width: 40px;
   height: 36px;
@@ -3859,7 +3813,7 @@
   position: absolute;
   top: 30px;
   left: 159px;
-  right: 100px; /* оставляем место под стрелку (arrow left:996.5 в row 1108) */
+  width: 348px; /* Figma: текстовый блок имени 348 */
   height: 35px;
   margin: 0;
   font-family: 'Inter', sans-serif;
@@ -3877,15 +3831,15 @@
 /* Preview: тоже вправо от аватара */
 .tr-chat-row .tr-chat-preview {
   position: absolute;
-  top: 80.04px;
-  left: 159.5px;
-  right: 130px; /* с запасом под стрелку */
+  top: 80px;
+  left: 159px;
+  width: 686px; /* прочитанное: 686; с плашкой «новое сообщение» — 637 */
   margin: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
   letter-spacing: -1.2px;
-  line-height: 1.15;
+  line-height: 0.975;
   color: #1E1E1E;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3894,6 +3848,7 @@
   text-overflow: ellipsis;
 }
 .tr-chat-row .tr-chat-preview--white { color: #FFF; }
+.tr-chat-row--unread .tr-chat-preview { width: 637px; }
 .tr-chat-row .tr-chat-preview--1line { top: 60.04px; height: auto; }
 .tr-chat-row .tr-chat-preview b { font-weight: 700; }
 
@@ -3902,7 +3857,7 @@
 .tr-chat-badge {
   position: absolute;
   top: -18.07px;
-  left: 773.06px;
+  left: 772.56px; /* 932.56 − 160 */
   width: 253px;
   height: 36px;
   border-radius: 20.5px;
@@ -3925,7 +3880,7 @@
 .tr-chat-arrow-btn {
   position: absolute;
   top: 46px;
-  left: 996.5px;
+  left: 996px; /* 1156 − 160 */
   width: 67px;
   height: 68px;
   border: 0;
@@ -3940,4 +3895,4 @@
 .tr-chat-arrow-btn--lime { background: #DFED8C !important; }
 /* Figma-иконка нарисована стрелкой вправо, но кнопка обёрнута в rotate-180 —
    выходит стрелка влево. Крутим здесь. */
-.tr-chat-arrow-btn img { width: 32px; height: auto; display: block; transform: rotate(180deg); }
+.tr-chat-arrow-btn img { width: 37px; height: 36.82px; display: block; transform: rotate(180deg); } /* Vector 44: 32 + обводка = 37×36.82 */

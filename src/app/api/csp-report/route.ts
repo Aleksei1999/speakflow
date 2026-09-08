@@ -73,11 +73,30 @@ export async function POST(request: NextRequest) {
     if (rows.length === 0) return new NextResponse(null, { status: 204 })
 
     const admin = createAdminClient()
-    // UNIQUE dedup-индекс по (directive, blocked, doc, hour) — повторы за час
-    // не плодим. ON CONFLICT DO NOTHING тише чем upsert.
-    const { error } = await admin
+    // UNIQUE dedup-индекс по (directive, blocked, coalesce(doc,''), hour) — повторы за час
+    // не плодим. Индекс по выражению, поэтому ON CONFLICT через PostgREST не выразить:
+    // сначала смотрим, что уже есть за текущий час, и вставляем только новое — иначе
+    // каждый повтор попадал в логи Postgres как ERROR 23505 (шум, а не проблема).
+    const key = (r: { directive: string; blocked: string; document_uri: string | null }) =>
+      `${r.directive}\u0000${r.blocked}\u0000${r.document_uri ?? ""}`
+    const hourStart = new Date()
+    hourStart.setUTCMinutes(0, 0, 0)
+    const { data: existing } = await admin
       .from("csp_violations")
-      .insert(rows, { count: "exact" })
+      .select("directive, blocked, document_uri")
+      .gte("created_at", hourStart.toISOString())
+      .in("blocked", Array.from(new Set(rows.map((r) => r.blocked))))
+    const seen = new Set((existing ?? []).map(key))
+    const fresh = rows.filter((r) => {
+      const k = key(r)
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    if (fresh.length === 0) return new NextResponse(null, { status: 204 })
+
+    const { error } = await admin.from("csp_violations").insert(fresh)
+    // гонка двух одновременных репортов — индекс всё равно отобьёт, это не ошибка
     if (error && !String(error.message).includes("duplicate key")) {
       console.warn("[csp] insert failed:", error.message)
     }

@@ -262,17 +262,21 @@
 .files-modal-back:hover { opacity: .7; }
 
 /* Inline-инпут названия папки — без бордера, авто-сохранение. */
-.files-item-name--input {
+/* поле переименования: типографика задана явно — `inherit` брал 16px от .files-item,
+   а `.tr input` из raw-teacher.css перебивал .files-item-name (Figma 2522:4107: 24/500/−1.2) */
+.files-modal .files-item-name--input {
   border: none;
   outline: none;
   background: transparent;
   padding: 0;
-  font-family: inherit;
-  font-weight: inherit;
-  font-size: inherit;
-  letter-spacing: inherit;
-  line-height: inherit;
-  color: inherit;
+  height: 23.4px; /* как у span: одна строка lh .975 */
+  box-sizing: content-box;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  color: #1E1E1E;
   text-align: center;
   width: 187px;
   max-width: 187px;
