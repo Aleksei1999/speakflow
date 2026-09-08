@@ -20,7 +20,8 @@ function LoginPageContent() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  // как в попапе на лендинге: «Войти» активна только когда форма валидна
+  const [valid, setValid] = useState(false)
 
   useEffect(() => {
     if (mfaRequired) setErr('MFA-проверка не прошла, попробуй войти снова.')
@@ -77,15 +78,19 @@ function LoginPageContent() {
       <link rel="stylesheet" href="/landing/raw2/raw2.css" />
       <div className="raw2-auth-bg" />
 
+      {/* Та же разметка и стили, что у попапа «Войти» на лендинге (Figma 2522:2340) */}
       <div className="raw2-login raw2-login--page" role="dialog" aria-modal="false">
-        <Link href="/" className="raw2-login-close" aria-label="На главную">×</Link>
-
         <div className="raw2-login-tabs">
           <button type="button" className={role === 'student' ? 'active' : ''} onClick={() => setRole('student')}>Ученик</button>
           <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => setRole('teacher')}>Учитель</button>
         </div>
 
-        <form className="raw2-login-form" onSubmit={onSubmit}>
+        <form
+          className="raw2-login-form"
+          onSubmit={onSubmit}
+          onChange={(e) => setValid(e.currentTarget.checkValidity())}
+          onInput={(e) => setValid(e.currentTarget.checkValidity())}
+        >
           <input
             name="email"
             type="email"
@@ -95,44 +100,21 @@ function LoginPageContent() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <div className="raw2-login-pass">
-            <input
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="пароль"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              className="raw2-login-pass-eye"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-              aria-pressed={showPassword}
-              onClick={() => setShowPassword((v) => !v)}
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M3 3l18 18" />
-                  <path d="M10.6 6.2A10.4 10.4 0 0 1 12 6c6 0 10 6 10 6a17.3 17.3 0 0 1-3.2 3.7" />
-                  <path d="M6.6 6.6C3.8 8.3 2 12 2 12s4 6 10 6c1.5 0 2.9-.3 4.1-.9" />
-                  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
+          <input
+            name="password"
+            type="password"
+            placeholder="пароль"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           <TurnstileWidget onToken={setCaptchaToken} />
           {err && <p className="raw2-login-err">{err}</p>}
-          <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Входим…' : 'Войти'}</button>
-          <Link href="/forgot-password" className="raw2-login-forgot">Забыл пароль?</Link>
+          {/* busy: чёрная с лаймовым текстом, подпись не меняется */}
+          <button type="submit" className={`btn btn-red${busy ? ' busy' : ''}`} disabled={busy || !valid} aria-busy={busy}>Войти</button>
           <Link href="/register" className="raw2-login-reg">Регистрация</Link>
+          <Link href="/forgot-password" className="raw2-login-forgot">Забыл пароль?</Link>
         </form>
       </div>
 
@@ -147,20 +129,9 @@ function LoginPageContent() {
         .raw2-auth-page { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; background: #1E1E1E; }
         .raw2-auth-bg { position: fixed; inset: 0; z-index: 0; background-image: url(/landing/raw2/hero.webp); background-size: cover; background-position: center; filter: blur(14px) brightness(.5); transform: scale(1.1); }
         .raw2 .raw2-login--page { position: relative; z-index: 1; }
-        .raw2 .raw2-login-oauth { display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
-        .raw2 .raw2-login-forgot { align-self: center; margin-top: 8px; font-size: 14px; color: var(--ink); opacity: .7; text-decoration: none; }
-        .raw2 .raw2-login-forgot:hover { opacity: 1; text-decoration: underline; }
-        .raw2 .raw2-login-pass { position: relative; display: flex; }
-        .raw2 .raw2-login-pass input { flex: 1 1 auto; padding-right: 56px; }
-        .raw2 .raw2-login-pass-eye {
-          position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 36px; height: 36px; border-radius: 999px;
-          background: transparent; border: none; padding: 0; cursor: pointer;
-          color: rgba(30,30,30,.55); transition: color .15s, background .15s;
-        }
-        .raw2 .raw2-login-pass-eye:hover { color: var(--ink); background: rgba(30,30,30,.06); }
-        .raw2 .raw2-login-pass-eye:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+        /* «Забыл пароль?» — такая же типографика, как у «Регистрация», но тише; в попапе лендинга ссылки нет */
+        .raw2 .raw2-login-forgot { align-self: center; margin-top: 6px; font-size: 20px; font-weight: 500; line-height: 0.975; letter-spacing: -1px; color: var(--ink); opacity: .6; text-decoration: none; }
+        .raw2 .raw2-login-forgot:hover { opacity: 1; color: var(--red); }
       `}</style>
     </div>
   )
