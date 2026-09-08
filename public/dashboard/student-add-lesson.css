@@ -19,56 +19,65 @@
 }
 @keyframes salFade { from { opacity: 0; } to { opacity: 1; } }
 
+/* Figma 2522:2526 «Добавить урок (ученик)»: 686×557 #DFED8C r29.5; заголовок Inter 500 32 top 79;
+   пилюли 578×68 r34 top 202 (дата/время 281×68 top 294, зазор 16); «Создать» 200×68 top 426; крестик 13.3 at (639,34) */
 .sal-card {
   position: relative;
+  box-sizing: border-box;
   width: 686px;
   max-width: 100%;
   background: #DFED8C;
-  border-radius: 32px;
-  padding: 46px 56px 40px;
+  border-radius: 29.5px;
+  padding: 77.4px 54px 63px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
   color: #1E1E1E;
   animation: salIn 0.22s cubic-bezier(.2,.7,.2,1.1);
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 0;
 }
-.sal-card--small { width: 503px; padding: 36px 40px 34px; }
+/* Figma 2522:3701 «Добавить урок (подтверждение)»: 503×475, заголовок top 86, галочка 189, текст 275, стрелка 396…443, низ 32 */
+.sal-card--small { width: 503px; padding: 86px 0 32px; }
+.sal-card--small .sal-close { right: 38.67px; } /* крестик at (451,34) */
+.sal-card--events { padding-bottom: 69px; } /* 2522:3654: последняя пилюля 727 → карточка 796 */
+.sal-card--pickers { padding-bottom: 46px; } /* 2522:2665: пикеры 294…511 → карточка 557 */
 @keyframes salIn { from { transform: translateY(10px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .sal-close {
   position: absolute;
-  top: 20px;
-  right: 22px;
-  width: 28px;
-  height: 28px;
+  top: 34px;
+  right: 33.7px;
+  width: 13.33px;
+  height: 13.34px;
+  padding: 0;
   border: none;
   background: transparent;
   color: #1E1E1E;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
+.sal-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
 .sal-close:hover { opacity: 0.7; }
 
+/* таймер «0:59»: Inter 500 16 / -0.8 / lh .975, rgba(30,30,30,.7), top 33, по центру */
 .sal-timer {
   position: absolute;
-  top: 22px;
+  top: 33px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 16px;
   font-weight: 500;
-  color: #1E1E1E;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.8px;
+  line-height: 0.975;
+  color: rgba(30, 30, 30, 0.7);
 }
 
 .sal-title {
-  margin: 6px 0 6px;
+  margin: 0 0 93.4px; /* заголовок 77.4…108.6 → пилюля 202 */
   text-align: center;
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
   color: #1E1E1E;
 }
 
@@ -78,15 +87,18 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  height: 62px;
-  padding: 0 24px;
+  box-sizing: border-box;
+  height: 68px;
+  padding: 0 28px;
   background: #FFFFFF;
-  border-radius: 999px;
+  border-radius: 34px;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 500;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
   color: #1E1E1E;
   transition: transform 0.12s ease;
 }
@@ -96,30 +108,38 @@
 .sal-pill--full { width: 100%; }
 .sal-pill--half { flex: 1; min-width: 0; }
 .sal-pill--head { background: #FFFFFF; }
-.sal-pill--option { background: #FFFFFF; }
-.sal-pill--option.is-expanded { border-radius: 32px 32px 0 0; }
-.sal-pill-placeholder { color: rgba(30, 30, 30, 0.55); }
+.sal-pill-placeholder { color: rgba(30, 30, 30, 0.7); }
 .sal-pill-value { color: #1E1E1E; font-weight: 500; }
+/* круг 35×36 (Ellipse 36) на 21px от правого края пилюли, стрелка 20×22 (Vector 42) повёрнута вниз */
 .sal-arrow {
   position: absolute;
-  right: 12px;
+  right: 21px;
   top: 50%;
   transform: translateY(-50%);
+  width: 35px; height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+.sal-arrow .sal-arrow-circle { position: absolute; inset: 0; width: 35px; height: 36px; }
+.sal-arrow .sal-arrow-glyph { position: relative; width: 20px; height: 22.09px; transform: rotate(90deg); }
+.sal-arrow .sal-arrow-glyph--left { transform: rotate(180deg); }
 
 .sal-row {
   display: flex;
   gap: 16px;
+  margin-top: 24px;
 }
 .sal-row--picker { align-items: flex-start; }
 .sal-half { flex: 1; min-width: 0; }
+/* Figma 2522:2665: колонка 281×217 rgba(255,255,255,.5) r34, шапка — белая пилюля 68 */
 .sal-half--picker {
+  position: relative;
+  box-sizing: border-box;
+  height: 217px;
   background: rgba(255, 255, 255, 0.5);
-  border-radius: 32px;
-  padding: 6px 6px 12px;
+  border-radius: 34px;
+  padding: 0;
 }
 
 /* ---------- Footer / CTA ---------- */
@@ -128,24 +148,29 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 64px; /* ряд 294…362 → кнопка 426 */
 }
 .sal-btn {
+  box-sizing: border-box;
   min-width: 200px;
-  height: 62px;
-  padding: 0 42px;
-  border-radius: 999px;
+  height: 68px;
+  padding: 0 19px;
+  border-radius: 34px;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 22px;
-  font-weight: 500;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
   color: #FFFFFF;
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
 .sal-btn--red { background: #CC3A3A; }
 .sal-btn--red:hover:not(:disabled) { transform: translateY(-1px); }
 .sal-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* состояние отправки: кнопка чёрная, текст лаймовый, подпись не меняется */
+.sal-btn.busy, .sal-btn.busy:disabled { background: #1E1E1E; color: #DFED8C; opacity: 1; transform: none; cursor: progress; }
 .sal-error {
   padding: 8px 14px;
   background: rgba(204, 58, 58, 0.12);
@@ -156,34 +181,87 @@
   text-align: center;
 }
 
-/* ---------- Event picker (3269) ---------- */
+/* ---------- Event picker — Figma 2522:3654 «Добавить урок (после того как всё выбрано)» ----------
+   Список начинается там же, где первая пилюля (202); зазор между элементами 23.
+   Пилюли Inter 500 32 / -1.6 / lh .975, текстовая область 97…561 (2-строчный заголовок → 102px) */
 .sal-event-list {
+  margin-top: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 23px;
 }
-.sal-lect-wrap { display: flex; flex-direction: column; }
+.sal-pill--lg {
+  height: auto;
+  min-height: 68px;
+  padding: 17px 71px 17px 43px; /* 1 строка → 68, 2 строки → 102 (как в Figma) */
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 34px;
+  text-align: center;
+}
+.sal-pill--lg.sal-pill--sym { padding-left: 43px; padding-right: 43px; } /* пилюля преподавателя: текст по центру пилюли (198…489) */
+.sal-lect-wrap { display: flex; flex-direction: column; border-radius: 34px; }
+.sal-lect-wrap.is-expanded { background: rgba(255, 255, 255, 0.5); } /* Rectangle 242: 578×309 r34 */
+/* тело: пилюля 293…361 → дата 384 (23), описание до 587 → низ 602 (15); слева 92 (38), скроллбар 607…614 (18 справа) */
 .sal-lect-body {
-  background: #FFFFFF;
-  border-radius: 0 0 32px 32px;
-  padding: 14px 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: -1px;
+  position: relative;
+  padding: 23px 18px 12px 38px;
 }
+.sal-lect-scroll {
+  max-height: 203px; /* 384…587 */
+  overflow-y: auto;
+  padding: 0 8px 3px 0; /* 3px под выносные элементы, чтобы не появлялся лишний скролл */
+  scrollbar-width: none; /* нативный скроллбар скрыт — рисуем свой (Figma Group 389) */
+}
+.sal-lect-scroll::-webkit-scrollbar { display: none; }
+/* трек 7×188 at (607,386): 18 от правого края, 2 ниже верха даты (384) */
+.sal-lect-bar {
+  position: absolute;
+  top: 25px;
+  right: 18px;
+  width: 7px;
+  height: 188px;
+  border-radius: 3.5px;
+  background: rgba(30, 30, 30, 0.14);
+  pointer-events: none;
+}
+.sal-lect-bar-thumb {
+  width: 7px;
+  border-radius: 3.5px;
+  background: #1E1E1E;
+  will-change: transform;
+}
+/* «19 сентября 20:00»: Inter 700 32 / -1.6 / lh .975, h36; после нажатия — #CC3A3A (Figma 2522:3678) */
 .sal-lect-when {
-  font-size: 20px;
-  font-weight: 700;
-  color: #CC3A3A;
-}
-.sal-lect-desc {
+  display: block;
   margin: 0;
-  font-size: 15px;
-  line-height: 1.4;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
+  height: 36px;
   color: #1E1E1E;
+  text-align: left;
+  transition: color 0.12s ease;
 }
-.sal-lect-cta { align-self: center; margin-top: 6px; }
+.sal-lect-when:hover:not(:disabled),
+.sal-lect-when.is-selected { color: #CC3A3A; }
+.sal-lect-when:disabled:not(.is-selected) { cursor: default; }
+/* описание: Inter 500 24 / -1.2 / lh .975, w540, верх 434 (дата 384+36 → 14) */
+.sal-lect-desc {
+  margin: 14px 0 0;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -1.2px;
+  line-height: 0.975;
+  color: #1E1E1E;
+  white-space: pre-wrap;
+}
 .sal-lect-empty {
   padding: 20px 18px;
   text-align: center;
@@ -195,6 +273,7 @@
 
 /* ---------- Teacher dropdown ---------- */
 .sal-dropdown {
+  margin-top: 24px;
   display: flex;
   flex-direction: column;
   background: #FFFFFF;
@@ -230,145 +309,148 @@
   font-size: 15px;
 }
 
-/* ---------- Picker head (2608) ---------- */
+/* ---------- Picker head + list (2522:2665) ---------- */
 .sal-picker-head {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
-  background: #FFFFFF;
-  border-radius: 999px;
-  padding: 0 24px;
-  font-size: 20px;
-  color: rgba(30, 30, 30, 0.55);
-  margin-bottom: 6px;
-}
-.sal-picker-back {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ---------- Wheel picker ---------- */
-.sal-wheel {
-  position: relative;
-  height: 204px;   /* 3 items visible */
-  overflow: hidden;
-  padding: 0 6px;
-}
-.sal-wheel-fade {
-  pointer-events: none;
-  position: absolute;
-  left: 0; right: 0;
-  height: 60px;
-  z-index: 2;
-}
-.sal-wheel-fade--top {
-  top: 0;
-  background: linear-gradient(to bottom, rgba(223, 237, 140, 0.85), rgba(223, 237, 140, 0));
-}
-.sal-wheel-fade--bot {
-  bottom: 0;
-  background: linear-gradient(to top, rgba(223, 237, 140, 0.85), rgba(223, 237, 140, 0));
-}
-.sal-wheel-scroll {
-  height: 100%;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: thin;
-}
-.sal-wheel-scroll::-webkit-scrollbar { width: 4px; }
-.sal-wheel-scroll::-webkit-scrollbar-thumb {
-  background: rgba(30, 30, 30, 0.35);
-  border-radius: 2px;
-}
-.sal-wheel-spacer { height: 68px; }  /* = ITEM_H */
-.sal-wheel-item {
+  box-sizing: border-box;
   height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
-  scroll-snap-align: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 22px;
-  color: rgba(30, 30, 30, 0.5);
-  width: 100%;
-}
-.sal-wheel-item.is-active {
-  font-size: 26px;
-  font-weight: 700;
-  color: #1E1E1E;
-}
-
-/* ---------- Success (3346) ---------- */
-.sal-success-title {
-  margin: 20px 0 0;
-  text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 0.9746;
-  letter-spacing: -1.6px;
-  color: #1E1E1E;
-}
-.sal-success-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 6px 0;
-}
-.sal-success-sub {
-  text-align: center;
-  font-family: 'Inter', sans-serif;
+  background: #FFFFFF;
+  border-radius: 34px;
+  padding: 0 60px;
   font-size: 24px;
   font-weight: 500;
-  line-height: 0.9746;
   letter-spacing: -1.2px;
-  color: #1E1E1E;
-  margin: 4px 0 2px;
+  line-height: 0.975;
+  color: rgba(30, 30, 30, 0.7);
 }
-.sal-success-note {
-  text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
-  font-weight: 400;
-  line-height: 0.9746;
-  letter-spacing: -1.2px;
-  color: #1E1E1E;
-  margin: 4px 0 6px;
-}
-.sal-success-note b { font-weight: 700; }
-.sal-success-back {
-  align-self: center;
-  margin-top: 10px;
+/* стрелка «назад»: круг 35×36 на 15px от правого края пилюли (285…320 в колонке 54…335) */
+.sal-picker-back {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 35px;
+  height: 36px;
   border: none;
   background: transparent;
   padding: 0;
   cursor: pointer;
+}
+.sal-picker-back .sal-arrow { position: static; transform: none; }
+/* список: трек 376…483 (14 под шапкой, 107 высоты), текст 92…295 (38 слева, 40 справа), скроллбар 310…317 */
+.sal-plist { position: relative; margin-top: 14px; }
+.sal-plist-scroll {
+  height: 107px;
+  overflow-y: auto;
+  padding: 0 40px 0 38px;
+  scrollbar-width: none;
+}
+.sal-plist-scroll::-webkit-scrollbar { display: none; }
+.sal-plist-bar {
+  position: absolute;
+  top: 0;
+  right: 18px;
+  width: 7px;
+  border-radius: 3.5px;
+  background: rgba(30, 30, 30, 0.14);
+  pointer-events: none;
+}
+.sal-plist-bar-thumb { width: 7px; border-radius: 3.5px; background: #1E1E1E; will-change: transform; }
+/* пункт: 70 + разделитель 1px (Line 4: 206 wide, black .26) — 83…289 при тексте 92…295 */
+.sal-plist-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 70px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
+  color: #1E1E1E;
+  white-space: nowrap;
+}
+.sal-plist-item::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  right: 6px;
+  bottom: -1px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.26);
+}
+.sal-plist-item + .sal-plist-item { margin-top: 1px; }
+.sal-plist-item.is-active {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -1.8px;
+}
+
+/* ---------- Success (2522:3701) ---------- */
+.sal-success-title {
+  margin: 0;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 0.975;
+  letter-spacing: -1.6px;
+  color: #1E1E1E;
+}
+/* галочка: круг 69×69 at (217,189) — заголовок 86 + 2×31.2 = 148.4 → 40.6 */
+.sal-success-check {
+  display: flex;
+  justify-content: center;
+  margin: 40.6px 0 0;
+}
+.sal-check-ic { position: relative; display: block; width: 69px; height: 69px; }
+.sal-check-ic-circle { position: absolute; inset: 0; width: 69px; height: 69px; }
+.sal-check-ic-mark { position: absolute; left: 17px; top: 20px; width: 35px; height: 29px; } /* Vector 38 at (237,212) минус штрих 3px */
+/* текст: Inter 500 24 / -1.2 / lh .975, w384 по центру, top 275 (круг 258 → 17) */
+.sal-success-note {
+  width: 384px;
+  margin: 17px auto 0;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 0.975;
+  letter-spacing: -1.2px;
+  color: #1E1E1E;
+}
+.sal-success-note b { font-weight: 700; }
+.sal-success-note .sal-success-reg { font-weight: 400; }
+/* стрелка «назад»: 46×47 at (229,396) — текст 275 + 4×23.4 = 368.6 → 27.4 */
+.sal-success-back {
+  display: block;
+  margin: 27.4px auto 0;
+  width: 46px;
+  height: 47px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
   transition: transform 0.12s ease;
 }
 .sal-success-back:not(.is-disabled):hover { transform: translateY(-1px); }
 .sal-success-back.is-disabled { opacity: 0.4; cursor: not-allowed; }
+.sal-back-ic { position: relative; display: block; width: 46px; height: 47px; }
+.sal-back-ic-circle { position: absolute; inset: 0; width: 46px; height: 47px; }
+.sal-back-ic-glyph { position: absolute; left: 10.5px; top: 12.45px; width: 25px; height: 22.09px; transform: rotate(180deg); } /* Vector 46: центр (252,419.5) */
 
 /* ---------- Mobile ---------- */
 @media (max-width: 560px) {
   .sal-card { padding: 34px 22px 28px; border-radius: 24px; gap: 16px; }
-  .sal-card--small { padding: 28px 20px 24px; }
+  .sal-half--picker { height: auto; padding-bottom: 20px; }
+  .sal-card--small { padding: 60px 20px 24px; }
+  .sal-success-note { width: auto; }
   .sal-title { font-size: 24px; }
   .sal-pill { height: 56px; font-size: 18px; padding: 0 20px; }
   .sal-btn { height: 56px; font-size: 18px; padding: 0 30px; }

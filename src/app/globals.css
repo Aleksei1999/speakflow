@@ -230,12 +230,14 @@
   border: 0;
 }
 
-/* Уведомление «Время вашего занятия изменилось» (Figma 2505:3378) — pop-up
+/* Уведомление «Время вашего занятия изменилось» (Figma 2522:3713) — pop-up
    с лаймовым фоном и красной кнопкой «Календарь». Открывается через
    LessonRescheduleWatcher при UPDATE на lessons.scheduled_at. */
 .lesson-resch-overlay {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(30, 30, 30, 0.55); /* как у остальных модалок (.sal-backdrop) */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center;
   z-index: 1400;
   animation: lesson-resch-fade .18s ease;
@@ -258,16 +260,17 @@
   to   { opacity: 1; transform: scale(1)   }
 }
 .lesson-resch-close {
-  position: absolute; top: 34px; right: 38.5px;
-  width: 13.33px; height: 13.33px;
+  position: absolute; top: 34px; right: 38.67px; /* Group 130 at (451,34) */
+  width: 13.33px; height: 13.34px;
   background: transparent; border: none; cursor: pointer; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
   color: #1E1E1E;
 }
+.lesson-resch-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; } /* экспорт с запасом под штрих (inset −7.5%) */
+.lesson-resch-close:hover { opacity: 0.7; }
 .lesson-resch-text {
   position: absolute; top: 86px; left: 50%;
   transform: translateX(-50%);
-  width: 492px; max-width: calc(100% - 20px);
+  width: 492px; max-width: 100%;
   font-family: 'Inter', sans-serif;
   font-weight: 700; font-size: 32px; line-height: 0.975;
   letter-spacing: -0.05em; color: #1E1E1E;

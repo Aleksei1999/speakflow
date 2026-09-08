@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
+import { nb } from "@/lib/ru/typo"
 
 export type LectureForModal = {
   id: string
@@ -11,22 +12,28 @@ export type LectureForModal = {
   tag: string | null
   scheduled_at: string
   teacher?: { name: string; avatar_url: string | null; bio: string | null } | null
+  /** Ученик уже записан (из /api/lectures). */
+  registered?: boolean
 }
 
 type Props = {
   lecture: LectureForModal | null
   onClose: () => void
+  /** После успешной записи — родитель перечитывает лекции (расписание). */
+  onRegistered?: () => void
 }
 
-// Модалка карточки преподавателя, ведущего лекторий. Открывается по клику
-// на плашку лектория у ученика: слева фото ведущего, справа название/тэг
-// лекции, её описание, "о преподавателе"+био и кнопка "Записаться"
-// (POST /api/lectures/register). Если препод не найден по host_name —
-// показываем инициалы вместо фото и скрываем блок био.
-export default function StudentLectureModal({ lecture, onClose }: Props) {
+// Карточка преподавателя лектория — Figma 2522:4239 (Group 288, 812×755):
+// фото 366×366 at (57,57); справа (x=458) имя 32 bold, «о программе» 15px,
+// описание лекции 24px; под фото (x=63, y=529) «о преподавателе» + био 24px;
+// кнопка «Записаться» 184×53 at (571,634). Регистрация — POST /api/lectures/register.
+// Если препод не найден по host_name — инициалы вместо фото, блок био скрыт.
+export default function StudentLectureModal({ lecture, onClose, onRegistered }: Props) {
   const [busy, setBusy] = useState(false)
-  const [registered, setRegistered] = useState(false)
+  const [registeredNow, setRegisteredNow] = useState(false)
+  const registered = registeredNow || !!lecture?.registered
   const [error, setError] = useState<string | null>(null)
+  const [avatarFailed, setAvatarFailed] = useState(false)
 
   useEffect(() => {
     if (!lecture) return
@@ -52,9 +59,10 @@ export default function StudentLectureModal({ lecture, onClose }: Props) {
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(j?.error || "Ошибка регистрации")
-      setRegistered(true)
-    } catch (e: any) {
-      setError(e?.message || "Ошибка")
+      setRegisteredNow(true)
+      onRegistered?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка")
     } finally {
       setBusy(false)
     }
@@ -63,11 +71,16 @@ export default function StudentLectureModal({ lecture, onClose }: Props) {
   return createPortal(
     <div className="st-lect-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="st-lect-modal" role="dialog" aria-modal="true">
-        <button type="button" className="st-lect-modal-close" onClick={onClose} aria-label="Закрыть">×</button>
+        <button type="button" className="st-lect-modal-close" onClick={onClose} aria-label="Закрыть">
+          {/* крестик — экспорт Figma Group 130 (лаймовый) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+        </button>
 
         <div className="st-lect-modal-photo">
-          {avatar ? (
-            <img src={avatar} alt={hostName} />
+          {avatar && !avatarFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt="" onError={() => setAvatarFailed(true)} />
           ) : (
             <div className="st-lect-modal-initials">{initials || "T"}</div>
           )}
@@ -75,30 +88,32 @@ export default function StudentLectureModal({ lecture, onClose }: Props) {
 
         <div className="st-lect-modal-body">
           <div className="st-lect-modal-name">{hostName}</div>
-          {lecture.tag && (
-            <div className="st-lect-modal-tag"><span className="st-lect-modal-tag-badge">T</span>{lecture.tag}</div>
-          )}
-
           {lecture.description && (
-            <p className="st-lect-modal-desc">{lecture.description}</p>
+            <>
+              <div className="st-lect-modal-sub">о программе</div>
+              <p className="st-lect-modal-desc">{nb(lecture.description)}</p>
+            </>
           )}
+        </div>
 
+        <div className="st-lect-modal-about">
           {bio && (
             <>
               <div className="st-lect-modal-sub">о преподавателе</div>
-              <p className="st-lect-modal-bio">{bio}</p>
+              <p className="st-lect-modal-bio">{nb(bio)}</p>
             </>
           )}
+        </div>
 
+        <div className="st-lect-modal-foot">
           {error && <div className="st-lect-modal-err">{error}</div>}
-
           <button
             type="button"
-            className="st-lect-modal-cta"
+            className={`st-lect-modal-cta${busy ? " busy" : ""}`}
             onClick={register}
             disabled={busy || registered}
           >
-            {registered ? "Вы записаны" : busy ? "Записываем…" : "Записаться"}
+            {registered ? "Вы записаны" : "Записаться"}
           </button>
         </div>
       </div>

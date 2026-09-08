@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
+import CustomScroll from "@/components/dashboard/CustomScroll"
 import { CheckIcon } from "@/components/icons/CheckIcon"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
@@ -55,13 +56,6 @@ const APPLICATIONS_VISIBLE = 3
 
 /* Мок других учителей — куда можно передать ученика.
    В проде — fetch учителей из БД (кроме текущего). */
-const TEACHERS = [
-  { id: "t1", name: "Анна Иванова" },
-  { id: "t2", name: "Мария Петрова" },
-  { id: "t3", name: "Ольга Кузнецова" },
-  { id: "t4", name: "Елена Сидорова" },
-  { id: "t5", name: "Наталья Морозова" },
-]
 
 /* Мок ответов на тест с лендинга. Реально придёт из БД
    по каждой заявке (question, chosen index, correct index). */
@@ -155,6 +149,25 @@ const NAV = [
   { href: "#calendar", label: "Календарь" },
 ]
 
+// Макет кабинета нарисован под 1441px. На экранах шире масштабируем страницу пропорционально
+// (zoom = ширина / 1441, потолок 1.4) — так же, как у ученика и на лендинге; иначе абсолютные px шапки разъезжаются.
+function useProportionalZoom() {
+  useEffect(() => {
+    const apply = () => {
+      const w = window.innerWidth
+      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1
+      document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4))
+      // Модалки (.tr-modal-backdrop) лежат внутри .tr и наследуют масштаб страницы. Самая высокая — 686×869:
+      // если с масштабом страницы она не влезает в окно (поля 20px), уменьшаем модалки до вмещающегося.
+      const fit = Math.min(z, (window.innerHeight - 40) / 869, (w - 40) / 686)
+      document.documentElement.style.setProperty("--modal-zoom", (Math.max(0.5, fit) / z).toFixed(4))
+    }
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [])
+}
+
 function useClock() {
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
@@ -176,10 +189,6 @@ function levelLabel(lvl: string) {
 function formatRub(kopecks: number): string {
   const rub = Math.round(kopecks / 100)
   return String(rub).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-}
-
-function ArrowRight({ size = 32 }: { size?: number }) {
-  return <ArrowIcon direction="right" size={size} />
 }
 
 function EditIcon() {
@@ -316,6 +325,7 @@ export default function TeacherRawDashboard({
   initialApplications,
   teacherRates,
 }: TeacherRawDashboardProps = {}) {
+  useProportionalZoom()
   const now = useClock()
   const timeStr = now ? now.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }) : "16:24"
   const dateStr = now ? now.toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "numeric" }) : "26.06.2026"
@@ -722,6 +732,25 @@ export default function TeacherRawDashboard({
     }
   }, [teacherId, chatPeer?.id, groupChat?.id, initialChats])
   const [transferTeacher, setTransferTeacher] = useState("")
+  // Список учителей для передачи — реальные профили (/api/booking/teachers), без себя.
+  const [transferTeachers, setTransferTeachers] = useState<Array<{ id: string; name: string }>>([])
+  useEffect(() => {
+    if (!transferOpen) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch("/api/booking/teachers", { cache: "no-store" })
+        if (!r.ok) return
+        const j = await r.json()
+        if (cancelled) return
+        const rows = ((j.teachers ?? []) as Array<{ userId: string; name: string }>)
+          .filter((t) => t.userId !== teacherId)
+          .map((t) => ({ id: t.userId, name: t.name }))
+        setTransferTeachers(rows)
+      } catch (e) { console.error("[transfer] teachers", e) }
+    })()
+    return () => { cancelled = true }
+  }, [transferOpen, teacherId])
   const [transferReason, setTransferReason] = useState("")
   const studentModalData = studentModalId ? studentsState.find(s => s.id === studentModalId) : null
   // «О последнем уроке» — заметка (lesson_notes) от ЛЮБОГО учителя по любому
@@ -842,7 +871,7 @@ export default function TeacherRawDashboard({
   }, [transferOpen])
   function submitTransfer() {
     if (!studentModalData || !transferTeacher || !transferReason.trim()) return
-    const t = TEACHERS.find(x => x.id === transferTeacher)
+    const t = transferTeachers.find(x => x.id === transferTeacher)
     // eslint-disable-next-line no-console
     console.log(`[MOCK TRANSFER] ${studentModalData.name} → ${t?.name}. Причина: ${transferReason}`)
     setStudentsState(prev => prev.filter(s => s.id !== studentModalData.id))
@@ -1086,17 +1115,19 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260907-badgegap" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-transfer" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />
 
       {/* ================== HERO: nav + dark backdrop that hosts STUDENTS ================== */}
       <div className="tr-hero">
         <nav className="tr-nav">
           <Link href="/teacher" className="tr-brand" aria-label="Raw English">
-            <img src="/landing/raw2/logo-raw-word-white.svg" alt="Raw English" />
+            {/* логотип — экспорт Figma 4019:213 «Ресурс 2 1» (171×98, красный с белым) */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dashboard/logo-raw-red-white.svg" alt="Raw English" width={171} height={98} />
           </Link>
           <ul className="tr-nav-links">
             {NAV.map((n) => (
@@ -1147,7 +1178,8 @@ export default function TeacherRawDashboard({
                 </div>
               )}
             </div>
-            <div className="tr-students-scroll">
+            {/* Figma 4020:217: список 2×N плашек 539×139, область 495 (3 ряда), скроллбар 7×495 на x=1203 панели */}
+            <CustomScroll className="tr-students-list" track={495}>
               <div className="tr-students-grid">
                 {sortedStudents.map((s) => (
                   <div
@@ -1170,12 +1202,16 @@ export default function TeacherRawDashboard({
                   </div>
                 ))}
               </div>
-            </div>
+            </CustomScroll>
             <div className="tr-panel-footer">
               <button type="button" className="tr-create-group" onClick={() => setGroupStep("participants")}>
                 Создать группу
-                <span className="arrow-btn sm" aria-hidden>
-                  <ArrowRight size={28} />
+                {/* круг 67×68 (Ellipse 36) + белая стрелка (Vector 42) — экспорт Figma */}
+                <span className="tr-create-group-arrow" aria-hidden>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/dashboard/ic-arrow-circle-red.svg" alt="" width={67} height={68} className="tr-create-group-arrow-circle" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/dashboard/ic-arrow-white.svg" alt="" width={37} height={36.82} className="tr-create-group-arrow-glyph" />
                 </span>
               </button>
             </div>
@@ -1185,12 +1221,13 @@ export default function TeacherRawDashboard({
 
       {groupOpen && (
         <div className="tr-modal-backdrop" onClick={closeGroupModal}>
+          {/* Figma 2522:2822 «Создание группы»: 686×869, заголовок top 79, ряды 539×139 с 183 (шаг 178),
+              чекбоксы 36 на x=52, «Создать группу» 357×68 at (165,750) */}
           {groupStep === "participants" && (
-            <div className="tr-modal" role="dialog" aria-modal="true" aria-labelledby="tr-modal-title" onClick={(e) => e.stopPropagation()}>
+            <div className="tr-modal tr-modal--group" role="dialog" aria-modal="true" aria-labelledby="tr-modal-title" onClick={(e) => e.stopPropagation()}>
               <button type="button" className="tr-modal-close" aria-label="Закрыть" onClick={closeGroupModal}>
-                <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
               </button>
               <h2 id="tr-modal-title" className="tr-modal-title">Выберите участников группы</h2>
               <div className="tr-modal-list">
@@ -1205,9 +1242,13 @@ export default function TeacherRawDashboard({
                       aria-checked={on}
                       onClick={() => toggleGroupSel(s.id)}
                     >
+                      {/* чекбокс — экспорт Figma Group 132/133 + Vector 39 */}
                       <span className={`tr-modal-check ${on ? "on" : ""}`} aria-hidden>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img className="tr-modal-check-circle" src={on ? "/dashboard/files/check-on.svg" : "/dashboard/files/check-off.svg"} alt="" width={36} height={36} />
                         {on && (
-                          <CheckIcon size={16} style={{ color: "#DFED8C" }} />
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="tr-modal-check-mark" src="/dashboard/files/check-mark.svg" alt="" width={20} height={17} />
                         )}
                       </span>
                       <div className="tr-stu tr-stu--modal">
@@ -1312,23 +1353,31 @@ export default function TeacherRawDashboard({
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Figma 2522:2774 / 2522:2795: карточка 686×834; аватар (74,76), имя x=189, уровень 135×70 at (551,88);
+                при выборе уровня — заголовок на 47, красная полоса 567×70 at (75,88) поверх шапки, аватар 22%, остальное 50% */}
             <button
               type="button"
               className="tr-modal-close tr-modal-close--dark"
               aria-label="Закрыть"
               onClick={() => setStudentModalId(null)}
             >
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
             </button>
+
+            <header className="tr-stu-modal-head">
+              <div className="tr-stu-modal-avatar">
+                <Avatar name={studentModalData.name} src={studentModalData.avatar} />
+              </div>
+              <h2 className="tr-stu-modal-name">{studentModalData.name}</h2>
+            </header>
 
             {levelPickerOpen ? (
               <>
                 <div className="tr-stu-picker-title">Выберите уровень ученика</div>
                 <div className="tr-stu-picker-row" role="radiogroup" aria-label="Уровень ученика">
                   <div className="tr-stu-picker-pill" />
-                  <div className="tr-stu-picker-cap" />
+                  <div className="tr-stu-picker-cap" aria-hidden />
                   <div className="tr-stu-picker-buttons">
                     {LEVELS.map((lvl) => (
                       <button
@@ -1346,23 +1395,14 @@ export default function TeacherRawDashboard({
                 </div>
               </>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="tr-stu-modal-lvl"
-                  aria-label={`Изменить уровень (сейчас ${studentModalData.level})`}
-                  onClick={() => setLevelPickerOpen(true)}
-                >
-                  {levelLabel(studentModalData.level)}
-                </button>
-
-                <header className="tr-stu-modal-head">
-                  <div className="tr-stu-modal-avatar">
-                    <Avatar name={studentModalData.name} src={studentModalData.avatar} />
-                  </div>
-                  <h2 className="tr-stu-modal-name">{studentModalData.name}</h2>
-                </header>
-              </>
+              <button
+                type="button"
+                className="tr-stu-modal-lvl"
+                aria-label={`Изменить уровень (сейчас ${studentModalData.level})`}
+                onClick={() => setLevelPickerOpen(true)}
+              >
+                {levelLabel(studentModalData.level)}
+              </button>
             )}
 
             <div className="tr-stu-modal-section">
@@ -1425,6 +1465,8 @@ export default function TeacherRawDashboard({
       {/* ================== TRANSFER MODAL (передача ученика другому учителю) ================== */}
       {transferOpen && studentModalData && (
         <div className="tr-modal-backdrop tr-modal-backdrop--top" onClick={() => setTransferOpen(false)}>
+          {/* Figma 2522:2456 «Передача ученика»: 686×706, заголовок 79 (2 строки), пилюля 578×68 на 202,
+              поле 578×252 на 294, «Передать» 240×68 на 570, низ 68 */}
           <div className="tr-modal tr-modal--transfer" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
@@ -1432,9 +1474,8 @@ export default function TeacherRawDashboard({
               aria-label="Закрыть"
               onClick={() => setTransferOpen(false)}
             >
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
             </button>
             <h2 className="tr-tr-modal-title">Передача ученика<br />другому учителю</h2>
             <select
@@ -1444,7 +1485,7 @@ export default function TeacherRawDashboard({
               required
             >
               <option value="" disabled>выберите учителя</option>
-              {TEACHERS.map(t => (
+              {transferTeachers.map(t => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>

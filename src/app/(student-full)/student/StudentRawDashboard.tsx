@@ -1,6 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { nb } from "@/lib/ru/typo"
+
+type LectureRow = {
+  id: string; title: string; host_name: string | null; description: string | null;
+  tag: string | null; scheduled_at: string; slot: 'main' | 'tall' | 'small'; cover_url: string | null;
+  teacher?: { name: string; avatar_url: string | null; bio: string | null } | null;
+  registered?: boolean;
+}
 import { fromLecturer } from "@/lib/ru/name-case"
 import Link from "next/link"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
@@ -218,6 +226,7 @@ interface StudentRawDashboardProps {
     meetingUrl: string | null
   }>
   initialChats?: ChatListItem[]
+  initialLectures?: LectureRow[]
   calendarConnection?: {
     connected: boolean
     googleEmail: string | null
@@ -236,6 +245,7 @@ export default function StudentRawDashboard({
   lessonsThisYear = 25,
   initialLessons = [],
   initialChats,
+  initialLectures = [],
   calendarConnection,
 }: StudentRawDashboardProps = {}) {
   const router = useRouter()
@@ -254,13 +264,12 @@ export default function StudentRawDashboard({
 
   // Реальные лекции из БД — приходят с сервера через /api/lectures.
   // Если пусто — используем placeholder-моки (LECTORY_*), чтобы дизайн-превью не пустовало.
-  const [lectures, setLectures] = useState<Array<{
-    id: string; title: string; host_name: string | null; description: string | null;
-    tag: string | null; scheduled_at: string; slot: 'main' | 'tall' | 'small'; cover_url: string | null;
-    teacher?: { name: string; avatar_url: string | null; bio: string | null } | null;
-  }>>([])
+  const [lectures, setLectures] = useState<LectureRow[]>(initialLectures)
   const [openLecture, setOpenLecture] = useState<LectureForModal | null>(null)
+  const [lecturesVersion, setLecturesVersion] = useState(0)
+  // Начальные данные приходят с сервера; перечитываем только после записи на лекцию.
   useEffect(() => {
+    if (lecturesVersion === 0) return
     let cancelled = false
     ;(async () => {
       try {
@@ -271,7 +280,7 @@ export default function StudentRawDashboard({
       } catch (e) { console.error('[lectures]', e) }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [lecturesVersion])
   const lecMain  = lectures.find((l) => l.slot === 'main')
   const lecTall  = lectures.find((l) => l.slot === 'tall')
   const lecSmall = lectures.filter((l) => l.slot === 'small').slice(0, 2)
@@ -304,6 +313,21 @@ export default function StudentRawDashboard({
     } finally {
       setHwUploading(false)
     }
+  }
+  // Удаление своих загруженных работ (Figma 2522:10458: «Выбрать» + «Удалить» у ученика).
+  async function handleStudentHwDelete(ids: string[]) {
+    const failed: string[] = []
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/me/homework/${encodeURIComponent(id)}`, { method: "DELETE" })
+        const j = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`)
+      } catch (e) {
+        failed.push(e instanceof Error ? e.message : "Не удалось удалить файл")
+      }
+    }
+    setHomeworkVersion((v) => v + 1)
+    if (failed.length) alert(failed[0])
   }
   // Аватар: локальный override после загрузки нового + upload state.
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
@@ -659,8 +683,9 @@ export default function StudentRawDashboard({
       teacherName: l.teacherName,
       teacherAvatar: l.teacherAvatar,
     }))
-  // Лекции — тоже в календарь (не только в блоке лектория).
+  // В календарь попадают только лекции, на которые ученик записан (в лектории показываем все).
   const lectureEvents = lectures
+    .filter((l) => l.registered)
     .filter((l) => !nowMs || new Date(l.scheduled_at).getTime() >= cutoff)
     .map((l) => ({
       id: `lec:${l.id}`,
@@ -742,7 +767,7 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260908-lvl" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260908-lect2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
@@ -750,10 +775,10 @@ export default function StudentRawDashboard({
       <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260904-arrows-lime" />
       {/* FilesModal — модалка «Библиотека / ДЗ». Без стилей плашки папок валятся в поток документа. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />
       {/* StudentAddLessonModal — модалка добавления урока. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260905-success" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260908-success" />
 
       {/* ================== HERO: nav + SCHEDULE ================== */}
       <div className="st-hero">
@@ -1039,6 +1064,7 @@ export default function StudentRawDashboard({
 
       <StudentLectureModal
         lecture={openLecture}
+        onRegistered={() => setLecturesVersion((v) => v + 1)}
         onClose={() => setOpenLecture(null)}
       />
 
@@ -1063,6 +1089,7 @@ export default function StudentRawDashboard({
           canManage
           onClose={() => { setHomeworkOpen(false); setHwFolderId(null) }}
           onFilePicked={handleStudentHwUpload}
+          onDeleteFiles={handleStudentHwDelete}
           addLabel={hwUploading ? "Загружаем…" : "Загрузить работу"}
         />
       )}
@@ -1089,9 +1116,9 @@ export default function StudentRawDashboard({
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
-                  <div className="st-lect-title">{src.title}</div>
+                  <div className="st-lect-title">{nb(src.title)}</div>
                   {src.author && <div className="st-lect-author">{src.author}</div>}
-                  <p className="st-lect-desc">{src.desc}</p>
+                  <p className="st-lect-desc">{nb(src.desc)}</p>
                 </div>
                 <div className="st-lect-foot">
                   <span className="st-lect-date">{src.date}</span>
@@ -1116,8 +1143,8 @@ export default function StudentRawDashboard({
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
-                  <div className="st-lect-title">{src.title}</div>
-                  <p className="st-lect-desc">{src.desc}</p>
+                  <div className="st-lect-title">{nb(src.title)}</div>
+                  <p className="st-lect-desc">{nb(src.desc)}</p>
                 </div>
                 <div className="st-lect-foot">
                   <span className="st-lect-date">{src.date}</span>
@@ -1142,8 +1169,8 @@ export default function StudentRawDashboard({
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
-                  <div className="st-lect-title">{src.title}</div>
-                  <p className="st-lect-desc">{src.desc}</p>
+                  <div className="st-lect-title">{nb(src.title)}</div>
+                  <p className="st-lect-desc">{nb(src.desc)}</p>
                 </div>
                 <div className="st-lect-foot">
                   <span className="st-lect-date">{src.date}</span>
@@ -1168,8 +1195,8 @@ export default function StudentRawDashboard({
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
-                  <div className="st-lect-title">{src.title}</div>
-                  <p className="st-lect-desc">{src.desc}</p>
+                  <div className="st-lect-title">{nb(src.title)}</div>
+                  <p className="st-lect-desc">{nb(src.desc)}</p>
                 </div>
                 <div className="st-lect-foot">
                   <span className="st-lect-date">{src.date}</span>

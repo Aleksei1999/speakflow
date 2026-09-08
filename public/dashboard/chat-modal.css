@@ -59,15 +59,15 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 29.5px;
-  padding: 34px 0 34px 34px;
+  padding: 34px 0 34px 41px; /* Figma 2522:6073: аватар 93 at (41,34), имя x=156 */
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 22px;
   z-index: 2;
 }
 
 .tr-chat-backdrop .tr-chat-avatar {
-  width: 103px; height: 103px;
+  width: 93px; height: 93px;
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
@@ -100,27 +100,7 @@
   text-overflow: ellipsis;
 }
 
-.tr-chat-backdrop .tr-chat-actions {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-right: 24px;
-  flex-shrink: 0;
-}
-/* Иконки Figma (Group 333/334) 54×54: круг + пиктограмма встроены в сам SVG,
-   кнопка полностью прозрачная. */
-.tr-chat-backdrop .tr-chat-icon-btn {
-  width: 54px; height: 54px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: #DFED8C;
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: transform .15s;
-}
-.tr-chat-backdrop .tr-chat-icon-btn:hover { transform: translateY(-1px); }
-.tr-chat-backdrop .tr-chat-icon-btn svg { display: block; width: 54px; height: 54px; }
+/* Кнопки аудио/видео-звонка из шапки убраны (Figma 2522:6073). */
 
 .tr-chat-backdrop .tr-chat-lvl {
   width: 135px;
@@ -160,28 +140,29 @@
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 201px 70px 108px;
+  padding: 201px 111px 108px; /* пузыри: входящие от x=111, исходящие до 1117 */
   display: flex;
   flex-direction: column;
   gap: 30px;
   z-index: 1;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(223, 237, 140, 0.35) transparent;
+  scrollbar-width: none; /* в макете 2522:6073 скроллбара в ленте нет */
 }
-.tr-chat-backdrop .tr-chat-body::-webkit-scrollbar { width: 7px; }
-.tr-chat-backdrop .tr-chat-body::-webkit-scrollbar-track { background: transparent; }
-.tr-chat-backdrop .tr-chat-body::-webkit-scrollbar-thumb { background: rgba(223, 237, 140, 0.35); border-radius: 3.5px; }
+.tr-chat-backdrop .tr-chat-body::-webkit-scrollbar { display: none; }
 
+/* пузырь (2522:6073): одна строка — 60 (текст 24, отступы 18), две строки «Сообщение которое не уместилось…» — 364×87,
+   текстовый блок 52 → шаг строки 26px; текст с отступом 29 слева и 27 справа */
 .tr-chat-backdrop .tr-chat-bubble {
-  max-width: 380px;
+  box-sizing: border-box;
+  flex-shrink: 0; /* при переполнении ленты flex ужимал пузыри до min-height, текст вылезал */
+  max-width: 600px; /* в макете однострочный пузырь до 417; двухстрочный пример (~650 целиком) переносится и при 600 */
   min-height: 60px;
-  padding: 18px 30px;
+  padding: 17px 27px 17px 29px;
   border-radius: 29.5px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 1.1;
+  letter-spacing: -1.2px;
+  line-height: 26px;
   color: #1E1E1E;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -229,7 +210,7 @@
 .tr-chat-backdrop .tr-chat-call-pill {
   align-self: center;
   height: 60px;
-  padding: 0 40px;
+  padding: 0 34px; /* «Звонок окончен» 252×60: текст 184 + 2×34 */
   border-radius: 29.5px;
   display: inline-flex;
   align-items: center;
@@ -258,11 +239,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 18px 34px 30px;
+  padding: 0 34px 44px 35px; /* пилюля 1159×60 at (35,711), низ 44 */
   z-index: 2;
 }
 .tr-chat-backdrop .tr-chat-input-pill {
   position: relative;
+  box-sizing: border-box;
   width: 100%;
   height: 60px;
   background: rgba(255, 255, 255, 0.05);
@@ -270,62 +252,72 @@
   -webkit-backdrop-filter: blur(8px);
   will-change: backdrop-filter;
   transform: translateZ(0);
-  border-radius: 30px;
+  border-radius: 29.5px;
   display: flex;
   align-items: center;
-  padding: 0 14px 0 14px;
-  gap: 12px;
+  padding: 0 25px 0 13px; /* плюс at 48 (13 от края), отправить до 1169 (25 от края) */
+  gap: 0;
 }
 .tr-chat-backdrop .tr-chat-attach-wrap { position: relative; flex-shrink: 0; }
-/* Figma-иконки в инпуте 34×34: круг/пилюля встроены в SVG, кнопка — прозрачная. */
+/* «плюс»: пилюля 38×35 rgba(223,237,140,.26) r29.5 (Rectangle 347) + крест 20.48 (Group 309) по центру */
 .tr-chat-backdrop .tr-chat-attach {
-  width: 34px; height: 34px;
+  width: 38px; height: 35px;
   padding: 0;
-  background: transparent;
+  background: rgba(223, 237, 140, 0.26);
+  border-radius: 29.5px;
   color: #DFED8C;
   border: none;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
   transition: opacity .2s;
 }
-.tr-chat-backdrop .tr-chat-attach svg { display: block; width: 34px; height: 34px; }
+.tr-chat-backdrop .tr-chat-attach img { display: block; width: 20.48px; height: 20.48px; max-width: none; }
 .tr-chat-backdrop .tr-chat-attach:hover,
 .tr-chat-backdrop .tr-chat-attach.is-open { opacity: .85; }
+/* меню вложений (Rectangle 349): 232×152 rgba(30,30,30,.73) r29.5 at (35,540) — левый край как у пилюли, низ на 32 выше плюса;
+   строки 43px (lh 2.15 × 20px), иконки в колонке 26…67, текст с x=67 */
 .tr-chat-backdrop .tr-chat-attach-menu {
   position: absolute;
-  left: -12px;
-  bottom: calc(100% + 12px);
+  left: -13px;
+  bottom: calc(100% + 32px);
+  box-sizing: border-box;
   width: 232px;
-  background: rgba(30, 30, 30, 0.95);
+  height: 152px;
+  background: rgba(30, 30, 30, 0.73);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 29.5px;
-  padding: 14px 20px;
+  padding: 11px 0 0 26px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  gap: 0;
   z-index: 10;
   animation: tr-fade .15s ease;
 }
 .tr-chat-backdrop .tr-chat-attach-menu button {
   background: transparent;
   border: none;
-  padding: 6px 0;
+  padding: 0;
+  height: 43px;
   color: #DFED8C;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 20px;
-  letter-spacing: -0.05em;
-  line-height: 0.975;
+  letter-spacing: -1px;
+  line-height: 2.15;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   cursor: pointer;
   text-align: left;
+  white-space: nowrap;
   transition: opacity .15s;
 }
+.tr-chat-backdrop .tr-chat-attach-ic { flex: 0 0 41px; display: flex; align-items: center; } /* иконка в колонке 26…67 */
+.tr-chat-backdrop .tr-chat-attach-ic img { display: block; max-width: none; }
 .tr-chat-backdrop .tr-chat-attach-menu button:hover { opacity: .75; }
 
+/* «Введите сообщение»: Inter 500 24 / -1.2, белый, x=111 (плюс до 86 + 25) */
 .tr-chat-backdrop .tr-chat-input {
   flex: 1;
   min-width: 0;
@@ -335,16 +327,17 @@
   color: #fff;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 18px;
-  letter-spacing: -0.05em;
+  font-size: 24px;
+  letter-spacing: -1.2px;
   line-height: 0.975;
-  padding: 0 8px;
+  padding: 0 16px 0 25px;
   outline: none;
 }
-.tr-chat-backdrop .tr-chat-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+.tr-chat-backdrop .tr-chat-input::placeholder { color: #fff; }
 
+/* смайл Group 175 35×35 at 1084 (до отправки 16) */
 .tr-chat-backdrop .tr-chat-emoji {
-  width: 34px; height: 34px;
+  width: 35px; height: 35px;
   background: transparent;
   border: none;
   color: #DFED8C;
@@ -352,16 +345,18 @@
   cursor: pointer;
   transition: transform .15s;
   padding: 0;
+  margin-right: 16px;
   flex-shrink: 0;
 }
-.tr-chat-backdrop .tr-chat-emoji svg { display: block; width: 34px; height: 34px; }
+.tr-chat-backdrop .tr-chat-emoji img { display: block; width: 35px; height: 35px; max-width: none; }
 .tr-chat-backdrop .tr-chat-emoji:hover { transform: scale(1.1); }
 
+/* отправить: круг 34 rgba(223,237,140,.26) (Ellipse 86) + лаймовая стрелка 16 (Vector 45, экспорт 19×22) */
 .tr-chat-backdrop .tr-chat-send {
   width: 34px; height: 34px;
   border-radius: 50%;
-  background: #DFED8C;
-  color: #1E1E1E;
+  background: rgba(223, 237, 140, 0.26);
+  color: #DFED8C;
   border: none;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
@@ -369,7 +364,8 @@
   padding: 0;
   flex-shrink: 0;
 }
-.tr-chat-backdrop .tr-chat-send:hover:not(:disabled) { background: #cfe06a; transform: translateY(-1px); }
+.tr-chat-backdrop .tr-chat-send img { display: block; width: 19px; height: 22.09px; max-width: none; }
+.tr-chat-backdrop .tr-chat-send:hover:not(:disabled) { background: rgba(223, 237, 140, 0.4); transform: translateY(-1px); }
 .tr-chat-backdrop .tr-chat-send:disabled { opacity: .35; cursor: not-allowed; }
 
 /* ---------- Attachments (image / video / document) ---------- */
@@ -669,9 +665,6 @@
 @media (max-width: 900px) {
   .tr-chat-backdrop .tr-chat-head { padding: 20px 60px 20px 20px; height: auto; gap: 14px; }
   .tr-chat-backdrop .tr-chat-name { font-size: 22px; }
-  .tr-chat-backdrop .tr-chat-actions { gap: 10px; margin-right: 12px; }
-  .tr-chat-backdrop .tr-chat-icon-btn { width: 42px; height: 42px; }
-  .tr-chat-backdrop .tr-chat-icon-btn svg { width: 42px; height: 42px; }
   .tr-chat-backdrop .tr-chat-lvl { width: 80px; height: 50px; font-size: 22px; border-radius: 25px 0 0 25px; }
   .tr-chat-backdrop .tr-chat-body { padding: 20px; gap: 18px; }
   .tr-chat-backdrop .tr-chat-bubble { font-size: 16px; padding: 12px 20px; max-width: 78%; min-height: 44px; }

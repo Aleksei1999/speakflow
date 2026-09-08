@@ -11,7 +11,11 @@
    Realtime — supabase channel на group_messages для этой group_id.
    ============================================================ */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
+import { useFitZoom } from "@/components/dashboard/useFitZoom"
+
+const subscribeNoop = () => () => {}
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
 
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
@@ -367,13 +371,18 @@ export default function GroupChatModal({
     window.open(`/group-call/${groupId}`, "_blank", "noopener,noreferrer")
   }
 
-  return (
+  // Портал в body + масштаб как у страницы, но не больше, чем влезает в окно.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false)
+  const fitZoom = useFitZoom(1228, 815)
+  if (!mounted) return null
+
+  return createPortal(
     <>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260830e" />
+      <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260908-wide" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/group-chat.css?v=2" />
-      <div className="tr-chat-backdrop" onClick={onClose}>
+      <link rel="stylesheet" href="/dashboard/group-chat.css?v=20260908-sides" />
+      <div className="tr-chat-backdrop" style={{ zoom: fitZoom }} onClick={onClose}>
         <div
           className="tr-chat"
           role="dialog"
@@ -423,19 +432,21 @@ export default function GroupChatModal({
               </div>
             )}
             {rendered.map(({ m, showName }) => {
+              // Свои сообщения — справа (лайм), чужие — слева (белые) с именем отправителя над пузырём.
+              // Раньше сторона выбиралась по роли автора, и сообщения учителя у ученика уезжали вправо,
+              // а имя оставалось слева.
               const mine = m.senderId === currentUserId
-              const bubbleRole = mine ? currentRole : m.senderRole
               const isMediaOnly =
                 !m.text &&
                 m.attachmentUrl &&
                 (m.attachmentType === "image" || m.attachmentType === "video")
               return (
-                <div key={m.id} className="tr-groupchat-item">
+                <div key={m.id} className={`tr-groupchat-item tr-groupchat-item--${mine ? "mine" : "theirs"}`}>
                   {showName && (
                     <div className="tr-groupchat-sender">{m.senderName ?? "Участник"}</div>
                   )}
                   <div
-                    className={`tr-chat-bubble tr-chat-bubble--${bubbleRole}${
+                    className={`tr-chat-bubble tr-chat-bubble--${mine ? "mine" : "theirs"}${
                       isMediaOnly ? " is-media-only" : ""
                     }`}
                   >
@@ -584,6 +595,7 @@ export default function GroupChatModal({
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

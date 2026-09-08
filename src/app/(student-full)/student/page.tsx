@@ -5,6 +5,7 @@ import { getCachedRole } from "@/lib/auth/get-role"
 import { getCachedStudentDashboard } from "@/lib/dashboard/student"
 import { fetchChatList } from "@/lib/chat/list"
 import { getStudentCalendarConnection } from "./calendar-actions"
+import { listLecturesForCurrentUser } from "@/lib/lectures/list"
 import StudentRawDashboard from "./StudentRawDashboard"
 
 export const dynamic = "force-dynamic"
@@ -63,6 +64,9 @@ export default async function StudentNewPage() {
   const currentStreak = dashboard?.progress?.current_streak ?? 0
 
   const calendarConnection = await getStudentCalendarConnection()
+  // Лекторий и лекции в расписании — сразу с сервера, без мигания плейсхолдеров.
+  let initialLectures: Awaited<ReturnType<typeof listLecturesForCurrentUser>> = []
+  try { initialLectures = await listLecturesForCurrentUser() } catch (e) { console.error("[student] lectures", e) }
 
   return (
     <StudentRawDashboard
@@ -86,6 +90,7 @@ export default async function StudentNewPage() {
         meetingUrl: null,
       }))}
       initialChats={initialChats}
+      initialLectures={initialLectures}
     />
   )
 }

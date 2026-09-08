@@ -18,7 +18,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex-shrink: 0;
 }
+.tr-groupchat-item--mine { align-items: flex-end; }
+.tr-groupchat-item--theirs { align-items: flex-start; }
 
 /* Имя отправителя над foreign бабблом */
 .tr-groupchat-sender {

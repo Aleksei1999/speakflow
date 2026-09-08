@@ -1,11 +1,16 @@
 /* ============================================================
-   FilesModal (Figma 2208:3749 «Вкладка с папками»)
+   FilesModal (Figma 2522:10421 «Вкладка с папками»)
+   Модалка 1228×837 #DFED8C r29.5; крестик 13.33 at (1176,33);
+   скролл-область 69…768 (трек 7×699 at x=1203); папки 146×140 в колонках
+   x=100/388/676/963 (шаг 288), ряды y=76/349 (шаг 273); подпись 24px через 39.
    ============================================================ */
 
 .files-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(30, 30, 30, 0.55); /* как у остальных модалок */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -21,7 +26,7 @@
   height: min(837px, calc(100vh - 40px));
   background: #DFED8C;
   border-radius: 29.5px;
-  padding: 80px 89px 55px;
+  padding: 69px 0 69px;
   box-sizing: border-box;
   overflow: hidden;
   display: flex;
@@ -29,40 +34,55 @@
 }
 .files-modal-close {
   position: absolute;
-  top: 27px;
-  right: 30px;
-  width: 30px;
-  height: 30px;
+  top: 33px;
+  right: 38.67px; /* Group 180 at (1176,33) */
+  width: 13.33px;
+  height: 13.34px;
+  padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
   color: #1E1E1E;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
+.files-modal-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
 .files-modal-close:hover { opacity: 0.7; }
 
-.files-modal-grid {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 60px 90px;
+/* скролл-область: занимает 69…768, кастомный скроллбар 7px на 18px от правого края */
+.files-modal-body { position: relative; flex: 1 1 auto; min-height: 0; }
+.files-modal-body-scroll {
+  height: 100%;
   overflow-y: auto;
-  padding-right: 20px;
-  margin-right: -20px;
+  padding: 7px 100px 0; /* первый ряд папок на 76 */
+  box-sizing: border-box;
+  scrollbar-width: none;
 }
-/* Кастомный скролл — тёмный тонкий трек */
-.files-modal-grid::-webkit-scrollbar { width: 7px; }
-.files-modal-grid::-webkit-scrollbar-track {
+/* Figma 2522:10458 «В папке»: кнопки лежат поверх скролл-области (718…764), контент не прячем под ними */
+.files-modal--with-footer .files-modal-body-scroll { padding-bottom: 120px; }
+.files-modal-body-scroll::-webkit-scrollbar { display: none; }
+.files-modal-body-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 18px;
+  width: 7px;
+  border-radius: 3.5px;
   background: rgba(30, 30, 30, 0.14);
-  border-radius: 3.5px;
+  pointer-events: none;
 }
-.files-modal-grid::-webkit-scrollbar-thumb {
-  background: #1E1E1E;
-  border-radius: 3.5px;
+.files-modal-body-bar-thumb { width: 7px; border-radius: 3.5px; background: #1E1E1E; will-change: transform; }
+
+/* сетка: 4 колонки по 146, шаг 288 (зазор 142); ряд 140 + 39 + 29 = 208, шаг 273 (зазор 65) */
+.files-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 146px);
+  column-gap: 142px;
+  row-gap: 70.6px; /* шаг ряда 273: 140 + 39 + 23.4 (строка подписи) + 70.6 */
+  justify-content: start;
+  padding-bottom: 20px;
 }
-.files-modal-grid { scrollbar-width: thin; scrollbar-color: #1E1E1E rgba(30,30,30,0.14); }
+@media (max-width: 1300px) {
+  .files-modal-grid { grid-template-columns: repeat(auto-fill, 146px); column-gap: 60px; }
+}
 
 .files-modal-empty {
   grid-column: 1 / -1;
@@ -83,16 +103,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 39px;
+  gap: 39px; /* иконка 216 → подпись 255 */
+  width: 146px;
+  height: 202.4px; /* 140 + 39 + строка подписи: шаг ряда не зависит от длины названия */
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: transform .2s ease;
 }
-.files-item:not(:disabled):hover { transform: translateY(-2px); }
 .files-item:disabled { cursor: progress; }
 .files-icon { display: block; }
+/* файлы (2522:10458): иконка 112×138 на 76, картинка 146×132.6 на 81; подпись на 255 (зазор 41) */
+.files-item--file { gap: 41px; height: 202.4px; }
+.files-icon--image { margin-top: 5px; }
+.files-icon--file-wrap { position: relative; display: block; }
+.files-icon--file-wrap .files-icon--file { display: block; max-width: none; }
+/* чекбокс 36×36: по центру иконки, верх = высота − 19 (свисает на 17); галочка 20×17 (Vector 40 + штрих) */
+.files-check { position: absolute; left: 50%; bottom: -17px; width: 36px; height: 36px; margin-left: -18px; }
+.files-check img { display: block; max-width: none; position: absolute; }
+.files-check-circle { left: 0; top: 0; width: 36px; height: 36px; }
+.files-check-mark { left: 8px; top: 10px; width: 20px; height: 17px; }
+.files-folder--select .files-folder-shape { display: block; }
+/* загрузка файла: круг 84×85 и стрелка по центру иконки 112×138 */
+.files-icon--loading .files-folder-progress { display: block; position: absolute; left: 14px; top: 26.5px; width: 84px; height: 85px; animation: files-folder-spin 1s linear infinite; }
+.files-icon--loading .files-folder-arrow { display: block; position: absolute; left: 36px; top: 46.9px; width: 40px; height: 44.18px; transform: rotate(90deg); }
 .files-item-name {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -101,32 +135,66 @@
   line-height: 0.975;
   color: #1E1E1E;
   text-align: center;
+  width: 187px;
   max-width: 187px;
+  margin: 0 -20.5px; /* подпись шире колонки, по центру иконки */
   white-space: normal;
   word-break: break-word;
+  flex-shrink: 0; /* вторая строка названия выходит за фиксированную высоту карточки, шаг ряда не меняется */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
+/* ---------- Иконка папки (Figma 2522:10421) ---------- */
+.files-folder { position: relative; display: block; width: 146px; height: 140px; }
+.files-folder img { max-width: none; }
+.files-folder .files-folder-shape { display: block; position: absolute; left: 0; top: 0; width: 146px; height: 140px; }
+/* открытая папка 166×140, тот же левый край */
+.files-folder .files-folder-open { display: none; position: absolute; left: 0; top: 0; width: 166px; height: 140px; }
+.files-folder--open .files-folder-open,
+.files-item--folder:not(.files-item--select-mode):hover .files-folder--default .files-folder-open,
+.files-item--folder:not(.files-item--select-mode):focus-visible .files-folder--default .files-folder-open { display: block; }
+.files-folder--open .files-folder-shape,
+.files-folder--open .files-folder-badge,
+.files-item--folder:not(.files-item--select-mode):hover .files-folder--default .files-folder-shape,
+.files-item--folder:not(.files-item--select-mode):hover .files-folder--default .files-folder-badge,
+.files-item--folder:not(.files-item--select-mode):focus-visible .files-folder--default .files-folder-shape,
+.files-item--folder:not(.files-item--select-mode):focus-visible .files-folder--default .files-folder-badge { display: none; }
+/* бейдж «скачать» 36×35 (Group 294) at (155,198) → (55,122) от иконки, свисает на 17 */
+.files-folder .files-folder-badge { display: block; position: absolute; left: 55px; top: 122px; width: 36px; height: 35px; }
+/* загрузка: круг 84×85 (Vector at 423,392 + штрих 3) → (32,40); стрелка 40×44 повёрнута вниз, центр (74,83) */
+.files-folder .files-folder-progress { display: block; position: absolute; left: 32px; top: 40px; width: 84px; height: 85px; animation: files-folder-spin 1s linear infinite; }
+@keyframes files-folder-spin { to { transform: rotate(360deg); } }
+.files-folder .files-folder-arrow { display: block; position: absolute; left: 54px; top: 60.9px; width: 40px; height: 44.18px; transform: rotate(90deg); }
+
+/* подвал (2522:10458): «Добавить файл» 222×46 at (89,718); «Выбрать» 160 at 772, «Удалить» 160 at 957 (зазор 25); низ 73 */
 .files-modal-footer {
-  flex: 0 0 auto;
+  position: absolute;
+  left: 89px;
+  right: 111px;
+  bottom: 73px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  padding-top: 30px;
+  padding: 0;
 }
 /* Правая группа кнопок ("Добавить файл" + "Выбрать" / "Отмена" + "Удалить") —
    прижата вправо: margin-left:auto когда есть «Создать папку» слева. */
 .files-modal-footer-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 25px;
   margin-left: auto;
 }
-/* «Добавить файл» — 222×46, обводка #1E1E1E */
+/* кнопки 160×46 (r34, обводка 2px), Inter 500 24 / -1.2 / lh 80.53%; «Добавить файл» 222 */
 .files-modal-btn {
-  min-width: 160px;
+  box-sizing: border-box;
+  width: 160px;
   height: 46px;
-  padding: 0 24px;
+  padding: 0 12px;
   border: 2px solid #1E1E1E;
   background: transparent;
   border-radius: 34px;
@@ -134,6 +202,8 @@
   font-weight: 500;
   font-size: 24px;
   letter-spacing: -1.2px;
+  line-height: 0.8053;
+  white-space: nowrap;
   color: #1E1E1E;
   cursor: pointer;
   transition: background .2s, color .2s;
@@ -144,9 +214,10 @@
 .files-modal-btn:hover:not(:disabled) { background: rgba(30, 30, 30, 0.08); }
 .files-modal-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+.files-modal-btn--add { width: 222px; }
 .files-modal-btn-group {
   display: flex;
-  gap: 12px;
+  gap: 25px;
 }
 
 /* «Удалить» — 160×46, красная заливка без обводки */
@@ -154,6 +225,7 @@
   background: #CC3A3A;
   color: #FFF;
   border-color: #CC3A3A;
+  font-weight: 700;
 }
 .files-modal-btn--danger:hover:not(:disabled) {
   background: #b03030;
@@ -164,11 +236,14 @@
 .files-item--select-mode:not(:disabled):hover { transform: none; }
 .files-item.is-selected .files-item-name { font-weight: 700; }
 
-/* Крошка «← Название папки» — над сеткой, отступ снизу. */
+/* Крошка «← Название папки» — в верхней полосе (в макете 2522:10458 её нет; ставим на уровне крестика). */
 .files-modal-crumbs {
-  flex: 0 0 auto;
-  padding: 0 0 22px;
+  position: absolute;
+  top: 24px;
+  left: 38.67px;
+  padding: 0;
 }
+.files-modal-back-ic { display: block; width: 20px; height: 22.09px; max-width: none; transform: rotate(180deg); }
 .files-modal-back {
   background: transparent;
   border: none;

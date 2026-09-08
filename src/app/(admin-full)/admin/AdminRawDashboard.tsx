@@ -643,7 +643,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/files-modal.css?v=1" />
+      <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}

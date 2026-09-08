@@ -1,6 +1,6 @@
 "use client"
 
-// Модалка «Файлы / Папки» — Figma 2208:3749.
+// Модалка «Файлы / Папки» — Figma 2522:10421 «Вкладка с папками» (корень).
 //
 // Двухуровневая навигация:
 //   • Корень (view='folders')   — список папок. Кнопка «Создать папку» вместо
@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import CustomScroll from "@/components/dashboard/CustomScroll"
 
 export type FileItemStatus = "default" | "open" | "loading" | "loaded"
 
@@ -170,20 +171,26 @@ export function FilesModal({
   const hasItems = inFolder ? files.length > 0 : folders.length > 0
   const canDelete = inFolder ? !!onDeleteFiles : !!onDeleteFolders
   const showSelect = hasItems && canManage && canDelete
+  // Ученик (read-only) в корне: кнопок нет — подвал не рендерим (Figma 2522:10421 без кнопок).
+  const showFooter =
+    (canManage && !legacyMode && !inFolder && !selectMode && !!onCreateFolder) ||
+    (canManage && inFolder && !selectMode) ||
+    showSelect ||
+    selectMode
 
   return createPortal(
     <div className="files-modal-backdrop" onClick={onClose}>
       <div
-        className="files-modal"
+        className={`files-modal${showFooter ? " files-modal--with-footer" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title ?? "Файлы"}
         onClick={(e) => e.stopPropagation()}
       >
         <button type="button" className="files-modal-close" aria-label="Закрыть" onClick={onClose}>
-          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-            <path d="M1 1l12 12M13 1L1 13" stroke="#1E1E1E" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          {/* крестик — экспорт Figma Group 180 (13.33×13.34) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
         </button>
 
         {inFolder && !legacyMode && (
@@ -194,9 +201,9 @@ export function FilesModal({
               onClick={() => onOpenFolder(null)}
               aria-label="Назад к папкам"
             >
-              <svg viewBox="0 0 20 14" width="20" height="14" fill="none" aria-hidden>
-                <path d="M7 1L1 7l6 6M1 7h18" stroke="#1E1E1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              {/* стрелка — экспорт Figma Vector 43 (тёмная стрелка 20×22), повёрнута влево */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-dd-arrow-dark.svg" alt="" aria-hidden className="files-modal-back-ic" />
               <span>{activeFolder?.name ?? "Папка"}</span>
             </button>
           </div>
@@ -216,6 +223,7 @@ export function FilesModal({
           }}
         />
 
+        <CustomScroll className="files-modal-body">
         <div className="files-modal-grid">
           {!hasItems ? (
             <div className="files-modal-empty">
@@ -235,7 +243,7 @@ export function FilesModal({
                 <button
                   type="button"
                   key={f.id}
-                  className={`files-item files-item--${f.status}${
+                  className={`files-item files-item--file files-item--${f.status}${
                     selectMode ? " files-item--select-mode" : ""
                   }${isSelected ? " is-selected" : ""}`}
                   onClick={() => {
@@ -270,16 +278,18 @@ export function FilesModal({
                 canManage={canManage}
                 onOpen={() => onOpenFolder(folder.id)}
                 onToggleSelect={() => toggleSelected(folder.id)}
-                onRename={(name) => onRenameFolder?.(folder.id, name)}
+                onRename={onRenameFolder ? (name) => onRenameFolder(folder.id, name) : undefined}
               />
             ))
           )}
         </div>
+        </CustomScroll>
 
+        {showFooter && (
         <div className="files-modal-footer">
           {/* «Создать папку» — слева. «Добавить файл» + «Выбрать» — вместе справа.
               В selectMode: «Отмена» слева от «Удалить» и вся пара справа. */}
-          {canManage && !legacyMode && !selectMode && onCreateFolder && (
+          {canManage && !legacyMode && !inFolder && !selectMode && onCreateFolder && (
             <button
               type="button"
               className="files-modal-btn"
@@ -289,18 +299,19 @@ export function FilesModal({
               {creating ? "Создаём…" : createFolderLabel}
             </button>
           )}
+          {/* «Добавить файл» 222×46 слева (2522:10458) */}
+          {canManage && inFolder && !selectMode && (
+            <button
+              type="button"
+              className="files-modal-btn files-modal-btn--add"
+              onClick={() => inputRef.current?.click()}
+              disabled={deleting}
+            >
+              {addLabel}
+            </button>
+          )}
 
           <div className="files-modal-footer-right">
-            {canManage && inFolder && !selectMode && (
-              <button
-                type="button"
-                className="files-modal-btn"
-                onClick={() => inputRef.current?.click()}
-                disabled={deleting}
-              >
-                {addLabel}
-              </button>
-            )}
 
             {showSelect && !selectMode && (
               <button
@@ -337,6 +348,7 @@ export function FilesModal({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>,
     document.body,
@@ -418,8 +430,8 @@ function FolderCard({
       aria-label={folder.name}
       aria-pressed={selectMode ? selected : undefined}
     >
-      {selectMode ? <IconFolderSelect selected={selected} /> : <IconFolderDefault />}
-      {canManage && !selectMode ? (
+      {selectMode ? <IconFolderSelect selected={selected} /> : <FolderIcon />}
+      {canManage && !!onRename && !selectMode ? (
         <input
           className="files-item-name files-item-name--input"
           value={draft}
@@ -502,53 +514,60 @@ function IconFileType({ kind }: { kind: FileKind }) {
   const height = isImage ? 133 : 138
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt="" aria-hidden className="files-icon files-icon--file" width={width} height={height} />
+    <img src={src} alt="" aria-hidden className={`files-icon files-icon--file${isImage ? " files-icon--image" : ""}`} width={width} height={height} />
   )
 }
 
 // ---------------------------------------------------------------------------
-// Иконки папки (без файлов) — оставлены как раньше.
+// Иконки папки — экспорт Figma 2522:10421: папка 146×140 + бейдж «скачать» 36×35 (Group 294),
+// открытая папка 166×140 (показываем при наведении), состояния загрузки: круг-прогресс 84×85 + стрелка.
 // ---------------------------------------------------------------------------
+export type FolderIconState = "default" | "open" | "loading" | "loaded"
+
+export function FolderIcon({ state = "default" }: { state?: FolderIconState }) {
+  return (
+    <span className={`files-folder files-folder--${state}`} aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-folder-shape" src="/dashboard/files/folder.svg" alt="" width={146} height={140} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-folder-open" src="/dashboard/files/folder-open.svg" alt="" width={166} height={140} />
+      {state === "default" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="files-folder-badge" src="/dashboard/files/folder-badge-download.svg" alt="" width={36} height={35} />
+      )}
+      {state === "loading" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="files-folder-progress" src="/dashboard/files/folder-progress.svg" alt="" width={84} height={85} />
+      )}
+      {(state === "loading" || state === "loaded") && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="files-folder-arrow" src="/dashboard/files/folder-arrow.svg" alt="" width={40} height={44} />
+      )}
+    </span>
+  )
+}
+
+// Чекбокс режима выбора — экспорт Figma 2522:10458: Group 183 (белый круг 36) / Group 184 (тёмный) + Vector 40 (галочка)
+function SelectCircle({ selected }: { selected: boolean }) {
+  return (
+    <span className="files-check" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-check-circle" src={selected ? "/dashboard/files/check-on.svg" : "/dashboard/files/check-off.svg"} alt="" width={36} height={36} />
+      {selected && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="files-check-mark" src="/dashboard/files/check-mark.svg" alt="" width={20} height={17} />
+      )}
+    </span>
+  )
+}
+
 function IconFolderSelect({ selected }: { selected: boolean }) {
   return (
-    <svg viewBox="0 0 146 160" width="146" height="160" className="files-icon" aria-hidden>
-      <FolderShape />
-      <circle
-        cx="73"
-        cy="140"
-        r="17"
-        fill={selected ? "#1E1E1E" : "#FFFFFF"}
-        stroke="#DFED8C"
-        strokeWidth="2"
-      />
-      {selected && (
-        <path
-          d="M65 141.292L70.6471 147L81 134"
-          stroke="#DFED8C"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      )}
-    </svg>
-  )
-}
-
-function FolderShape() {
-  return (
-    <path
-      d="M123.72 15.5859H97.907C89.1216 15.5859 80.5174 12.5781 73.7246 6.92708C68.7432 2.91667 64.7581 0 58.6898 0H22.2804C9.96278 0 0 10.026 0 22.4219V38.0078V117.578C0 129.974 9.96278 140 22.2804 140H58.6898H123.72C136.037 140 146 129.974 146 117.578V38.0078C146 25.612 136.037 15.5859 123.72 15.5859Z"
-      fill="#1E1E1E"
-    />
-  )
-}
-
-function IconFolderDefault() {
-  return (
-    <svg viewBox="0 0 146 140" width="146" height="140" className="files-icon" aria-hidden>
-      <FolderShape />
-    </svg>
+    <span className="files-folder files-folder--select" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-folder-shape" src="/dashboard/files/folder.svg" alt="" width={146} height={140} />
+      <SelectCircle selected={selected} />
+    </span>
   )
 }
 
@@ -561,53 +580,25 @@ function IconFileSelect({ selected, kind }: { selected: boolean; kind: FileKind 
   const w = isImage ? 146 : 112
   const h = isImage ? 133 : 138
   return (
-    <div className="files-icon files-icon--file-wrap" style={{ width: w, height: h + 22, position: "relative" }}>
+    <span className={`files-icon files-icon--file-wrap${isImage ? " files-icon--image" : ""}`} style={{ width: w, height: h }} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" aria-hidden width={w} height={h} style={{ display: "block" }} />
-      <svg
-        width="34"
-        height="34"
-        viewBox="0 0 34 34"
-        style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)" }}
-        fill="none"
-        aria-hidden
-      >
-        <circle cx="17" cy="17" r="16" fill={selected ? "#1E1E1E" : "#FFFFFF"} stroke="#DFED8C" strokeWidth="2" />
-        {selected && (
-          <path
-            d="M9 17.5L15 23L25 12"
-            stroke="#DFED8C"
-            strokeWidth="3.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        )}
-      </svg>
-    </div>
+      <img src={src} alt="" width={w} height={h} className="files-icon--file" />
+      <SelectCircle selected={selected} />
+    </span>
   )
 }
 
+// Загрузка файла: тёмная иконка файла + круг-прогресс и стрелка из макета папок (Figma 2522:10421)
 function IconFileLoading({ progress }: { progress: number }) {
-  const CIRC = 245
   const clamped = Math.max(0, Math.min(1, progress))
   return (
-    <svg viewBox="0 0 112 138" width="112" height="138" className="files-icon" aria-hidden>
-      <rect x="4" y="4" width="104" height="130" rx="14" fill="#1E1E1E" />
-      <circle cx="56" cy="69" r="39" fill="none" stroke="rgba(223,237,140,0.25)" strokeWidth="6" />
-      <circle
-        cx="56"
-        cy="69"
-        r="39"
-        fill="none"
-        stroke="#DFED8C"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray={CIRC}
-        strokeDashoffset={CIRC * (1 - clamped)}
-        transform="rotate(-90 56 69)"
-        style={{ transition: "stroke-dashoffset .3s linear" }}
-      />
-    </svg>
+    <span className="files-icon files-icon--file-wrap files-icon--loading" style={{ width: 112, height: 138 }} aria-hidden title={`${Math.round(clamped * 100)}%`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/dashboard/file-types/generic.svg" alt="" width={112} height={138} className="files-icon--file" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-folder-progress" src="/dashboard/files/folder-progress.svg" alt="" width={84} height={85} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="files-folder-arrow" src="/dashboard/files/folder-arrow.svg" alt="" width={40} height={44} />
+    </span>
   )
 }

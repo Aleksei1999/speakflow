@@ -2,7 +2,7 @@
 
 // Слушает Realtime UPDATE на lessons, где текущий пользователь = student
 // или teacher. Если изменилось scheduled_at или duration_minutes — показывает
-// всплывающее уведомление «Время вашего занятия изменилось» (Figma 2505:3378).
+// всплывающее уведомление «Время вашего занятия изменилось» (Figma 2522:3713).
 //
 // Подписка живёт на протяжении сессии дашборда. Не показывает уведомления
 // на изменения, инициированные самим пользователем (сравниваем `updated_by`,
@@ -124,9 +124,9 @@ export default function LessonRescheduleWatcher({
     <div className="lesson-resch-overlay" onClick={() => setOpen(false)}>
       <div className="lesson-resch-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="lesson-resch-close" aria-label="Закрыть" onClick={() => setOpen(false)}>
-          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-            <path d="M1 1l12 12M13 1L1 13" stroke="#1E1E1E" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          {/* крестик — экспорт Figma Group 130 (13.33×13.34) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
         </button>
         <p className="lesson-resch-text">
           Время вашего занятия<br />изменилось, проверьте<br />календарь

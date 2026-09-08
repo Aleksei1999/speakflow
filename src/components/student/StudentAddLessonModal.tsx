@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
+import CustomScroll from "@/components/dashboard/CustomScroll"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Lecture {
@@ -93,116 +94,90 @@ function buildTimeOptions(): TimeOption[] {
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 function CloseIcon() {
-  return (
-    <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  )
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
 }
+// Стрелка выбора — экспорт Figma: круг Ellipse 36 (35×36, #1E1E1E) + Vector 42 (лаймовая стрелка, повёрнута вниз)
 function ArrowDown() {
   return (
     <span className="sal-arrow" aria-hidden>
-      <svg viewBox="0 0 35 36" width="35" height="36" fill="none">
-        <ellipse cx="17.5" cy="18" rx="17.5" ry="18" fill="#1E1E1E" />
-        <path d="M17.5 10.5v13m0 0l-5-5m5 5l5-5" stroke="#DFED8C" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-arrow-circle" src="/dashboard/ic-dd-circle.svg" alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-arrow-glyph" src="/dashboard/ic-dd-arrow.svg" alt="" />
     </span>
   )
 }
+// Стрелка «назад» — экспорт Figma 2522:3654: круг Ellipse 37 (35×36, #DFED8C) + Vector 43 (тёмная стрелка, повёрнута на 180°)
 function ArrowLeftLime() {
   return (
     <span className="sal-arrow" aria-hidden>
-      <svg viewBox="0 0 35 36" width="35" height="36" fill="none">
-        <ellipse cx="17.5" cy="18" rx="17.5" ry="18" fill="#DFED8C" />
-        <path d="M23 18H10m0 0l5-5m-5 5l5 5" stroke="#1E1E1E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-arrow-circle" src="/dashboard/ic-dd-circle-lime.svg" alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-arrow-glyph sal-arrow-glyph--left" src="/dashboard/ic-dd-arrow-dark.svg" alt="" />
     </span>
   )
 }
+// Figma 2522:3701: кнопка «назад» — Ellipse 40 (46×47, #CC3A3A) + Vector 46 (белая стрелка 25×22, повёрнута на 180°)
 function ArrowLeftRed() {
   return (
-    <svg viewBox="0 0 46 47" width="46" height="47" fill="none" aria-hidden>
-      <ellipse cx="23" cy="23.5" rx="23" ry="23.5" fill="#CC3A3A" />
-      <path d="M32 23.5H14m0 0l7-7m-7 7l7 7" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className="sal-back-ic" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-back-ic-circle" src="/dashboard/ic-back-circle-red.svg" alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-back-ic-glyph" src="/dashboard/ic-back-arrow-white.svg" alt="" />
+    </span>
   )
 }
+// Figma 2522:3701: галочка — Ellipse 35 (69×69, #1E1E1E) + Vector 38 (лаймовая галочка 35×29 со штрихом)
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-      <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-      <path d="M20 35l10 10 20-22" stroke="#FFFFFF" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className="sal-check-ic" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-check-ic-circle" src="/dashboard/ic-check-circle.svg" alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="sal-check-ic-mark" src="/dashboard/ic-check-mark.svg" alt="" />
+    </span>
   )
 }
 
-// ─── WheelPicker ────────────────────────────────────────────────────────────
-const ITEM_H = 68
-
-interface WheelPickerProps<T extends { key: string; label: string }> {
+// ─── PickerList (дата / время) ──────────────────────────────────────────────
+// Figma 2522:2665 «Добавить урок (дата и время)»: список опций, ряд 70 + разделитель 1px;
+// обычный пункт Inter 500 32, выбранный Inter 700 36; скроллбар 7×107 (Rectangle 180/181)
+interface PickerListProps<T extends { key: string; label: string }> {
   items: T[]
   value: string
-  onChange(key: string): void
+  onChange: (key: string) => void
   ariaLabel: string
 }
-function WheelPicker<T extends { key: string; label: string }>({
+function PickerList<T extends { key: string; label: string }>({
   items, value, onChange, ariaLabel,
-}: WheelPickerProps<T>) {
+}: PickerListProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [activeKey, setActiveKey] = useState(value)
-  const settleRef = useRef<number | null>(null)
-
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const idx = Math.max(0, items.findIndex((i) => i.key === value))
-    el.scrollTop = idx * ITEM_H
-    setActiveKey(value)
-  }, [value, items])
-
-  function onScroll() {
-    const el = scrollRef.current
-    if (!el) return
-    const idx = Math.round(el.scrollTop / ITEM_H)
-    const clamped = Math.max(0, Math.min(items.length - 1, idx))
-    const next = items[clamped]?.key
-    if (next && next !== activeKey) setActiveKey(next)
-    if (settleRef.current !== null) window.clearTimeout(settleRef.current)
-    settleRef.current = window.setTimeout(() => {
-      const finalIdx = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / ITEM_H)))
-      el.scrollTo({ top: finalIdx * ITEM_H, behavior: "smooth" })
-      const key = items[finalIdx]?.key
-      if (key) onChange(key)
-    }, 120)
-  }
-
+    // выбранный пункт — вторым видимым (в макете «2 апреля» на 451 при треке 376…483)
+    el.scrollTop = Math.max(0, idx * 71 - 54)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
-    <div className="sal-wheel" aria-label={ariaLabel} role="listbox">
-      <div className="sal-wheel-fade sal-wheel-fade--top" aria-hidden />
-      <div className="sal-wheel-fade sal-wheel-fade--bot" aria-hidden />
-      <div ref={scrollRef} className="sal-wheel-scroll" onScroll={onScroll}>
-        <div className="sal-wheel-spacer" />
-        {items.map((it) => (
-          <button
-            key={it.key}
-            type="button"
-            role="option"
-            aria-selected={activeKey === it.key}
-            className={`sal-wheel-item ${activeKey === it.key ? "is-active" : ""}`}
-            onClick={() => {
-              const el = scrollRef.current
-              if (!el) return
-              const idx = items.findIndex((x) => x.key === it.key)
-              el.scrollTo({ top: idx * ITEM_H, behavior: "smooth" })
-              onChange(it.key)
-            }}
-          >
-            {it.label}
-          </button>
-        ))}
-        <div className="sal-wheel-spacer" />
-      </div>
-    </div>
+    <CustomScroll className="sal-plist" scrollRef={scrollRef} track={107} ariaLabel={ariaLabel} role="listbox">
+      {items.map((it) => (
+        <button
+          key={it.key}
+          type="button"
+          role="option"
+          aria-selected={value === it.key}
+          className={`sal-plist-item${value === it.key ? " is-active" : ""}`}
+          onClick={() => onChange(it.key)}
+        >
+          {it.label}
+        </button>
+      ))}
+    </CustomScroll>
   )
 }
 
@@ -219,8 +194,8 @@ function formatLectureWhen(iso: string): string {
 // ─── Main component ────────────────────────────────────────────────────────
 export default function StudentAddLessonModal({ open, onClose, onCreated }: Props) {
   const router = useRouter()
-  const dateOptions = useMemo(buildDateOptions, [])
-  const timeOptions = useMemo(buildTimeOptions, [])
+  const allDateOptions = useMemo(buildDateOptions, [])
+  const allTimeOptions = useMemo(buildTimeOptions, [])
 
   const [mode, setMode] = useState<ModalMode>("event")
 
@@ -245,12 +220,21 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
     timeLabel: string
   } | null>(null)
   const [registeredLectureTitle, setRegisteredLectureTitle] = useState<string | null>(null)
+  const [registeringLectureId, setRegisteringLectureId] = useState<string | null>(null)
   const [successRemaining, setSuccessRemaining] = useState(60)
   const [reverting, setReverting] = useState(false)
 
   const selectedTeacher = teachers.find((t) => t.teacherProfileId === teacherId) ?? null
+  // Прошедшие слоты не показываем: для «сегодня» остаются только времена позже текущего,
+  // а если на сегодня слотов не осталось — «сегодня» уходит из списка дат.
+  const nowMs = Date.now()
+  const slotMs = (d: DateOption, t: TimeOption) => new Date(d.y, d.m, d.d, t.h, t.min, 0, 0).getTime()
+  const dateOptions = allDateOptions.filter((d) => allTimeOptions.some((t) => slotMs(d, t) > nowMs))
   const selectedDate = dateKey ? dateOptions.find((d) => d.key === dateKey) ?? null : null
-  const selectedTime = timeKey ? timeOptions.find((t) => t.key === timeKey) ?? null : null
+  const timeOptions = selectedDate ? allTimeOptions.filter((t) => slotMs(selectedDate, t) > nowMs) : allTimeOptions
+  // Если выбранное время ушло в прошлое — берём первое доступное.
+  const effectiveTimeKey = timeKey && timeOptions.some((t) => t.key === timeKey) ? timeKey : timeOptions[0]?.key ?? null
+  const selectedTime = effectiveTimeKey ? timeOptions.find((t) => t.key === effectiveTimeKey) ?? null : null
   const canCreate = !!selectedTeacher && !!selectedDate && !!selectedTime
 
   // Reset on open
@@ -341,7 +325,7 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
   // Success timer
   useEffect(() => {
     if (mode !== "success") return
-    setSuccessRemaining(60)
+    setSuccessRemaining(59) // в макете первое значение «0:59»
     const id = window.setInterval(() => {
       setSuccessRemaining((r) => {
         if (r <= 1) { window.clearInterval(id); return 0 }
@@ -366,8 +350,9 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
   }
 
   async function registerLecture(lectureId: string, title: string) {
+    if (registeringLectureId) return
     setErrorMsg(null)
-    setMode("creating")
+    setRegisteringLectureId(lectureId)
     try {
       const r = await fetch("/api/lectures/register", {
         method: "POST",
@@ -382,7 +367,8 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
       onCreated?.()
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Не удалось зарегистрироваться")
-      setMode("event-open")
+    } finally {
+      setRegisteringLectureId(null)
     }
   }
 
@@ -453,19 +439,19 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
   if (!open || typeof document === "undefined") return null
 
   const isSuccess = mode === "success" || mode === "success-lecture"
-  const timerLabel = `0:${String(successRemaining).padStart(2, "0")}`
+  const timerLabel = `${Math.floor(successRemaining / 60)}:${String(successRemaining % 60).padStart(2, "0")}`
   const isSmallCard = isSuccess
 
   return createPortal(
     <>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260905-success" />
+      <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260908-success" />
       <div
         className="sal-backdrop"
         onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
       >
         <div
-          className={`sal-card${isSmallCard ? " sal-card--small" : ""}`}
+          className={`sal-card${isSmallCard ? " sal-card--small" : ""}${mode === "event-open" ? " sal-card--events" : ""}${mode === "lesson-pickers" ? " sal-card--pickers" : ""}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="sal-title"
@@ -485,11 +471,10 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                 Ваша заявка<br />на урок отправлена!
               </h2>
               <div className="sal-success-check"><CheckIcon /></div>
-              <div className="sal-success-sub">
-                Преподаватель напишет вам
-              </div>
+              {/* Figma 2522:3704: Inter 500 24, «в» — 400, «чат … календаре» — 700 */}
               <div className="sal-success-note">
-                в <b>чат или вы увидите<br />
+                Преподаватель напишет вам<br />
+                <span className="sal-success-reg">в</span> <b>чат или вы увидите<br />
                 упоминание в календаре</b>,<br />
                 что ваше время принято.
               </div>
@@ -514,7 +499,7 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
               <div className="sal-success-check"><CheckIcon /></div>
               <div className="sal-success-note">
                 <b>{registeredLectureTitle}</b><br />
-                — событие появится в вашем календаре.
+                – событие появится в вашем календаре.
               </div>
             </>
           )}
@@ -555,17 +540,10 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                 </>
               ) : (
                 <div className="sal-event-list">
+                  {/* Figma 2522:3654: заголовок «Выберете событие» (в макете с опечаткой), пилюли 578×68 r34 Inter 500 32, зазор 23 */}
                   <button
                     type="button"
-                    className="sal-pill sal-pill--full sal-pill--head"
-                    onClick={() => setMode("event")}
-                  >
-                    <span className="sal-pill-placeholder">выберите событие</span>
-                    <ArrowLeftLime />
-                  </button>
-                  <button
-                    type="button"
-                    className="sal-pill sal-pill--full sal-pill--option"
+                    className="sal-pill sal-pill--full sal-pill--lg"
                     onClick={pickEventLesson}
                   >
                     <span className="sal-pill-value">Записаться на урок</span>
@@ -580,34 +558,41 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                   )}
                   {lectures.map((l) => {
                     const isExp = expandedLectureId === l.id
+                    const isReg = registeringLectureId === l.id
                     return (
-                      <div key={l.id} className="sal-lect-wrap">
+                      <div key={l.id} className={`sal-lect-wrap${isExp ? " is-expanded" : ""}`}>
                         <button
                           type="button"
-                          className={`sal-pill sal-pill--full sal-pill--option${isExp ? " is-expanded" : ""}`}
+                          className="sal-pill sal-pill--full sal-pill--lg"
+                          aria-expanded={isExp}
                           onClick={() => setExpandedLectureId(isExp ? null : l.id)}
                         >
                           <span className="sal-pill-value">{l.title}</span>
                           {isExp ? <ArrowLeftLime /> : <ArrowDown />}
                         </button>
                         {isExp && (
+                          /* раскрытая лекция: фон rgba(255,255,255,.5) 578×309, дата Inter 700 32 (красная после нажатия — 2522:3678),
+                             описание Inter 500 24, скроллбар 7px */
                           <div className="sal-lect-body">
-                            <div className="sal-lect-when">{formatLectureWhen(l.scheduled_at)}</div>
-                            {l.description && (
-                              <p className="sal-lect-desc">{l.description}</p>
-                            )}
-                            <button
-                              type="button"
-                              className="sal-btn sal-btn--red sal-lect-cta"
-                              onClick={() => registerLecture(l.id, l.title)}
-                            >
-                              Записаться
-                            </button>
+                            <CustomScroll className="sal-lect" track={188}>
+                              <button
+                                type="button"
+                                className={`sal-lect-when${isReg ? " is-selected" : ""}`}
+                                disabled={!!registeringLectureId}
+                                onClick={() => registerLecture(l.id, l.title)}
+                              >
+                                {formatLectureWhen(l.scheduled_at)}
+                              </button>
+                              {l.description && (
+                                <p className="sal-lect-desc">{l.description}</p>
+                              )}
+                            </CustomScroll>
                           </div>
                         )}
                       </div>
                     )
                   })}
+                  {errorMsg && <div className="sal-error" role="alert">{errorMsg}</div>}
                 </div>
               )}
             </>
@@ -654,7 +639,7 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
               ) : (
                 <button
                   type="button"
-                  className="sal-pill sal-pill--full"
+                  className={`sal-pill sal-pill--full${selectedTeacher ? " sal-pill--lg sal-pill--sym" : ""}`}
                   onClick={() => setMode("lesson-teachers")}
                   disabled={mode === "creating"}
                 >
@@ -684,7 +669,7 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                         <ArrowLeftLime />
                       </button>
                     </div>
-                    <WheelPicker
+                    <PickerList
                       items={dateOptions}
                       value={dateKey ?? dateOptions[0].key}
                       onChange={setDateKey}
@@ -703,9 +688,9 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                         <ArrowLeftLime />
                       </button>
                     </div>
-                    <WheelPicker
+                    <PickerList
                       items={timeOptions}
-                      value={timeKey ?? timeOptions[0].key}
+                      value={effectiveTimeKey ?? ""}
                       onChange={setTimeKey}
                       ariaLabel="Время урока"
                     />
@@ -742,17 +727,19 @@ export default function StudentAddLessonModal({ open, onClose, onCreated }: Prop
                 </div>
               )}
 
-              <div className="sal-footer">
-                <button
-                  type="button"
-                  className="sal-btn sal-btn--red"
-                  disabled={!canCreate || mode === "creating"}
-                  onClick={submitLesson}
-                >
-                  {mode === "creating" ? "Создаём…" : "Создать"}
-                </button>
-                {errorMsg && <div className="sal-error" role="alert">{errorMsg}</div>}
-              </div>
+              {mode !== "lesson-pickers" && (
+                <div className="sal-footer">
+                  <button
+                    type="button"
+                    className={`sal-btn sal-btn--red${mode === "creating" ? " busy" : ""}`}
+                    disabled={!canCreate || mode === "creating"}
+                    onClick={submitLesson}
+                  >
+                    Создать
+                  </button>
+                  {errorMsg && <div className="sal-error" role="alert">{errorMsg}</div>}
+                </div>
+              )}
             </>
           )}
         </div>
