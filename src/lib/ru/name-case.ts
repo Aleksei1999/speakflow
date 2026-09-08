@@ -14,8 +14,7 @@ function guessGender(first: string, last: string): "male" | "female" {
   return "male"
 }
 
-/** «Валерия Кратковская» → «Валерии Кратковской». Латиницу не трогает. */
-export function nameGenitive(fullName: string): string {
+function decline(fullName: string, kase: "genitive" | "instrumental"): string {
   const name = fullName.trim().replace(/\s+/g, " ")
   if (!name || !/^[а-яё\s-]+$/i.test(name)) return name
   const parts = name.split(" ")
@@ -24,11 +23,21 @@ export function nameGenitive(fullName: string): string {
   const middle = parts.length > 2 ? parts.slice(1, -1).join(" ") : undefined
   try {
     const gender = guessGender(first, last ?? "")
-    const r = petrovich({ gender, first, middle, last }, "genitive")
+    const r = petrovich({ gender, first, middle, last }, kase)
     return [r.first, r.middle, r.last].filter(Boolean).join(" ")
   } catch {
     return name
   }
+}
+
+/** «Валерия Кратковская» → «Валерии Кратковской». Латиницу не трогает. */
+export function nameGenitive(fullName: string): string {
+  return decline(fullName, "genitive")
+}
+
+/** «Александр Петров» → «Александром Петровым» (для «Урок с …»). Латиницу не трогает. */
+export function nameInstrumental(fullName: string): string {
+  return decline(fullName, "instrumental")
 }
 
 /** Подпись лектора: «от Валерии Кратковской»; для латиницы — «от Valeria Kratkovskaya». */

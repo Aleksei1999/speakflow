@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowIcon } from "@/components/icons/ArrowIcon"
 import CustomScroll from "@/components/dashboard/CustomScroll"
-import { CheckIcon } from "@/components/icons/CheckIcon"
+import { nameInstrumental } from "@/lib/ru/name-case"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import AddLessonModal from "./AddLessonModal"
@@ -189,15 +188,6 @@ function levelLabel(lvl: string) {
 function formatRub(kopecks: number): string {
   const rub = Math.round(kopecks / 100)
   return String(rub).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-}
-
-function EditIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden width="20" height="20">
-      <path d="M4 20h4L20 8l-4-4L4 16v4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M14 6l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  )
 }
 
 const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
@@ -915,6 +905,14 @@ export default function TeacherRawDashboard({
   // подтянет актуальный список из БД.
   const [dismissedTrialIds, setDismissedTrialIds] = useState<Set<string>>(new Set())
   const applications = (initialApplications ?? APPLICATIONS).filter((a) => !dismissedTrialIds.has(a.id))
+  // Раскрытая заявка (604px) может уйти под низ области прокрутки списка — подкручиваем к ней.
+  useEffect(() => {
+    if (!expandedAppId) return
+    const t = setTimeout(() => {
+      document.querySelector<HTMLElement>(".tr-app--open")?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    }, 50)
+    return () => clearTimeout(t)
+  }, [expandedAppId])
   const visibleApps = appsExpanded ? applications : applications.slice(0, APPLICATIONS_VISIBLE)
   const remainingApps = applications.length - visibleApps.length
 
@@ -1087,7 +1085,10 @@ export default function TeacherRawDashboard({
             time,
             date,
             startAt: s.startAt,
-            label: s.title || (s.source === "google" ? "Событие календаря" : "Урок"),
+            // Урок — «Урок с Александром Петровым» (имя в творительном падеже); события Google — их заголовок как есть.
+            label: s.source === "lesson" && s.studentName
+              ? `Урок с ${nameInstrumental(s.studentName)}`
+              : s.title || (s.source === "google" ? "Событие календаря" : "Урок"),
             callHref: s.meetingUrl ?? roomHref,
             studentName: s.studentName ?? null,
             studentAvatar: s.studentAvatar ?? null,
@@ -1115,7 +1116,7 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-transfer" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-success" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
@@ -1279,18 +1280,18 @@ export default function TeacherRawDashboard({
             </div>
           )}
 
+          {/* Figma 2522:2353 «Имя группы после создания»: 686×428, заголовок 79, поле 578×68 на 196, «Готово» 182×68 на 298 */}
           {groupStep === "name" && (
             <div className="tr-modal tr-modal--name" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
               <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={closeGroupModal}>
-                <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
               </button>
               <h2 className="tr-modal-title tr-modal-title--dark">Введите название группы</h2>
               <input
                 type="text"
                 className="tr-modal-input"
-                placeholder="Название группы"
+                placeholder="Новая группа"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 autoFocus
@@ -1298,11 +1299,11 @@ export default function TeacherRawDashboard({
               <div className="tr-modal-footer">
                 <button
                   type="button"
-                  className="tr-modal-done"
+                  className={`tr-modal-done${groupSubmitting ? " busy" : ""}`}
                   onClick={submitCreateGroup}
                   disabled={!groupName.trim() || groupSubmitting}
                 >
-                  {groupSubmitting ? 'Создаём…' : 'Готово'}
+                  Готово
                 </button>
                 {groupSubmitError && (
                   <div className="tr-add-lesson-error" role="alert" style={{ marginTop: 12 }}>
@@ -1315,10 +1316,10 @@ export default function TeacherRawDashboard({
 
           {groupStep === "success" && (
             <div className="tr-modal tr-modal--success" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              {/* Figma 2522:2579: 503×431; заголовок 86; галочка 69 at (217,185); имя 36 bold на 278; назад 46×47 at (229,353) */}
               <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={closeGroupModal}>
-                <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
               </button>
               <p className="tr-modal-success-title">
                 Группа создана
@@ -1326,7 +1327,10 @@ export default function TeacherRawDashboard({
                 и появится у вас в чатах
               </p>
               <div className="tr-modal-success-check" aria-hidden>
-                <CheckIcon size={32} style={{ color: "#fff" }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="tr-modal-success-check-circle" src="/dashboard/ic-check-circle.svg" alt="" width={69} height={69} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="tr-modal-success-check-mark" src="/dashboard/ic-check-mark.svg" alt="" width={35} height={29} />
               </div>
               <h3 className="tr-modal-success-name">{groupName || "Группа"}</h3>
               <button
@@ -1337,7 +1341,10 @@ export default function TeacherRawDashboard({
                 onClick={() => setGroupStep("name")}
                 disabled={!backEnabled}
               >
-                <ArrowIcon direction="left" size={22} style={{ color: "#fff" }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="tr-modal-success-back-circle" src="/dashboard/ic-back-circle-red.svg" alt="" width={46} height={47} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="tr-modal-success-back-glyph" src="/dashboard/ic-back-arrow-white.svg" alt="" width={25} height={22.09} />
               </button>
             </div>
           )}
@@ -1534,7 +1541,7 @@ export default function TeacherRawDashboard({
       )}
 
       {/* ================== APPLICATIONS ================== */}
-      <section id="applications" className="tr-section">
+      <section id="applications" className={`tr-section${appsExpanded ? " tr-section--apps-open" : ""}`}>
         <div className="tr-badge-wrap">
           <span className="tr-badge">
             ВХОДЯЩИЕ ЗАЯВКИ <span className="c-red">УЧЕНИКОВ</span>
@@ -1557,6 +1564,9 @@ export default function TeacherRawDashboard({
           </div>
         ) : (
         <div className="tr-apps">
+          {/* Figma 2522:3178 «Если учеников больше»: раскрытый список — область 757 (5 рядов) с прокруткой,
+              тёмный скроллбар 7×757 на 45px правее контейнера */}
+          <CustomScroll className="tr-apps-scroll" track={757}>
           <div className="tr-apps-list">
           {visibleApps.map((a) => {
             const isOpen = expandedAppId === a.id
@@ -1577,13 +1587,11 @@ export default function TeacherRawDashboard({
                   aria-expanded={isOpen}
                   onClick={() => setExpandedAppId(isOpen ? null : a.id)}
                 >
-                  {isOpen ? (
-                    <svg viewBox="0 0 32 20" width="24" height="15" fill="none" aria-hidden>
-                      <path d="M2 5l14 12L30 5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    <ArrowIcon direction="left" size={32} style={{ color: "#1E1E1E" }} />
-                  )}
+                  {/* свёрнуто: лаймовый круг + тёмная стрелка влево (4025:218); раскрыто: тёмный круг + лаймовая стрелка вниз (2522:647) */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="tr-app-arrow-circle" src={isOpen ? "/dashboard/apps/arrow-circle-dark.svg" : "/dashboard/ic-arrow-circle.svg"} alt="" width={79} height={79} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className={`tr-app-arrow-glyph${isOpen ? " is-open" : ""}`} src={isOpen ? "/dashboard/apps/arrow-lime.svg" : "/dashboard/ic-arrow-right.svg"} alt="" width={37} height={36.82} />
                 </button>
                 {isOpen && (
                   <>
@@ -1595,7 +1603,10 @@ export default function TeacherRawDashboard({
                           aria-label="Предыдущие вопросы"
                           onClick={() => setQPage((p) => (p - 1 + qTotalPages) % qTotalPages)}
                         >
-                          <ArrowIcon direction="left" size={18} style={{ color: "#DFED8C" }} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img className="tr-q-nav-circle" src="/dashboard/apps/q-next-circle.svg" alt="" width={47} height={46} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img className="tr-q-nav-arrow tr-q-nav-arrow--prev" src="/dashboard/apps/q-next-arrow.svg" alt="" width={18.5} height={18.41} />
                         </button>
                       )}
                       {currentQuestions.map((q, i) => (
@@ -1612,18 +1623,14 @@ export default function TeacherRawDashboard({
                               const isCorrect = q.chosen === q.correct
                               return (
                                 <li key={k} className={isChosen ? (isCorrect ? "chosen ok" : "chosen no") : ""}>
+                                  {/* маркеры ответа — экспорт Figma 2522:647: лаймовый круг 21 + галочка / красный круг + крестик */}
                                   {isChosen && (
-                                    isCorrect ? (
-                                      <svg className="tr-q-icon tr-q-icon--ok" viewBox="0 0 20 20" aria-hidden>
-                                        <circle cx="10" cy="10" r="10" fill="#DFED8C" />
-                                        <path d="M5.5 10.5l3 3 6.5-7.5" stroke="#1E1E1E" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    ) : (
-                                      <svg className="tr-q-icon tr-q-icon--no" viewBox="0 0 20 20" aria-hidden>
-                                        <circle cx="10" cy="10" r="10" fill="#CC3A3A" />
-                                        <path d="M6 6l8 8M14 6l-8 8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
-                                      </svg>
-                                    )
+                                    <span className={`tr-q-icon ${isCorrect ? "tr-q-icon--ok" : "tr-q-icon--no"}`} aria-hidden>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img className="tr-q-icon-circle" src={isCorrect ? "/dashboard/apps/opt-ok.svg" : "/dashboard/apps/opt-no.svg"} alt="" width={21} height={21} />
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img className="tr-q-icon-mark" src={isCorrect ? "/dashboard/apps/opt-ok-mark.svg" : "/dashboard/apps/opt-no-mark.svg"} alt="" width={isCorrect ? 11 : 9} height={9} />
+                                    </span>
                                   )}
                                   {opt}
                                 </li>
@@ -1639,18 +1646,22 @@ export default function TeacherRawDashboard({
                           aria-label={`Следующие вопросы (${qPage + 1} из ${qTotalPages})`}
                           onClick={() => setQPage((p) => (p + 1) % qTotalPages)}
                         >
-                          <ArrowIcon direction="right" size={18} style={{ color: "#DFED8C" }} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img className="tr-q-nav-circle" src="/dashboard/apps/q-next-circle.svg" alt="" width={47} height={46} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img className="tr-q-nav-arrow" src="/dashboard/apps/q-next-arrow.svg" alt="" width={18.5} height={18.41} />
                         </button>
                       )}
                     </div>
                     <div className="tr-app-actions">
+                      {/* при отправке — чёрная с лаймовым текстом, подпись не меняется (общее правило) */}
                       <button
                         type="button"
-                        className="tr-app-accept"
+                        className={`tr-app-accept${trialActionPending === a.id ? " busy" : ""}`}
                         disabled={trialActionPending === a.id}
                         onClick={() => handleAcceptTrial(a.id)}
                       >
-                        {trialActionPending === a.id ? "..." : "Взять ученика"}
+                        Взять ученика
                       </button>
                       <button
                         type="button"
@@ -1667,19 +1678,33 @@ export default function TeacherRawDashboard({
             )
           })}
           </div>
+          </CustomScroll>
           {(remainingApps > 0 || appsExpanded) && (
             <div className="tr-apps-footer">
+              {/* одна кнопка: свёрнуто — лаймовый круг с шевроном вниз at (519,+18) (4025:218);
+                  раскрыто — тёмный круг с шевроном влево at (159.5,+23) (2522:3178, Group 272). Не размонтируем, чтобы не терять фокус. */}
               <button
                 type="button"
-                className={`tr-apps-expand ${appsExpanded ? "is-open" : ""}`}
+                className={`tr-apps-expand${appsExpanded ? " is-open" : ""}`}
                 aria-label={appsExpanded ? "Свернуть" : "Показать больше"}
                 aria-expanded={appsExpanded}
                 onClick={() => setAppsExpanded((v) => !v)}
               >
-                <svg viewBox="0 0 32 16" width="32" height="16" fill="none" aria-hidden>
-                  <path d="M4 4l12 10L28 4" stroke="#1E1E1E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                {appsExpanded ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="tr-apps-collapse-ic" src="/dashboard/ic-collapse-circle.svg" alt="" width={68} height={67} />
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="tr-apps-expand-circle" src="/dashboard/ic-expand-circle.svg" alt="" width={67} height={68} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="tr-apps-expand-glyph" src="/dashboard/ic-chevron-down.svg" alt="" width={36.5} height={19.69} />
+                  </>
+                )}
               </button>
+              {appsExpanded && (
+                <button type="button" className="tr-apps-handle" aria-label="Свернуть список" onClick={() => setAppsExpanded(false)} />
+              )}
               {remainingApps > 0 && (
                 <button
                   type="button"
@@ -1699,7 +1724,7 @@ export default function TeacherRawDashboard({
       <section id="schedule" className="tr-section tr-section-dark">
         <div className="tr-inner">
           <div className="tr-badge-wrap">
-            <span className="tr-badge on-dark">
+            <span className="tr-badge on-dark tr-badge--schedule">
               <span className="c-lime">РАСПИСАНИЕ</span> И КАЛЕНДАРЬ
             </span>
           </div>
@@ -1733,7 +1758,9 @@ export default function TeacherRawDashboard({
                       setEditLesson({ id: uuid, label: l.label, scheduledAtISO: l.startAt })
                     }}
                   >
-                    <EditIcon />
+                    {/* карандаш — экспорт Figma 4027:221 (Group 193), лаймовый круг 44 задаётся стилем */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/dashboard/ic-edit-pencil.svg" alt="" aria-hidden width={24.44} height={24.42} />
                   </button>
                   {l.callHref ? (
                     <a
@@ -2246,7 +2273,7 @@ function GoogleCalendarBanner({ connection, onDisconnected }: GoogleCalendarBann
       <div className="tr-gcal-banner tr-gcal-banner--ok">
         <div className="tr-gcal-banner-text">
           <span className="tr-gcal-dot tr-gcal-dot--ok" aria-hidden /> Google Calendar подключён
-          {connection.googleEmail ? <> — <b>{connection.googleEmail}</b></> : null}
+          {connection.googleEmail ? <> – <b>{connection.googleEmail}</b></> : null}
         </div>
         <button
           type="button"

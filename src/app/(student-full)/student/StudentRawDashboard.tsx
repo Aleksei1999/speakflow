@@ -1424,7 +1424,7 @@ function StudentGoogleCalendarBanner({
       <div className="st-gcal-banner st-gcal-banner--ok">
         <div className="st-gcal-banner-text">
           <span className="st-gcal-dot st-gcal-dot--ok" aria-hidden /> Google Calendar подключён
-          {connection.googleEmail ? <> — <b>{connection.googleEmail}</b></> : null}
+          {connection.googleEmail ? <> – <b>{connection.googleEmail}</b></> : null}
         </div>
         <button
           type="button"
@@ -1452,7 +1452,7 @@ function StudentGoogleCalendarBanner({
   return (
     <div className="st-gcal-banner">
       <div className="st-gcal-banner-text">
-        <span className="st-gcal-dot" aria-hidden /> Подключите Google Calendar — уроки будут автоматически появляться в вашем календаре.
+        <span className="st-gcal-dot" aria-hidden /> Подключите Google Calendar – уроки будут автоматически появляться в вашем календаре.
       </div>
       <a href="/api/google/oauth/start" className="st-gcal-banner-btn st-sched-btn lime">
         Подключить

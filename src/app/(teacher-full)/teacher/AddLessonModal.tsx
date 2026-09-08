@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { cancelLesson, createLesson } from './lesson-actions'
+import CustomScroll from '@/components/dashboard/CustomScroll'
 
 export interface AddLessonStudent {
   id: string
@@ -96,6 +97,8 @@ export function buildTimeOptions(): TimeOption[] {
 
 // -----------------------------------------------------------------------------
 // iOS-style scroll picker колонки. Snap-scroll, активный элемент по центру.
+// (В AddLessonModal заменён на PickerList по Figma 2522:696; пока используется
+// в EditLessonModal и админских модалках.)
 // -----------------------------------------------------------------------------
 
 const ITEM_H = 68 // px, высота одного элемента в пикере
@@ -176,57 +179,102 @@ export function WheelPicker<T extends { key: string; label: string }>({
 }
 
 // -----------------------------------------------------------------------------
-// Reusable UI-элементы
+// PickerList (дата / время). Figma 2522:696: список 281×149 под белой шапкой 68,
+// ряд 72 + разделитель 1px (Line 4: 206 wide at x=83, black .26), обычный пункт
+// Inter 500 32, выбранный Inter 700 36; скроллбар 7×107 at (310,376) — top 14 / right 18.
 // -----------------------------------------------------------------------------
 
-export function CloseIcon() {
+const ROW_H = 73 // 72 + 1px разделитель
+
+interface PickerListProps<T extends { key: string; label: string }> {
+  items: T[]
+  value: string
+  onChange(key: string): void
+  ariaLabel: string
+}
+
+export function PickerList<T extends { key: string; label: string }>({
+  items, value, onChange, ariaLabel,
+}: PickerListProps<T>) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const idx = Math.max(0, items.findIndex((i) => i.key === value))
+    // выбранный пункт — вторым видимым (в макете «2 апреля» на 451 при «1 апреля» на 380)
+    el.scrollTop = Math.max(0, (idx - 1) * ROW_H)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
-    <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
+    <CustomScroll className="tr-al-dlist" scrollRef={scrollRef} track={107} ariaLabel={ariaLabel} role="listbox">
+      {items.map((it) => (
+        <button
+          key={it.key}
+          type="button"
+          role="option"
+          aria-selected={value === it.key}
+          className={`tr-al-dlist-item${value === it.key ? ' is-selected' : ''}`}
+          onClick={() => onChange(it.key)}
+        >
+          {it.label}
+        </button>
+      ))}
+    </CustomScroll>
   )
 }
 
+// -----------------------------------------------------------------------------
+// Reusable UI-элементы
+// -----------------------------------------------------------------------------
+
+// Иконки — экспорты Figma (те же, что в модалке ученика 2522:2526): крестик Group 130, круг Ellipse 36 + стрелка Vector 42,
+// лаймовый круг Ellipse 37 + тёмная стрелка Vector 43, красный круг Ellipse 40 + белая стрелка Vector 46, галочка Ellipse 35 + Vector 38.
+export function CloseIcon() {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+}
+
 export function ArrowDown() {
-  // Чёрный круг с лаймовой стрелкой вниз. Размер 35×36 (Figma ellipse36).
   return (
     <span className="tr-al-arrow" aria-hidden>
-      <svg viewBox="0 0 35 36" width="35" height="36" fill="none">
-        <ellipse cx="17.5" cy="18" rx="17.5" ry="18" fill="#1E1E1E" />
-        <path d="M17.5 10.5v13m0 0l-5-5m5 5l5-5" stroke="#DFED8C" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-arrow-circle" src="/dashboard/ic-dd-circle.svg" alt="" width={35} height={36} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-arrow-glyph tr-al-arrow-glyph--down" src="/dashboard/ic-dd-arrow.svg" alt="" width={20} height={22.09} />
     </span>
   )
 }
 
 export function ArrowLeftLime() {
-  // Лаймовый круг (в дропдауне ученика — «свернуть»). Стрелка ← чёрная.
   return (
     <span className="tr-al-arrow" aria-hidden>
-      <svg viewBox="0 0 35 36" width="35" height="36" fill="none">
-        <ellipse cx="17.5" cy="18" rx="17.5" ry="18" fill="#DFED8C" />
-        <path d="M23 18H10m0 0l5-5m-5 5l5 5" stroke="#1E1E1E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-arrow-circle" src="/dashboard/ic-dd-circle-lime.svg" alt="" width={35} height={36} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-arrow-glyph tr-al-arrow-glyph--left" src="/dashboard/ic-dd-arrow-dark.svg" alt="" width={20} height={22.09} />
     </span>
   )
 }
 
 function ArrowLeftRed() {
-  // Красный круг с белой стрелкой ← (success back button).
   return (
-    <svg viewBox="0 0 46 47" width="46" height="47" fill="none" aria-hidden>
-      <ellipse cx="23" cy="23.5" rx="23" ry="23.5" fill="#CC3A3A" />
-      <path d="M32 23.5H14m0 0l7-7m-7 7l7 7" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className="tr-al-back-ic" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-back-ic-circle" src="/dashboard/ic-back-circle-red.svg" alt="" width={46} height={47} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-back-ic-glyph" src="/dashboard/ic-back-arrow-white.svg" alt="" width={25} height={22.09} />
+    </span>
   )
 }
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-      <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-      <path d="M20 35l10 10 20-22" stroke="#FFFFFF" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className="tr-al-check-ic" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-check-ic-circle" src="/dashboard/ic-check-circle.svg" alt="" width={69} height={69} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="tr-al-check-ic-mark" src="/dashboard/ic-check-mark.svg" alt="" width={35} height={29} />
+    </span>
   )
 }
 
@@ -237,8 +285,8 @@ function CheckIcon() {
 export default function AddLessonModal({ students, onClose }: AddLessonModalProps) {
   const router = useRouter()
 
-  const dateOptions = useMemo(buildDateOptions, [])
-  const timeOptions = useMemo(buildTimeOptions, [])
+  const allDateOptions = useMemo(buildDateOptions, [])
+  const allTimeOptions = useMemo(buildTimeOptions, [])
 
   // ---- Стейт ----
   const [state, setState] = useState<ModalState>('empty')
@@ -258,11 +306,19 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
   // Success-таймер: 60 → 0. При 0 таймер просто останавливается —
   // модалка НЕ закрывается сама (пользователь должен закрыть крестиком/ESC).
   // Кнопка ← становится disabled когда 0 (revert больше нельзя).
-  const [successRemaining, setSuccessRemaining] = useState(60)
+  const [successRemaining, setSuccessRemaining] = useState(59)
 
   const selectedStudent = students.find((s) => s.id === studentId) ?? null
+  // Прошедшие слоты не показываем (как у ученика): для «сегодня» остаются только времена
+  // позже текущего, а если на сегодня слотов не осталось — «сегодня» уходит из списка дат.
+  const nowMs = Date.now()
+  const slotMs = (d: DateOption, t: TimeOption) => new Date(d.y, d.m, d.d, t.h, t.min, 0, 0).getTime()
+  const dateOptions = allDateOptions.filter((d) => allTimeOptions.some((t) => slotMs(d, t) > nowMs))
   const selectedDate = dateKey ? dateOptions.find((d) => d.key === dateKey) ?? null : null
-  const selectedTime = timeKey ? timeOptions.find((t) => t.key === timeKey) ?? null : null
+  const timeOptions = selectedDate ? allTimeOptions.filter((t) => slotMs(selectedDate, t) > nowMs) : allTimeOptions
+  // Если выбранное время ушло в прошлое — берём первое доступное.
+  const effectiveTimeKey = timeKey && timeOptions.some((t) => t.key === timeKey) ? timeKey : timeOptions[0]?.key ?? null
+  const selectedTime = effectiveTimeKey ? timeOptions.find((t) => t.key === effectiveTimeKey) ?? null : null
 
   const canCreate = !!selectedStudent && !!selectedDate && !!selectedTime
 
@@ -294,7 +350,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
   // disabled, но модалка остаётся открытой; пользователь сам закрывает её.
   useEffect(() => {
     if (state !== 'success') return
-    setSuccessRemaining(60)
+    setSuccessRemaining(59)
     const id = window.setInterval(() => {
       setSuccessRemaining((r) => {
         if (r <= 1) {
@@ -414,6 +470,10 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
   // ---- Рендер ----
 
   const isSuccess = state === 'success'
+  // Figma 2522:2756 «Выбор ученика» и 2522:696 «дата и время»: карточка 686×557 —
+  // без кнопки «Создать» (возврат стрелкой в шапке пикера)
+  const isPicking = state === 'picking-student' || state === 'picking-datetime'
+  const isPickingStudent = state === 'picking-student'
   const timerLabel = `0:${String(successRemaining).padStart(2, '0')}`
 
   return (
@@ -424,7 +484,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
       }}
     >
       <div
-        className={`tr-add-lesson${isSuccess ? ' tr-add-lesson--success' : ''}`}
+        className={`tr-add-lesson${isSuccess ? ' tr-add-lesson--success' : ''}${isPicking ? ' tr-add-lesson--picking' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tr-add-lesson-title"
@@ -495,24 +555,25 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
                   <span className="tr-add-lesson-pill-placeholder">выберите ученика</span>
                   <ArrowLeftLime />
                 </button>
-                <div className="tr-add-lesson-dropdown-list" role="listbox">
+                {/* список 578×241 под шапкой; трек скролла 7×197 at (607,286), пункты 74 + линия 512 at x=75 */}
+                <CustomScroll className="tr-al-plist" track={197} role="listbox" ariaLabel="Ученики">
                   {students.length === 0 ? (
                     <div className="tr-add-lesson-dropdown-empty">Учеников пока нет</div>
                   ) : (
-                    students.map((s, i) => (
+                    students.map((s) => (
                       <button
                         key={s.id}
                         type="button"
                         role="option"
                         aria-selected={studentId === s.id}
-                        className={`tr-add-lesson-dropdown-item${studentId === s.id ? ' is-selected' : ''}${i > 0 ? ' has-divider' : ''}`}
+                        className={`tr-al-plist-item${studentId === s.id ? ' is-selected' : ''}`}
                         onClick={() => pickStudent(s.id)}
                       >
                         {s.name}
                       </button>
                     ))
                   )}
-                </div>
+                </CustomScroll>
               </div>
             ) : (
               <button
@@ -530,7 +591,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
             )}
 
             {/* ─── DATE + TIME ROW ─── */}
-            {state === 'picking-datetime' ? (
+            {isPickingStudent ? null : state === 'picking-datetime' ? (
               <div className="tr-add-lesson-row tr-add-lesson-row--picker">
                 <div className="tr-add-lesson-half tr-add-lesson-half--picker">
                   <div className="tr-add-lesson-picker-head">
@@ -544,7 +605,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker
+                  <PickerList
                     items={dateOptions}
                     value={dateKey ?? dateOptions[0].key}
                     onChange={setDateKey}
@@ -563,9 +624,9 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker
+                  <PickerList
                     items={timeOptions}
-                    value={timeKey ?? timeOptions[0].key}
+                    value={effectiveTimeKey ?? ''}
                     onChange={setTimeKey}
                     ariaLabel="Время урока"
                   />
@@ -601,14 +662,16 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
             )}
 
             {/* ─── CREATE BUTTON ─── */}
+            {isPicking ? null : (
             <div className="tr-add-lesson-footer">
+              {/* при отправке — чёрная с лаймовым текстом, подпись не меняется */}
               <button
                 type="button"
-                className="tr-add-lesson-btn"
+                className={`tr-add-lesson-btn${state === 'creating' ? ' busy' : ''}`}
                 disabled={!canCreate || state === 'creating'}
                 onClick={submit}
               >
-                {state === 'creating' ? 'Создаём…' : 'Создать'}
+                Создать
               </button>
               {(state === 'error' || (state === 'filled' && errorMsg)) && errorMsg && (
                 <div className="tr-add-lesson-error" role="alert">
@@ -616,6 +679,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
                 </div>
               )}
             </div>
+            )}
           </>
         )}
       </div>

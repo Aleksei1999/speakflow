@@ -163,20 +163,24 @@
    Light-bg badge (ВХОДЯЩИЕ ЗАЯВКИ УЧЕНИКОВ) — 40px, tracking -2px, ink
    Dark-bg badge  (СПИСОК УЧЕНИКОВ)          — 48px, tracking -2.4px, white
    Оба: Inter 700, line-height 117.344%, uppercase, text-align center. */
+/* Figma 4025:218: «ВХОДЯЩИЕ ЗАЯВКИ УЧЕНИКОВ» 718×83, рамка 4 lime r41.5, 40 bold, ls -2 */
 .tr-badge {
   /* inline-block вместо inline-flex — иначе whitespace между текстом и <span>
      схлопывается в flex-контейнере и «СПИСОК УЧЕНИКОВ» слипается */
   display: inline-block;
+  box-sizing: border-box;
+  width: 718px; height: 83px;
   border: 4px solid var(--lime);
-  border-radius: 29.5px;
-  padding: 18px 60px;
+  border-radius: 41.5px;
+  padding: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 3vw, 40px);
-  letter-spacing: -0.05em;
-  line-height: 1.17344;
+  font-size: 40px;
+  letter-spacing: -2px;
+  line-height: 75px; /* внутренняя высота 83 − 2×4 */
   text-transform: uppercase;
   text-align: center;
+  white-space: nowrap;
   color: #1E1E1E;
   background: transparent;
 }
@@ -408,22 +412,26 @@
   padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px) 0;
   position: relative;
 }
+/* Figma 4025:218 (1441×914): плашка на 64, подзаголовок 165, ряды 295/450/605, низ 86 */
+#applications.tr-section { padding: 64px 0 86px; }
+#applications.tr-section--apps-open { padding-bottom: 121px; } /* 2522:3178: полоска до 1141, фрейм 1262 */
+/* Figma 4027:221 (1442×1069): фото на всю секцию без затемнения; плашка 650×83 на 72; ряды 1164×149 с 264 шагом 181;
+   кнопки 68 на 842; низ 159 */
 .tr-section-dark {
   position: relative;
   background: var(--dark-bg) url('/dashboard/bg-schedule.jpg') center/cover no-repeat;
   color: var(--white);
   max-width: none;
-  padding: clamp(60px, 8vw, 130px) 0 clamp(60px, 8vw, 130px);
-  margin-top: clamp(40px, 5vw, 80px);
+  padding: 72px 0 159px;
+  margin-top: 0;
   overflow: hidden;
 }
-.tr-section-dark::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(26,23,20,.75), rgba(26,23,20,.85));
-  pointer-events: none;
-  z-index: 0;
-}
+.tr-section-dark .tr-badge-wrap { margin-bottom: 109px; } /* плашка до 2392 → ряды 2501 */
+.tr-badge.on-dark.tr-badge--schedule { width: 650px; font-size: 40px; letter-spacing: -2px; } /* Figma 4027:221: 40 bold */
+/* ряды и кнопки в макете на x=153 при ширине 1164 (на 14.5px правее центра) */
+.tr-section-dark .tr-inner { padding: 0; }
+.tr-section-dark .tr-schedule,
+.tr-section-dark .tr-schedule-actions { margin-left: calc((100% - 1164px) / 2 + 14.5px); margin-right: 0; }
 .tr-section-dark .tr-inner {
   position: relative;
   z-index: 1;
@@ -450,19 +458,20 @@
   color: var(--ink);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(16px, 1.8vw, 24px);
-  letter-spacing: -0.05em;
+  font-size: 24px;
+  letter-spacing: -1.2px;
   line-height: 0.96;
-  margin: 0 0 clamp(60px, 6vw, 90px);
+  margin: 0 0 107px; /* 165 + 23 → ряды 295 */
 }
 
 /* Figma spec: node 4047:72 — card body 908×137 lime + dark cap 244×137
    + red arrow 71×71. Ширина внешнего контейнера 1172 = 1120 (карточка)
    + 45 (Figma gap до скроллбара) + 7 (сам скроллбар). Карточка внутри
    остаётся 1120 wide. */
+/* контейнер 1120 (160…1280): лайм 908, тёмная шапка 843…1087, стрелка 1049…1120 */
 .tr-apps {
   position: relative;
-  width: 1172px;
+  width: 1120px;
   max-width: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column;
@@ -471,21 +480,23 @@
 
 /* Empty state: centered graduation-cap SVG + два текста (Figma node 2208:3058).
    Общая композиция вертикальная, всё по центру. Иконка 384×279 (Figma inset). */
+/* Figma 2522:3155 «Если учеников нет»: иконка 384×279 на 336.6 (подзаголовок до 188 → 148.6, из них 107 — отступ .tr-sub),
+   «На данный момент учеников нет.» 32 на 653 (37 под иконкой), подсказка 24 на 711 (27), низ секции 956 → 198 */
 .tr-apps-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  padding: 80px 20px 60px;
+  gap: 0;
+  padding: 41.6px 20px 112px;
   text-align: center;
 }
 .tr-apps-empty-icon {
   display: block;
-  width: 384px;
+  width: 383.85px;
   max-width: 60%;
   height: auto;
-  margin-bottom: 12px;
+  margin-bottom: 37px;
   user-select: none;
 }
 .tr-apps-empty-title {
@@ -497,6 +508,7 @@
   color: #000;
 }
 .tr-apps-empty-sub {
+  margin-top: 27px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
@@ -504,39 +516,29 @@
   letter-spacing: -1.2px;
   color: rgba(0, 0, 0, 0.7);
 }
-/* Скроллящийся контейнер: padding-right = 45 (Figma gap),
-   scrollbar сам занимает 7 сверх padding. */
+
+/* прокрутка: до 5 рядов (757), скроллбар 7px на x=1325 (контейнер 160…1280 → right −52) */
+.tr-apps-scroll { position: relative; }
+.tr-apps-scroll-scroll { box-sizing: border-box; width: 1128px; max-height: 757px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding-right: 8px; } /* +8 под обводку стрелки */
+.tr-apps-scroll-scroll::-webkit-scrollbar { display: none; }
+.tr-apps-scroll-bar { position: absolute; top: 0; right: -52px; width: 7px; border-radius: 3.5px; background: rgba(30, 30, 30, 0.14); pointer-events: none; }
+.tr-apps-scroll-bar-thumb { width: 7px; border-radius: 3.5px; background: #1E1E1E; will-change: transform; }
 .tr-apps-list {
   display: flex; flex-direction: column;
-  gap: 18px;
-  max-height: 757px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 45px;
-  scrollbar-width: thin;
-  scrollbar-color: #1E1E1E rgba(30, 30, 30, 0.14);
-}
-.tr-apps-list::-webkit-scrollbar { width: 7px; }
-.tr-apps-list::-webkit-scrollbar-track {
-  background: rgba(30, 30, 30, 0.14);
-  border-radius: 3.5px;
-}
-.tr-apps-list::-webkit-scrollbar-thumb {
-  background: #1E1E1E;
-  border-radius: 3.5px;
+  gap: 18px; /* ряды 295/450/605 */
 }
 .tr-app {
   position: relative;
   height: 137px;
-  width: 100%;
+  width: 1120px;
   flex-shrink: 0; /* в flex-column с max-height нельзя, чтобы карточки шринкались — иначе контент налазит на соседей */
 }
 /* Тёмная «шапка» — ЗА лаймом, торчит справа */
 .tr-app-cap {
   position: absolute;
-  left: 75.27%; /* 843/1120 */
+  left: 843px;
   top: 0;
-  width: 21.79%; /* 244/1120 */
+  width: 244px;
   height: 137px;
   background: #1E1E1E;
   border-radius: 29.5px;
@@ -547,7 +549,7 @@
   content: '';
   position: absolute;
   left: 0; top: 0;
-  width: 81.07%; /* 908/1120 */
+  width: 908px;
   height: 100%;
   background: #DFED8C;
   border-radius: 29.5px;
@@ -555,13 +557,13 @@
 }
 .tr .tr-app-name {
   position: absolute;
-  left: 3.66%; /* 41/1120 */
+  left: 41px;
   top: 50px;
   margin: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 40px;
-  letter-spacing: -0.05em;
+  letter-spacing: -2px;
   line-height: 0.975;
   color: #1E1E1E;
   white-space: nowrap;
@@ -569,7 +571,7 @@
 }
 .tr-app-tag {
   position: absolute;
-  left: 50.8%; /* 569/1120 */
+  left: 569px;
   top: 38px;
   height: 60px;
   border-radius: 29.5px;
@@ -578,7 +580,7 @@
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.6px;
   line-height: 0.975;
   color: #DFED8C;
   white-space: nowrap;
@@ -588,12 +590,12 @@
 .tr-app-tag--no { background: rgba(204, 58, 58, 0.74); min-width: 301px; }
 .tr-app-lvl {
   position: absolute;
-  left: 86%; /* 963/1120 — по Figma */
+  left: 963px;
   top: 50px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 36px;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.8px;
   line-height: 0.975;
   color: #DFED8C;
   z-index: 3;
@@ -608,15 +610,16 @@
   right: 0;
   top: 33px;
   width: 71px; height: 71px;
-  border-radius: 50%;
-  background: #DFED8C;
-  color: #1E1E1E;
-  border: 4px solid #fff;
-  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+  background: transparent;
   z-index: 4;
-  transition: background .2s, transform .2s;
+  transition: transform .2s;
 }
-.tr .tr-app-arrow:hover { background: #cfe06a; transform: translateY(-1px); }
+.tr .tr-app-arrow:hover { transform: translateY(-1px); }
+.tr .tr-app-arrow img { display: block; position: absolute; max-width: none; }
+.tr-app-arrow-circle { left: -4px; top: -4px; width: 79px; height: 79px; } /* экспорт 79 с белым штрихом 4 → круг 71 */
+.tr-app-arrow-glyph { left: 17px; top: 17.1px; width: 37px; height: 36.82px; transform: rotate(180deg); transition: transform .25s; }
+.tr-app-arrow-glyph.is-open { transform: rotate(90deg); }
 
 /* ==== РАСКРЫТАЯ КАРТОЧКА (клик по стрелке) ====
    Figma node 2208:636. Внешний контейнер 1086×604,
@@ -624,33 +627,30 @@
    с вопросами, и внизу «Взять ученика» / «Не могу взять». */
 .tr-app--open { height: 604px; }
 .tr-app--open::before {
-  width: 96.96%; /* 1086/1120 — расширяется на всю карточку */
+  width: 1086px; /* расширяется на всю карточку */
   height: 137px;
   border-radius: 29.5px; /* все 4 угла скруглены, как в Figma */
 }
 .tr-app--open .tr-app-cap {
   left: 0;
-  width: 96.96%;
+  width: 1086px;
   height: 604px;
   background: rgba(223, 237, 140, 0.5);
   border-radius: 29.5px;
   z-index: 0;
 }
 .tr-app--open .tr-app-lvl { color: #1E1E1E; }
-.tr .tr-app--open .tr-app-arrow {
-  background: #1E1E1E;
-  color: #fff;
-  border-color: #fff;
-}
-.tr .tr-app--open .tr-app-arrow:hover { background: #333; }
+/* раскрытое состояние: свои экспорты (тёмный круг + лаймовая стрелка), без фильтров */
 
 /* Ряд из 3 карточек-вопросов: 3×300 + 2×36 gap = 972px.
    Слева отступ 55, справа остаётся ~93px под маленькую «next» стрелку. */
+/* Figma 2522:647: карточки вопросов 300×300 на x=215/551/891 (55/391/731 от ряда), top 477 (183);
+   «Вопрос N» +23, текст вопроса +84 (bold, ls −1.44), варианты +168 с x=+89, шаг строки 26; маркер 21 на +59 */
 .tr-app-questions {
   position: absolute;
-  left: 4.91%;   /* 55/1120 */
-  top: 183px;    /* 477-294 */
-  width: 86.79%; /* 972/1120 */
+  left: 55px;
+  top: 183px;
+  width: 976px;
   height: 300px;
   display: flex;
   gap: 36px;
@@ -658,80 +658,88 @@
 }
 .tr-q {
   flex: 0 0 300px;
+  box-sizing: border-box;
   width: 300px;
   height: 300px;
   background: #fff;
   border-radius: 29.5px;
-  padding: 20px 22px;
+  padding: 23px 22px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
 }
+.tr-q + .tr-q + .tr-q { margin-left: 4px; } /* третья карточка на 891 (зазор 40) */
 .tr .tr-q-label {
   color: #CC3A3A;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   line-height: 0.96;
   text-align: center;
-  margin: 0 0 33px;
+  margin: 0 0 38px; /* 500 + 23 → 561 */
 }
 .tr-q-text {
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 24px;
-  letter-spacing: -0.06em;
+  letter-spacing: -1.44px;
   line-height: 0.96;
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 10px; /* 561 + 74 → 645 */
   min-height: 74px;
 }
 .tr-q-text .tr-q-line { display: block; }
-.tr-q-opts {
+.tr .tr-q-opts { /* .tr ul сбрасывает margin/padding — нужна специфичность выше */
   list-style: none;
-  margin: 0;
+  margin: 0 0 0 37px; /* 22 + 37 + 30 = 89 от края карточки */
   padding: 0 0 0 30px;
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  align-self: center;
+  letter-spacing: -1.2px;
+  line-height: 26px; /* 4 строки = 104 */
+  align-self: flex-start;
 }
 .tr-q-opts li {
   position: relative;
-  padding: 3px 0;
+  padding: 0;
   white-space: nowrap;
 }
 .tr-q-icon {
   position: absolute;
-  left: -28px;
-  top: 3px;
+  left: -30px;
+  top: -2.5px; /* в макете кружок на 2–3px выше строки (694 при строке 697) */
   width: 21px;
   height: 21px;
 }
+.tr-q-icon img { display: block; position: absolute; max-width: none; }
+.tr-q-icon-circle { left: 0; top: 0; width: 21px; height: 21px; }
+.tr-q-icon--ok .tr-q-icon-mark { left: 5px; top: 6px; width: 11px; height: 9px; }  /* Vector 38 at (280,701) − штрих 1 */
+.tr-q-icon--no .tr-q-icon-mark { left: 6px; top: 6px; width: 9px; height: 9px; }   /* Group 168 at (621,676) − штрих 1 */
+/* стрелки листания: тёмный круг 39 с белой обводкой (Ellipse 37) + лаймовая стрелка 16 (Vector 40) на x=1169 (right −21), центр по карточке */
 .tr .tr-q-next,
 .tr .tr-q-prev {
   position: absolute;
-  top: 130px;      /* середина карточки 300 */
+  top: 130.5px;
   width: 39px;
   height: 39px;
-  border-radius: 50%;
-  background: #1E1E1E;
-  color: #DFED8C;
-  border: 2px solid #1E1E1E;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background .2s;
+  padding: 0;
+  background: transparent;
   z-index: 4;
+  transition: transform .2s;
 }
-.tr .tr-q-next { right: -19px; }
-.tr .tr-q-prev { left: -19px; }
+.tr .tr-q-next { right: -17px; } /* 1169…1208 при контейнере до 1191 */
+.tr .tr-q-prev { left: -17px; }
 .tr .tr-q-next:hover,
-.tr .tr-q-prev:hover { background: #333; }
+.tr .tr-q-prev:hover { transform: translateY(-1px); }
+.tr .tr-q-next img, .tr .tr-q-prev img { display: block; position: absolute; max-width: none; }
+.tr-q-nav-circle { left: -4px; top: -3.5px; width: 47px; height: 46px; }
+.tr-q-nav-arrow { left: 11px; top: 10.8px; width: 18.5px; height: 18.41px; } /* Vector 40 at (1180,627) − штрих */
+.tr-q-nav-arrow--prev { transform: rotate(180deg); }
 
 /* В админской версии — увеличенные лаймовые круги с чёрной стрелкой
    (как большая стрелка развернуть у самой карточки заявки). */
@@ -751,7 +759,7 @@
 /* Кнопки действий */
 .tr-app-actions {
   position: absolute;
-  left: 27.05%;  /* 303/1120 (463-160) */
+  left: 303px;   /* 463-160 */
   top: 513px;    /* 807-294 */
   display: flex;
   gap: 20px;
@@ -759,13 +767,14 @@
 }
 .tr .tr-app-accept,
 .tr .tr-app-decline {
+  box-sizing: border-box;
   height: 60px;
   border-radius: 29.5px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 1;
+  letter-spacing: -1.2px;
+  line-height: 0.8053;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -779,6 +788,8 @@
   border: none;
 }
 .tr .tr-app-accept:hover { background: var(--red-deep); }
+.tr .tr-app-accept.busy, .tr .tr-app-accept.busy:disabled { background: #1E1E1E; color: #DFED8C; opacity: 1; cursor: progress; }
+.tr .tr-app-decline:disabled { opacity: .55; cursor: not-allowed; }
 .tr .tr-app-decline {
   width: 220px;
   background: transparent;
@@ -1129,29 +1140,29 @@
    Живёт СНАРУЖИ скролл-контейнера — всегда виден.
    padding-right 52 = padding списка 45 + скроллбар 7, чтобы правый
    край футера совпадал с правым краем карточек (1120). */
+/* подвал: шеврон 67×68 at (519, +18), «и еще N» 208×60 at (908, +22) */
 .tr-apps-footer {
   position: relative;
   height: 68px;
-  margin-top: 22px;
-  padding-right: 52px;
+  margin-top: 18px;
+  padding-right: 0;
 }
 .tr-apps-expand {
   position: absolute;
-  left: 46.34%; /* 519/1120 approx — под первой карточкой рядом с центром */
+  left: 519px;
   top: 0;
   width: 67px; height: 68px;
-  border-radius: 50%;
-  background: #DFED8C;
-  color: #1E1E1E;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background .2s, transform .2s;
+  padding: 0;
+  background: transparent;
+  transition: transform .2s;
 }
-.tr-apps-expand:hover { background: #cfe06a; transform: translateY(-1px); }
-.tr-apps-expand svg { transition: transform .25s ease; }
-.tr-apps-expand.is-open svg { transform: rotate(180deg); }
+.tr-apps-expand:hover { transform: translateY(-1px); }
+.tr-apps-expand img { display: block; position: absolute; max-width: none; }
+.tr-apps-expand-circle { left: 0; top: 0; width: 67px; height: 68px; }
+.tr-apps-expand-glyph { left: 15.25px; top: 24.2px; width: 36.5px; height: 19.69px; transition: transform .25s ease; } /* Vector 48 at (697,791) − штрих */
 .tr-apps-more {
   position: absolute;
-  right: 0;
+  right: 4px; /* 1068…1276 в контейнере 160…1280 */
   top: 4px;
   width: 208px;
   height: 60px;
@@ -1162,89 +1173,123 @@
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.6px;
   line-height: 0.975;
   transition: background .2s;
 }
 .tr-apps-more:hover { background: var(--red-deep); }
+/* раскрытый список (2522:3178): «свернуть» 68×67 at (159.5, +23), красная полоска 208×16 по центру at +74 */
+.tr-section--apps-open .tr-apps-footer { height: 67px; margin-top: 23px; } /* 1074…1141 */
+.tr-apps-expand.is-open { left: -0.5px; width: 68px; height: 67px; }
+.tr-apps-collapse-ic { display: block; width: 68px; height: 67px; max-width: none; }
+.tr-apps-handle {
+  position: absolute; left: 458px; top: 51px; /* 618 − 160; 1125 − 1074 */
+  width: 208px; height: 16px;
+  border-radius: 29.5px;
+  background: #CC3A3A;
+  padding: 0;
+}
+.tr-apps-handle:hover { background: var(--red-deep); }
 
 /* ============================================================
    SCHEDULE (dark)
    ============================================================ */
 .tr-schedule {
   display: flex; flex-direction: column;
-  gap: clamp(20px, 2.5vw, 32px);
-  margin-bottom: clamp(30px, 3.5vw, 50px);
-  max-width: 1164px;
+  gap: 32px; /* ряды с шагом 181 */
+  margin-bottom: 67px; /* ряды до 3012 → кнопки 3079 */
+  width: 1164px;
+  max-width: 100%;
   margin-left: auto; margin-right: auto;
 }
+/* ряд 1164×149 rgba(60,60,60,.39) r29.5 + стекло (как у плашек расписания ученика); время 177 слева, подпись x=215,
+   карандаш 44 на x=800, «начать звонок» 248×44 на x=857 (59 от правого края) */
 .tr-lesson {
-  position: relative;
+  position: relative; overflow: hidden;
   display: flex; align-items: center;
-  gap: clamp(16px, 2vw, 30px);
-  background: rgba(30, 30, 30, 0.52);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 30px;
-  min-height: clamp(110px, 10.5vw, 149px);
-  padding: clamp(16px, 2vw, 28px) clamp(20px, 2.5vw, 40px);
+  gap: 0;
+  box-sizing: border-box;
+  background: rgba(60, 60, 60, 0.39);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255, 255, 255, 0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
+  border-radius: 29.5px;
+  height: 149px;
+  padding: 0 59px 0 0;
 }
+.tr-lesson::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.tr-lesson > * { position: relative; z-index: 1; }
 .tr-lesson-time {
   flex: 0 0 auto;
-  min-width: clamp(120px, 12vw, 177px);
-  background: var(--panel-lime-soft);
-  border-radius: var(--radius-card);
-  padding: clamp(14px, 1.6vw, 22px) clamp(16px, 1.8vw, 26px);
-  align-self: stretch;
-  display: flex; flex-direction: column; justify-content: center;
+  box-sizing: border-box;
+  width: 177px; height: 149px;
+  background: rgba(223, 237, 140, 0.36);
+  border-radius: 29.5px;
+  padding: 35px 0 0 39px; /* «12:00» at (192,2536) от ряда (153,2501) */
+  display: flex; flex-direction: column; justify-content: flex-start;
   color: var(--lime);
   font-family: 'Inter', sans-serif;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   line-height: 1.29;
 }
 .tr-lesson-time .hh {
   font-weight: 700;
-  font-size: clamp(28px, 2.8vw, 40px);
+  font-size: 40px;
 }
 .tr-lesson-time .dd {
   font-weight: 500;
-  font-size: clamp(16px, 1.7vw, 24px);
+  font-size: 24px;
 }
 .tr-lesson-label {
   flex: 1;
+  min-width: 0;
+  margin-left: 38px; /* 177 + 38 = 215 */
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(20px, 2.4vw, 32px);
-  letter-spacing: -0.05em;
-  line-height: 0.805;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  /* line-height 0.8053 + overflow:hidden резали хвосты «р»; держим бокс той же высоты (26px)
+     через padding/margin, а клип отдаём только по ширине */
+  line-height: 1.25;
+  padding: 0 0 4px;
+  margin-top: -7px; margin-bottom: -11px;
   color: var(--white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* карандаш: лаймовый круг 44 (Ellipse 84) at x=800 + пиктограмма 24.44 по центру */
 .tr-lesson-edit {
   flex: 0 0 auto;
   width: 44px; height: 44px;
+  margin-right: 13px; /* 800 + 44 + 13 = 857 */
+  padding: 0;
   border-radius: 50%;
-  background: rgba(223,237,140,.2);
-  color: var(--lime);
+  background: #DFED8C;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: background .2s;
+  transition: background .2s, opacity .2s;
 }
-.tr-lesson-edit:hover { background: var(--lime); color: var(--ink); }
-/* Figma: 248×44 (фиксированные размеры). */
+.tr-lesson-edit img { display: block; width: 24.44px; height: 24.42px; max-width: none; }
+.tr-lesson-edit:hover { background: var(--lime-deep); }
+.tr-lesson-edit:disabled { opacity: .45; cursor: not-allowed; }
+/* «начать звонок» 248×44 red r34, Inter 700 24 lowercase lh 80.53% */
 .tr-lesson-call {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--red) !important;
   color: var(--white) !important;
-  border-radius: var(--radius-btn);
+  border-radius: 34px;
   width: 248px;
   height: 44px;
   padding: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 20px;
-  letter-spacing: -0.05em;
-  line-height: 0.805;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.8053;
   text-transform: lowercase;
   transition: background .2s;
 }
@@ -1256,23 +1301,25 @@
   gap: 105px;
   justify-content: space-between;
   flex-wrap: wrap;
-  max-width: 1164px;
+  width: 1164px;
+  max-width: 100%;
   margin: 0 auto;
 }
-/* Figma: высота 68 у всех. Ширины:
-   1-я «открыть …» — 368; «добавить урок» и «запрос на урок» — 293. */
+/* кнопки 68: «открыть календарь» 368, «добавить урок» и «запрос на урок» 293; Inter 700 32 lowercase lh 80.53% */
 .tr-sched-btn {
   display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
   height: 68px;
   width: 293px;
   padding: 0;
-  border-radius: var(--radius-btn);
+  border-radius: 34px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.05em;
-  line-height: 0.805;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
   text-transform: lowercase;
+  white-space: nowrap;
   transition: background .2s;
 }
 .tr-schedule-actions .tr-sched-btn:first-child { width: 368px; }
@@ -1284,15 +1331,18 @@
 /* ============================================================
    Google Calendar banner (CTA + status)
    ============================================================ */
+/* Как у ученика (.st-gcal-banner): ширина ряда расписания 1164, r20, лаймовая точка */
 .tr-gcal-banner {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   padding: 16px 20px;
-  margin: 0 auto 20px;
-  max-width: 954px;
-  border-radius: var(--radius-btn);
+  width: 1164px;
+  max-width: 100%;
+  margin: 0 0 20px calc((100% - 1164px) / 2 + 14.5px); /* тот же левый край, что у рядов (x=153) */
+  border-radius: 20px;
   background: rgba(223, 237, 140, 0.08);
   border: 1px solid rgba(223, 237, 140, 0.25);
   color: var(--white);
@@ -1347,8 +1397,9 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.tr-gcal-dot--ok { background: #7fb432; box-shadow: 0 0 0 2px rgba(127,180,50,0.25); }
-.tr-gcal-dot--off { background: #cc3a3a; box-shadow: 0 0 0 2px rgba(204,58,58,0.25); }
+.tr-gcal-dot { background: rgba(255,255,255,0.5); }
+.tr-gcal-dot--ok { background: var(--lime); }
+.tr-gcal-dot--off { background: rgba(255,255,255,0.5); }
 .tr-lesson-empty {
   padding: 24px;
   text-align: center;
@@ -2170,10 +2221,11 @@
   color: #1E1E1E;
   overflow: hidden;
 }
-.tr-modal-close--dark { color: #1E1E1E; top: 35px; right: 35px; }
-.tr-modal-close--dark:hover { color: #CC3A3A; }
-.tr .tr-modal-title--dark { color: #1E1E1E; margin: 0 0 89px; }
+.tr-modal-close--dark { color: #1E1E1E; top: 35px; right: 34.67px; } /* Group 135 at (638,35) */
+.tr-modal-close--dark:hover { opacity: .7; }
+.tr .tr-modal-title--dark { color: #1E1E1E; margin: 0 0 85.8px; } /* 79 + 31.2 → поле 196 */
 .tr-modal-input {
+  box-sizing: border-box;
   width: 578px;
   max-width: 100%;
   height: 68px;
@@ -2183,8 +2235,8 @@
   padding: 0 32px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 32px;
-  letter-spacing: -0.05em;
+  font-size: 24px;
+  letter-spacing: -1.2px;
   line-height: 0.975;
   color: #1E1E1E;
   text-align: center;
@@ -2198,12 +2250,14 @@
   color: rgba(30, 30, 30, 0.7);
 }
 .tr-modal--name .tr-modal-footer { padding-top: 0; margin-top: 0; }
+/* «Готово» 182×68 по центру; при отправке — чёрная с лаймовым текстом, подпись не меняется */
 .tr-modal-done {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 260px;
+  box-sizing: border-box;
+  min-width: 182px;
   width: auto;
   height: 68px;
-  padding: 0 44px;
+  padding: 0 16px;
   background: #CC3A3A;
   color: #fff;
   border-radius: 34px;
@@ -2217,6 +2271,7 @@
 }
 .tr-modal-done:hover { background: var(--red-deep); }
 .tr-modal-done:disabled { cursor: not-allowed; }
+.tr-modal-done.busy, .tr-modal-done.busy:disabled { background: #1E1E1E; color: #DFED8C; opacity: 1; cursor: progress; }
 
 /* ============================================================
    MODAL — SUCCESS (lime bg, 503×431)
@@ -2235,7 +2290,7 @@
   color: #1E1E1E;
   overflow: hidden;
 }
-.tr-modal--success .tr-modal-close--dark { top: 34px; right: 34px; }
+.tr-modal--success .tr-modal-close--dark { top: 34px; right: 33.67px; } /* Group 130 at (456,34) */
 .tr .tr-modal-success-title {
   position: absolute;
   top: 86px;
@@ -2251,15 +2306,16 @@
   color: #1E1E1E;
   text-align: center;
 }
+/* галочка — экспорт Figma: Ellipse 35 (69) + Vector 38 (35×29 со штрихом) at (237,208) → (17,20) */
 .tr-modal-success-check {
   position: absolute;
   top: 185px;
   left: 217px;
   width: 69px; height: 69px;
-  border-radius: 50%;
-  background: #1E1E1E;
-  display: inline-flex; align-items: center; justify-content: center;
 }
+.tr-modal-success-check img { display: block; position: absolute; max-width: none; }
+.tr-modal-success-check-circle { left: 0; top: 0; width: 69px; height: 69px; }
+.tr-modal-success-check-mark { left: 17px; top: 20px; width: 35px; height: 29px; }
 .tr .tr-modal-success-name {
   position: absolute;
   top: 278px;
@@ -2278,24 +2334,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* назад — экспорт Figma: Ellipse 40 (46×47, #CC3A3A) + Vector 46 (белая стрелка 25×22, повёрнута на 180°), центр (252,376.5) */
 .tr-modal-success-back {
   position: absolute;
   top: 353px;
   left: 229px;
   width: 46px;
   height: 47px;
-  border-radius: 50%;
-  background: #CC3A3A;
-  color: #fff;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background .2s, opacity .3s, filter .3s;
+  padding: 0;
+  background: transparent;
+  transition: opacity .3s, filter .3s;
 }
-.tr-modal-success-back:hover:not(:disabled) { background: var(--red-deep); }
-.tr-modal-success-back:disabled {
-  background: #8a8a8a;
-  cursor: not-allowed;
-  opacity: .6;
-}
+.tr-modal-success-back img { display: block; position: absolute; max-width: none; }
+.tr-modal-success-back-circle { left: 0; top: 0; width: 46px; height: 47px; }
+.tr-modal-success-back-glyph { left: 10.5px; top: 12.45px; width: 25px; height: 22.09px; transform: rotate(180deg); }
+.tr-modal-success-back:hover:not(:disabled) { filter: brightness(.9); }
+.tr-modal-success-back:disabled { cursor: not-allowed; opacity: .4; filter: grayscale(1); }
 
 /* ============================================================
    FOOTER
@@ -2747,52 +2801,58 @@
   padding: 20px;
 }
 
+/* Figma 2522:2506 «Добавить урок»: 686×557; заголовок top 79; пилюли 578×68 на 202 и 281×68 на 294 (зазор 16);
+   «Создать» 200×68 на 426; крестик 13.33 at (639,34) */
 .tr-add-lesson {
   position: relative;
+  box-sizing: border-box;
   width: 686px;
   max-width: calc(100vw - 40px);
   background: #DFED8C;
   border-radius: 29.5px;
-  padding: 79px 54px 40px;
+  padding: 77.4px 54px 63px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
-  display: flex; flex-direction: column; gap: 34px;
+  display: flex; flex-direction: column; gap: 0;
 }
 /* success — уже, компактнее */
+/* Figma 2522:2566 «Урок добавлен в календарь»: 503×475; таймер 0:59 на 33; заголовок 32/500 две строки на 86;
+   галочка 69 на 185; имя 36/700 на 278; дата 36/500 на 322; назад 46×47 на 397 */
 .tr-add-lesson--success {
   width: 503px;
-  padding: 33px 54px 40px;
+  padding: 86px 5px 31px;
   align-items: center;
-  gap: 22px;
-  min-height: 475px;
+  gap: 0;
+  height: 475px;
 }
 
 /* закрыть — крестик в верхнем правом углу.
    !important нужен, чтобы пробить .dash button reset. */
 .tr .tr-add-lesson-close {
   position: absolute;
-  top: 28px; right: 34px;
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
+  top: 34px; right: 33.67px;
+  width: 13.33px; height: 13.34px;
+  display: block;
   background: transparent !important;
   color: #1E1E1E !important;
   border: 0 !important;
   padding: 0 !important;
   cursor: pointer;
-  transition: color .15s;
+  transition: opacity .15s;
   z-index: 2;
 }
-.tr .tr-add-lesson-close:hover { color: #CC3A3A !important; }
+.tr .tr-add-lesson-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
+.tr .tr-add-lesson-close:hover { opacity: .7; }
 
 /* Заголовок «Добавить новый урок» — Inter 500 32px, tracking -0.05em */
-.tr-add-lesson-title {
-  margin: 0;
+.tr .tr-add-lesson-title { /* .tr h2 сбрасывает margin — специфичность выше */
+  margin: 0 0 93.4px; /* заголовок 77.4…108.6 → пилюля 202 */
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
   line-height: 0.975;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.6px;
   color: #1E1E1E;
   text-align: center;
 }
@@ -2801,6 +2861,7 @@
 .tr-add-lesson-row {
   display: flex; gap: 16px;
   justify-content: space-between;
+  margin-top: 24px; /* 294 = 270 + 24 */
 }
 
 /* Общий стиль пилла (белая капсула 68px высоты, radius 34) */
@@ -2811,7 +2872,7 @@
   background: #FFFFFF !important;
   color: #1E1E1E !important;
   border: 0 !important;
-  padding: 0 60px 0 32px !important;
+  padding: 0 28px !important;
   display: flex; align-items: center; justify-content: center;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
@@ -2821,13 +2882,15 @@
 .tr .tr-add-lesson-pill:hover { background: #FAFAFA !important; }
 .tr-add-lesson-pill--full { width: 100%; }
 .tr-add-lesson-pill--half { flex: 1 1 0; }
+/* в пилюле «дата» круг стоит на 17px от правого края (Ellipse 38 at x=282 в 2522:2506 и 2522:2546), в остальных — 21 */
+.tr-add-lesson-row > .tr-add-lesson-pill--half:first-child .tr-al-arrow { right: 17px; }
 
 /* Placeholder-текст: серый 24px medium tracking -0.05em */
 .tr-add-lesson-pill-placeholder {
   font-size: 24px;
   font-weight: 500;
   line-height: 0.975;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   color: rgba(30, 30, 30, 0.7);
 }
 /* Filled-значение: чёрный 32px medium */
@@ -2835,20 +2898,39 @@
   font-size: 32px;
   font-weight: 500;
   line-height: 0.975;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.6px;
   color: #1E1E1E;
 }
 
 /* Иконка-стрелка справа (35×36) */
+/* стрелка: круг 35×36 (Ellipse 36) на 21px от правого края пилюли + стрелка 20×22 (Vector 42) */
 .tr-al-arrow {
   position: absolute;
-  right: 18px; top: 50%;
+  right: 21px; top: 50%;
   transform: translateY(-50%);
-  display: block;
+  width: 35px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
   pointer-events: none;
 }
+.tr-al-arrow img { display: block; max-width: none; }
+.tr-al-arrow-circle { position: absolute; inset: 0; width: 35px; height: 36px; }
+.tr-al-arrow-glyph { position: relative; width: 20px; height: 22.09px; }
+.tr-al-arrow-glyph--down { transform: rotate(90deg); }
+.tr-al-arrow-glyph--left { transform: rotate(180deg); }
+.tr-al-back-ic { position: relative; display: block; width: 46px; height: 47px; }
+.tr-al-back-ic img { display: block; position: absolute; max-width: none; }
+.tr-al-back-ic-circle { left: 0; top: 0; width: 46px; height: 47px; }
+.tr-al-back-ic-glyph { left: 10.5px; top: 12.45px; width: 25px; height: 22.09px; transform: rotate(180deg); }
+.tr-al-check-ic { position: relative; display: block; width: 69px; height: 69px; }
+.tr-al-check-ic img { display: block; position: absolute; max-width: none; }
+.tr-al-check-ic-circle { left: 0; top: 0; width: 69px; height: 69px; }
+.tr-al-check-ic-mark { left: 17px; top: 20px; width: 35px; height: 29px; }
 
-/* ────────── STUDENT DROPDOWN ────────── */
+/* ────────── STUDENT DROPDOWN (Figma 2522:2756) ──────────
+   карточка 686×557: контейнер rgba(255,255,255,.5) 578×309 at (54,202) r34, шапка белая 578×68,
+   список 270…511 (241), трек 7×197 at (607,286) → top 16 / right 18, ползунок 71;
+   пункты 74 с линией 512×1 at x=75 (black .26); текст 32/500/-1.6, выбранный 36/700/-1.8 */
+.tr-add-lesson--picking { padding-bottom: 46px; }
 .tr-add-lesson-dropdown {
   position: relative;
   width: 100%;
@@ -2856,53 +2938,62 @@
   border-radius: 34px;
   padding: 0;
   overflow: hidden;
-  min-height: 309px;
+  height: 309px;
 }
 .tr-add-lesson-pill--dropdown-head {
   background: #FFFFFF !important;
   border-radius: 34px !important;
   width: 100%;
 }
-.tr-add-lesson-dropdown-list {
-  padding: 24px 0 24px;
-  max-height: 231px;
+.tr-al-plist { position: relative; height: 241px; }
+.tr-al-plist-scroll {
+  height: 241px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #1E1E1E rgba(30, 30, 30, 0.14);
+  padding: 6px 0 0;
+  scrollbar-width: none;
 }
-.tr-add-lesson-dropdown-list::-webkit-scrollbar { width: 7px; }
-.tr-add-lesson-dropdown-list::-webkit-scrollbar-track {
+.tr-al-plist-scroll::-webkit-scrollbar { display: none; }
+.tr-al-plist-bar {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 7px;
+  border-radius: 3.5px;
   background: rgba(30, 30, 30, 0.14);
-  border-radius: 3.5px;
-  margin: 12px 0;
+  pointer-events: none;
 }
-.tr-add-lesson-dropdown-list::-webkit-scrollbar-thumb {
-  background: #1E1E1E;
-  border-radius: 3.5px;
-}
-.tr .tr-add-lesson-dropdown-item {
-  display: block; width: 100%;
+.tr-al-plist-bar-thumb { width: 7px; border-radius: 3.5px; background: #1E1E1E; will-change: transform; }
+.tr .tr-al-plist-item {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  height: 74px;
   background: transparent !important;
   color: #1E1E1E !important;
   border: 0 !important;
-  padding: 20px 32px !important;
+  border-radius: 0 !important;
+  padding: 0 32px 6px !important; /* текст в макете на ~3px выше центра ряда */
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
   line-height: 0.975;
-  letter-spacing: -0.05em;
-  text-align: center;
+  letter-spacing: -1.6px;
+  white-space: nowrap;
   cursor: pointer;
   transition: background .15s;
 }
-.tr .tr-add-lesson-dropdown-item.has-divider {
-  border-top: 1px solid rgba(30, 30, 30, 0.18) !important;
+.tr .tr-al-plist-item + .tr-al-plist-item::before {
+  content: '';
+  position: absolute;
+  left: 21px; top: 0; /* 54 + 21 = 75 */
+  width: 512px; height: 1px;
+  background: rgba(0, 0, 0, 0.26);
 }
-.tr .tr-add-lesson-dropdown-item:hover { background: rgba(255, 255, 255, 0.4) !important; }
-.tr .tr-add-lesson-dropdown-item.is-selected {
+.tr .tr-al-plist-item:hover { background: rgba(255, 255, 255, 0.4) !important; }
+.tr .tr-al-plist-item.is-selected {
   font-weight: 700 !important;
   font-size: 36px !important;
-  letter-spacing: -0.05em !important;
+  letter-spacing: -1.8px !important;
 }
 .tr-add-lesson-dropdown-empty {
   padding: 40px 32px;
@@ -2911,7 +3002,10 @@
   font-size: 20px;
 }
 
-/* ────────── DATE/TIME PICKER ────────── */
+/* ────────── DATE/TIME PICKER (Figma 2522:696) ──────────
+   две колонки 281×217 rgba(255,255,255,.5) r34 at y=294; шапка белая 281×68 («дата»/«время» 24/500/-1.2 .7);
+   стрелка назад: лаймовый круг 35×36 — в 1-й колонке right 15 (Ellipse 38 at 285), во 2-й right 20.5 (Ellipse 37 at 576.5);
+   список 362…511 (149): ряд 72 + линия 1px 206 at x=83 (left 29), трек 7×107 at (310,376) → top 14 / right 18, ползунок 38 */
 .tr-add-lesson-row--picker { align-items: stretch; }
 .tr-add-lesson-half { flex: 1 1 0; display: flex; flex-direction: column; }
 .tr-add-lesson-half--picker {
@@ -2919,7 +3013,7 @@
   border-radius: 34px;
   padding: 0;
   overflow: hidden;
-  min-height: 217px;
+  height: 217px;
 }
 .tr-add-lesson-picker-head {
   position: relative;
@@ -2928,12 +3022,12 @@
   border-radius: 34px;
   display: flex; align-items: center; justify-content: center;
   margin: 0;
+  flex: 0 0 auto;
 }
-.tr-add-lesson-picker-head .tr-al-arrow { right: 18px; }
 .tr .tr-add-lesson-picker-back {
   position: absolute;
-  right: 18px; top: 50%;
-  transform: translateY(-50%);
+  right: 15px; top: 15.5px;
+  width: 35px; height: 36px;
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
@@ -2941,8 +3035,61 @@
   cursor: pointer;
   display: block;
 }
+.tr .tr-add-lesson-half--picker:last-child .tr-add-lesson-picker-back { right: 20.5px; }
+.tr-add-lesson-picker-back .tr-al-arrow { position: absolute; right: 0; top: 0; transform: none; }
 
-/* iOS-style wheel */
+.tr-al-dlist { position: relative; height: 149px; }
+.tr-al-dlist-scroll {
+  height: 149px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.tr-al-dlist-scroll::-webkit-scrollbar { display: none; }
+.tr-al-dlist-bar {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 7px;
+  border-radius: 3.5px;
+  background: rgba(30, 30, 30, 0.14);
+  pointer-events: none;
+}
+.tr-al-dlist-bar-thumb { width: 7px; border-radius: 3.5px; background: #1E1E1E; will-change: transform; }
+.tr .tr-al-dlist-item {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  height: 72px;
+  background: transparent !important;
+  color: #1E1E1E !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 24px 8px !important; /* текст в макете на ~4px выше центра ряда */
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -1.6px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s;
+}
+.tr .tr-al-dlist-item + .tr-al-dlist-item { margin-top: 1px; }
+.tr .tr-al-dlist-item + .tr-al-dlist-item::before {
+  content: '';
+  position: absolute;
+  left: 29px; top: -1px; /* 54 + 29 = 83 */
+  width: 206px; height: 1px;
+  background: rgba(0, 0, 0, 0.26);
+}
+.tr .tr-al-dlist-item:hover { background: rgba(255, 255, 255, 0.4) !important; }
+.tr .tr-al-dlist-item.is-selected {
+  font-weight: 700 !important;
+  font-size: 36px !important;
+  letter-spacing: -1.8px !important;
+}
+
+/* iOS-style wheel (EditLessonModal / админ; в AddLessonModal заменён списком .tr-al-dlist) */
 .tr-al-wheel {
   position: relative;
   height: 149px;
@@ -2998,10 +3145,12 @@
 /* ────────── CREATE BUTTON ────────── */
 .tr-add-lesson-footer {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
-  padding-top: 4px;
+  margin-top: 64px; /* ряд 294…362 → кнопка 426 */
+  padding-top: 0;
 }
 .tr .tr-add-lesson-btn {
-  width: 200px;
+  box-sizing: border-box;
+  min-width: 200px;
   height: 68px;
   border-radius: 34px !important;
   background: #CC3A3A !important;
@@ -3011,8 +3160,8 @@
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 32px;
-  line-height: 0.805;
-  letter-spacing: -0.05em;
+  line-height: 0.8053;
+  letter-spacing: -1.6px;
   text-align: center;
   cursor: pointer;
   transition: background .15s, opacity .15s;
@@ -3023,6 +3172,7 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+.tr .tr-add-lesson-btn.busy, .tr .tr-add-lesson-btn.busy:disabled { background: #1E1E1E !important; color: #DFED8C !important; opacity: 1; cursor: progress; }
 .tr-add-lesson-error {
   color: #CC3A3A;
   font-size: 14px;
@@ -3043,7 +3193,7 @@
   color: rgba(30, 30, 30, 0.7);
 }
 .tr-add-lesson-success-title {
-  margin-top: 30px;
+  margin-top: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 32px;
@@ -3053,11 +3203,11 @@
   text-align: center;
 }
 .tr-add-lesson-success-check {
-  margin-top: 14px;
+  margin-top: 36.6px; /* 86 + 62.4 → 185 */
   display: flex; align-items: center; justify-content: center;
 }
 .tr-add-lesson-success-name {
-  margin-top: 14px;
+  margin-top: 24px; /* 254 → 278 */
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 36px;
@@ -3067,7 +3217,7 @@
   text-align: center;
 }
 .tr-add-lesson-success-when {
-  margin-top: 12px;
+  margin-top: 8.9px; /* 313.1 → 322 */
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 36px;
@@ -3077,7 +3227,7 @@
   text-align: center;
 }
 .tr .tr-add-lesson-success-back {
-  margin-top: 22px;
+  margin-top: 39.9px; /* 357.1 → 397 */
   width: 46px; height: 47px;
   background: transparent !important;
   border: 0 !important;
