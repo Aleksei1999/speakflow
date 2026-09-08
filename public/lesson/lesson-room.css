@@ -17,28 +17,45 @@
   background: #1E1E1E;
   color: #DFED8C;
   display: flex;
-  flex-direction: column;
-  z-index: 1;
-}
-.lvr-topbar {
-  height: 88px;
-  padding: 24px 30px;
-  display: flex;
   align-items: center;
+  justify-content: center;
+  z-index: 1;
+  overflow: hidden;
+}
+/* Холст макета 1441×900: масштабируется через zoom (LessonVideoRoom.roomZoom) по меньшей стороне окна */
+.lvr-canvas {
+  position: relative;
+  width: 1441px;
+  height: 900px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #1E1E1E;
+  overflow: hidden;
+}
+/* Figma 2522:1827 «Окно видеозвонка» (1441×900): логотип 108×62 на (41,42); кнопки окна 31 на y=58,
+   x 1279/1322/1364 (правый край 1395 → отступ 46); плитки 648×453 на (50,236) и (747,236), r29.5, зазор 49;
+   кнопки панели 54 на y=807: 50/123 · 546…842 с шагом 74 · 1337; «поделиться ссылкой» 247×40 на (50,750) */
+.lvr-topbar {
+  height: 104px; /* низ логотипа */
+  padding: 42px 46px 0 41px;
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   flex-shrink: 0;
 }
 .lvr-logo {
   display: inline-flex;
   align-items: center;
-  height: 48px;
+  width: 108px;
+  height: 62px;
 }
 .lvr-logo img {
   display: block;
-  height: 48px;
-  width: auto;
+  width: 108px;
+  height: 62px;
 }
-.lvr-winbtns { display: flex; gap: 12px; }
+.lvr-winbtns { display: flex; gap: 12px; margin-top: 16px; /* 58 − 42 */ }
 .lvr-winbtn {
   width: 31px;
   height: 31px;
@@ -84,14 +101,20 @@
   display: grid;
   align-content: center;
   justify-content: center;
-  gap: 16px;
-  padding: 12px 30px;
+  place-items: center;
+  gap: var(--gap);
+  padding: 132px 46px 118px 50px; /* 1–2 участника: плитки 236…689 при высоте 900; (1441 − 50 − 46 − 49) / 2 = 648 */
   background: #1E1E1E;
+  container-type: size; /* cqh — высота области сетки для расчёта размера плитки */
   --cols: 1;
   --rows: 1;
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
+  --gap: 49px;
+  /* колонки/ряды по размеру плитки — сетка собирается по центру без дыр между колонками */
+  grid-template-columns: repeat(var(--cols), auto);
+  grid-template-rows: repeat(var(--rows), auto);
 }
+/* 3+ участников: отступы меньше, чтобы сетке хватало высоты; плитки держат пропорцию 648×453 и не сплющиваются */
+.lvr .lk-stage-grid:not([data-count="1"]):not([data-count="2"]) { padding: 24px 50px; --gap: 24px; }
 .lvr .lk-stage-grid[data-count="1"]  { --cols: 1; --rows: 1; }
 .lvr .lk-stage-grid[data-count="2"]  { --cols: 2; --rows: 1; }
 .lvr .lk-stage-grid[data-count="3"]  { --cols: 3; --rows: 1; }
@@ -107,8 +130,9 @@
   position: relative;
   width: 100%;
   height: 100%;
+  container-type: size; /* инициалы и подпись масштабируются от высоты плитки (cqh) */
   background: #0a0a0a;
-  border-radius: 22px;
+  border-radius: 29.5px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -117,58 +141,86 @@
   min-width: 0;
 }
 .lvr .lk-tile video { width: 100%; height: 100%; object-fit: cover; }
+/* плитки сетки: ширина по колонкам, но не больше, чем позволяет высота ряда при пропорции 648:453 (cqw/cqh — область сетки) */
+.lvr .lk-stage-grid > .lk-tile {
+  width: min(calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols)), calc((100cqh - (var(--rows) - 1) * var(--gap)) / var(--rows) * 1.4305));
+  height: auto;
+  aspect-ratio: 648 / 453;
+}
 /* Имя — сверху-слева, чтобы tooltip снизу не наезжал. */
 .lvr .lk-tile .lk-name {
   position: absolute;
-  left: 16px;
-  top: 16px;
+  left: min(16px, 10cqh);
+  top: min(16px, 10cqh);
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  padding: 6px 14px;
+  padding: min(6px, 4cqh) min(14px, 9cqh);
   border-radius: 999px;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
-  font-size: 14px;
+  font-size: min(14px, 11cqh);
+  white-space: nowrap;
   backdrop-filter: blur(8px);
 }
+/* инициалы: до 120px, в маленьких плитках (кинолента 120) — 50% высоты */
 .lvr .lk-tile .lk-ph {
-  width: 120px;
-  height: 120px;
+  width: min(120px, 50cqh);
+  height: min(120px, 50cqh);
   background: #222;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #666;
-  font-size: 44px;
+  font-size: min(44px, 18cqh);
   font-weight: 700;
 }
 /* Presentation mode (screen-share) — filmstrip сверху + большой экран снизу. */
+/* Демонстрация экрана: кинолента камер 172×120 сверху, экран занимает остаток и не заходит под панель кнопок */
 .lvr .lk-stage-presentation {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0 30px;
-  gap: 12px;
+  padding: 24px 46px 24px 50px;
+  gap: 16px;
   background: #1E1E1E;
   overflow: hidden;
 }
-.lvr .lk-filmstrip { display: flex; gap: 12px; height: 120px; flex-shrink: 0; overflow-x: auto; }
-.lvr .lk-filmstrip .lk-tile { flex: 0 0 200px; height: 120px; }
+.lvr .lk-filmstrip { display: flex; gap: 12px; height: 120px; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+.lvr .lk-filmstrip::-webkit-scrollbar { display: none; }
+.lvr .lk-filmstrip .lk-tile { flex: 0 0 172px; width: 172px; height: 120px; border-radius: 20px; }
 .lvr .lk-screen { flex: 1; position: relative; min-height: 0; display: grid; gap: 12px; }
 .lvr .lk-screen .lk-tile { width: 100%; height: 100%; cursor: zoom-in; border-radius: 29.5px; }
 .lvr .lk-screen .lk-tile video { object-fit: contain; background: #000; }
+/* подсказка «Клик — на весь экран» — пилюля в правом нижнем углу экрана, только при наведении */
+.lvr .lk-fs-hint {
+  position: absolute;
+  right: 16px; bottom: 16px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #DFED8C;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+.lvr .lk-screen-tile:hover .lk-fs-hint, .lvr .lk-fs .lk-fs-hint { opacity: 1; }
 /* .vc-bar снизу — ширина = ширине области тайлов (648×2 + 24 gap = 1320),
    центрируем через margin:auto. Кнопки-кластеры (left/right) выравниваются
    ровно по краям видео-тайлов. Верхний padding — под tooltip (40+14=54). */
 .lvr .vc-bar {
   flex-shrink: 0;
   width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 66px 0 30px;
+  max-width: none;
+  margin: 0;
+  padding: 0 50px 39px; /* кнопки 807…861 при высоте 900 */
   background: #1E1E1E;
+  position: relative;
 }
 
 /* Top bar: Raw логотип слева + 3 window-control кнопки справа. Абсолютно
@@ -239,10 +291,16 @@
 .vc-bar-cluster {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 19px; /* 50 → 123 */
 }
-.vc-bar-cluster--center {
-  flex: 1;
+/* центральная группа — по центру экрана (546…896 при 1441), а не между боковыми */
+.lvr .vc-bar-cluster--center {
+  flex: none;
+  gap: 20px;
+  position: absolute;
+  left: 50%;
+  bottom: 39px;
+  transform: translateX(-50%);
   justify-content: center;
 }
 /* .vc-btn — контейнер 54×54, прозрачный. SVG внутри (либо <img> из
@@ -261,7 +319,16 @@
   justify-content: center;
   transition: transform .15s ease;
 }
-.vc-btn:hover:not(:disabled) { transform: translateY(-2px); }
+/* Hover — Figma 2522:2253: кольцо 62 (r 30.5, обводка 1px) вокруг круга 54, того же цвета; у «сбросить» красное */
+.vc-btn:hover:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid #DFED8C;
+  pointer-events: none;
+}
+.vc-btn--hangup:hover:not(:disabled)::after { border-color: #CC3A3A; }
 .vc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .vc-btn > img { display: block; width: 54px; height: 54px; }
 /* Инлайновый SVG (когда используем свой рендер: camera/sound ON) — на
@@ -277,7 +344,7 @@
 }
 .vc-btn-tip {
   position: absolute;
-  bottom: calc(100% + 14px);
+  bottom: calc(100% + 17px); /* 790 → 807 */
   left: 50%;
   transform: translateX(-50%);
   background: transparent;
@@ -300,8 +367,10 @@
   pointer-events: none;
   transition: opacity .15s ease;
 }
-.vc-btn:hover .vc-btn-tip,
-.vc-btn--tip-lock .vc-btn-tip { opacity: 1; }
+/* Figma 2522:2236 «При удержании курсора 1 сек»: подсказка появляется через секунду наведения,
+   пилюли 40px с обводкой 2px: 247 / 153 / 123×4 / 251, «сбросить звонок» 215 красная (ширины — inline minWidth) */
+.vc-btn:hover .vc-btn-tip { opacity: 1; transition-delay: 1s; }
+.vc-btn--tip-lock .vc-btn-tip { opacity: 1; transition-delay: 0s; }
 .vc-btn--hangup .vc-btn-tip {
   border-color: #CC3A3A;
   color: #CC3A3A;
@@ -311,6 +380,7 @@
 .vc-bar > .vc-bar-cluster:first-child > .vc-btn:first-child .vc-btn-tip {
   left: 0;
   transform: translateX(0);
+  min-width: 247px; /* «поделиться ссылкой» 247×40 */
 }
 .vc-bar > .vc-bar-cluster:last-child > .vc-btn:last-child .vc-btn-tip {
   left: auto;
@@ -343,33 +413,36 @@
   animation: vc-settings-fade .18s ease;
 }
 @keyframes vc-settings-fade { from { opacity: 0 } to { opacity: 1 } }
+/* Figma 2522:3625 «Настройки»: 686×1026 lime r29.5; заголовок группы — пилюля 578×68 с обводкой 2px, 32/500;
+   пункты 578×68 с шагом 66, текст 32/500 на x=89 (35 от края пилюли), выбранный — фон rgba(255,255,255,.48)
+   с галочкой (круг 21 на 533, 24); группы: 61…337, 387…663, 713…991 (зазор 50), крестик 13.33 на (638,35), низ 35 */
 .vc-settings {
   position: relative;
   width: min(686px, calc(100vw - 40px));
   max-height: min(1026px, calc(100vh - 40px));
   background: #DFED8C;
   border-radius: 29.5px;
-  padding: 60px 50px 50px;
+  padding: 61px 54px 35px;
   box-sizing: border-box;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 50px;
 }
 .vc-settings-close {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 30px;
-  height: 30px;
+  top: 35px;
+  right: 34.67px;
+  width: 13.33px;
+  height: 13.34px;
   border: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   color: #1E1E1E;
 }
+.vc-settings-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
 .vc-settings-close:hover { opacity: 0.7; }
 .vc-settings-hint {
   font-family: 'Inter', sans-serif;
@@ -384,10 +457,12 @@
 .vc-settings-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 .vc-settings-group-title {
-  height: 46px;
+  height: 68px;
+  box-sizing: border-box;
+  margin-bottom: 10px; /* 129 → 139 */
   border: 2px solid #1E1E1E;
   background: transparent;
   border-radius: 34px;
@@ -396,32 +471,33 @@
   justify-content: center;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 24px;
-  letter-spacing: -1.2px;
+  font-size: 32px;
+  letter-spacing: -1.6px;
   line-height: 0.975;
   color: #1E1E1E;
 }
 .vc-settings-empty {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 20px;
-  letter-spacing: -1px;
+  font-size: 24px;
+  letter-spacing: -1.2px;
   color: #1E1E1E;
   opacity: 0.6;
-  padding: 6px 24px;
+  padding: 18px 35px;
 }
 .vc-settings-option {
-  height: 46px;
-  padding: 0 20px 0 24px;
-  margin-bottom: 4px;
+  height: 68px;
+  flex: 0 0 68px;
+  padding: 0 24px 0 35px; /* галочка 587…608 при пилюле до 632 */
+  margin: 0 0 -2px; /* шаг 66 при высоте 68 */
   border: 0;
   border-radius: 34px;
   background: transparent;
   color: #1E1E1E;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 24px;
-  letter-spacing: -1.2px;
+  font-size: 32px;
+  letter-spacing: -1.6px;
   line-height: 0.975;
   text-align: left;
   cursor: pointer;
@@ -431,16 +507,17 @@
   gap: 12px;
   transition: background .12s ease;
 }
+.vc-settings-option > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-settings-option:hover { background: rgba(255, 255, 255, 0.28); }
-.vc-settings-option--selected {
-  background: rgba(255, 255, 255, 0.5);
-}
+.vc-settings-option--selected { background: rgba(255, 255, 255, 0.48); }
 .vc-settings-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 24px;
+  position: relative;
+  flex: 0 0 21px;
+  width: 21px; height: 21px;
 }
+.vc-settings-check img { position: absolute; display: block; max-width: none; }
+.vc-settings-check-circle { left: 0; top: 0; width: 21px; height: 21px; }
+.vc-settings-check-tick { left: 5px; top: 6px; width: 11px; height: 9px; }
 
 /* ---- SECTION 3: leave call modal (Figma 2208-2922, 2208-2931) ---- */
 .vc-leave-backdrop {
@@ -454,41 +531,43 @@
   padding: 20px;
   animation: vc-settings-fade .18s ease;
 }
+/* Figma 2522:3047 «Завершить звонок»: 686×286 lime r29.5; кнопки 578×68 r34 на (55,61) и (55,154), 32/700/−1.6;
+   «Покинуть звонок» чёрная с лаймовым текстом, «Завершить у всех» красная с белым; крестик 13.33 на (639,34); низ 64 */
 .vc-leave {
   position: relative;
   width: min(686px, calc(100vw - 40px));
   background: #DFED8C;
   border-radius: 29.5px;
-  padding: 60px 50px 50px;
+  padding: 61px 53px 64px 55px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 25px;
 }
 .vc-leave-close {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 30px;
-  height: 30px;
+  top: 34px;
+  right: 33.67px;
+  width: 13.33px;
+  height: 13.34px;
   border: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
   color: #1E1E1E;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
 }
+.vc-leave-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
 .vc-leave-close:hover { opacity: 0.7; }
 .vc-leave-btn {
-  height: 70px;
+  height: 68px;
   border: 0;
-  border-radius: 45px;
+  border-radius: 34px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 28px;
-  letter-spacing: -1.4px;
-  line-height: 1;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.975;
   cursor: pointer;
   transition: background .15s ease;
   display: flex;
@@ -501,7 +580,7 @@
   color: #DFED8C;
 }
 .vc-leave-btn--leave:hover {
-  background: #6b6b3d;
+  background: #333;
 }
 .vc-leave-btn--end {
   background: #CC3A3A;
@@ -510,6 +589,10 @@
 .vc-leave-btn--end:hover {
   background: #b03030;
 }
+/* Figma 2522:3056: невыбранный вариант бледнеет — фон rgba(30,30,30,.5), текст rgba(223,237,140,.5); красная → rgba(204,58,58,.5) */
+.vc-leave-btn:disabled { cursor: default; }
+.vc-leave-btn--leave.vc-leave-btn--dim, .vc-leave-btn--leave.vc-leave-btn--dim:hover { background: rgba(30, 30, 30, 0.5); color: rgba(223, 237, 140, 0.5); }
+.vc-leave-btn--end.vc-leave-btn--dim, .vc-leave-btn--end.vc-leave-btn--dim:hover { background: rgba(204, 58, 58, 0.5); color: rgba(255, 255, 255, 0.5); }
 
 /* ---- SECTION 4: post-lesson note modal (Figma 2208-3621) ---- */
 .vc-note-backdrop {
@@ -662,6 +745,49 @@
 }
 .vc-note-btn:hover:not(:disabled) { background: #b03030; }
 .vc-note-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* Figma 2522:3976 «После урока» (учитель): 686×609 lime; аватар 93 на (74,76); имя 32/700 на (189,105);
+   плашка уровня 135×70 на (551,88) у правого края, текст на 576; «О последнем уроке» 32/500 на 212;
+   поле 539×139 на (74,270) r29.5, плейсхолдер 24/500 .7 по центру; «0/500» 16 правым краем на 612, top 421;
+   «Готово» 214×60 red на (236,482), 24/700 lh 80.53%; крестик 13.33 на (639,34) */
+.vc-note--post { width: min(686px, calc(100vw - 40px)); height: 609px; padding: 0; }
+.vc-note--post .vc-note-close {
+  top: 34px; right: 33.67px; width: 13.33px; height: 13.34px; display: block; padding: 0;
+}
+.vc-note--post .vc-note-close img { display: block; width: 15.33px; max-width: none; height: 15.34px; margin: -1px 0 0 -1px; }
+.vc-note--post .vc-note-head { position: absolute; left: 74px; right: 0; top: 76px; height: 93px; display: block; }
+.vc-note--post .vc-note-avatar { position: absolute; left: 0; top: 0; width: 93px; height: 93px; border-radius: 82px; }
+.vc-note--post .vc-note-name {
+  position: absolute; left: 115px; top: 29px; width: 348px; height: 35px;
+  font-size: 32px; letter-spacing: -1.6px; line-height: 0.975;
+}
+.vc-note--post .vc-note-lvl {
+  position: absolute; right: 0; top: 12px; width: 135px; height: 70px; min-width: 0;
+  padding: 0 0 0 25px; justify-content: flex-start; box-sizing: border-box;
+  border-radius: 29.5px 0 0 29.5px;
+  font-size: 32px; letter-spacing: -1.6px; line-height: 0.975;
+}
+.vc-note--post .vc-note-title {
+  position: absolute; left: 0; right: 0; top: 212px; margin: 0;
+  font-size: 32px; letter-spacing: -1.6px; line-height: 0.975;
+}
+.vc-note--post .vc-note-area {
+  position: absolute; left: 74px; top: 270px; width: 539px; height: 139px;
+  padding: 44px 30px; border-radius: 29.5px;
+  font-size: 24px; letter-spacing: -1.2px; line-height: 0.975;
+}
+.vc-note--post .vc-note-area::placeholder { color: rgba(30, 30, 30, 0.7); }
+.vc-note--post .vc-note-counter {
+  position: absolute; right: 74px; top: 421px; margin: 0;
+  font-size: 16px; letter-spacing: -0.8px; line-height: 0.975;
+}
+.vc-note--post .vc-note-btn {
+  position: absolute; left: 236px; top: 482px; width: 214px; height: 60px;
+  margin: 0; padding: 0; min-width: 0; border-radius: 29.5px;
+  font-size: 24px; letter-spacing: -1.2px; line-height: 0.8053;
+  display: flex; align-items: center; justify-content: center;
+}
+.vc-note-btn.busy, .vc-note-btn.busy:disabled { background: #1E1E1E; color: #DFED8C; opacity: 1; cursor: progress; }
+
 /* In-call вариант «Заметки» — без хедера с аватаркой/уровнем. */
 .vc-note--incall { padding: 60px 40px 40px; }
 .vc-note--incall .vc-note-title { margin-top: 0; }

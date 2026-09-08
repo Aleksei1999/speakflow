@@ -22,33 +22,21 @@ interface Props {
   onSelect?: (kind: Kind, deviceId: string) => void
 }
 
+// Иконки — экспорт Figma 2522:3625: галочка (Ellipse 35 круг 21 + Vector 38 9×7, с обводкой 11×9), крестик Group 161
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
-      <circle cx="12" cy="12" r="12" fill="#1E1E1E" />
-      <path
-        d="M6 12.5l4 4 8-9"
-        stroke="#FFF"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="vc-settings-check-circle" src="/lesson/icons/settings-check-circle.svg" alt="" aria-hidden width={21} height={21} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="vc-settings-check-tick" src="/lesson/icons/settings-check-tick.svg" alt="" aria-hidden width={11} height={9} />
+    </>
   )
 }
 
 function CloseIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
-      <path
-        d="M2 2l16 16M18 2L2 18"
-        stroke="#1E1E1E"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
 }
 
 function fallbackLabel(kind: Kind, idx: number): string {
@@ -120,6 +108,12 @@ export default function SettingsModal({ open, onClose, onSelect }: Props) {
         setMics(audioIn.map((d, i) => toDev(d, i, "mic")))
         setSpeakers(audioOut.map((d, i) => toDev(d, i, "speaker")))
         setCameras(videoIn.map((d, i) => toDev(d, i, "camera")))
+        // Пока пользователь ничего не выбирал — отмечаем текущее (первое) устройство, как в макете
+        setSelected((s) => ({
+          mic: s.mic ?? audioIn[0]?.deviceId ?? null,
+          speaker: s.speaker ?? audioOut[0]?.deviceId ?? null,
+          camera: s.camera ?? videoIn[0]?.deviceId ?? null,
+        }))
         const allBlank = [...audioIn, ...audioOut, ...videoIn].every(
           (d) => !d.label,
         )

@@ -776,7 +776,7 @@ export function LessonRoomClient({
 
   return (
     <>
-      <link rel="stylesheet" href="/lesson/lesson-room.css" />
+      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260908-share" />
       <style dangerouslySetInnerHTML={{__html:CSS}} />
       <div className="lr">
         {/* Header */}

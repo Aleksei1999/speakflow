@@ -42,7 +42,7 @@ export default function LectureCallClient({ lectureId, title }: Props) {
 
   return (
     <>
-      <link rel="stylesheet" href="/lesson/lesson-room.css" />
+      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260908-share" />
       <div className="lvr">
         <div className="lvr-topbar">
           <a href="/" className="lvr-logo" aria-label="Raw English">

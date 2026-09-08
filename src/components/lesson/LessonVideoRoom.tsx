@@ -62,8 +62,8 @@ export default function LessonVideoRoom({
   const [fsSupported, setFsSupported] = useState(false)
   // in-call чат: 'closed' | 'open' | 'min' (свёрнут в pill в углу).
   const [chatState, setChatState] = useState<"closed" | "open" | "min">("closed")
-  // Раскрыт ли чат на весь экран (variant="modal" вместо "dock").
-  const [chatExpanded, setChatExpanded] = useState(false)
+  // По макету 2522:6444 чат в комнате — полная модалка 1228×815 без кнопок в шапке:
+  // закрывается кликом по фону, ESC или кнопкой «чат» на панели.
 
   // Собеседник по чату: учитель видит ученика, ученик — учителя.
   const peer = isTeacher
@@ -76,17 +76,36 @@ export default function LessonVideoRoom({
     setFsSupported(typeof document !== "undefined" && !!document.fullscreenEnabled)
   }, [])
 
+  // Макет комнаты — 1441×900 (Figma 2522:1827). Холст масштабируем под окно по меньшей стороне
+  // и центрируем, чтобы на широких/узких экранах ничего не растягивалось (как --raw2-zoom в кабинете).
+  const [roomZoom, setRoomZoom] = useState(1)
+  useEffect(() => {
+    const apply = () => setRoomZoom(Math.max(0.4, Math.min(window.innerWidth / 1441, window.innerHeight / 900)))
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [])
+
   // Отсылаем маркер «звонок начался» одной стороной (учителем) — иначе
   // при заходе обоих участников получим два системных сообщения подряд.
   // Ученик получит pill через realtime как обычное сообщение.
+  // Один маркер на звонок: перезагрузка страницы / повторный вход в ту же комнату в той же вкладке
+  // не плодит пилюли «Звонок» (ключ в sessionStorage по id урока).
   const callStartSentRef = useRef(false)
   useEffect(() => {
     if (!canChat || !isTeacher || callStartSentRef.current) return
     callStartSentRef.current = true
+    const key = `lvr:call-started:${lessonId}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, "1")
+    } catch {
+      /* private mode — шлём как раньше */
+    }
     sendChatMessage({ peerId: peer.id, text: CALL_MARKERS.started }).catch((e) =>
       console.warn("[lvr] send call:started failed", e),
     )
-  }, [canChat, isTeacher, peer.id])
+  }, [canChat, isTeacher, peer.id, lessonId])
 
   const callEndSentRef = useRef(false)
   const doLeave = () => {
@@ -94,6 +113,7 @@ export default function LessonVideoRoom({
     setLkHangupSignal((v) => v + 1)
     if (canChat && isTeacher && !callEndSentRef.current) {
       callEndSentRef.current = true
+      try { sessionStorage.removeItem(`lvr:call-started:${lessonId}`) } catch { /* ignore */ }
       sendChatMessage({ peerId: peer.id, text: CALL_MARKERS.ended }).catch((e) =>
         console.warn("[lvr] send call:ended failed", e),
       )
@@ -125,8 +145,9 @@ export default function LessonVideoRoom({
 
   return (
     <>
-      <link rel="stylesheet" href="/lesson/lesson-room.css" />
+      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260908-share" />
       <div className="lvr">
+       <div className="lvr-canvas" style={{ zoom: roomZoom }}>
         <div className="lvr-topbar">
           <a href="/" className="lvr-logo" aria-label="Raw English">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -195,6 +216,7 @@ export default function LessonVideoRoom({
             Чат · {peer.name}
           </button>
         )}
+       </div>
       </div>
 
       {chatState === "open" && canChat && (
@@ -206,11 +228,9 @@ export default function LessonVideoRoom({
           peerAvatar={peer.avatar}
           currentUserId={userId}
           currentRole={currentRole}
-          variant={chatExpanded ? "modal" : "dock"}
+          variant="modal"
           hideCallActions
-          onMinimize={() => setChatState("min")}
-          onToggleExpand={() => setChatExpanded((v) => !v)}
-          onClose={() => { setChatExpanded(false); setChatState("closed") }}
+          onClose={() => setChatState("closed")}
         />
       )}
 

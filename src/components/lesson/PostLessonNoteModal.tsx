@@ -16,17 +16,10 @@ interface Props {
   onSaved?: () => void
 }
 
+// Крестик — экспорт Figma Group 130 (2522:3982), общий с модалками кабинета
 function CloseIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
-      <path
-        d="M2 2l16 16M18 2L2 18"
-        stroke="#1E1E1E"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
 }
 
 function initialsOf(name: string) {
@@ -95,8 +88,9 @@ export default function PostLessonNoteModal({
 
   return createPortal(
     <div className="vc-note-backdrop" onClick={onClose}>
+      {/* Figma 2522:3976 «После урока»: 686×609 — раскладка в .vc-note--post */}
       <div
-        className="vc-note"
+        className="vc-note vc-note--post"
         role="dialog"
         aria-modal="true"
         aria-label="О последнем уроке"
@@ -129,20 +123,21 @@ export default function PostLessonNoteModal({
         <textarea
           className="vc-note-area"
           maxLength={500}
-          placeholder="добавьте комментарий&#10;о прошедшем уроке"
+          placeholder={"добавьте комментарий\nо прошедшем уроке"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           disabled={saving}
         />
         <div className="vc-note-counter">{note.length}/500</div>
 
+        {/* busy: чёрная с лаймовым текстом, подпись не меняется */}
         <button
           type="button"
-          className="vc-note-btn"
+          className={`vc-note-btn${saving ? " busy" : ""}`}
           onClick={submit}
           disabled={saving}
         >
-          {saving ? "Сохраняем..." : "Готово"}
+          Готово
         </button>
       </div>
     </div>,

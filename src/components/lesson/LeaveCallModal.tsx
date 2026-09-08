@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 interface Props {
@@ -11,17 +11,10 @@ interface Props {
   onEndForAll: () => void
 }
 
+// Крестик — экспорт Figma Group 130 (2522:3053), общий с модалками кабинета
 function CloseIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden>
-      <path
-        d="M2 2l16 16M18 2L2 18"
-        stroke="#1E1E1E"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
 }
 
 export default function LeaveCallModal({
@@ -31,10 +24,22 @@ export default function LeaveCallModal({
   onLeave,
   onEndForAll,
 }: Props) {
+  // Figma 2522:3056: после выбора выбранная кнопка остаётся яркой, вторая бледнеет (50%);
+  // действие выполняем с небольшой задержкой, чтобы состояние было видно
+  const [choice, setChoice] = useState<"leave" | "end" | null>(null)
+  const timer = useRef<number | null>(null)
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+  const choose = (kind: "leave" | "end", action: () => void) => {
+    if (choice) return
+    setChoice(kind)
+    timer.current = window.setTimeout(() => { setChoice(null); action() }, 350)
+  }
+  const handleClose = () => { setChoice(null); onClose() }
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") { setChoice(null); onClose() }
     }
     document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
@@ -48,7 +53,7 @@ export default function LeaveCallModal({
   if (!open || typeof document === "undefined") return null
 
   return createPortal(
-    <div className="vc-leave-backdrop" onClick={onClose}>
+    <div className="vc-leave-backdrop" onClick={handleClose}>
       <div
         className="vc-leave"
         role="dialog"
@@ -60,22 +65,24 @@ export default function LeaveCallModal({
           type="button"
           className="vc-leave-close"
           aria-label="Закрыть"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <CloseIcon />
         </button>
         <button
           type="button"
-          className="vc-leave-btn vc-leave-btn--leave"
-          onClick={onLeave}
+          className={`vc-leave-btn vc-leave-btn--leave${choice && choice !== "leave" ? " vc-leave-btn--dim" : ""}`}
+          onClick={() => choose("leave", onLeave)}
+          disabled={!!choice}
         >
           Покинуть звонок
         </button>
         {canEndForAll && (
           <button
             type="button"
-            className="vc-leave-btn vc-leave-btn--end"
-            onClick={onEndForAll}
+            className={`vc-leave-btn vc-leave-btn--end${choice && choice !== "end" ? " vc-leave-btn--dim" : ""}`}
+            onClick={() => choose("end", onEndForAll)}
+            disabled={!!choice}
           >
             Завершить у всех
           </button>

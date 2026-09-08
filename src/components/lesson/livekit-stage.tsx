@@ -525,7 +525,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-74.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">{showCopied ? "скопировано ✓" : "поделиться ссылкой"}</span>
+          <span className="vc-btn-tip" style={{ minWidth: 247 }}>{showCopied ? "скопировано ✓" : "поделиться ссылкой"}</span>
         </button>
         <button
           type="button"
@@ -535,7 +535,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-75.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">настройки</span>
+          <span className="vc-btn-tip" style={{ minWidth: 153 }}>настройки</span>
         </button>
       </div>
 
@@ -555,7 +555,7 @@ function LiveKitControls({
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/lesson/icons/btn-76.svg" alt="" aria-hidden />
           )}
-          <span className="vc-btn-tip">камера</span>
+          <span className="vc-btn-tip" style={{ minWidth: 123 }}>камера</span>
         </button>
         <button
           type="button"
@@ -573,7 +573,7 @@ function LiveKitControls({
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/lesson/icons/btn-77.svg" alt="" aria-hidden />
           )}
-          <span className="vc-btn-tip">звук</span>
+          <span className="vc-btn-tip" style={{ minWidth: 123 }}>звук</span>
         </button>
         <button
           type="button"
@@ -583,7 +583,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-78.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">заметки</span>
+          <span className="vc-btn-tip" style={{ minWidth: 123 }}>заметки</span>
         </button>
         <button
           type="button"
@@ -594,7 +594,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-79.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">чат</span>
+          <span className="vc-btn-tip" style={{ minWidth: 123 }}>чат</span>
         </button>
         <button
           type="button"
@@ -604,7 +604,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-80.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">демонстрация экрана</span>
+          <span className="vc-btn-tip" style={{ minWidth: 251 }}>демонстрация экрана</span>
         </button>
       </div>
 
@@ -617,7 +617,7 @@ function LiveKitControls({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lesson/icons/btn-81.svg" alt="" aria-hidden />
-          <span className="vc-btn-tip">сбросить звонок</span>
+          <span className="vc-btn-tip" style={{ minWidth: 215 }}>сбросить звонок</span>
         </button>
       </div>
     </div>
