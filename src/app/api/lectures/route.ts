@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listLecturesForCurrentUser } from '@/lib/lectures/list'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { lectureHostUserId, pushLectureToGoogle } from '@/lib/google-calendar/sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +99,16 @@ export async function POST(request: NextRequest) {
       if (storagePath) await admin.storage.from(BUCKET).remove([storagePath]).catch(() => {})
       console.error('[lectures POST] insert', insErr)
       return NextResponse.json({ error: 'Ошибка сохранения' }, { status: 500 })
+    }
+
+    // Лекция в Google-календарь ведущего (учитель с таким именем и подключённым календарём), fail-soft
+    try {
+      const hostUserId = await lectureHostUserId(hostName)
+      if (hostUserId) {
+        await pushLectureToGoogle(hostUserId, { id: inserted.id, title, host_name: hostName, scheduled_at: new Date(scheduledAt).toISOString(), duration_minutes: duration, tag })
+      }
+    } catch (e) {
+      console.error('[lectures POST] Google push failed', e)
     }
 
     return NextResponse.json({ ok: true, id: inserted.id })

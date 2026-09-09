@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchChatList } from "@/lib/chat/list"
+import { syncStaleTeachers, withTimeout } from "@/lib/google-calendar/sync"
 import AdminRawDashboard from "./AdminRawDashboard"
 
 export const dynamic = "force-dynamic"
@@ -224,6 +225,9 @@ export default async function AdminDashboardFullPage() {
     applications = [...trialApps, ...leadApps].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt),
     )
+
+    // Google → платформа для всех подключённых учителей, у кого синхронизация старше 10 минут (не дольше 5 с)
+    await withTimeout(syncStaleTeachers(), 5000)
 
     // Ближайшие уроки (все педагоги, статус scheduled/confirmed).
     const now = new Date().toISOString()

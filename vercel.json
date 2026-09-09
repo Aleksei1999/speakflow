@@ -5,7 +5,7 @@
   "crons": [
     {
       "path": "/api/internal/cron/google-calendar-sync",
-      "schedule": "0 3 * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/internal/cron/purge-banned",

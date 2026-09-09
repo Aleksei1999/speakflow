@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
 import { getCachedTeacherStudents } from "@/lib/cache/dashboard"
+import { syncIfStale, withTimeout } from "@/lib/google-calendar/sync"
 import { getCachedTeacherDashboard } from "@/lib/dashboard/teacher"
 import { createAdminClient } from "@/lib/supabase/admin"
 import TeacherRawDashboard from "./TeacherRawDashboard"
@@ -94,6 +95,9 @@ export default async function TeacherNewPage() {
   let dashSnap: Awaited<ReturnType<typeof getCachedTeacherDashboard>> = null
   let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
   let initialApplications: Awaited<ReturnType<typeof fetchTrialApplications>> = []
+  // Google → платформа «по требованию»: подтягиваем изменения из календаря учителя, если прошло > 10 минут
+  // (не ждём дольше 4 с — иначе синхронизация продолжится в фоне, а страница отрендерится с прежними данными)
+  await withTimeout(syncIfStale(user.id), 4000)
   try {
     ;[initialSchedule, calendarConnection, initialRequests, dashSnap, initialChats, initialApplications] = await Promise.all([
       fetchTeacherSchedule(),

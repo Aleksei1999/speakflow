@@ -230,6 +230,18 @@ export async function createLesson(
           console.error('[createLesson] persist google_event_id failed', upd.error)
         }
       }
+      // И в личный календарь ученика, если он подключён
+      const stuConn = await hasGoogleCalendar(student.id)
+      if (stuConn.connected) {
+        const { data: teaProf } = await admin.from('profiles').select('full_name').eq('id', auth.userId).maybeSingle()
+        const studentEventId = await pushEventToGoogle(student.id, {
+          summary: `Урок с ${(teaProf as { full_name: string | null } | null)?.full_name || 'преподавателем'}`,
+          startISO,
+          endISO,
+          extendedProps: { source: 'raw-english', lessonId, side: 'student' },
+        })
+        if (studentEventId) await admin.from('lessons').update({ student_google_event_id: studentEventId }).eq('id', lessonId)
+      }
     } catch (e) {
       // Не откатываем DB-инсерт: логируем и продолжаем.
       console.error('[createLesson] Google push failed', e)

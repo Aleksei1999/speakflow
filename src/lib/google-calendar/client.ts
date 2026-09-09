@@ -267,6 +267,12 @@ export async function listEvents(
   userId: string,
   timeMin: Date,
   timeMax: Date,
+  opts: {
+    /** Вернуть и отменённые/удалённые события (status='cancelled') — нужно для обратной синхронизации удалений. */
+    includeCancelled?: boolean
+    /** Фильтр по private extendedProperty, например `lectureId=<uuid>` — так находим событие лекции без колонки в БД. */
+    privateExtendedProperty?: string
+  } = {},
 ): Promise<GoogleCalendarEvent[]> {
   const auth = await getAccessToken(userId)
   if (!auth) return []
@@ -278,6 +284,8 @@ export async function listEvents(
     orderBy: 'startTime',
     maxResults: '250',
   })
+  if (opts.includeCancelled) params.set('showDeleted', 'true')
+  if (opts.privateExtendedProperty) params.set('privateExtendedProperty', opts.privateExtendedProperty)
   const url = `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(auth.calendarId)}/events?${params}`
 
   const res = await fetch(url, {
@@ -290,7 +298,7 @@ export async function listEvents(
     throw new Error(`Google Calendar events.list failed (${res.status}): ${text}`)
   }
   const json = (await res.json()) as { items?: GoogleCalendarEvent[] }
-  return (json.items ?? []).filter((e) => e.status !== 'cancelled' && !!e.id)
+  return (json.items ?? []).filter((e) => !!e.id && (opts.includeCancelled || e.status !== 'cancelled'))
 }
 
 /**

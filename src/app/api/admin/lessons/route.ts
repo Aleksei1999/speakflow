@@ -12,6 +12,7 @@ import {
   invalidateTeacherDashboard,
   invalidateStudentDashboard,
 } from '@/lib/cache/invalidate'
+import { hasGoogleCalendar, pushEventToGoogle } from '@/lib/google-calendar/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +99,35 @@ export async function POST(request: NextRequest) {
     if (insErr || !ins?.id) {
       console.error('[admin/lessons][POST] insert', insErr)
       return NextResponse.json({ error: 'Не удалось создать урок' }, { status: 500 })
+    }
+
+    // Урок, созданный админом, тоже кладём в Google учителя и ученика (fail-soft, как при бронировании)
+    try {
+      const endISO = new Date(startMs + duration * 60_000).toISOString()
+      const { data: stuProf } = await admin.from('profiles').select('full_name, email').eq('id', student_id).maybeSingle()
+      const { data: teaProf } = await admin.from('profiles').select('full_name').eq('id', tp.user_id).maybeSingle()
+      const [teacherConn, studentConn] = await Promise.all([hasGoogleCalendar(tp.user_id), hasGoogleCalendar(student_id)])
+      if (teacherConn.connected) {
+        const eventId = await pushEventToGoogle(tp.user_id, {
+          summary: `Урок с ${stuProf?.full_name || 'учеником'}`,
+          startISO,
+          endISO,
+          attendees: !studentConn.connected && stuProf?.email ? [{ email: stuProf.email, displayName: stuProf.full_name || undefined }] : undefined,
+          extendedProps: { source: 'raw-english', lessonId: ins.id, side: 'teacher' },
+        })
+        if (eventId) await admin.from('lessons').update({ google_event_id: eventId }).eq('id', ins.id)
+      }
+      if (studentConn.connected) {
+        const studentEventId = await pushEventToGoogle(student_id, {
+          summary: `Урок с ${teaProf?.full_name || 'преподавателем'}`,
+          startISO,
+          endISO,
+          extendedProps: { source: 'raw-english', lessonId: ins.id, side: 'student' },
+        })
+        if (studentEventId) await admin.from('lessons').update({ student_google_event_id: studentEventId }).eq('id', ins.id)
+      }
+    } catch (e) {
+      console.error('[admin/lessons][POST] Google push failed', e)
     }
 
     // Инвалидируем кэш обоих сторон

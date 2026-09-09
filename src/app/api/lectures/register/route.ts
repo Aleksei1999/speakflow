@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { hasGoogleCalendar } from '@/lib/google-calendar/client'
+import { pushLectureToGoogle } from '@/lib/google-calendar/sync'
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +36,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, alreadyRegistered: true })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Лекция в личный Google-календарь ученика, если он подключён (fail-soft)
+  try {
+    const { data: lec } = await (supabase as any)
+      .from("lectures")
+      .select("id, title, host_name, scheduled_at, duration_minutes, tag")
+      .eq("id", body.lectureId)
+      .maybeSingle()
+    if (lec && (await hasGoogleCalendar(user.id)).connected) await pushLectureToGoogle(user.id, lec)
+  } catch (e) {
+    console.error("[lectures/register] Google push failed", e)
   }
 
   return NextResponse.json({ ok: true })
