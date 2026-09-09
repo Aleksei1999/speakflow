@@ -772,7 +772,7 @@ export default function StudentRawDashboard({
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-notest" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
       {/* FilesModal — модалка «Библиотека / ДЗ». Без стилей плашки папок валятся в поток документа. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />

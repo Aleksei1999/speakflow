@@ -270,13 +270,14 @@
   border-radius: 29.5px;
   padding: 41px 25px 41px 25px;
   display: flex; flex-direction: column;
-  gap: 16px;
+  gap: 15px; /* пункт 21 + 15 = шаг 36 */
   z-index: 20;
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
   white-space: pre-line;
 }
 .tr-sort-opt {
   display: flex; align-items: flex-start; gap: 15px;
+  min-height: 21px;
   background: transparent !important;
   color: #1e1e1e !important;
   font-family: 'Inter', sans-serif;
@@ -287,17 +288,22 @@
   text-align: left;
   padding: 0;
 }
+/* Figma 2522:3805 «Сортировать (после нажатия)»: пункты с шагом 36 (41/77/113), кружок 21 на x 25 — белый 50% у невыбранных,
+   тёмный с лаймовой галочкой 9×7 на (6,7) у выбранного; текст невыбранных rgba(30,30,30,.5) */
 .tr-sort-opt .dot {
+  position: relative;
   flex: 0 0 21px;
   width: 21px; height: 21px;
   border-radius: 50%;
-  background: #fff;
-  margin-top: 1px;
-  transition: box-shadow .15s;
+  background: rgba(255, 255, 255, 0.5);
+  transition: background .15s;
 }
-.tr-sort-opt.on .dot { box-shadow: inset 0 0 0 6px #1e1e1e; }
+.tr-sort-opt:not(.on) { color: rgba(30, 30, 30, 0.5) !important; }
+.tr-sort-opt.on .dot { background: #1E1E1E; }
+.tr-sort-opt.on .dot::after { content: ''; position: absolute; left: 5px; top: 6px; width: 11px; height: 9px; background: url('/dashboard/ic-sort-check.svg') no-repeat 0 0 / 11px 9px; }
 .tr-sort-opt .lbl { flex: 1; white-space: pre-line; }
-.tr-sort-opt:hover .dot { box-shadow: inset 0 0 0 3px #1e1e1e; }
+.tr-sort-opt:hover:not(.on) .dot { background: rgba(255, 255, 255, 0.8); }
+.tr-sort-opt:hover:not(.on) { color: rgba(30, 30, 30, 0.75) !important; }
 
 /* список: область 1156 (54…1210), сетка 1119 (до 1173), скроллбар 7×495 на 1203 */
 .tr-students-list { position: relative; width: 1156px; height: 495px; }

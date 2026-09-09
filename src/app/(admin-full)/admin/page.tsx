@@ -30,7 +30,8 @@ export default async function AdminDashboardFullPage() {
     redirect("/login")
   }
 
-  let teachers: Array<{ id: string; name: string; avatar: string | null }> = []
+  let teachers: Array<{ id: string; name: string; avatar: string | null
+    bio?: string | null }> = []
   let students: Array<{
     id: string
     name: string
@@ -61,13 +62,21 @@ export default async function AdminDashboardFullPage() {
     // Teachers list — profiles.role = 'teacher'.
     const { data: tRows } = await admin
       .from("profiles")
-      .select("id, full_name, avatar_url")
+      .select("id, full_name, avatar_url, is_active")
       .eq("role", "teacher")
       .limit(12)
+    // bio («о преподавателе») живёт в teacher_profiles — показываем на карточке и даём редактировать админу
+    const tIds = ((tRows ?? []) as any[]).map((r) => r.id)
+    const { data: tpRows } = tIds.length
+      ? await admin.from("teacher_profiles").select("user_id, bio").in("user_id", tIds)
+      : { data: [] as any[] }
+    const bioByUser = new Map<string, string | null>(((tpRows ?? []) as any[]).map((r) => [r.user_id, r.bio ?? null]))
     teachers = (tRows ?? []).map((r: any) => ({
       id: r.id,
       name: r.full_name || "Учитель",
       avatar: r.avatar_url ?? null,
+      bio: bioByUser.get(r.id) ?? null,
+      banned: r.is_active === false,
     }))
 
     // Students list — profiles.role = 'student' + user_progress.english_level.

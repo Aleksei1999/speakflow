@@ -1109,7 +1109,7 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-notest" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}

@@ -299,7 +299,7 @@
 .ad-lesson-edit {
   flex: 0 0 auto;
   width: 44px; height: 44px;
-  margin-right: 13px; /* 800 + 44 + 13 = 857 */
+  margin-right: 0; /* без «начать звонок» карандаш стоит там, где был правый край кнопки: 59 от края плашки */
   padding: 0; border: 0;
   border-radius: 50%;
   background: #DFED8C;
@@ -1819,3 +1819,25 @@
 .ad .tr .ad-hw-picker-close { position: absolute; top: 31px; right: 33.66px; width: 13.34px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 4; }
 .ad .tr .ad-hw-picker-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
 .ad .tr .ad-hw-picker-close:hover { opacity: .7; }
+
+/* Карточка преподавателя: имя и описание редактируются прямо в модалке (по просьбе заказчика 2026-09-09) —
+   поля выглядят как текст; при наведении/фокусе мягкая подсветка вокруг текста (без линий, чтобы не упираться в цифры);
+   описание подстраивается по высоте под текст (JS), не выше 187 */
+.ad .ad-tmodal-edit { display: block; box-sizing: border-box; border: 0; border-radius: 10px; outline: 0; background: transparent; color: #fff; resize: none; padding: 0; margin: 0; font-family: 'Inter', sans-serif; cursor: text; box-shadow: none; transition: box-shadow .15s, background .15s; }
+.ad .ad-tmodal-edit:hover { background: rgba(255, 255, 255, .08); box-shadow: 0 0 0 6px rgba(255, 255, 255, .08); }
+.ad .ad-tmodal-edit:focus { background: rgba(223, 237, 140, .16); box-shadow: 0 0 0 6px rgba(223, 237, 140, .16); }
+.ad .ad-tmodal-edit::placeholder { color: rgba(255, 255, 255, .45); }
+.ad input.ad-tmodal-name { height: 62.4px; line-height: 0.975; }
+.ad textarea.ad-tmodal-desc { height: auto; min-height: 23.4px; max-height: 187px; overflow: hidden; line-height: 0.975; }
+.ad .ad-tmodal-save { position: absolute; left: 458px; top: 340px; font-size: 13px; letter-spacing: -0.3px; color: rgba(255, 255, 255, .6); }
+.ad .ad-tmodal-save--saved { color: #DFED8C; }
+.ad .ad-tmodal-save--error { color: #ff9c9c; }
+
+/* Отключение от платформы (бан) из карточки преподавателя: кнопка возврата — белая обводка; подпись со сроком удаления под кнопками;
+   отключённый учитель в списке — приглушённая карточка с пометкой */
+.ad .ad-tmodal-btn--off-active { background: transparent; color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .6); }
+.ad .ad-tmodal-btn--off-active:hover { background: rgba(255, 255, 255, .08); filter: none; }
+.ad .ad-tmodal-btn:disabled { opacity: .6; cursor: progress; }
+.ad .ad-tmodal-banned { position: absolute; left: 458px; top: 695px; width: 297px; font-family: 'Inter', sans-serif; font-size: 13px; letter-spacing: -0.3px; line-height: 1.15; color: #ff9c9c; text-align: center; }
+.ad-tcards .ad-teacher--banned .ad-teacher-photo, .ad-tcards .ad-teacher--banned .ad-teacher-body { opacity: .45; }
+.ad-tcards .ad-teacher-banned { position: absolute; left: 27px; top: 27px; z-index: 2; padding: 0 16px; height: 36px; display: inline-flex; align-items: center; border-radius: 18px; background: #CC3A3A; color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.8px; }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
 
 const Q_PER_PAGE_ADMIN = 3
@@ -210,7 +210,9 @@ function pluralize(n: number, one: string, few: string, many: string) {
 
 interface AdminRawDashboardProps {
   adminUserId?: string
-  teachers?: Array<{ id: string; name: string; avatar: string | null }>
+  teachers?: Array<{ id: string; name: string; avatar: string | null
+    bio?: string | null
+    banned?: boolean }>
   students?: Array<{
     id: string
     name: string
@@ -548,8 +550,14 @@ export default function AdminRawDashboard({
   )
 
   // Fall back to mock if no real data (preview mode).
-  const teachersData =
+  // Правки из карточки преподавателя (имя / описание / фото) — сразу в карточках, без перезагрузки
+  const [teacherEdits, setTeacherEdits] = useState<Record<string, { name?: string; bio?: string | null; avatar?: string | null; banned?: boolean }>>({})
+  const teachersBase =
     teachers && teachers.length > 0 ? teachers : TEACHERS_MOCK
+  const teachersData = teachersBase.map((t) => {
+    const e = teacherEdits[t.id]
+    return e ? { ...t, name: e.name ?? t.name, bio: e.bio !== undefined ? e.bio : (t as { bio?: string | null }).bio, avatar: e.avatar !== undefined ? e.avatar : t.avatar, banned: e.banned !== undefined ? e.banned : (t as { banned?: boolean }).banned } : t
+  })
   const studentsData =
     students && students.length > 0 ? students : STUDENTS_MOCK
   // Только реальные заявки — никаких моков (иначе кажется что бэк не работает).
@@ -681,7 +689,7 @@ export default function AdminRawDashboard({
     if (!sortOpen) return
     const onDoc = (e: MouseEvent) => {
       const t = e.target as HTMLElement
-      if (!t.closest?.(".ad-sort-wrap")) setSortOpen(false)
+      if (!t.closest?.(".tr-sort-wrap")) setSortOpen(false) // попап на разметке учителя: .tr-sort-wrap, иначе закрывался до клика по пункту
     }
     document.addEventListener("mousedown", onDoc)
     return () => document.removeEventListener("mousedown", onDoc)
@@ -701,11 +709,18 @@ export default function AdminRawDashboard({
     return { id: l.id, time, date, label, scheduledAt: l.scheduledAt, teacherUserId: l.teacherUserId ?? null, studentId: l.studentId ?? null }
   })
   const scheduleView = allScheduleView.slice(0, 3)
+  // Figma 2522:7322 «Чат с учеником» (админ): кнопки видео/аудио ведут в комнату ближайшего урока ученика; без урока — неактивны
+  const lessonCallHrefFor = (studentId: string): string | null => {
+    const now = Date.now()
+    const next = allScheduleView
+      .filter((l) => !String(l.id).startsWith("lec:") && l.studentId === studentId && new Date(l.scheduledAt).getTime() >= now - 60 * 60 * 1000)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0]
+    return next ? `/lesson/${String(next.id)}` : null
+  }
   // Плашка урока/лекции (панель и полный календарь).
   const renderScheduleRow = (l: (typeof allScheduleView)[number]) => {
                   const isLecture = String(l.id).startsWith("lec:")
                   const rawId = isLecture ? String(l.id).slice(4) : String(l.id)
-                  const roomHref = isLecture ? `/lecture/${rawId}` : `/lesson/${rawId}`
                   return (
                     <div className="ad-lesson" key={l.id}>
                       <div className="ad-lesson-time">
@@ -723,13 +738,7 @@ export default function AdminRawDashboard({
                         {/* карандаш — экспорт Figma 4027:221 (Group 193), лаймовый круг 44 задаётся стилем */}
                         <img src="/dashboard/ic-edit-pencil.svg" alt="" aria-hidden width={24.44} height={24.42} />
                       </button>
-                      <a
-                        className="ad-lesson-call"
-                        href={roomHref}
-                        title="Присоединиться к звонку (комната откроется за 5 мин до начала)"
-                      >
-                        начать звонок
-                      </a>
+                      {/* «начать звонок» убрана по просьбе заказчика (2026-09-09): админ не участвует в звонках */}
                     </div>
                   )
   }
@@ -739,7 +748,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="/dashboard/raw-admin.css?v=20260909-hw"
+        href="/dashboard/raw-admin.css?v=20260909-ban"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
@@ -748,7 +757,7 @@ export default function AdminRawDashboard({
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-notest" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
 
       {/* ================== HERO: nav + dark card holding SCHEDULE ================== */}
       <div className="ad-hero">
@@ -870,7 +879,8 @@ export default function AdminRawDashboard({
                           role: c.peerRole,
                           name: c.peerName,
                           avatar: c.peerAvatar,
-                          level: c.peerLevel ?? undefined,
+                          // уровень для плашки в шапке чата (2522:7322): из списка чатов, иначе из списка учеников
+                          level: c.peerLevel ?? (c.peerRole === "student" ? sortedStudents.find((s) => s.id === c.peerId)?.level : undefined) ?? undefined,
                         })
                       }}
                     >
@@ -976,12 +986,13 @@ export default function AdminRawDashboard({
               .slice(teacherPage, teacherPage + TEACHERS_PER_PAGE)
               .map((t) => (
                 <div
-                  className="ad-teacher"
+                  className={`ad-teacher${(t as { banned?: boolean }).banned ? " ad-teacher--banned" : ""}`}
                   key={t.id}
                   role="button"
                   tabIndex={0}
                   onClick={() => setTeacherModal({ id: t.id, name: t.name, avatar: t.avatar })}
                 >
+                  {(t as { banned?: boolean }).banned && <div className="ad-teacher-banned">отключён</div>}
                   <div className="ad-teacher-photo">
                     <Avatar name={t.name} src={t.avatar} />
                   </div>
@@ -992,11 +1003,7 @@ export default function AdminRawDashboard({
                       ))}
                     </div>
                     <div className="ad-teacher-meta">о преподавателе</div>
-                    <div className="ad-teacher-desc">
-                      Сколько учеников,<br />
-                      какой доход, какая маржа,<br />
-                      сколько уроков...
-                    </div>
+                    <div className="ad-teacher-desc">{nb((t as { bio?: string | null }).bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
                     <button
                       type="button"
                       className="ad-teacher-edit"
@@ -1314,6 +1321,7 @@ export default function AdminRawDashboard({
           peerAvatar={chatPeer.avatar ?? undefined}
           currentUserId={adminUserId}
           currentRole="admin"
+          callHref={chatPeer.role === "student" ? lessonCallHrefFor(chatPeer.id) : null}
           onClose={() => setChatPeer(null)}
         />
       )}
@@ -1483,6 +1491,7 @@ export default function AdminRawDashboard({
           teacherId={teacherModal.id}
           fallbackName={teacherModal.name}
           fallbackAvatar={teacherModal.avatar}
+          onSaved={(patch) => setTeacherEdits((prev) => ({ ...prev, [teacherModal.id]: { ...prev[teacherModal.id], ...patch } }))}
           onClose={() => setTeacherModal(null)}
         />
       )}
@@ -1515,7 +1524,7 @@ export default function AdminRawDashboard({
                 <img className="ad-assign-arrow-glyph" src="/dashboard/ic-arrow-right.svg" alt="" aria-hidden width={37} height={36.82} />
               </button>
               <div className="ad-teachers">
-                {(teachersData ?? []).slice(assignPage, assignPage + TEACHERS_PER_PAGE).map((t) => {
+                {(teachersData ?? []).filter((t) => !(t as { banned?: boolean }).banned).slice(assignPage, assignPage + TEACHERS_PER_PAGE).map((t) => {
                   const picked = assignPickedTeacherId === t.id
                   return (
                     <div className="ad-teacher ad-assign-card" key={t.id}>
@@ -1529,11 +1538,7 @@ export default function AdminRawDashboard({
                           ))}
                         </div>
                         <div className="ad-teacher-meta">о преподавателе</div>
-                        <div className="ad-teacher-desc">
-                          Сколько учеников,<br />
-                          какой доход, какая маржа,<br />
-                          сколько уроков...
-                        </div>
+                        <div className="ad-teacher-desc">{nb((t as { bio?: string | null }).bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
                       </div>
                       <button
                         type="button"
@@ -1911,11 +1916,14 @@ function TeacherDetailModal({
   fallbackName,
   fallbackAvatar,
   onClose,
+  onSaved,
 }: {
   teacherId: string
   fallbackName: string
   fallbackAvatar: string | null
   onClose: () => void
+  /** Сообщает родителю сохранённые правки, чтобы карточки в списке обновились сразу */
+  onSaved?: (patch: { name?: string; bio?: string | null; avatar?: string | null; banned?: boolean }) => void
 }) {
   const [data, setData] = useState<{
     full_name: string | null
@@ -1925,10 +1933,67 @@ function TeacherDetailModal({
     bio: string | null
     lessons_this_month: number
     lessons_this_year: number
+    banned_at?: string | null
   } | null>(null)
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  // Редактирование имени и описания по кнопке-карандашу: поля выглядят как текст, сохраняются по уходу с поля
+  const [nameDraft, setNameDraft] = useState<string | null>(null)
+  const [bioDraft, setBioDraft] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  // «Отключить от платформы» = бан: вход закрыт, через 30 дней без возврата аккаунт удаляется кроном
+  const [banBusy, setBanBusy] = useState(false)
+  const bannedAt = data?.banned_at ?? null
+  const purgeDaysLeft = bannedAt ? Math.max(0, 30 - Math.floor((Date.now() - new Date(bannedAt).getTime()) / 86400000)) : null
+  async function toggleBan() {
+    const banning = !bannedAt
+    const ok = window.confirm(banning
+      ? `Отключить ${name} от платформы? Учитель не сможет войти. Если не вернуть его в течение 30 дней, аккаунт будет удалён.`
+      : `Вернуть ${name} на платформу?`)
+    if (!ok) return
+    setBanBusy(true)
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ banned: banning }) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`)
+      const at = banning ? new Date().toISOString() : null
+      setData((d) => (d ? { ...d, banned_at: at } : d))
+      onSaved?.({ banned: banning })
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Не удалось изменить статус")
+    } finally {
+      setBanBusy(false)
+    }
+  }
+  // высота описания = высоте текста (до 187), чтобы подсветка поля не наезжала на цифры ниже
+  const bioRef = useRef<HTMLTextAreaElement | null>(null)
+  const bioValue = bioDraft ?? (data?.bio ?? "")
+  useLayoutEffect(() => {
+    const el = bioRef.current
+    if (!el) return
+    el.style.height = "0px"
+    el.style.height = `${Math.min(187, el.scrollHeight)}px`
+  }, [bioValue])
+  async function saveField(field: "full_name" | "bio", value: string) {
+    setSaveState("saving")
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`)
+      setData((d) => (d ? { ...d, [field]: value } : d))
+      onSaved?.(field === "full_name" ? { name: value } : { bio: value })
+      setSaveState("saved")
+      setTimeout(() => setSaveState("idle"), 1500)
+    } catch (err) {
+      setSaveState("error")
+      alert(err instanceof Error ? err.message : "Не удалось сохранить")
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -1967,6 +2032,7 @@ function TeacherDetailModal({
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setAvatarOverride(url)
+      onSaved?.({ avatar: url })
     } catch (err) {
       alert(err instanceof Error ? err.message : "Ошибка загрузки")
     } finally {
@@ -2012,9 +2078,33 @@ function TeacherDetailModal({
           <div className="ad-tmodal-value">••••••••</div>
         </div>
 
-        <div className="ad-tmodal-name">{name}</div>
+        <input
+          className="ad-tmodal-name ad-tmodal-edit"
+          value={nameDraft ?? name}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={() => { const v = (nameDraft ?? name).trim(); setNameDraft(null); if (v && v !== name) void saveField("full_name", v) }}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }}
+          aria-label="Имя преподавателя"
+          title="Нажмите, чтобы изменить имя"
+          maxLength={120}
+        />
         <div className="ad-tmodal-meta">о преподавателе</div>
-        <div className="ad-tmodal-desc">{nb(data?.bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
+        <textarea
+          ref={bioRef}
+          className="ad-tmodal-desc ad-tmodal-edit"
+          value={bioValue}
+          placeholder="Сколько учеников, какой доход, какая маржа, сколько уроков..."
+          onChange={(e) => setBioDraft(e.target.value.slice(0, 500))}
+          onBlur={() => { const v = (bioDraft ?? data?.bio ?? "").trim(); setBioDraft(null); if (v !== (data?.bio ?? "")) void saveField("bio", v) }}
+          aria-label="Описание преподавателя"
+          title="Нажмите, чтобы изменить описание"
+          rows={4}
+        />
+        {saveState !== "idle" && (
+          <div className={`ad-tmodal-save ad-tmodal-save--${saveState}`} role="status">
+            {saveState === "saving" ? "Сохраняем…" : saveState === "saved" ? "Сохранено" : "Ошибка"}
+          </div>
+        )}
 
         <div className="ad-tmodal-stat ad-tmodal-stat--month">
           <div className="ad-tmodal-stat-num">{data?.lessons_this_month ?? 0}</div>
@@ -2028,9 +2118,19 @@ function TeacherDetailModal({
         <Link href={`/admin/teachers/${teacherId}`} className="ad-tmodal-btn ad-tmodal-btn--schedule">
           Открыть расписание
         </Link>
-        <button type="button" className="ad-tmodal-btn ad-tmodal-btn--off" onClick={() => alert("Функция отключения будет добавлена")}>
-          Отключить от платформы
+        <button
+          type="button"
+          className={`ad-tmodal-btn ad-tmodal-btn--off${bannedAt ? " ad-tmodal-btn--off-active" : ""}`}
+          onClick={toggleBan}
+          disabled={banBusy}
+        >
+          {banBusy ? "Секунду…" : bannedAt ? "Вернуть на платформу" : "Отключить от платформы"}
         </button>
+        {bannedAt && (
+          <div className="ad-tmodal-banned" role="status">
+            {nb(`Отключён ${new Date(bannedAt).toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "2-digit" })}. Аккаунт будет удалён через ${purgeDaysLeft} ${purgeDaysLeft === 1 ? "день" : purgeDaysLeft && purgeDaysLeft < 5 ? "дня" : "дней"}, если не вернуть.`)}
+          </div>
+        )}
       </div>
     </div>
   )

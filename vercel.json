@@ -1,9 +1,15 @@
 {
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/internal/cron/google-calendar-sync",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/internal/cron/purge-banned",
+      "schedule": "30 3 * * *"
     }
   ]
 }

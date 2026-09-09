@@ -459,8 +459,8 @@ export default function ChatModal({
             )}
           </div>
           <h2 className="tr-chat-name">{isSupport ? "Поддержка" : peerName}</h2>
-          {/* Учитель ↔ ученик (Figma 2522:4253): видео/аудио звонок — комната ближайшего урока с учеником */}
-          {currentRole === "teacher" && peerRole === "student" && !hideCallActions && variant !== "dock" && (
+          {/* Учитель ↔ ученик (Figma 2522:4253) и админ ↔ ученик (2522:7322): видео/аудио звонок — комната ближайшего урока с учеником */}
+          {(currentRole === "teacher" || currentRole === "admin") && peerRole === "student" && !hideCallActions && variant !== "dock" && (
             <div className="tr-chat-calls">
               {callHref !== null && callHref !== undefined ? (
                 <>
