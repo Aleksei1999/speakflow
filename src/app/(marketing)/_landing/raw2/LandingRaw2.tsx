@@ -186,13 +186,28 @@ export default function LandingRaw2() {
     const password = String(data.get("password") || "");
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: signIn, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setLoginErr("Неверный email или пароль");
         setLoginBusy(false);
         return;
       }
-      window.location.href = loginRole === "teacher" ? "/teacher" : "/student";
+      // Кабинет выбираем по реальной роли из профиля, а не по переключателю
+      // «ученик/учитель»: иначе админ уезжает на /teacher (middleware в dev
+      // это не перехватывает). Переключатель — только запасной вариант.
+      let home = loginRole === "teacher" ? "/teacher" : "/student";
+      const uid = signIn?.user?.id;
+      if (uid) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle<{ role: "student" | "teacher" | "admin" | null }>();
+        if (profile?.role === "admin") home = "/admin";
+        else if (profile?.role === "teacher") home = "/teacher";
+        else if (profile?.role === "student") home = "/student";
+      }
+      window.location.href = home;
     } catch {
       setLoginErr("Не удалось войти. Попробуйте позже.");
       setLoginBusy(false);

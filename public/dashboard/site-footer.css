@@ -13,6 +13,10 @@
 /* Кабинет учителя — Figma 4033:232 (1441×266): иконка TG на (107,52), кнопка на (590,62), копирайт 143,
    реквизиты с 54/58; та же сетка, только верх 52 и низ 100 */
 .sf-footer--teacher .sf-inner { min-height: 266px; padding: 52px 104px 100px 107px; }
+/* Кабинет админа — Figma 4055:296 (1441×236): иконка TG на (106,40), текст ссылок с 142, кнопка на (589,50), копирайт 131,
+   реквизиты правым краем на 1336; верх 40, низ 82 */
+.sf-footer--admin .sf-inner { min-height: 236px; padding: 40px 105px 82px 106px; }
+.sf-footer--admin .sf-col-center { transform: translateX(-1.5px); } /* кнопка 589…850 и копирайт по центру 719.5 (calc(50% − 1px)) */
 /* ссылки: текстовая колонка по x=143, иконка вынесена левее на 107 (36 = 29 + 7) */
 .sf-col-links { display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding-left: 36px; font-size: 20px; font-weight: 500; letter-spacing: -1px; line-height: 1.129; }
 .sf-col-links a, .sf-col-links button { color: #1E1E1E; text-decoration: none; white-space: nowrap; background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-align: left; }

@@ -147,7 +147,7 @@ export default function AdminStudentModal({
 
   return (
     <div className="asm-backdrop" onClick={onClose}>
-      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260907-stats" />
+      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260908-zoom" />
       <div className="asm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <button type="button" className="asm-close" aria-label="Закрыть" onClick={onClose}>
           <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>

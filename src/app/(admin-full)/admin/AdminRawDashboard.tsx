@@ -2,33 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
-import { CheckIcon } from "@/components/icons/CheckIcon"
 
-// Fallback-моки вопросов если у заявки нет testAnswers (маловероятно —
-// fetchTrialApplicationsForAdmin фильтрует по test=true).
-const SAMPLE_QUESTIONS_ADMIN = [
-  { text: ["When I got to work", "I remembered that ___", "my mobile at home."], options: ["a) I'd leave", "b) I was leaving", "c) I'd left", "d) I left"], correct: 2, chosen: 2 },
-  { text: ["My father ___", "be a builder."], options: ["a) used to", "b) was", "c) use to", "d) did use to"], correct: 0, chosen: 1 },
-  { text: ["___ I worked hard,", "I didn't pass the test."], options: ["a) Although", "b) So", "c) Because", "d) But"], correct: 0, chosen: 0 },
-]
 const Q_PER_PAGE_ADMIN = 3
 import Link from "next/link"
+import CustomScroll from "@/components/dashboard/CustomScroll"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
 import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
 import ChatModal from "@/components/dashboard/ChatModal"
+import GroupChatModal from "@/components/dashboard/GroupChatModal"
+import { nb } from "@/lib/ru/typo"
 import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
 import { listFolders, createFolder, renameFolder, deleteFolders } from "@/lib/materials/folders"
 import type { ChatListItem } from "@/lib/chat/list"
 import AdminAddLessonModal from "./AdminAddLessonModal"
 import AdminAddLectureModal from "./AdminAddLectureModal"
 import AdminStudentModal from "./AdminStudentModal"
-import {
-  ArrowDown as AlmArrowDown,
-  ArrowLeftLime as AlmArrowLeftLime,
-  CloseIcon as AlmCloseIcon,
-  type AddLessonStudent,
-} from "@/app/(teacher-full)/teacher/AddLessonModal"
+import EditLessonModal from "@/app/(teacher-full)/teacher/EditLessonModal"
+import { rescheduleLecture } from "./admin-actions"
+import { ArrowDown as AlmArrowDown, ArrowLeftLime as AlmArrowLeftLime, CloseIcon as AlmCloseIcon, type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
 
 /* ============================================================
    Admin Dashboard — Raw English
@@ -116,6 +108,25 @@ const SORT_OPTIONS = [
   { id: "default", label: "По уровню" },
 ] as const
 
+// Макет админки нарисован под 1441px. На экранах шире масштабируем страницу пропорционально
+// (zoom = ширина / 1441, потолок 1.4) — так же, как у учителя, ученика и на лендинге.
+function useProportionalZoom() {
+  useEffect(() => {
+    const apply = () => {
+      const w = window.innerWidth
+      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1
+      document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4))
+      // Модалки лежат внутри .ad и наследуют масштаб страницы. Самая высокая — 686×869:
+      // если с масштабом страницы она не влезает в окно (поля 20px), уменьшаем модалки до вмещающегося.
+      const fit = Math.min(z, (window.innerHeight - 40) / 869, (w - 40) / 686)
+      document.documentElement.style.setProperty("--modal-zoom", (Math.max(0.5, fit) / z).toFixed(4))
+    }
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [])
+}
+
 function useClock() {
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
@@ -138,14 +149,6 @@ function ArrowRight({ size = 32 }: { size?: number }) {
 
 // Круглая стрелка ← 79×79 (лаймовая заливка + белая обводка), точно
 // по SVG из макета — используется в carousel учителей и в модалке.
-function CarouselArrow() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="79" height="79" viewBox="0 0 79 79" fill="none" aria-hidden>
-      <circle cx="39.5" cy="39.5" r="37.5" transform="rotate(-180 39.5 39.5)" fill="#DFED8C" stroke="white" strokeWidth="4"/>
-      <path d="M56 41.5C57.3807 41.5 58.5 40.3807 58.5 39C58.5 37.6193 57.3807 36.5 56 36.5L56 39L56 41.5ZM22.2322 37.2322C21.2559 38.2085 21.2559 39.7915 22.2322 40.7678L38.1421 56.6777C39.1184 57.654 40.7014 57.654 41.6777 56.6777C42.654 55.7014 42.654 54.1184 41.6777 53.1421L27.5355 39L41.6777 24.8579C42.654 23.8816 42.654 22.2986 41.6777 21.3223C40.7014 20.346 39.1184 20.346 38.1421 21.3223L22.2322 37.2322ZM56 39L56 36.5L24 36.5L24 39L24 41.5L56 41.5L56 39Z" fill="#1E1E1E"/>
-    </svg>
-  )
-}
 
 const AVATAR_PALETTE = [
   "#b63f37",
@@ -251,6 +254,8 @@ export default function AdminRawDashboard({
     | null
   >(null)
   const [chatUnreadOverride, setChatUnreadOverride] = useState<Record<string, number>>({})
+  const [groupUnreadOverride, setGroupUnreadOverride] = useState<Record<string, number>>({})
+  const [groupChat, setGroupChat] = useState<{ id: string; name: string; memberCount: number } | null>(null)
 
   // Teacher-carousel: index первой видимой карточки (шаг 1 при клике на стрелку)
   const [teacherPage, setTeacherPage] = useState(0)
@@ -300,6 +305,20 @@ export default function AdminRawDashboard({
 
   // Добавить событие (урок или лекция)
   const [eventModalOpen, setEventModalOpen] = useState(false)
+  // Перенос урока/лекции из плашки расписания (карандаш) — модалка учителя EditLessonModal.
+  // Полный календарь (все ученики и учителя) — по большому карандашу в панели расписания.
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  useEffect(() => {
+    if (!calendarOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCalendarOpen(false) }
+    document.addEventListener("keydown", onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev }
+  }, [calendarOpen])
+  const [editLesson, setEditLesson] = useState<
+    { id: string; label: string; scheduledAtISO: string; kind: "lesson" | "lecture" } | null
+  >(null)
 
   // Создание группы
   const [groupModalOpen, setGroupModalOpen] = useState(false)
@@ -476,6 +495,7 @@ export default function AdminRawDashboard({
       setHwUploading(false)
     }
   }
+  useProportionalZoom()
   const now = useClock()
   const timeStr = now
     ? now.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })
@@ -524,6 +544,17 @@ export default function AdminRawDashboard({
   // Модалка «Назначить учителя» (Figma 2505:264) + окно подтверждения (2505:2852).
   const [assignForApp, setAssignForApp] = useState<{ id: string; name: string } | null>(null)
   const [assignSaving, setAssignSaving] = useState(false)
+  const [assignPage, setAssignPage] = useState(0)
+  useEffect(() => {
+    if (!assignForApp) return
+    setAssignPage(0)
+    setAssignPickedTeacherId(null)
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setAssignForApp(null) }
+    document.addEventListener("keydown", onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev }
+  }, [assignForApp])
   const [assignPickedTeacherId, setAssignPickedTeacherId] = useState<string | null>(null)
   const [assignConfirm, setAssignConfirm] = useState<{ studentName: string; teacherName: string } | null>(null)
   useEffect(() => { if (!assignForApp) setAssignPickedTeacherId(null) }, [assignForApp])
@@ -597,7 +628,8 @@ export default function AdminRawDashboard({
         text: [it.text], options: it.options, chosen: it.chosen, correct: it.correct,
       }))
     }
-    return SAMPLE_QUESTIONS_ADMIN
+    // Теста нет — вопросов не показываем (раньше подставлялись демо-вопросы, что вводило в заблуждение)
+    return []
   }, [expandedApp])
   const qTotalPages = Math.max(1, Math.ceil(questions.length / Q_PER_PAGE_ADMIN))
   const currentQuestions = questions.slice(qPage * Q_PER_PAGE_ADMIN, (qPage + 1) * Q_PER_PAGE_ADMIN)
@@ -623,22 +655,57 @@ export default function AdminRawDashboard({
 
   // Render schedule from real lessons — увеличили окно до 10 и добавили
   // имена учителя+ученика чтобы админ сразу видел кто с кем.
-  const scheduleView = (upcomingLessons ?? []).slice(0, 10).map((l) => {
+  // Все ближайшие уроки и события (для полного календаря); в панели — 3 ближайших по дате:
+  // прошедший урок уходит, на его место поднимается следующий.
+  const allScheduleView = (upcomingLessons ?? []).map((l) => {
     const d = new Date(l.scheduledAt)
     const time = d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })
     const date = d.toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "2-digit" })
     const label = l.studentName && l.teacherName
       ? `${l.studentName} → ${l.teacherName}`
       : l.studentName ?? l.teacherName ?? l.title
-    return { id: l.id, time, date, label, teacherUserId: l.teacherUserId ?? null, studentId: l.studentId ?? null }
+    return { id: l.id, time, date, label, scheduledAt: l.scheduledAt, teacherUserId: l.teacherUserId ?? null, studentId: l.studentId ?? null }
   })
+  const scheduleView = allScheduleView.slice(0, 3)
+  // Плашка урока/лекции (панель и полный календарь).
+  const renderScheduleRow = (l: (typeof allScheduleView)[number]) => {
+                  const isLecture = String(l.id).startsWith("lec:")
+                  const rawId = isLecture ? String(l.id).slice(4) : String(l.id)
+                  const roomHref = isLecture ? `/lecture/${rawId}` : `/lesson/${rawId}`
+                  return (
+                    <div className="ad-lesson" key={l.id}>
+                      <div className="ad-lesson-time">
+                        <div className="hh">{l.time}</div>
+                        <div className="dd">{l.date}</div>
+                      </div>
+                      <div className="ad-lesson-label">{l.label}</div>
+                      <button
+                        type="button"
+                        className="ad-lesson-edit"
+                        aria-label="Изменить дату и время"
+                        title="Изменить дату и время"
+                        onClick={() => setEditLesson({ id: rawId, label: l.label, scheduledAtISO: l.scheduledAt, kind: isLecture ? "lecture" : "lesson" })}
+                      >
+                        {/* карандаш — экспорт Figma 4027:221 (Group 193), лаймовый круг 44 задаётся стилем */}
+                        <img src="/dashboard/ic-edit-pencil.svg" alt="" aria-hidden width={24.44} height={24.42} />
+                      </button>
+                      <a
+                        className="ad-lesson-call"
+                        href={roomHref}
+                        title="Присоединиться к звонку (комната откроется за 5 мин до начала)"
+                      >
+                        начать звонок
+                      </a>
+                    </div>
+                  )
+  }
 
   return (
     <div className="ad">
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="/dashboard/raw-admin.css?v=20260907-lvlcolor"
+        href="/dashboard/raw-admin.css?v=20260909-tmodal"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
@@ -647,16 +714,13 @@ export default function AdminRawDashboard({
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260907-badgegap" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-notest" />
 
       {/* ================== HERO: nav + dark card holding SCHEDULE ================== */}
       <div className="ad-hero">
         <nav className="ad-nav">
           <Link href="/admin" className="ad-brand" aria-label="Raw English">
-            <img
-              src="/landing/raw2/logo-raw-word-white.svg"
-              alt="Raw English"
-            />
+            <img src="/dashboard/logo-raw-red-white.svg" alt="Raw English" width={171} height={98} />
           </Link>
           <ul className="ad-nav-links">
             {NAV.map((n) => (
@@ -678,64 +742,25 @@ export default function AdminRawDashboard({
             </span>
           </div>
           <div className="ad-panel">
+            <button type="button" className="ad-panel-edit" aria-label="Полное расписание" title="Полное расписание: все ученики и учителя" onClick={() => setCalendarOpen(true)}>
+              <img src="/dashboard/ic-edit-pencil-30.svg" alt="" width={30} height={29.97} />
+            </button>
             {scheduleView.length === 0 ? (
               <div className="ad-schedule-empty">
                 Тут попозже будет календарь
               </div>
             ) : (
               <div className="ad-schedule">
-                {scheduleView.map((l) => {
-                  const isLecture = String(l.id).startsWith("lec:")
-                  const lectureId = isLecture ? String(l.id).slice(4) : null
-                  const roomHref = isLecture ? `/lecture/${lectureId}` : `/lesson/${l.id}`
-                  const canChat = !!l.studentId || !!l.teacherUserId
-                  return (
-                    <div className="ad-lesson" key={l.id}>
-                      <div className="ad-lesson-time">
-                        <div className="hh">{l.time}</div>
-                        <div className="dd">{l.date}</div>
-                      </div>
-                      <div className="ad-lesson-label">{l.label}</div>
-                      {canChat && (
-                        <button
-                          type="button"
-                          className="ad-lesson-chat"
-                          title="Открыть чат"
-                          onClick={() => {
-                            // Приоритет ученик > учитель — админ чаще пишет ученику.
-                            if (l.studentId) {
-                              setChatPeer({ id: l.studentId, role: "student", name: l.label, avatar: null })
-                            } else if (l.teacherUserId) {
-                              setChatPeer({ id: l.teacherUserId, role: "teacher", name: l.label, avatar: null })
-                            }
-                          }}
-                        >
-                          чат
-                        </button>
-                      )}
-                      {roomHref && (
-                        <a
-                          className="ad-lesson-call"
-                          href={roomHref}
-                          title="Присоединиться к звонку (комната откроется за 5 мин до начала)"
-                          aria-label="Начать звонок"
-                        >
-                          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden>
-                            <path d="M4.5 5.5c0-.55.45-1 1-1h2.7c.44 0 .82.29.95.71l1.14 3.62c.13.42-.01.88-.36 1.16l-1.63 1.3c1.13 2.24 2.99 4.1 5.23 5.23l1.3-1.63c.28-.35.74-.49 1.16-.36l3.62 1.14c.42.13.71.51.71.95v2.7c0 .55-.45 1-1 1C10.1 20.32 3.68 13.9 3.68 5.5" fill="#fff" />
-                          </svg>
-                        </a>
-                      )}
-                    </div>
-                  )
-                })}
+                {scheduleView.map(renderScheduleRow)}
               </div>
             )}
           </div>
           <div className="ad-hero-cta">
-            <button type="button" className="ad-create-btn" onClick={() => setEventModalOpen(true)}>
+            <button type="button" className="ad-sched-cta" onClick={() => setEventModalOpen(true)}>
               Добавить урок или событие
-              <span className="ad-arrow-btn" aria-hidden>
-                <ArrowRight size={28} />
+              <span className="ad-sched-cta-arrow" aria-hidden>
+                <img className="ad-sched-cta-arrow-circle" src="/dashboard/ic-arrow-circle-red.svg" alt="" width={67} height={68} />
+                <img className="ad-sched-cta-arrow-glyph" src="/dashboard/ic-arrow-white.svg" alt="" width={37} height={36.82} />
               </span>
             </button>
           </div>
@@ -764,19 +789,16 @@ export default function AdminRawDashboard({
           применились. Групповые чаты рендерим тоже (админ входит в них как обычный
           участник). Кнопка «Создать группу» — под списком. */}
       <div className="tr">
-      <section id="chats" className="tr-section">
+      <section id="chats" className="tr-section ad-chats-section">
+        {/* Figma 4005:194 (фрейм 1441×1185 на y=2293): плашка «ЧАТЫ» 251×83 на 48, карточка 1228×837 на (106,219),
+            ряды 1108×153 с зазором 37, трек 7×723 на (1309,277). Разметка и стили — как у учителя (4033:225). */}
         <div className="tr-chats-frame">
           <div className="tr-chats-badge">ЧАТЫ</div>
-
-          <div className="tr-chats-card tr-chats-card--flow">
+          <div className="tr-chats-card">
+           <CustomScroll className="tr-chats-list" track={723} ariaLabel="Чаты">
             {(!initialChats || initialChats.length === 0) && (
               <div className="tr-chats-empty">Пока нет ни одного чата.</div>
             )}
-
-            {initialChats?.filter((c) => c.kind === "direct").length === 0 &&
-              initialChats && initialChats.length > 0 && (
-                <div className="tr-chats-empty">Пока нет 1:1 чатов.</div>
-              )}
             {initialChats?.map((c) => {
               if (c.kind === "direct") {
                 const cnt = chatUnreadOverride[c.peerId] ?? c.unreadCount
@@ -793,23 +815,15 @@ export default function AdminRawDashboard({
                     )}
                     <div className="tr-chat-avatar-big">
                       {c.peerAvatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={c.peerAvatar} alt="" />
                       ) : (
-                        <div className="tr-chat-avatar-fallback">
-                          {c.peerName
-                            .split(" ")
-                            .filter(Boolean)
-                            .map((p) => p[0]?.toUpperCase())
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
+                        <div className="tr-chat-avatar-fallback">{initialsOf(c.peerName)}</div>
                       )}
                     </div>
                     <div className="tr-chat-name">{c.peerName}</div>
                     <div className="tr-chat-preview">
                       {c.lastSenderIsMe && <b>Вы: </b>}
-                      {c.lastText || "Нет сообщений"}
+                      {nb(c.lastText) || "Нет сообщений"}
                     </div>
                     <button
                       type="button"
@@ -826,25 +840,79 @@ export default function AdminRawDashboard({
                         })
                       }}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/dashboard/chats/arrow-icon-white.svg" alt="" aria-hidden />
                     </button>
                   </div>
                 )
               }
-              return null
+              // kind === "group" — красный ряд, стопка аватаров, счётчик, лаймовая стрелка
+              const gUnread = groupUnreadOverride[c.groupId] ?? c.unreadCount
+              return (
+                <div
+                  key={`g:${c.groupId}`}
+                  className={`tr-chat-row tr-chat-row--red${gUnread > 0 ? " tr-chat-row--unread" : ""}`}
+                >
+                  <div className="tr-chat-avatar-big">
+                    {c.memberAvatars[0]?.avatar ? (
+                      <img src={c.memberAvatars[0].avatar} alt="" />
+                    ) : (
+                      <div className="tr-chat-avatar-fallback">{initialsOf(c.memberAvatars[0]?.name ?? c.name)}</div>
+                    )}
+                  </div>
+                  {c.memberAvatars[1] && (
+                    <div className="tr-chat-avatar-mini">
+                      {c.memberAvatars[1].avatar ? (
+                        <img src={c.memberAvatars[1].avatar} alt="" />
+                      ) : (
+                        <div className="tr-chat-avatar-fallback">{initialsOf(c.memberAvatars[1].name)}</div>
+                      )}
+                    </div>
+                  )}
+                  {c.memberAvatars[2] && (
+                    <div className="tr-chat-avatar-nano">
+                      {c.memberAvatars[2].avatar ? (
+                        <img src={c.memberAvatars[2].avatar} alt="" />
+                      ) : (
+                        <div className="tr-chat-avatar-fallback">{initialsOf(c.memberAvatars[2].name)}</div>
+                      )}
+                    </div>
+                  )}
+                  {gUnread > 0 && (
+                    <div className="tr-chat-count"><span>{gUnread}</span></div>
+                  )}
+                  <div className="tr-chat-name tr-chat-name--white">{c.name}</div>
+                  <div className="tr-chat-preview tr-chat-preview--white">
+                    {c.lastText ? (
+                      <>
+                        {c.lastSenderIsMe && <b>Вы: </b>}
+                        {nb(c.lastText)}
+                      </>
+                    ) : (
+                      <>Групповой чат — {c.memberCount} {pluralize(c.memberCount, "участник", "участника", "участников")}</>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="tr-chat-arrow-btn tr-chat-arrow-btn--lime"
+                    aria-label={`Открыть групповой чат ${c.name}`}
+                    onClick={() => {
+                      setGroupUnreadOverride((s) => ({ ...s, [c.groupId]: 0 }))
+                      setGroupChat({ id: c.groupId, name: c.name, memberCount: c.memberCount })
+                    }}
+                  >
+                    <img src="/dashboard/chats/arrow-icon-dark.svg" alt="" aria-hidden />
+                  </button>
+                </div>
+              )
             })}
+           </CustomScroll>
           </div>
-        </div>
-
-        {/* Кнопка «Создать группу» — под фреймом (tr-chats-frame имеет фикс. высоту
-            1008px с абсолютно позиционированными badge/card, поэтому footer должен
-            быть снаружи, иначе он «уезжает» в top-left). */}
-        <div className="ad-chats-footer">
-          <button type="button" className="ad-create-btn" onClick={() => setGroupModalOpen(true)}>
+          {/* Figma 4053:262: «Создать группу» 308.58×68 lime на x=533 (frame 427), 42 под карточкой; лаймовый круг 67×68 с тёмной стрелкой вплотную справа */}
+          <button type="button" className="ad-chats-create" onClick={() => setGroupModalOpen(true)}>
             Создать группу
-            <span className="ad-arrow-btn" aria-hidden>
-              <ArrowRight size={28} />
+            <span className="ad-chats-create-arrow" aria-hidden>
+              <img className="ad-chats-create-arrow-circle" src="/dashboard/ic-arrow-circle-lime.svg" alt="" width={67} height={68} />
+              <img className="ad-chats-create-arrow-glyph" src="/dashboard/ic-arrow-right.svg" alt="" width={37} height={36.82} />
             </span>
           </button>
         </div>
@@ -858,17 +926,17 @@ export default function AdminRawDashboard({
             СПИСОК <span className="c-red">УЧИТЕЛЕЙ</span>
           </span>
         </div>
-        <div className="ad-teachers-wrap">
-          {teacherPage > 0 && (
-            <button
-              type="button"
-              className="ad-teachers-arrow ad-teachers-arrow--left"
-              onClick={() => setTeacherPage((p) => Math.max(0, p - 1))}
-              aria-label="Предыдущие"
-            >
-              <CarouselArrow />
-            </button>
-          )}
+        <div className="ad-teachers-wrap ad-tcards">
+          {/* Figma 4053:291: обе стрелки видны всегда; когда листать некуда — приглушены */}
+          <button
+            type="button"
+            className="ad-teachers-arrow ad-teachers-arrow--left"
+            onClick={() => setTeacherPage((p) => Math.max(0, p - 1))}
+            disabled={teacherPage <= 0}
+            aria-label="Предыдущие"
+          >
+            <img src="/dashboard/ic-carousel-arrow.svg" alt="" aria-hidden width={79} height={79} />
+          </button>
           <div className="ad-teachers">
             {teachersData
               .slice(teacherPage, teacherPage + TEACHERS_PER_PAGE)
@@ -904,43 +972,43 @@ export default function AdminRawDashboard({
                         setTeacherModal({ id: t.id, name: t.name, avatar: t.avatar })
                       }}
                     >
-                      {/* Универсальная иконка редактирования (карандаш+блокнот),
-                          та же что и во всех «edit»-действиях на сайте. */}
+                      {/* Figma 4053:291 Component 6: лаймовый круг 54 + карандаш 30 (Group 193) */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/icons/edit-pencil.svg" alt="" width={20} height={20} />
+                      <img src="/dashboard/ic-edit-pencil-30.svg" alt="" width={30} height={29.97} />
                     </button>
                   </div>
                 </div>
               ))}
           </div>
-          {teacherPage + TEACHERS_PER_PAGE < teachersData.length && (
-            <button
-              type="button"
-              className="ad-teachers-arrow ad-teachers-arrow--right"
-              onClick={() => setTeacherPage((p) => Math.min(teachersData.length - TEACHERS_PER_PAGE, p + 1))}
-              aria-label="Следующие"
-            >
-              <span style={{ display: "inline-flex", transform: "scaleX(-1)" }}>
-                <CarouselArrow />
-              </span>
-            </button>
-          )}
+          <button
+            type="button"
+            className="ad-teachers-arrow ad-teachers-arrow--right"
+            onClick={() => setTeacherPage((p) => Math.min(Math.max(0, teachersData.length - TEACHERS_PER_PAGE), p + 1))}
+            disabled={teacherPage + TEACHERS_PER_PAGE >= teachersData.length}
+            aria-label="Следующие"
+          >
+            <img src="/dashboard/ic-carousel-arrow.svg" alt="" aria-hidden width={79} height={79} style={{ transform: "scaleX(-1)" }} />
+          </button>
         </div>
       </section>
 
       {/* ================== STUDENTS (dark bg) ================== */}
-      <section id="students" className="ad-section ad-section-dark">
-        <div className="ad-inner">
-          <div className="ad-badge-wrap">
-            <span className="ad-badge on-dark">
+      {/* Figma 4054:293 «Список учеников» (админ): фрейм 1441×1137 на y=4600, фон как у шапки;
+          плашка 554×83 на 75, карточка 1228×815 на 222, ряды 539×139 (2 колонки), трек 7×495, «Создать группу» 357×68 на 919.
+          Разметка и стили — как у учителя (4020:217), в .tr для raw-teacher.css. */}
+      <div className="tr">
+      <section id="students" className="ad-students-section">
+        <div className="tr-students">
+          <div className="tr-badge-wrap">
+            <span className="tr-badge on-dark">
               СПИСОК <span className="c-lime">УЧЕНИКОВ</span>
             </span>
           </div>
-          <div className="ad-panel ad-panel-students">
-            <div className="ad-sort-wrap">
+          <div className="tr-panel">
+            <div className="tr-sort-wrap">
               <button
                 type="button"
-                className="ad-sort"
+                className="tr-sort"
                 aria-expanded={sortOpen}
                 aria-haspopup="listbox"
                 onClick={() => setSortOpen((v) => !v)}
@@ -948,18 +1016,15 @@ export default function AdminRawDashboard({
                 Сортировать
               </button>
               {sortOpen && (
-                <div className="ad-sort-pop" role="listbox">
+                <div className="tr-sort-pop" role="listbox">
                   {SORT_OPTIONS.map((o) => (
                     <button
                       key={o.id}
                       type="button"
                       role="option"
                       aria-selected={sortId === o.id}
-                      className={`ad-sort-opt ${sortId === o.id ? "on" : ""}`}
-                      onClick={() => {
-                        setSortId(o.id)
-                        setSortOpen(false)
-                      }}
+                      className={`tr-sort-opt ${sortId === o.id ? "on" : ""}`}
+                      onClick={() => { setSortId(o.id); setSortOpen(false) }}
                     >
                       <span className="dot" aria-hidden />
                       <span className="lbl">{o.label}</span>
@@ -968,49 +1033,49 @@ export default function AdminRawDashboard({
                 </div>
               )}
             </div>
-            <div className="ad-students-scroll">
-              <div className="ad-students-grid">
+            <CustomScroll className="tr-students-list" track={495} ariaLabel="Ученики">
+              <div className="tr-students-grid">
                 {sortedStudents.map((s) => (
                   <div
-                    className="ad-stu"
+                    className="tr-stu"
                     key={s.id}
                     role="button"
                     tabIndex={0}
-                    style={{ cursor: "pointer" }}
                     onClick={() => setStudentModal({ id: s.id, name: s.name, avatar: s.avatar, level: s.level })}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setStudentModal({ id: s.id, name: s.name, avatar: s.avatar, level: s.level })}
                   >
-                    <div className="ad-stu-avatar">
+                    <div className="tr-stu-avatar">
                       <Avatar name={s.name} src={s.avatar} />
                     </div>
-                    <div className="ad-stu-name">
+                    <div className="tr-stu-name">
                       {s.name.split(/\s+/).map((part, i) => (
-                        <span key={i} className="ad-stu-name-line">
-                          {part}
-                        </span>
+                        <span key={i} className="tr-stu-name-line">{part}</span>
                       ))}
                     </div>
-                    <span className="ad-stu-lvl">{levelLabel(s.level)}</span>
+                    <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="ad-panel-footer">
-              <button type="button" className="ad-create-btn" onClick={() => setGroupModalOpen(true)}>
+            </CustomScroll>
+            <div className="tr-panel-footer">
+              <button type="button" className="tr-create-group" onClick={() => setGroupModalOpen(true)}>
                 Создать группу
-                <span className="ad-arrow-btn" aria-hidden>
-                  <ArrowRight size={28} />
+                <span className="tr-create-group-arrow" aria-hidden>
+                  <img src="/dashboard/ic-arrow-circle-red.svg" alt="" width={67} height={68} className="tr-create-group-arrow-circle" />
+                  <img src="/dashboard/ic-arrow-white.svg" alt="" width={37} height={36.82} className="tr-create-group-arrow-glyph" />
                 </span>
               </button>
             </div>
           </div>
         </div>
       </section>
+      </div>
 
       {/* ================== INCOMING APPLICATIONS (UI 1:1 как у учителя) ================== */}
       {/* Оборачиваем в .tr чтобы применились teacher CSS (.tr-section, .tr-badge-wrap,
           .tr-sub, .tr-apps, .tr-app*). Без .tr-обёртки .tr-*  селекторы не сработают. */}
       <div className="tr">
-      <section id="leads" className="tr-section">
+      <section id="leads" className={`tr-section ad-leads-section${appsExpanded ? " tr-section--apps-open" : ""}`}>
         <div className="tr-badge-wrap">
           <span className="tr-badge">
             ВХОДЯЩИЕ ЗАЯВКИ <span className="c-red">УЧЕНИКОВ</span>
@@ -1033,6 +1098,8 @@ export default function AdminRawDashboard({
             </div>
           ) : (
             <div className="tr-apps">
+              {/* Figma 2522:3178: раскрытый список — область 757 с прокруткой, тёмный скроллбар 7×757 */}
+              <CustomScroll className="tr-apps-scroll" track={757}>
               <div className="tr-apps-list">
                 {visibleApps.map((a) => {
                   const isOpen = expandedAppId === a.id
@@ -1071,7 +1138,7 @@ export default function AdminRawDashboard({
                               aria-label="Изменить уровень"
                               onClick={() => setEditingLvlAppId(a.id)}
                             >
-                              <img src="/dashboard/icons/edit-level.svg" width={30} height={30} alt="" aria-hidden />
+                              <img src="/dashboard/apps/edit-level-pencil-lime.svg" width={30} height={29.97} alt="" aria-hidden />
                             </button>
                           )}
                           <span className="tr-app-lvl">{levelLabel(displayLevel)}</span>
@@ -1084,21 +1151,21 @@ export default function AdminRawDashboard({
                         aria-expanded={isOpen}
                         onClick={() => { if (isEditingLvl) setEditingLvlAppId(null); setExpandedAppId(isOpen ? null : a.id) }}
                       >
-                        {isOpen ? (
-                          <svg viewBox="0 0 32 20" width="24" height="15" fill="none" aria-hidden>
-                            <path d="M2 5l14 12L30 5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        ) : (
-                          <ArrowIcon direction="left" size={32} style={{ color: "#1E1E1E" }} />
-                        )}
+                        {/* свёрнуто: лаймовый круг + тёмная стрелка влево (Component 9, Group 286); раскрыто: тёмный круг + лаймовая стрелка вниз */}
+                        <img className="tr-app-arrow-circle" src={isOpen ? "/dashboard/apps/arrow-circle-dark.svg" : "/dashboard/ic-arrow-circle.svg"} alt="" width={79} height={79} />
+                        <img className={`tr-app-arrow-glyph${isOpen ? " is-open" : ""}`} src={isOpen ? "/dashboard/apps/arrow-lime.svg" : "/dashboard/ic-arrow-right.svg"} alt="" width={37} height={36.82} />
                       </button>
                       {isOpen && (
                         <>
                           <div className="tr-app-questions">
+                            {questions.length === 0 && (
+                              <div className="tr-app-notest" role="status">Ученик ещё не прошёл тест</div>
+                            )}
                             {qTotalPages > 1 && (
                               <button type="button" className="tr-q-prev" aria-label="Предыдущие"
                                 onClick={() => setQPage((p) => (p - 1 + qTotalPages) % qTotalPages)}>
-                                <ArrowIcon direction="left" size={24} style={{ color: "#1E1E1E" }} />
+                                <img className="tr-q-nav-circle" src="/dashboard/apps/q-next-circle.svg" alt="" width={47} height={46} />
+                                <img className="tr-q-nav-arrow tr-q-nav-arrow--prev" src="/dashboard/apps/q-next-arrow.svg" alt="" width={18.5} height={18.41} />
                               </button>
                             )}
                             {currentQuestions.map((q, i) => (
@@ -1119,18 +1186,12 @@ export default function AdminRawDashboard({
                                     const prefix = String.fromCharCode(97 + k) + ") "
                                     return (
                                       <li key={k} className={isChosen ? (isCorrect ? "chosen ok" : "chosen no") : ""}>
+                                        {/* маркеры ответа — экспорт Figma 2522:3812: лаймовый круг 21 + галочка / красный круг + крестик */}
                                         {isChosen && (
-                                          isCorrect ? (
-                                            <svg className="tr-q-icon tr-q-icon--ok" viewBox="0 0 20 20" aria-hidden>
-                                              <circle cx="10" cy="10" r="10" fill="#DFED8C" />
-                                              <path d="M5.5 10.5l3 3 6.5-7.5" stroke="#1E1E1E" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                          ) : (
-                                            <svg className="tr-q-icon tr-q-icon--no" viewBox="0 0 20 20" aria-hidden>
-                                              <circle cx="10" cy="10" r="10" fill="#CC3A3A" />
-                                              <path d="M6 6l8 8M14 6l-8 8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
-                                            </svg>
-                                          )
+                                          <span className={`tr-q-icon ${isCorrect ? "tr-q-icon--ok" : "tr-q-icon--no"}`} aria-hidden>
+                                            <img className="tr-q-icon-circle" src={isCorrect ? "/dashboard/apps/opt-ok.svg" : "/dashboard/apps/opt-no.svg"} alt="" width={21} height={21} />
+                                            <img className="tr-q-icon-mark" src={isCorrect ? "/dashboard/apps/opt-ok-mark.svg" : "/dashboard/apps/opt-no-mark.svg"} alt="" width={isCorrect ? 11 : 9} height={9} />
+                                          </span>
                                         )}
                                         {hasPrefix ? opt : prefix + opt}
                                       </li>
@@ -1143,7 +1204,8 @@ export default function AdminRawDashboard({
                               <button type="button" className="tr-q-next"
                                 aria-label={`Следующие (${qPage + 1}/${qTotalPages})`}
                                 onClick={() => setQPage((p) => (p + 1) % qTotalPages)}>
-                                <ArrowIcon direction="right" size={24} style={{ color: "#1E1E1E" }} />
+                                <img className="tr-q-nav-circle" src="/dashboard/apps/q-next-circle.svg" alt="" width={47} height={46} />
+                                <img className="tr-q-nav-arrow" src="/dashboard/apps/q-next-arrow.svg" alt="" width={18.5} height={18.41} />
                               </button>
                             )}
                           </div>
@@ -1160,6 +1222,7 @@ export default function AdminRawDashboard({
                   )
                 })}
               </div>
+              </CustomScroll>
               {(remainingApps > 0 || appsExpanded) && (
                 <div className="tr-apps-footer">
                   <button
@@ -1169,10 +1232,18 @@ export default function AdminRawDashboard({
                     aria-expanded={appsExpanded}
                     onClick={() => setAppsExpanded((v) => !v)}
                   >
-                    <svg viewBox="0 0 32 16" width="32" height="16" fill="none" aria-hidden>
-                      <path d="M4 4l12 10L28 4" stroke="#1E1E1E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    {appsExpanded ? (
+                      <img className="tr-apps-collapse-ic" src="/dashboard/ic-collapse-circle.svg" alt="" width={68} height={67} />
+                    ) : (
+                      <>
+                        <img className="tr-apps-expand-circle" src="/dashboard/ic-expand-circle.svg" alt="" width={67} height={68} />
+                        <img className="tr-apps-expand-glyph" src="/dashboard/ic-chevron-down.svg" alt="" width={36.5} height={19.69} />
+                      </>
+                    )}
                   </button>
+                  {appsExpanded && (
+                    <button type="button" className="tr-apps-handle" aria-label="Свернуть список" onClick={() => setAppsExpanded(false)} />
+                  )}
                   {remainingApps > 0 && (
                     <button type="button" className="tr-apps-more"
                       onClick={() => setAppsExpanded(true)}>
@@ -1187,7 +1258,18 @@ export default function AdminRawDashboard({
       </div>
 
       {/* ================== FOOTER ================== */}
-      <SiteFooter supportHref="/admin/support" />
+      <SiteFooter variant="admin" supportHref="/admin/support" />
+
+      {groupChat && adminUserId && (
+        <GroupChatModal
+          groupId={groupChat.id}
+          groupName={groupChat.name}
+          memberCount={groupChat.memberCount}
+          currentUserId={adminUserId}
+          currentRole="admin"
+          onClose={() => setGroupChat(null)}
+        />
+      )}
 
       {chatPeer && (
         <ChatModal
@@ -1321,83 +1403,121 @@ export default function AdminRawDashboard({
           fallbackName={teacherModal.name}
           fallbackAvatar={teacherModal.avatar}
           onClose={() => setTeacherModal(null)}
-          onPrev={() => {
-            const idx = teachersData.findIndex((t) => t.id === teacherModal.id)
-            if (idx > 0) {
-              const p = teachersData[idx - 1]
-              setTeacherModal({ id: p.id, name: p.name, avatar: p.avatar })
-            }
-          }}
-          onNext={() => {
-            const idx = teachersData.findIndex((t) => t.id === teacherModal.id)
-            if (idx >= 0 && idx < teachersData.length - 1) {
-              const n = teachersData[idx + 1]
-              setTeacherModal({ id: n.id, name: n.name, avatar: n.avatar })
-            }
-          }}
         />
       )}
 
       {/* «Назначить учителя» — модалка со списком учителей (Figma 2505:264).
           После клика по учителю патчим trial_lesson_requests.assigned_teacher_id
           и показываем окно подтверждения (Figma 2505:2852). */}
+      {/* Figma 2522:263 «При нажатии» (Назначить учителя): белый экран с карточками учителей,
+          выбор — кнопка по центру низа карточки; чат и карандаш — по углам. ESC / крестик закрывают. */}
       {assignForApp && (
-        <div className="tr-assign-overlay" onClick={() => setAssignForApp(null)}>
-          <div className="tr-assign-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className="tr-assign-title">
-              <span>Список&nbsp;</span>
-              <span className="tr-assign-title--red">учителей</span>
+        <div className="ad-assign-overlay" role="dialog" aria-modal="true" aria-label="Назначить учителя">
+          <div className="ad-assign-page">
+            <button type="button" className="ad-assign-close" aria-label="Закрыть" onClick={() => setAssignForApp(null)}>
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+            </button>
+            <div className="ad-badge-wrap">
+              <span className="ad-badge">
+                СПИСОК <span className="c-red">УЧИТЕЛЕЙ</span>
+              </span>
             </div>
-            <button type="button" className="tr-assign-close" aria-label="Закрыть" onClick={() => setAssignForApp(null)}>×</button>
-            <ul className="tr-assign-list">
-              {(teachersData ?? []).slice(0, 3).map((t) => {
-                const picked = assignPickedTeacherId === t.id
-                return (
-                  <li key={t.id} className={`tr-assign-slot${picked ? " picked" : ""}`}>
-                    <div className="tr-assign-card">
-                      <div className="tr-assign-photo">
-                        <Avatar name={t.name} src={t.avatar} className="tr-assign-photo-img" />
+            <div className="ad-teachers-wrap ad-tcards">
+              <button
+                type="button"
+                className="ad-assign-arrow ad-assign-arrow--left"
+                onClick={() => setAssignPage((p) => Math.max(0, p - 1))}
+                disabled={assignPage <= 0}
+                aria-label="Предыдущие"
+              >
+                <img className="ad-assign-arrow-circle" src="/dashboard/apps/assign-arrow-circle.svg" alt="" aria-hidden width={81} height={82} />
+                <img className="ad-assign-arrow-glyph" src="/dashboard/ic-arrow-right.svg" alt="" aria-hidden width={37} height={36.82} />
+              </button>
+              <div className="ad-teachers">
+                {(teachersData ?? []).slice(assignPage, assignPage + TEACHERS_PER_PAGE).map((t) => {
+                  const picked = assignPickedTeacherId === t.id
+                  return (
+                    <div className="ad-teacher ad-assign-card" key={t.id}>
+                      <div className="ad-teacher-photo">
+                        <Avatar name={t.name} src={t.avatar} />
                       </div>
-                      <div className="tr-assign-body">
-                        <div className="tr-assign-name">{t.name}</div>
-                        <div className="tr-assign-sub">о преподавателе</div>
-                        <div className="tr-assign-desc">Сколько учеников, какой доход, какая маржа, сколько уроков…</div>
+                      <div className="ad-teacher-body">
+                        <div className="ad-teacher-name">
+                          {t.name.split(/\s+/).map((part, i) => (
+                            <span key={i}>{part}</span>
+                          ))}
+                        </div>
+                        <div className="ad-teacher-meta">о преподавателе</div>
+                        <div className="ad-teacher-desc">
+                          Сколько учеников,<br />
+                          какой доход, какая маржа,<br />
+                          сколько уроков...
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        className="ad-assign-chat"
+                        aria-label={`Расписание учителя ${t.name}`}
+                        onClick={() => setCalendarOpen(true)}
+                      >
+                        <img src="/dashboard/apps/assign-teacher-chat.svg" alt="" aria-hidden width={27} height={27} />
+                      </button>
+                      <button
+                        type="button"
+                        className={`ad-assign-pick${picked ? " picked" : ""}`}
+                        aria-label={picked ? `Учитель ${t.name} выбран` : `Назначить учителя ${t.name}`}
+                        aria-pressed={picked}
+                        disabled={assignSaving}
+                        onClick={() => {
+                          setAssignPickedTeacherId(t.id)
+                          assignTeacher(t.id, t.name)
+                        }}
+                      >
+                        <img className="ad-assign-pick-circle" src={picked ? "/dashboard/apps/assign-pick-on.svg" : "/dashboard/apps/assign-pick.svg"} alt="" aria-hidden width={70} height={70} />
+                        {picked && <img className="ad-assign-pick-check" src="/dashboard/apps/assign-pick-check.svg" alt="" aria-hidden width={29} height={24} />}
+                      </button>
+                      <button
+                        type="button"
+                        className="ad-teacher-edit"
+                        aria-label={`Редактировать ${t.name}`}
+                        onClick={() => setTeacherModal({ id: t.id, name: t.name, avatar: t.avatar })}
+                      >
+                        <img src="/dashboard/ic-edit-pencil-30.svg" alt="" aria-hidden width={30} height={29.97} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className={`tr-assign-radio${picked ? " picked" : ""}`}
-                      aria-label={picked ? `Учитель ${t.name} выбран` : `Выбрать учителя ${t.name}`}
-                      aria-pressed={picked}
-                      disabled={assignSaving}
-                      onClick={() => {
-                        setAssignPickedTeacherId(t.id)
-                        assignTeacher(t.id, t.name)
-                      }}
-                    >
-                      {picked && (
-                        <CheckIcon size={26} className="tr-assign-radio-check" style={{ color: "#DFED8C" }} />
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className="ad-assign-arrow ad-assign-arrow--right"
+                onClick={() => setAssignPage((p) => Math.min(Math.max(0, (teachersData ?? []).length - TEACHERS_PER_PAGE), p + 1))}
+                disabled={assignPage + TEACHERS_PER_PAGE >= (teachersData ?? []).length}
+                aria-label="Следующие"
+              >
+                <img className="ad-assign-arrow-circle" src="/dashboard/apps/assign-arrow-circle.svg" alt="" aria-hidden width={81} height={82} />
+                <img className="ad-assign-arrow-glyph" src="/dashboard/ic-arrow-right.svg" alt="" aria-hidden width={37} height={36.82} />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Figma 2522:2955 «Преподаватель назначен»: окно после выбора учителя, таймер 59 с */}
       {assignConfirm && (
-        <div className="tr-confirm-overlay" onClick={() => setAssignConfirm(null)}>
-          <div className="tr-confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className="tr-confirm-timer">{`0:${String(assignConfirmSec).padStart(2,'0')}`}</div>
-            <button type="button" className="tr-confirm-close" aria-label="Закрыть" onClick={() => setAssignConfirm(null)}>×</button>
-            <div className="tr-confirm-title">Преподаватель назначен</div>
-            <div className="tr-confirm-check" aria-hidden>
-              <CheckIcon size={30} style={{ color: "#DFED8C" }} />
+        <div className="ad-confirm-overlay" onClick={() => setAssignConfirm(null)}>
+          <div className="ad-confirm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Преподаватель назначен">
+            <div className="ad-confirm-timer">{`0:${String(assignConfirmSec).padStart(2, '0')}`}</div>
+            <button type="button" className="ad-confirm-close" aria-label="Закрыть" onClick={() => setAssignConfirm(null)}>
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+            </button>
+            <div className="ad-confirm-title">Преподаватель<br />назначен</div>
+            <div className="ad-confirm-check" aria-hidden>
+              <img className="ad-confirm-check-circle" src="/dashboard/ic-check-circle.svg" alt="" width={69} height={69} />
+              <img className="ad-confirm-check-mark" src="/dashboard/ic-check-mark.svg" alt="" width={35} height={29} />
             </div>
-            <div className="tr-confirm-teacher">{assignConfirm.teacherName}</div>
-            <div className="tr-confirm-student">для ученика {assignConfirm.studentName}</div>
+            <div className="ad-confirm-name">{assignConfirm.teacherName}</div>
+            <div className="ad-confirm-student">{nb(`для ученика ${assignConfirm.studentName}`)}</div>
           </div>
         </div>
       )}
@@ -1425,6 +1545,41 @@ export default function AdminRawDashboard({
 
       {/* «Добавить событие» — сначала показываем picker (Урок / Другое),
           затем открываем нужную модалку (UI полностью как у учителя). */}
+      {/* Полный календарь: все ближайшие уроки и события всех учеников и учителей, листается */}
+      {calendarOpen && (
+        <div className="ad-cal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setCalendarOpen(false) }}>
+            <div className="ad-cal" role="dialog" aria-modal="true" aria-label="Полное расписание">
+              <button type="button" className="ad-cal-close" aria-label="Закрыть" onClick={() => setCalendarOpen(false)}>
+                <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+              </button>
+              <div className="ad-cal-title">Расписание</div>
+              <div className="ad-cal-sub">все ученики и учителя · {allScheduleView.length}</div>
+              {allScheduleView.length === 0 ? (
+                <div className="ad-cal-empty">Ближайших уроков и событий нет</div>
+              ) : (
+                <CustomScroll className="ad-cal-list" track={692} ariaLabel="Полное расписание">
+                  <div className="ad-schedule ad-schedule--cal">{allScheduleView.map(renderScheduleRow)}</div>
+                </CustomScroll>
+              )}
+            </div>
+        </div>
+      )}
+
+      {/* Перенос урока / лекции — модалка учителя, в .tr для стилей raw-teacher.css */}
+      {editLesson && (
+        <div className="tr">
+          <EditLessonModal
+            lesson={editLesson}
+            reschedule={
+              editLesson.kind === "lecture"
+                ? (iso) => rescheduleLecture({ lectureId: editLesson.id, scheduledAt: iso })
+                : undefined
+            }
+            onClose={() => setEditLesson(null)}
+          />
+        </div>
+      )}
+
       {eventModalOpen && (
         <EventPickerAndForms
           students={sortedStudents.map((s) => ({
@@ -1471,15 +1626,11 @@ function TeacherDetailModal({
   fallbackName,
   fallbackAvatar,
   onClose,
-  onPrev,
-  onNext,
 }: {
   teacherId: string
   fallbackName: string
   fallbackAvatar: string | null
   onClose: () => void
-  onPrev: () => void
-  onNext: () => void
 }) {
   const [data, setData] = useState<{
     full_name: string | null
@@ -1541,164 +1692,64 @@ function TeacherDetailModal({
   const name = data?.full_name ?? fallbackName
   const avatar = avatarOverride ?? data?.avatar_url ?? fallbackAvatar
 
+  // Figma 2522:191 (Group 287): карточка преподавателя 812×755 — фото и контакты слева, имя/описание/статы/кнопки справа
   return (
-    <div
-      className="files-modal-backdrop"
-      onClick={onClose}
-      style={{ zIndex: 230 }}
-    >
-      {/* Стрелка ← слева от модалки */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onPrev() }}
-        aria-label="Предыдущий преподаватель"
-        style={{
-          position: "absolute", top: "50%", left: "calc(50% - 470px)", transform: "translateY(-50%)",
-          background: "transparent", border: 0, cursor: "pointer", zIndex: 4, padding: 0,
-        }}
-      >
-        <CarouselArrow />
-      </button>
+    <div className="files-modal-backdrop" onClick={onClose} style={{ zIndex: 230 }}>
+      <div className="ad-tmodal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={name}>
+        <button type="button" className="ad-tmodal-close" onClick={onClose} aria-label="Закрыть">
+          <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+        </button>
 
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "min(880px, calc(100vw - 200px))",
-          maxHeight: "calc(100vh - 60px)",
-          // Glass-container: точно как задал пользователь (без синего свечения)
-          background: "rgba(255, 255, 255, 0.2)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          border: "1px solid rgba(255,255,255,0.18)",
-          borderRadius: 29.5,
-          padding: 40,
-          overflow: "auto",
-          position: "relative",
-          color: "#fff",
-          display: "grid",
-          gridTemplateColumns: "366px 1fr",
-          gap: 32,
-        }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Закрыть"
-          style={{
-            position: "absolute", top: 20, right: 20, background: "transparent", border: 0,
-            cursor: "pointer", color: "#fff", fontSize: 28, lineHeight: 1, padding: 6,
-          }}
-        >×</button>
-
-        {/* ЛЕВАЯ КОЛОНКА: фото + контакты под ним */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ position: "relative", width: 366, height: 366, borderRadius: 29.5, overflow: "hidden", background: "#333" }}>
-            <Avatar name={name} src={avatar} />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              aria-label={uploading ? "Загружаем…" : "Заменить фото"}
-              style={{
-                position: "absolute", left: 16, bottom: 16, width: 54, height: 54, borderRadius: "50%",
-                background: "#DFED8C", border: "3px solid #1E1E1E", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-              }}
-            >
-              <svg viewBox="0 0 30 24" width="26" height="22" fill="none" aria-hidden>
-                <path d="M4 6h5l2-3h8l2 3h5v14H4V6z" stroke="#1E1E1E" strokeWidth="2.2" strokeLinejoin="round" />
-                <circle cx="15" cy="13" r="4.5" stroke="#1E1E1E" strokeWidth="2.2" />
-              </svg>
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickPhoto} />
-          </div>
-
-          {/* Контакты — почта / телефон / пароль под фото */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, fontSize: 18 }}>
-            <div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}>почта</div>
-              <div style={{ wordBreak: "break-all" }}>{data?.email || "—"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}>телефон</div>
-              <div>{data?.phone || "—"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}>пароль</div>
-              <div>••••••••</div>
-            </div>
-          </div>
+        <div className="ad-tmodal-photo">
+          <Avatar name={name} src={avatar} />
+          <button
+            type="button"
+            className="ad-tmodal-camera"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            aria-label={uploading ? "Загружаем…" : "Заменить фото"}
+          >
+            <img src="/dashboard/ic-camera-dark.svg" alt="" aria-hidden width={34.69} height={27.35} />
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickPhoto} />
         </div>
 
-        {/* ПРАВАЯ КОЛОНКА: ФИО, описание, статы, кнопки (внизу) */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <h2 style={{ fontFamily: "Inter", fontSize: 30, fontWeight: 700, letterSpacing: "-0.05em", lineHeight: 1.05, margin: "0 0 24px" }}>
-            {name}
-          </h2>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>о преподавателе</div>
-            <div style={{ fontSize: 20, lineHeight: 1.15 }}>
-              {data?.bio || "Сколько учеников, какой доход, какая маржа, сколько уроков…"}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 48, marginBottom: 28 }}>
-            <div>
-              <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 0.9 }}>{data?.lessons_this_month ?? 0}</div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginTop: 6, lineHeight: 1.1 }}>
-                количество<br />уроков за месяц
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 40, fontWeight: 700, lineHeight: 0.9 }}>{data?.lessons_this_year ?? 0}</div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginTop: 6, lineHeight: 1.1 }}>
-                количество<br />уроков за год
-              </div>
-            </div>
-          </div>
-
-          {/* Кнопки — прижаты к низу (marginTop:auto), чтобы совпасть по вертикали с блоком контактов слева */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: "auto" }}>
-            <Link
-              href={`/admin/teachers/${teacherId}`}
-              style={{
-                display: "block", background: "#DFED8C", color: "#1E1E1E", textAlign: "center",
-                padding: "14px 40px", borderRadius: 34, fontFamily: "Inter", fontWeight: 500, fontSize: 20, textDecoration: "none",
-              }}
-            >
-              Открыть расписание
-            </Link>
-            <button
-              type="button"
-              style={{
-                background: "#CC3A3A", color: "#fff", border: 0, padding: "14px 40px",
-                borderRadius: 34, fontFamily: "Inter", fontWeight: 700, fontSize: 20, cursor: "pointer",
-              }}
-              onClick={() => alert("Функция отключения будет добавлена")}
-            >
-              Отключить от платформы
-            </button>
-          </div>
+        <div className="ad-tmodal-field ad-tmodal-field--mail">
+          <div className="ad-tmodal-label">почта</div>
+          <div className="ad-tmodal-value" title={data?.email || undefined}>{data?.email || "–"}</div>
         </div>
+        <div className="ad-tmodal-field ad-tmodal-field--phone">
+          <div className="ad-tmodal-label">телефон</div>
+          <div className="ad-tmodal-value">{data?.phone || "–"}</div>
+        </div>
+        <div className="ad-tmodal-field ad-tmodal-field--pass">
+          <div className="ad-tmodal-label">пароль</div>
+          <div className="ad-tmodal-value">••••••••</div>
+        </div>
+
+        <div className="ad-tmodal-name">{name}</div>
+        <div className="ad-tmodal-meta">о преподавателе</div>
+        <div className="ad-tmodal-desc">{nb(data?.bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
+
+        <div className="ad-tmodal-stat ad-tmodal-stat--month">
+          <div className="ad-tmodal-stat-num">{data?.lessons_this_month ?? 0}</div>
+          <div className="ad-tmodal-stat-label">количество<br />уроков за месяц</div>
+        </div>
+        <div className="ad-tmodal-stat ad-tmodal-stat--year">
+          <div className="ad-tmodal-stat-num">{data?.lessons_this_year ?? 0}</div>
+          <div className="ad-tmodal-stat-label">количество<br />уроков за год</div>
+        </div>
+
+        <Link href={`/admin/teachers/${teacherId}`} className="ad-tmodal-btn ad-tmodal-btn--schedule">
+          Открыть расписание
+        </Link>
+        <button type="button" className="ad-tmodal-btn ad-tmodal-btn--off" onClick={() => alert("Функция отключения будет добавлена")}>
+          Отключить от платформы
+        </button>
       </div>
-
-      {/* Стрелка → справа от модалки */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onNext() }}
-        aria-label="Следующий преподаватель"
-        style={{
-          position: "absolute", top: "50%", right: "calc(50% - 470px)", transform: "translateY(-50%)",
-          background: "transparent", border: 0, cursor: "pointer", zIndex: 4, padding: 0,
-        }}
-      >
-        <span style={{ display: "inline-flex", transform: "scaleX(-1)" }}>
-          <CarouselArrow />
-        </span>
-      </button>
     </div>
   )
 }
-
 
 /**
  * «Добавить событие» — многоступенчатый флоу по Figma:
@@ -1725,101 +1776,51 @@ function EventPickerAndForms({
     return <AdminAddLectureModal onClose={onClose} />
   }
   if (stage === 'picker') {
-    // Тёмный picker (Figma 2208-2676)
+    // Тёмный picker (Figma 2522:2733 «Выбрать событие»): 472×413 #1E1E1E, заголовок 32/500 lime в две строки (338) на 79,
+    // «Урок» 398×68 rgba(204,58,58,.5) на 198, «Другое событие» 398×68 lime на 291, крестик lime на (424,34)
     return (
       <div className="tr"><div className="tr-add-lesson-backdrop"
         onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-        <div className="tr-add-lesson" role="dialog" aria-modal="true"
-          style={{
-            background: '#1E1E1E', width: 472, maxWidth: 'calc(100vw - 40px)',
-            padding: '79px 37px 54px', display: 'block',
-          }}
-        >
-          <button type="button" className="tr-add-lesson-close" aria-label="Закрыть"
-            onClick={onClose} style={{ color: '#DFED8C' }}>
-            <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
+        <div className="tr-add-lesson ad-event-picker" role="dialog" aria-modal="true">
+          <button type="button" className="tr-add-lesson-close" aria-label="Закрыть" onClick={onClose}>
+            <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
           </button>
-          <h2 style={{
-            margin: '0 0 60px', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 32,
-            letterSpacing: '-1.6px', color: '#DFED8C', textAlign: 'center', lineHeight: 0.975,
-          }}>
-            Добавить новое событие
-          </h2>
-          <button type="button" onClick={() => setStage('lesson')}
-            style={{
-              display: 'block', width: '100%', height: 68, marginBottom: 25,
-              borderRadius: 34, border: 0, cursor: 'pointer',
-              background: 'rgba(204,58,58,0.5)', color: 'rgba(255,255,255,0.85)',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 24, letterSpacing: '-1.2px',
-            }}>Урок</button>
-          <button type="button" onClick={() => setStage('lecture')}
-            style={{
-              display: 'block', width: '100%', height: 68,
-              borderRadius: 34, border: 0, cursor: 'pointer',
-              background: '#DFED8C', color: '#1E1E1E',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 24, letterSpacing: '-1.2px',
-            }}>Другое событие</button>
+          <h2 className="tr-add-lesson-title">Добавить новое событие</h2>
+          <button type="button" className="ad-event-picker-btn ad-event-picker-btn--lesson" onClick={() => setStage('lesson')}>Урок</button>
+          <button type="button" className="ad-event-picker-btn ad-event-picker-btn--other" onClick={() => setStage('lecture')}>Другое событие</button>
         </div>
       </div></div>
     )
   }
 
-  // initial — зелёная модалка (Figma 2208-2656)
+  // initial — зелёная модалка (Figma 2522:2713 «Добавить событие»): те же классы, что у «Добавить новый урок»
+  // (686×557, заголовок на 79, пилюля 578×68 на 202, дата/время 281×68 на 294, «Создать» 200×68 на 426).
   return (
     <div className="tr"><div className="tr-add-lesson-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="tr-add-lesson" role="dialog" aria-modal="true"
-        style={{ display: 'block', padding: '79px 54px 40px' }}>
+      <div className="tr-add-lesson" role="dialog" aria-modal="true">
         <button type="button" className="tr-add-lesson-close" aria-label="Закрыть" onClick={onClose}>
-          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-            <path d="M1 1l12 12M13 1L1 13" stroke="#1E1E1E" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
+          <CloseIcon />
         </button>
-        <h2 style={{
-          margin: '0 0 42px', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 32,
-          letterSpacing: '-1.6px', color: '#1E1E1E', textAlign: 'center', lineHeight: 0.975,
-        }}>
-          Добавить новое событие
-        </h2>
-        {/* «выберите событие» — клик открывает picker */}
-        <button type="button" onClick={() => setStage('picker')}
-          style={{
-            display: 'block', width: '100%', height: 68, marginBottom: 24,
-            borderRadius: 34, border: 0, cursor: 'pointer', background: '#FFF',
-            color: 'rgba(30,30,30,0.7)', fontFamily: 'Inter, sans-serif',
-            fontWeight: 500, fontSize: 24, letterSpacing: '-1.2px', textAlign: 'center',
-          }}>
-          выберите событие
+        <h2 className="tr-add-lesson-title">Добавить новое событие</h2>
+        {/* «выберите событие» — клик открывает picker (Урок / Другое событие) */}
+        <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--full" onClick={() => setStage('picker')}>
+          <span className="tr-add-lesson-pill-placeholder">выберите событие</span>
+          <ArrowDown />
         </button>
-        {/* дата + время (visual placeholder — станут активны после выбора события,
-            но по-макету на этом шаге они выключены). */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 38 }}>
-          <div style={{
-            height: 68, borderRadius: 34, background: '#FFF',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(30,30,30,0.7)', fontFamily: 'Inter, sans-serif',
-            fontWeight: 500, fontSize: 24, letterSpacing: '-1.2px', opacity: 0.7,
-          }}>дата</div>
-          <div style={{
-            height: 68, borderRadius: 34, background: '#FFF',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'rgba(30,30,30,0.7)', fontFamily: 'Inter, sans-serif',
-            fontWeight: 500, fontSize: 24, letterSpacing: '-1.2px', opacity: 0.7,
-          }}>время</div>
-        </div>
-        {/* «Создать» — disabled на этом шаге */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <button type="button" disabled
-            style={{
-              width: 200, height: 68, borderRadius: 34, border: 0,
-              background: '#CC3A3A', color: '#FFF',
-              fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 32,
-              letterSpacing: '-1.6px', opacity: 0.5, cursor: 'default',
-            }}>
-            Создать
+        {/* дата + время: активны после выбора события — в самой форме урока/лекции */}
+        <div className="tr-add-lesson-row">
+          <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--half" onClick={() => setStage('picker')}>
+            <span className="tr-add-lesson-pill-placeholder">дата</span>
+            <ArrowDown />
           </button>
+          <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--half" onClick={() => setStage('picker')}>
+            <span className="tr-add-lesson-pill-placeholder">время</span>
+            <ArrowDown />
+          </button>
+        </div>
+        <div className="tr-add-lesson-footer">
+          <button type="button" className="tr-add-lesson-btn" disabled>Создать</button>
         </div>
       </div>
     </div></div>

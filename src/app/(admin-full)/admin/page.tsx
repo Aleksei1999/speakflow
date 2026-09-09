@@ -224,7 +224,7 @@ export default async function AdminDashboardFullPage() {
       .gte("scheduled_at", now)
       .in("status", ["scheduled", "confirmed", "booked"])
       .order("scheduled_at", { ascending: true })
-      .limit(20)
+      .limit(300) // полный календарь админа листает все ближайшие уроки
     // Обогащаем именами учителя+ученика — так строка в дашборде читается
     // без лишних кликов ("08:30 07.09 — Кристина / Дмитрий Кузин").
     const studentIds = Array.from(new Set(((lRows ?? []) as any[]).map((r) => r.student_id).filter(Boolean)))
@@ -267,7 +267,7 @@ export default async function AdminDashboardFullPage() {
       .gte("scheduled_at", now)
       .eq("is_published", true)
       .order("scheduled_at", { ascending: true })
-      .limit(20)
+      .limit(100)
     const lectureEvents = ((lecRows ?? []) as any[]).map((r) => ({
       id: `lec:${r.id}`,
       scheduledAt: r.scheduled_at,
@@ -281,7 +281,6 @@ export default async function AdminDashboardFullPage() {
     // Мержим уроки+лекции, сортируем по scheduled_at.
     upcomingLessons = [...lessonEvents, ...lectureEvents]
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-      .slice(0, 20)
   } catch (e) {
     console.error("[admin] dashboard prefetch failed", e)
   }

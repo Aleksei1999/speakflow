@@ -11,13 +11,13 @@ interface Props {
   supportHref?: string
   onSupportClick?: () => void
   /** teacher — Figma 4033:232: та же раскладка, но фрейм 266 (контент с 52), а не 330 (с 101) */
-  variant?: "default" | "teacher"
+  variant?: "default" | "teacher" | "admin"
 }
 export default function SiteFooter({ supportHref = "/support", onSupportClick, variant = "default" }: Props) {
   return (
-    <footer className={`sf-footer${variant === "teacher" ? " sf-footer--teacher" : ""}`}>
+    <footer className={`sf-footer${variant === "teacher" ? " sf-footer--teacher" : variant === "admin" ? " sf-footer--admin" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260908-teacher" />
+      <link rel="stylesheet" href="/dashboard/site-footer.css?v=20260909-admin2" />
 
       <div className="sf-inner">
         <div className="sf-col sf-col-links">

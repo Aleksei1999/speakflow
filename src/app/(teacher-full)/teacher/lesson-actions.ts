@@ -282,8 +282,14 @@ export async function cancelLesson(
   if (tpRes.error) {
     return { ok: false, error: `teacher_profiles: ${tpRes.error.message}` }
   }
-  const teacherPk = (tpRes.data as { id: string } | null)?.id
-  if (!teacherPk) return { ok: false, error: 'teacher_profiles not found' }
+  const teacherPk = (tpRes.data as { id: string } | null)?.id ?? null
+  // Админ (без teacher_profiles) может отменить любой урок — например, только что созданный из админки.
+  let isAdmin = false
+  if (!teacherPk) {
+    const roleRes = await admin.from('profiles').select('role').eq('id', auth.userId).maybeSingle()
+    isAdmin = (roleRes.data as { role: string | null } | null)?.role === 'admin'
+    if (!isAdmin) return { ok: false, error: 'teacher_profiles not found' }
+  }
 
   // Загружаем урок для owner-проверки + чтобы узнать google_event_id.
   const lessonRes = await admin
@@ -301,23 +307,28 @@ export async function cancelLesson(
     google_event_id: string | null
   } | null
   if (!lesson) return { ok: false, error: 'Урок не найден' }
-  if (lesson.teacher_id !== teacherPk) {
+  if (!isAdmin && lesson.teacher_id !== teacherPk) {
     return { ok: false, error: 'Forbidden: not lesson owner' }
+  }
+  let ownerUserId = auth.userId
+  if (isAdmin) {
+    const ownerRes = await admin.from('teacher_profiles').select('user_id').eq('id', lesson.teacher_id).maybeSingle()
+    ownerUserId = (ownerRes.data as { user_id: string } | null)?.user_id ?? auth.userId
   }
 
   // Параллельно: удаляем строку из lessons + удаляем event в Google (fail-soft).
   const [delRes] = await Promise.all([
     admin.from('lessons').delete().eq('id', lessonId),
     lesson.google_event_id
-      ? deleteEventFromGoogle(auth.userId, lesson.google_event_id)
+      ? deleteEventFromGoogle(ownerUserId, lesson.google_event_id)
       : Promise.resolve(false),
   ])
   if (delRes.error) {
     return { ok: false, error: `delete lessons: ${delRes.error.message}` }
   }
 
-  invalidateTeacherStudents(auth.userId)
-  invalidateTeacherDashboard(auth.userId)
+  invalidateTeacherStudents(ownerUserId)
+  invalidateTeacherDashboard(ownerUserId)
   if (lesson.student_id) invalidateStudentDashboard(lesson.student_id)
 
   return { ok: true }
@@ -380,12 +391,18 @@ export async function rescheduleLesson(
   if (tpRes.error) {
     return { ok: false, code: 'db', error: `teacher_profiles: ${tpRes.error.message}` }
   }
-  const teacherPk = (tpRes.data as { id: string } | null)?.id
-  if (!teacherPk) return { ok: false, code: 'db', error: 'teacher_profiles not found' }
+  let teacherPk = (tpRes.data as { id: string } | null)?.id ?? null
+  // Админ (без teacher_profiles) может переносить любой урок — он правит расписание школы.
+  let isAdmin = false
+  if (!teacherPk) {
+    const roleRes = await admin.from('profiles').select('role').eq('id', auth.userId).maybeSingle()
+    isAdmin = (roleRes.data as { role: string | null } | null)?.role === 'admin'
+    if (!isAdmin) return { ok: false, code: 'db', error: 'teacher_profiles not found' }
+  }
 
   const lessonRes = await admin
     .from('lessons')
-    .select('id, teacher_id, student_id, duration_minutes, google_event_id, scheduled_at')
+    .select('id, teacher_id, student_id, duration_minutes, google_event_id, student_google_event_id, scheduled_at')
     .eq('id', input.lessonId)
     .maybeSingle()
   if (lessonRes.error) {
@@ -397,11 +414,19 @@ export async function rescheduleLesson(
     student_id: string | null
     duration_minutes: number | null
     google_event_id: string | null
+    student_google_event_id: string | null
     scheduled_at: string
   } | null
   if (!lesson) return { ok: false, code: 'not_found', error: 'Урок не найден' }
-  if (lesson.teacher_id !== teacherPk) {
+  if (!isAdmin && lesson.teacher_id !== teacherPk) {
     return { ok: false, code: 'forbidden', error: 'Forbidden: not lesson owner' }
+  }
+  if (isAdmin) teacherPk = lesson.teacher_id
+  // Google Calendar и кэши — у владельца урока (учителя), а не у админа.
+  let ownerUserId = auth.userId
+  if (isAdmin) {
+    const ownerRes = await admin.from('teacher_profiles').select('user_id').eq('id', lesson.teacher_id).maybeSingle()
+    ownerUserId = (ownerRes.data as { user_id: string } | null)?.user_id ?? auth.userId
   }
 
   const duration = typeof lesson.duration_minutes === 'number' && lesson.duration_minutes > 0
@@ -444,9 +469,9 @@ export async function rescheduleLesson(
   }
 
   // Google Calendar busy — только если подключён.
-  const conn = await hasGoogleCalendar(auth.userId)
+  const conn = await hasGoogleCalendar(ownerUserId)
   if (conn.connected) {
-    const gBusy = await isSlotBusyInGoogle(auth.userId, startISO, endISO)
+    const gBusy = await isSlotBusyInGoogle(ownerUserId, startISO, endISO)
     if (gBusy) {
       // Если событие принадлежит нам (google_event_id совпадает), Google вернёт
       // его как busy — но это не конфликт, а сам урок. isSlotBusyInGoogle этого
@@ -472,7 +497,7 @@ export async function rescheduleLesson(
   // Google Calendar sync (fail-soft): PATCH события с новыми start/end.
   if (conn.connected && lesson.google_event_id) {
     try {
-      await updateEventInGoogle(auth.userId, lesson.google_event_id, {
+      await updateEventInGoogle(ownerUserId, lesson.google_event_id, {
         startISO,
         endISO,
         sendUpdates: 'all',
@@ -481,9 +506,21 @@ export async function rescheduleLesson(
       console.error('[rescheduleLesson] Google patch failed', e)
     }
   }
+  // Личный календарь ученика: при бронировании туда пушится отдельное событие
+  // (lessons.student_google_event_id) — переносим и его. Fail-soft.
+  if (lesson.student_id && lesson.student_google_event_id) {
+    try {
+      const stuConn = await hasGoogleCalendar(lesson.student_id)
+      if (stuConn.connected) {
+        await updateEventInGoogle(lesson.student_id, lesson.student_google_event_id, { startISO, endISO })
+      }
+    } catch (e) {
+      console.error('[rescheduleLesson] student Google patch failed', e)
+    }
+  }
 
-  invalidateTeacherStudents(auth.userId)
-  invalidateTeacherDashboard(auth.userId)
+  invalidateTeacherStudents(ownerUserId)
+  invalidateTeacherDashboard(ownerUserId)
   if (lesson.student_id) invalidateStudentDashboard(lesson.student_id)
 
   // Уведомление другой стороне (обычно ученику). Fire-and-forget,
@@ -493,7 +530,7 @@ export async function rescheduleLesson(
     void notifyLessonRescheduled({
       lessonId: input.lessonId,
       oldScheduledAt: lesson.scheduled_at,
-      changedByUserId: auth.userId,
+      changedByUserId: ownerUserId,
     }).catch(() => {})
   }
 

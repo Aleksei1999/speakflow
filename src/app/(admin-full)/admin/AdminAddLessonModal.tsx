@@ -10,13 +10,16 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { cancelLesson } from '@/app/(teacher-full)/teacher/lesson-actions'
 import {
   buildDateOptions,
   buildTimeOptions,
   ArrowDown,
   ArrowLeftLime,
+  ArrowLeftRed,
+  CheckIcon,
   CloseIcon,
-  WheelPicker,
+  PickerList,
   type AddLessonStudent,
 } from '@/app/(teacher-full)/teacher/AddLessonModal'
 
@@ -74,10 +77,12 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
   const [studentId, setStudentId] = useState<string | null>(null)
   const [dateKey, setDateKey] = useState<string | null>(null)
   const [timeKey, setTimeKey] = useState<string | null>(null)
-  const [price, setPrice] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{ name: string; dateLabel: string; timeLabel: string } | null>(null)
-  const [successRemaining, setSuccessRemaining] = useState(60)
+  const [successRemaining, setSuccessRemaining] = useState(59)
+  // id созданного урока — для отмены кнопкой ← в окне успеха, пока идёт таймер 0:59 (Figma 2522:2590)
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const [reverting, setReverting] = useState(false)
 
   const selectedTeacher = teachers.find((t) => t.id === teacherId) ?? null
   const selectedStudent = students.find((s) => s.id === studentId) ?? null
@@ -106,7 +111,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
 
   useEffect(() => {
     if (state !== 'success') return
-    setSuccessRemaining(60)
+    setSuccessRemaining(59)
     const id = window.setInterval(() => {
       setSuccessRemaining((r) => {
         if (r <= 1) { window.clearInterval(id); return 0 }
@@ -140,13 +145,13 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
           student_id: selectedStudent.id,
           scheduled_at: dt.toISOString(),
           duration_minutes: 50,
-          price: price ? Number.parseInt(price, 10) : undefined,
         }),
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { setErrorMsg(j.error || 'Не удалось создать урок'); setState('error'); return }
+      setCreatedId(typeof j.id === 'string' ? j.id : null)
       setSuccessData({
-        name: `${selectedStudent.name} → ${selectedTeacher.name}`,
+        name: selectedStudent.name,
         dateLabel: selectedDate.label,
         timeLabel: selectedTime.label,
       })
@@ -154,6 +159,21 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Не удалось создать урок')
       setState('error')
+    }
+  }
+
+  async function revertToFilled() {
+    if (!createdId || successRemaining <= 0 || reverting) return
+    setReverting(true)
+    try {
+      const r = await cancelLesson({ lessonId: createdId })
+      if (!r.ok) setErrorMsg(r.error)
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Не удалось отменить урок')
+    } finally {
+      setCreatedId(null)
+      setReverting(false)
+      setState('filled')
     }
   }
 
@@ -166,7 +186,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
       onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <div
-        className={`tr-add-lesson${isSuccess ? ' tr-add-lesson--success' : ''}`}
+        className={`tr-add-lesson ad-lesson-modal${isSuccess ? ' tr-add-lesson--success' : ''}`}
         role="dialog" aria-modal="true"
       >
         {isSuccess && <div className="tr-add-lesson-timer">{timerLabel}</div>}
@@ -180,14 +200,22 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
             <div className="tr-add-lesson-success-title">
               В календарь<br />добавлен урок
             </div>
+            {/* Figma 2522:2590: галочка 69 на 189, имя ученика 36/700 на 271, дата 36/500 на 315, ← 46×47 на 387 */}
             <div className="tr-add-lesson-success-check">
-              <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-                <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-                <path d="M20 35l10 10 20-22" stroke="#FFFFFF" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <CheckIcon />
             </div>
             <div className="tr-add-lesson-success-name">{successData?.name}</div>
             <div className="tr-add-lesson-success-when">{successData?.dateLabel}, {successData?.timeLabel}</div>
+            <button
+              type="button"
+              className="tr-add-lesson-success-back"
+              aria-label={successRemaining > 0 ? 'Отменить и вернуться к редактированию' : 'Отмена больше недоступна — таймер истёк'}
+              onClick={revertToFilled}
+              disabled={successRemaining <= 0 || reverting || !createdId}
+              style={successRemaining <= 0 || !createdId ? { opacity: 0.4, cursor: 'default' } : undefined}
+            >
+              <ArrowLeftRed />
+            </button>
           </>
         ) : (
           <>
@@ -195,33 +223,27 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
 
             {/* ── TEACHER ROW (только у админа) ── */}
             {state === 'picking-teacher' ? (
-              <div className="tr-add-lesson-dropdown">
-                <button
-                  type="button"
-                  className="tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--dropdown-head"
-                  onClick={() => setState(canCreate ? 'filled' : 'empty')}
-                >
-                  <span className="tr-add-lesson-pill-placeholder">выберите преподавателя</span>
-                  <ArrowLeftLime />
-                </button>
-                <div className="tr-add-lesson-dropdown-list" role="listbox">
-                  {teachers.length === 0 ? (
-                    <div className="tr-add-lesson-dropdown-empty">Преподавателей нет</div>
-                  ) : (
-                    teachers.map((t, i) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        role="option"
-                        aria-selected={teacherId === t.id}
-                        className={`tr-add-lesson-dropdown-item${teacherId === t.id ? ' is-selected' : ''}${i > 0 ? ' has-divider' : ''}`}
-                        onClick={() => { setTeacherId(t.id); setErrorMsg(null); setState(canCreate ? 'filled' : 'empty') }}
-                      >
-                        {t.name}
-                      </button>
-                    ))
-                  )}
+              /* Figma 2522:402: открытый список 578×217 (шапка 68 + список 149, ряды 72+1, трек 7×107) */
+              <div className="tr-add-lesson-half tr-add-lesson-half--picker ad-lecture-picker--full">
+                <div className="tr-add-lesson-picker-head">
+                  {selectedTeacher
+                    ? <span className="tr-add-lesson-pill-value">{selectedTeacher.name}</span>
+                    : <span className="tr-add-lesson-pill-placeholder">выберите учителя</span>}
+                  <button type="button" className="tr-add-lesson-picker-back" aria-label="Свернуть"
+                    onClick={() => setState(canCreate ? 'filled' : 'empty')}>
+                    <ArrowLeftLime />
+                  </button>
                 </div>
+                {teachers.length === 0 ? (
+                  <div className="ad-lecture-picker-empty">Загружаем список учителей…</div>
+                ) : (
+                  <PickerList
+                    items={teachers.map((t) => ({ key: t.id, label: t.name }))}
+                    value={teacherId ?? ''}
+                    onChange={(k) => { setTeacherId(k); setErrorMsg(null); setState(canCreate ? 'filled' : 'empty') }}
+                    ariaLabel="Учитель"
+                  />
+                )}
               </div>
             ) : (
               <button
@@ -232,7 +254,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
                 {selectedTeacher ? (
                   <span className="tr-add-lesson-pill-value">{selectedTeacher.name}</span>
                 ) : (
-                  <span className="tr-add-lesson-pill-placeholder">выберите преподавателя</span>
+                  <span className="tr-add-lesson-pill-placeholder">выберите учителя</span>
                 )}
                 <ArrowDown />
               </button>
@@ -240,33 +262,26 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
 
             {/* ── STUDENT ROW ── */}
             {state === 'picking-student' ? (
-              <div className="tr-add-lesson-dropdown">
-                <button
-                  type="button"
-                  className="tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--dropdown-head"
-                  onClick={() => setState(canCreate ? 'filled' : 'empty')}
-                >
-                  <span className="tr-add-lesson-pill-placeholder">выберите ученика</span>
-                  <ArrowLeftLime />
-                </button>
-                <div className="tr-add-lesson-dropdown-list" role="listbox">
-                  {students.length === 0 ? (
-                    <div className="tr-add-lesson-dropdown-empty">Учеников пока нет</div>
-                  ) : (
-                    students.map((s, i) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="option"
-                        aria-selected={studentId === s.id}
-                        className={`tr-add-lesson-dropdown-item${studentId === s.id ? ' is-selected' : ''}${i > 0 ? ' has-divider' : ''}`}
-                        onClick={() => { setStudentId(s.id); setErrorMsg(null); setState(canCreate ? 'filled' : 'empty') }}
-                      >
-                        {s.name}
-                      </button>
-                    ))
-                  )}
+              <div className="tr-add-lesson-half tr-add-lesson-half--picker ad-lecture-picker--full">
+                <div className="tr-add-lesson-picker-head">
+                  {selectedStudent
+                    ? <span className="tr-add-lesson-pill-value">{selectedStudent.name}</span>
+                    : <span className="tr-add-lesson-pill-placeholder">выберите ученика</span>}
+                  <button type="button" className="tr-add-lesson-picker-back" aria-label="Свернуть"
+                    onClick={() => setState(canCreate ? 'filled' : 'empty')}>
+                    <ArrowLeftLime />
+                  </button>
                 </div>
+                {students.length === 0 ? (
+                  <div className="ad-lecture-picker-empty">Учеников пока нет</div>
+                ) : (
+                  <PickerList
+                    items={students.map((st) => ({ key: st.id, label: st.name }))}
+                    value={studentId ?? ''}
+                    onChange={(k) => { setStudentId(k); setErrorMsg(null); setState(canCreate ? 'filled' : 'empty') }}
+                    ariaLabel="Ученик"
+                  />
+                )}
               </div>
             ) : (
               <button
@@ -294,7 +309,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker items={dateOptions} value={dateKey ?? dateOptions[0].key} onChange={setDateKey} ariaLabel="Дата урока" />
+                  <PickerList items={dateOptions} value={dateKey ?? dateOptions[0].key} onChange={setDateKey} ariaLabel="Дата урока" />
                 </div>
                 <div className="tr-add-lesson-half tr-add-lesson-half--picker">
                   <div className="tr-add-lesson-picker-head">
@@ -304,7 +319,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker items={timeOptions} value={timeKey ?? timeOptions[0].key} onChange={setTimeKey} ariaLabel="Время урока" />
+                  <PickerList items={timeOptions} value={timeKey ?? timeOptions[0].key} onChange={setTimeKey} ariaLabel="Время урока" />
                 </div>
               </div>
             ) : (
@@ -334,22 +349,7 @@ export default function AdminAddLessonModal({ teachers: teachersProp, students, 
               </div>
             )}
 
-            {/* Стоимость участия — необязательно; если пусто, возьмётся hourly_rate учителя */}
-            <div className="tr-add-lesson-pill tr-add-lesson-pill--full"
-              style={{ padding: 0, background: '#FFF' }}>
-              <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value.replace(/\D+/g, '').slice(0, 8))}
-                placeholder="введите стоимость участия"
-                inputMode="numeric"
-                style={{
-                  width: '100%', height: '100%', border: 0, outline: 0, background: 'transparent',
-                  padding: '0 40px', textAlign: 'center',
-                  fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 24,
-                  letterSpacing: '-1.2px', color: '#1E1E1E',
-                }}
-              />
-            </div>
+            {/* Figma 2522:354: стоимости в форме нет — берётся hourly_rate учителя */}
 
             <div className="tr-add-lesson-footer">
               <button type="button" className="tr-add-lesson-btn" disabled={!canCreate || state === 'creating'} onClick={submit}>

@@ -747,20 +747,7 @@
 .tr-q-nav-arrow { left: 11px; top: 10.8px; width: 18.5px; height: 18.41px; } /* Vector 40 at (1180,627) − штрих */
 .tr-q-nav-arrow--prev { transform: rotate(180deg); }
 
-/* В админской версии — увеличенные лаймовые круги с чёрной стрелкой
-   (как большая стрелка развернуть у самой карточки заявки). */
-.ad .tr .tr-q-next,
-.ad .tr .tr-q-prev {
-  width: 67px; height: 67px;
-  top: calc(50% - 33px);   /* центру блока вопросов */
-  background: #DFED8C;
-  color: #1E1E1E;
-  border: 4px solid #fff;
-}
-.ad .tr .tr-q-next { right: -33px; }
-.ad .tr .tr-q-prev { left: -33px; }
-.ad .tr .tr-q-next:hover,
-.ad .tr .tr-q-prev:hover { background: #cfe06a; }
+/* Figma 2522:3812 (админ): стрелки листания вопросов те же, что у учителя — отдельного оверрайда нет */
 
 /* Кнопки действий */
 .tr-app-actions {
@@ -3073,7 +3060,8 @@
   position: absolute;
   left: 29px; top: -1px; /* 54 + 29 = 83 */
   width: 206px; height: 1px;
-  background: rgba(0, 0, 0, 0.26);
+  /* рисованная линия из Figma (Line 4): сужается к краям, чёрный 26% */
+  background: url('/dashboard/picker-line-206.svg') no-repeat 0 0 / 206px 1px;
 }
 .tr .tr-al-dlist-item:hover { background: rgba(255, 255, 255, 0.4) !important; }
 .tr .tr-al-dlist-item.is-selected {
@@ -3896,3 +3884,16 @@
 /* Figma-иконка нарисована стрелкой вправо, но кнопка обёрнута в rotate-180 —
    выходит стрелка влево. Крутим здесь. */
 .tr-chat-arrow-btn img { width: 37px; height: 36.82px; display: block; transform: rotate(180deg); } /* Vector 44: 32 + обводка = 37×36.82 */
+
+/* Заявка без пройденного теста: вместо карточек вопросов — подпись по центру области 976×300 */
+.tr .tr-app-notest {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.96;
+  color: rgba(30, 30, 30, 0.7);
+  text-align: center;
+}

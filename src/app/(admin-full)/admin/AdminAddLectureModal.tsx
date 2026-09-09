@@ -4,20 +4,23 @@
 // AdminAddLectureModal — «Другое событие» у админа.
 // UI полностью в стиле AddLessonModal (те же .tr-add-lesson-* классы):
 //   • Название, ФИО спикера — text-input pill'ы
-//   • Дата + время — WheelPicker'ы (сегодня жирным)
+//   • Организатор, тип, дата + время — списки PickerList (Figma 2522:504: 217 = шапка 68 + список 149)
 //   • Описание — textarea
 // Отправляет POST /api/lectures (multipart), затем router.refresh().
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { deleteLecture } from './admin-actions'
 import {
   buildDateOptions,
   buildTimeOptions,
   ArrowDown,
   ArrowLeftLime,
+  ArrowLeftRed,
+  CheckIcon,
   CloseIcon,
-  WheelPicker,
+  PickerList,
 } from '@/app/(teacher-full)/teacher/AddLessonModal'
 
 interface Props {
@@ -62,12 +65,29 @@ export default function AdminAddLectureModal({ onClose }: Props) {
     return () => { cancelled = true }
   }, [])
   const [desc, setDesc] = useState('')
+  // Figma 2522:560: короткое описание стоит по центру поля 139, длинное (2522:504) — от верха с отступом 12.
+  const descRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = descRef.current
+    if (!el) return
+    el.style.paddingTop = '0px'
+    el.style.paddingBottom = '0px'
+    el.style.height = '0px' // scrollHeight при нулевой высоте = высота контента
+    const content = el.scrollHeight
+    el.style.height = ''
+    const pad = Math.max(12, (139 - content) / 2)
+    el.style.paddingTop = `${pad}px`
+    el.style.paddingBottom = '12px'
+  }, [desc, state])
   const [dateKey, setDateKey] = useState<string | null>(null)
   const [timeKey, setTimeKey] = useState<string | null>(null)
   const [tagKey, setTagKey] = useState<string | null>(null)
   const [price, setPrice] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [successRemaining, setSuccessRemaining] = useState(60)
+  const [successRemaining, setSuccessRemaining] = useState(59)
+  // id созданной лекции — для отмены кнопкой ← в окне успеха (пока идёт таймер 0:59)
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const [reverting, setReverting] = useState(false)
 
   const selectedDate = dateKey ? dateOptions.find((d) => d.key === dateKey) ?? null : null
   const selectedTime = timeKey ? timeOptions.find((t) => t.key === timeKey) ?? null : null
@@ -91,7 +111,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
 
   useEffect(() => {
     if (state !== 'success') return
-    setSuccessRemaining(60)
+    setSuccessRemaining(59)
     const id = window.setInterval(() => {
       setSuccessRemaining((r) => (r <= 1 ? (window.clearInterval(id), 0) : r - 1))
     }, 1000)
@@ -126,10 +146,26 @@ export default function AdminAddLectureModal({ onClose }: Props) {
       const res = await fetch('/api/lectures', { method: 'POST', body: fd })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { setErrorMsg(j.error || 'Не удалось создать лекцию'); setState('error'); return }
+      setCreatedId(typeof j.id === 'string' ? j.id : (j.lecture?.id ?? null))
       setState('success')
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Не удалось создать лекцию')
       setState('error')
+    }
+  }
+
+  async function revertToFilled() {
+    if (!createdId || successRemaining <= 0 || reverting) return
+    setReverting(true)
+    try {
+      const r = await deleteLecture({ lectureId: createdId })
+      if (!r.ok) setErrorMsg(r.error)
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Не удалось отменить событие')
+    } finally {
+      setCreatedId(null)
+      setReverting(false)
+      setState('filled')
     }
   }
 
@@ -139,7 +175,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
   return (
     <div className="tr"><div className="tr-add-lesson-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-      <div className={`tr-add-lesson${isSuccess ? ' tr-add-lesson--success' : ''}`} role="dialog" aria-modal="true">
+      <div className={`tr-add-lesson ad-lecture-modal${isSuccess ? ' tr-add-lesson--success' : ''}`} role="dialog" aria-modal="true">
         {isSuccess && <div className="tr-add-lesson-timer">{timerLabel}</div>}
         <button type="button" className="tr-add-lesson-close" aria-label="Закрыть" onClick={handleClose}>
           <CloseIcon />
@@ -147,81 +183,76 @@ export default function AdminAddLectureModal({ onClose }: Props) {
 
         {isSuccess ? (
           <>
+            {/* Figma 2522:2603 «Событие добавлено в календарь»: 503×500, заголовок 86, галочка 189, подпись 275, имя 295, дата 339, ← 412 */}
             <div className="tr-add-lesson-success-title">В календарь<br />добавлено событие</div>
             <div className="tr-add-lesson-success-check">
-              <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-                <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-                <path d="M20 35l10 10 20-22" stroke="#FFFFFF" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <CheckIcon />
             </div>
-            <div className="tr-add-lesson-success-name">{title}</div>
+            <div className="ad-lecture-success-sub">{tagKey ? `${tagKey} - ${title}` : title}</div>
+            <div className="tr-add-lesson-success-name">{host || title}</div>
             <div className="tr-add-lesson-success-when">{selectedDate?.label}, {selectedTime?.label}</div>
+            <button
+              type="button"
+              className="tr-add-lesson-success-back"
+              aria-label={successRemaining > 0 ? 'Отменить и вернуться к редактированию' : 'Отмена больше недоступна — таймер истёк'}
+              onClick={revertToFilled}
+              disabled={successRemaining <= 0 || reverting || !createdId}
+              style={successRemaining <= 0 || !createdId ? { opacity: 0.4, cursor: 'default' } : undefined}
+            >
+              <ArrowLeftRed />
+            </button>
           </>
         ) : (
           <>
             <h2 className="tr-add-lesson-title">Добавить новое событие</h2>
 
             {/* Название */}
-            <div className="tr-add-lesson-pill tr-add-lesson-pill--full"
-              style={{ padding: 0, background: '#FFF' }}>
+            <div className="tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--input">
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="введите название события"
-                style={{
-                  width: '100%', height: '100%', border: 0, outline: 0, background: 'transparent',
-                  padding: '0 40px', textAlign: 'center',
-                  fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 24,
-                  letterSpacing: '-1.2px', color: '#1E1E1E',
-                }}
               />
             </div>
 
             {/* Преподаватель — picker из существующих учителей (сохраняем имя
                 в lectures.host_name, как раньше). */}
             {state === 'picking-host' ? (
-              <div className="tr-add-lesson-row tr-add-lesson-row--picker">
-                <div className="tr-add-lesson-half tr-add-lesson-half--picker" style={{ flex: 1, maxWidth: '100%' }}>
-                  <div className="tr-add-lesson-picker-head">
-                    <span className="tr-add-lesson-pill-placeholder">преподаватель</span>
-                    <button
-                      type="button"
-                      className="tr-add-lesson-picker-back"
-                      aria-label="Свернуть"
-                      onClick={() => setState(canCreate ? 'filled' : 'empty')}
-                    >
-                      <ArrowLeftLime />
-                    </button>
-                  </div>
-                  {teachers.length > 0 ? (
-                    <WheelPicker
-                      items={teachers}
-                      value={host || teachers[0].key}
-                      onChange={setHost}
-                      ariaLabel="Преподаватель"
-                    />
-                  ) : (
-                    <div style={{
-                      padding: 24, textAlign: 'center', color: 'rgba(30,30,30,0.7)',
-                      fontFamily: 'Inter, sans-serif', fontSize: 20,
-                    }}>
-                      Загружаем список преподавателей…
-                    </div>
-                  )}
+              /* Figma 2522:504: открытый выбор — 578×217 (шапка 68 + список 149, ряды 72+1, трек 107) */
+              <div className="tr-add-lesson-half tr-add-lesson-half--picker ad-lecture-picker--full">
+                <div className="tr-add-lesson-picker-head">
+                  {host
+                    ? <span className="tr-add-lesson-pill-value">{host}</span>
+                    : <span className="tr-add-lesson-pill-placeholder">выберите организатора</span>}
+                  <button
+                    type="button"
+                    className="tr-add-lesson-picker-back"
+                    aria-label="Свернуть"
+                    onClick={() => setState(canCreate ? 'filled' : 'empty')}
+                  >
+                    <ArrowLeftLime />
+                  </button>
                 </div>
+                {teachers.length > 0 ? (
+                  <PickerList
+                    items={teachers}
+                    value={host}
+                    onChange={(k) => { setHost(k); setState(canCreate ? 'filled' : 'empty') }}
+                    ariaLabel="Организатор"
+                  />
+                ) : (
+                  <div className="ad-lecture-picker-empty">Загружаем список преподавателей…</div>
+                )}
               </div>
             ) : (
               <button
                 type="button"
                 className="tr-add-lesson-pill tr-add-lesson-pill--full"
-                onClick={() => {
-                  if (!host && teachers[0]) setHost(teachers[0].key)
-                  setState('picking-host')
-                }}
+                onClick={() => setState('picking-host')}
               >
                 {host
                   ? <span className="tr-add-lesson-pill-value">{host}</span>
-                  : <span className="tr-add-lesson-pill-placeholder">преподаватель</span>}
+                  : <span className="tr-add-lesson-pill-placeholder">выберите организатора</span>}
                 <ArrowDown />
               </button>
             )}
@@ -229,42 +260,36 @@ export default function AdminAddLectureModal({ onClose }: Props) {
             {/* Тип события (Figma 2522:10819) — WheelPicker с фиксированным
                 списком категорий, сохраняется в lectures.tag. */}
             {state === 'picking-tag' ? (
-              <div className="tr-add-lesson-row tr-add-lesson-row--picker">
-                <div
-                  className="tr-add-lesson-half tr-add-lesson-half--picker"
-                  style={{ flex: 1, maxWidth: '100%' }}
-                >
-                  <div className="tr-add-lesson-picker-head">
-                    <span className="tr-add-lesson-pill-placeholder">тип события</span>
-                    <button
-                      type="button"
-                      className="tr-add-lesson-picker-back"
-                      aria-label="Свернуть"
-                      onClick={() => setState(canCreate ? 'filled' : 'empty')}
-                    >
-                      <ArrowLeftLime />
-                    </button>
-                  </div>
-                  <WheelPicker
-                    items={TAG_OPTIONS as unknown as { key: string; label: string }[]}
-                    value={tagKey ?? TAG_OPTIONS[0].key}
-                    onChange={setTagKey}
-                    ariaLabel="Тип события"
-                  />
+              <div className="tr-add-lesson-half tr-add-lesson-half--picker ad-lecture-picker--full">
+                <div className="tr-add-lesson-picker-head">
+                  {tagKey
+                    ? <span className="tr-add-lesson-pill-value">{tagKey}</span>
+                    : <span className="tr-add-lesson-pill-placeholder">Тип события</span>}
+                  <button
+                    type="button"
+                    className="tr-add-lesson-picker-back"
+                    aria-label="Свернуть"
+                    onClick={() => setState(canCreate ? 'filled' : 'empty')}
+                  >
+                    <ArrowLeftLime />
+                  </button>
                 </div>
+                <PickerList
+                  items={TAG_OPTIONS as unknown as { key: string; label: string }[]}
+                  value={tagKey ?? ''}
+                  onChange={(k) => { setTagKey(k); setState(canCreate ? 'filled' : 'empty') }}
+                  ariaLabel="Тип события"
+                />
               </div>
             ) : (
               <button
                 type="button"
                 className="tr-add-lesson-pill tr-add-lesson-pill--full"
-                onClick={() => {
-                  if (!tagKey) setTagKey(TAG_OPTIONS[0].key)
-                  setState('picking-tag')
-                }}
+                onClick={() => setState('picking-tag')}
               >
                 {tagKey
                   ? <span className="tr-add-lesson-pill-value">{tagKey}</span>
-                  : <span className="tr-add-lesson-pill-placeholder">тип события</span>}
+                  : <span className="tr-add-lesson-pill-placeholder">Тип события</span>}
                 <ArrowDown />
               </button>
             )}
@@ -280,7 +305,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker items={dateOptions} value={dateKey ?? dateOptions[0].key} onChange={setDateKey} ariaLabel="Дата" />
+                  <PickerList items={dateOptions} value={dateKey ?? dateOptions[0].key} onChange={setDateKey} ariaLabel="Дата" />
                 </div>
                 <div className="tr-add-lesson-half tr-add-lesson-half--picker">
                   <div className="tr-add-lesson-picker-head">
@@ -290,7 +315,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
                       <ArrowLeftLime />
                     </button>
                   </div>
-                  <WheelPicker items={timeOptions} value={timeKey ?? timeOptions[0].key} onChange={setTimeKey} ariaLabel="Время" />
+                  <PickerList items={timeOptions} value={timeKey ?? timeOptions[0].key} onChange={setTimeKey} ariaLabel="Время" />
                 </div>
               </div>
             ) : (
@@ -321,46 +346,27 @@ export default function AdminAddLectureModal({ onClose }: Props) {
             )}
 
             {/* Описание */}
-            <div style={{
-              marginTop: 24, marginBottom: 12,
-              textAlign: 'center', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 32,
-              letterSpacing: '-1.6px', color: '#1E1E1E',
-            }}>
-              Опишите событие
-            </div>
+            {/* Описание (Figma 2522:322): заголовок 32/500 на 593, поле 578×139 на 651, счётчик 0/500 на 802 */}
+            <div className="ad-lecture-desc-label">Опишите событие</div>
             <textarea
+              ref={descRef}
+              className="ad-lecture-desc"
               value={desc}
               onChange={(e) => setDesc(e.target.value.slice(0, 500))}
               maxLength={500}
-              style={{
-                display: 'block', width: '100%', height: 139, borderRadius: 29.5,
-                background: '#FFF', border: 0, outline: 0,
-                padding: '18px 40px', textAlign: 'center', resize: 'none',
-                fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 20,
-                letterSpacing: '-1.2px', color: '#1E1E1E', lineHeight: 1.2,
-              }}
+              aria-label="Описание события"
             />
-            {/* Стоимость участия (Figma 2208-342 / 2208-517) */}
-            <div className="tr-add-lesson-pill tr-add-lesson-pill--full"
-              style={{ padding: 0, background: '#FFF', marginTop: 16 }}>
+            <div className={`ad-lecture-counter${desc.length >= 500 ? ' is-max' : ''}`}>{desc.length}/500</div>
+            {/* Стоимость участия — пилюля 578×68 на 842 */}
+            <div className={`tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--input ad-lecture-price${price ? ' ad-lecture-price--filled' : ''}`}>
               <input
-                value={price}
+                value={price ? `${price.replace(/\B(?=(\d{3})+(?!\d))/g, '.')} ₽` : ''}
                 onChange={(e) => setPrice(e.target.value.replace(/\D+/g, '').slice(0, 8))}
                 placeholder="введите стоимость участия"
                 inputMode="numeric"
-                style={{
-                  width: '100%', height: '100%', border: 0, outline: 0, background: 'transparent',
-                  padding: '0 40px', textAlign: 'center',
-                  fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 24,
-                  letterSpacing: '-1.2px', color: '#1E1E1E',
-                }}
+                aria-label="Стоимость участия"
               />
             </div>
-            <div style={{
-              textAlign: 'right', marginTop: 6, marginRight: 4,
-              fontFamily: 'Inter, sans-serif', fontSize: 14,
-              color: desc.length >= 500 ? '#CC3A3A' : 'rgba(30,30,30,0.7)',
-            }}>{desc.length}/500</div>
 
             <div className="tr-add-lesson-footer">
               <button type="button" className="tr-add-lesson-btn"

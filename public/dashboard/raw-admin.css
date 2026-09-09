@@ -12,6 +12,10 @@
 .ad button { border: none; cursor: pointer; appearance: none; -webkit-appearance: none; padding: 0; }
 
 .ad {
+  zoom: var(--raw2-zoom, 1); /* пропорциональный масштаб на экранах шире 1441 */
+  /* vw/vh не масштабируются zoom-ом, поэтому все viewport-единицы ниже считаем через --vwz/--vhz (1vw/1vh в координатах макета 1441) */
+  --vwz: calc(1vw / var(--raw2-zoom, 1));
+  --vhz: calc(1vh / var(--raw2-zoom, 1));
   --red: #cc3a3a;
   --red-deep: #b63f37;
   --red-dark: #a52c26;
@@ -36,7 +40,7 @@
   color: var(--ink);
   background: var(--white);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
+  min-height: calc(100 * var(--vhz));
   overflow-x: hidden;
 }
 
@@ -63,47 +67,56 @@
    ============================================================ */
 .ad-hero {
   position: relative;
-  background: var(--dark-bg) url('/dashboard/bg-schedule.jpg') center/cover no-repeat;
+  /* Figma 4052:248: Rectangle 217 (1519×1350 на −39,−25, cover) — тот же файл, что в шапке учителя */
+  background: var(--dark-bg) url('/dashboard/bg-hero-teacher.webp') center -25px / auto 1350px no-repeat;
   color: var(--white);
-  padding: clamp(20px, 3vw, 40px) clamp(20px, 3vw, 41px) clamp(90px, 12vw, 170px);
+  padding: 63px 41px 177px; /* Figma 4051:239 (шапка 193) + 4051:240 (блок 1130): логотип на (41,63), низ 1130−953 */
   overflow: hidden;
 }
 .ad-hero::before {
   content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(26,23,20,.72) 55%, rgba(26,23,20,.88) 100%);
+  position: absolute;
+  left: -41px; top: -146px;
+  width: 1545px; height: 395px; /* Figma 4052:248: градиент 1545×395 на (−41,−146) */
+  background: linear-gradient(180.22deg, #000 16.3%, rgba(0,0,0,0) 99.26%);
   z-index: 0;
+  pointer-events: none;
 }
+/* Шапка по Figma 4051:239 (фрейм 1441×193): абсолютные боксы относительно .ad-nav,
+   который начинается на x=41, y=63. */
 .ad-nav {
   position: relative; z-index: 2;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: clamp(16px, 3vw, 40px);
+  height: 98px;
 }
 .ad-brand {
-  display: inline-block;
-  width: clamp(120px, 12vw, 171px);
+  display: block; position: absolute; left: 0; top: 0;
+  width: 171px; height: 98px;
 }
 .ad-brand img { display: block; width: 100%; height: auto; }
+/* пункты меню: x 340/569/720/818/927/1037, y 98, ширины 182/100/51/62/70/68, h 18 */
 .ad-nav-links {
-  display: flex; align-items: center; justify-content: center;
-  gap: clamp(20px, 3vw, 44px);
-  flex-wrap: wrap;
+  position: absolute; left: 0; top: 35px; right: 0; height: 18px;
+  list-style: none; padding: 0; margin: 0;
 }
+.ad-nav-links li { position: absolute; top: 0; height: 18px; }
+.ad-nav-links li:nth-child(1) { left: 299px; width: 182px; }
+.ad-nav-links li:nth-child(2) { left: 528px; width: 100px; }
+.ad-nav-links li:nth-child(3) { left: 679px; width: 51px; }
+.ad-nav-links li:nth-child(4) { left: 777px; width: 62px; }
+.ad-nav-links li:nth-child(5) { left: 886px; width: 70px; }
+.ad-nav-links li:nth-child(6) { left: 996px; width: 68px; }
+/* ховер-пилюля как у учителя: lime, h48, r29.5, по центру текста (текст + 26px с каждой стороны) */
 .ad-nav-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  padding: 0 22px;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box; width: calc(100% + 52px); height: 48px; margin: -17px 0 0 -26px;
+  padding: 0;
   border-radius: 29.5px;
   color: var(--white);
   background: transparent;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(13px, 1.15vw, 18px);
-  letter-spacing: -0.05em;
+  font-size: 18px;
+  letter-spacing: -0.9px;
   line-height: 0.975;
   transition: color .18s, background .18s;
   white-space: nowrap;
@@ -115,20 +128,23 @@
   background: #DFED8C;
   outline: none;
 }
+/* часы: правым краем на 1355 (45 от правого края .ad-nav), top 72 → 9; Inter 40/700 + 24/500, lh 1.29, tracking −1.2 */
 .ad-clock {
+  position: absolute; right: 45px; top: 9px;
   text-align: right;
   color: var(--white);
   font-family: 'Inter', sans-serif;
-  letter-spacing: -0.05em;
+  letter-spacing: -1.2px;
   line-height: 1.29;
+  white-space: nowrap;
 }
 .ad-clock .time {
   font-weight: 700;
-  font-size: clamp(24px, 2.8vw, 40px);
+  font-size: 40px;
 }
 .ad-clock .date {
   font-weight: 500;
-  font-size: clamp(14px, 1.7vw, 24px);
+  font-size: 24px;
 }
 
 /* ============================================================
@@ -136,16 +152,16 @@
    ============================================================ */
 .ad-badge-wrap {
   display: flex; justify-content: center;
-  margin: 0 auto clamp(30px, 4vw, 50px);
+  margin: 0 auto clamp(30px, calc(4 * var(--vwz)), 50px);
 }
 .ad-badge {
   display: inline-block;
   border: 4px solid var(--lime);
   border-radius: 41.5px;
-  padding: clamp(14px, 1.6vw, 22px) clamp(28px, 4vw, 60px);
+  padding: clamp(14px, calc(1.6 * var(--vwz)), 22px) clamp(28px, calc(4 * var(--vwz)), 60px);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 3vw, 40px);
+  font-size: clamp(22px, calc(3 * var(--vwz)), 40px);
   letter-spacing: -0.05em;
   line-height: 1.17344;
   text-transform: uppercase;
@@ -155,121 +171,196 @@
 }
 .ad-badge.on-dark {
   color: #FFF;
-  font-size: clamp(24px, 3.6vw, 48px);
+  font-size: clamp(24px, calc(3.6 * var(--vwz)), 48px);
 }
 
 /* ============================================================
-   HERO INNER — schedule (dark panel)
+   HERO INNER — schedule (dark panel). Figma 4051:240, фрейм 1441×1130,
+   координаты ниже — от верха фрейма (в странице +193 шапки).
    ============================================================ */
 .ad-hero-inner {
   position: relative; z-index: 2;
-  max-width: 1228px;
-  margin: clamp(40px, 6vw, 90px) auto 0;
-  padding: 0 clamp(20px, 3vw, 40px);
+  width: 1228px; max-width: 100%;
+  margin: 73px auto 0; /* плашка на y=41 фрейма = 234 страницы, шапка заканчивается на 161 */
+  padding: 0;
 }
-.ad-hero-inner .ad-badge-wrap { margin-bottom: clamp(20px, 3vw, 40px); }
-
+/* плашка «ЗАНЯТИЯ И РАСПИСАНИЕ»: 716×83, обводка 4 lime, r41.5, Inter 700 48, tracking −2.4, по центру */
+.ad-hero-inner .ad-badge-wrap { display: flex; justify-content: center; height: 83px; margin: 0 0 64px; }
+.ad-hero-inner .ad-badge,
+.ad-hero-inner .ad-badge.on-dark {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 716px; height: 83px;
+  border: 4px solid var(--lime);
+  border-radius: 41.5px;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 48px;
+  letter-spacing: -2.4px;
+  line-height: 75px; /* внутренняя высота 83 − 2×4 */
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--white);
+  background: transparent;
+}
+/* панель: 1228×651 на y=188, rgba(30,30,30,.58), r29.5 */
 .ad-panel {
   position: relative;
-  background: var(--panel-dark);
-  border-radius: var(--radius-card);
-  padding: clamp(24px, 3vw, 45px) clamp(20px, 3vw, 50px) clamp(30px, 4vw, 60px);
-  min-height: 380px;
+  box-sizing: border-box;
+  width: 1228px; max-width: 100%;
+  min-height: 651px;
+  background: rgba(30, 30, 30, 0.58);
+  border-radius: 29.5px;
+  padding: 45px 50px 42px; /* список: 98 (под карандашом) + 511 (3 плашки) + 42 = 651 */
 }
+/* карандаш в правом верхнем углу панели: lime-круг 54 на (1252,214) → right 28, top 26; карандаш 30×30 на (13,12) */
+.ad-panel-edit {
+  position: absolute; right: 28px; top: 26px;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: var(--lime);
+  transition: background .18s;
+}
+.ad-panel-edit:hover { background: var(--lime-deep); }
+.ad-panel-edit img { display: block; position: absolute; left: 13px; top: 12px; width: 30px; height: 29.97px; }
+/* пустое состояние: Inter 500 32, lh 80.53%, tracking −1.6, по центру, y=495 фрейма → 307 от верха панели */
 .ad-schedule-empty {
+  position: absolute; left: 0; right: 0; top: 307px;
+  height: 37px;
+  margin: 0; padding: 0;
   text-align: center;
   color: var(--white);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(20px, 2.4vw, 32px);
-  letter-spacing: -0.05em;
-  line-height: 0.805;
-  padding: clamp(80px, 12vw, 220px) 0;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
+  white-space: nowrap;
 }
+/* Плашки уроков — как у учителя (Figma 4027:221): ряд 149 rgba(60,60,60,.39) r29.5 + стекло,
+   время 177 слева, подпись x=215, карандаш 44 на x=800, «начать звонок» 248×44 (59 от правого края), шаг рядов 32 */
+/* Всегда 3 ближайших плашки (3×149 + 2×32 = 511) под карандашом: 98 + 511 + 42 = 651 */
 .ad-schedule {
+  margin-top: 53px; /* список начинается под карандашом (26+54+18) */
   display: flex; flex-direction: column;
-  gap: clamp(16px, 2vw, 24px);
+  gap: 32px;
 }
 .ad-lesson {
+  position: relative; overflow: hidden;
   display: flex; align-items: center;
-  gap: clamp(16px, 2vw, 30px);
-  background: rgba(30, 30, 30, 0.52);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 30px;
-  min-height: clamp(100px, 9vw, 130px);
-  padding: clamp(14px, 1.6vw, 22px) clamp(18px, 2vw, 32px);
+  gap: 0;
+  box-sizing: border-box;
+  background: rgba(60, 60, 60, 0.39);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255, 255, 255, 0.22); outline-offset: -1px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.25);
+  border-radius: 29.5px;
+  height: 149px;
+  padding: 0 59px 0 0;
 }
+.ad-lesson::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 100%);
+  mix-blend-mode: overlay;
+}
+.ad-lesson > * { position: relative; z-index: 1; }
 .ad-lesson-time {
   flex: 0 0 auto;
-  min-width: clamp(120px, 12vw, 177px);
-  background: var(--panel-lime-soft);
-  border-radius: var(--radius-card);
-  padding: clamp(12px, 1.5vw, 20px) clamp(14px, 1.6vw, 24px);
-  align-self: stretch;
-  display: flex; flex-direction: column; justify-content: center;
+  box-sizing: border-box;
+  width: 177px; height: 149px;
+  background: rgba(223, 237, 140, 0.36);
+  border-radius: 29.5px;
+  padding: 35px 0 0 39px; /* «12:00» at (192,2536) от ряда (153,2501) */
+  display: flex; flex-direction: column; justify-content: flex-start;
   color: var(--lime);
-  letter-spacing: -0.05em;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -1.2px;
   line-height: 1.29;
 }
-.ad-lesson-time .hh {
-  font-weight: 700;
-  font-size: clamp(26px, 2.6vw, 36px);
-}
-.ad-lesson-time .dd {
-  font-weight: 500;
-  font-size: clamp(14px, 1.5vw, 20px);
-}
+.ad-lesson-time .hh { font-weight: 700; font-size: 40px; }
+.ad-lesson-time .dd { font-weight: 500; font-size: 24px; }
 .ad-lesson-label {
   flex: 1;
-  font-weight: 500;
-  font-size: clamp(18px, 2vw, 28px);
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-  color: var(--white);
-}
-
-/* Chat pill + call round — правая сторона плашки урока/лекции. Figma 4171-92
-   (иконка звонка 54×54 в красном круге). Кнопка звонка ведёт в /lesson/[id];
-   комната открывается за 5 мин до старта (см. computeLessonAccess). */
-.ad-lesson-chat {
-  flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 54px;
-  padding: 0 24px;
-  background: var(--red);
-  color: var(--white);
-  border: 0;
-  border-radius: 34px;
+  min-width: 0;
+  margin-left: 38px; /* 177 + 38 = 215 */
   font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: -0.05em;
-  text-transform: lowercase;
-  cursor: pointer;
-  transition: background .15s ease;
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 1.25;
+  padding: 0 0 4px;
+  margin-top: -7px; margin-bottom: -11px;
+  color: var(--white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ad-lesson-chat:hover { background: var(--red-deep); }
-
+.ad-lesson-edit {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  margin-right: 13px; /* 800 + 44 + 13 = 857 */
+  padding: 0; border: 0;
+  border-radius: 50%;
+  background: #DFED8C;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .2s;
+}
+.ad-lesson-edit img { display: block; width: 24.44px; height: 24.42px; max-width: none; }
+.ad-lesson-edit:hover { background: var(--lime-deep); }
 .ad-lesson-call {
   flex: 0 0 auto;
-  width: 54px; height: 54px;
-  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
   background: var(--red);
   color: var(--white);
-  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 34px;
+  width: 248px; height: 44px;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  line-height: 0.8053;
+  text-transform: lowercase;
   text-decoration: none;
-  transition: background .15s ease;
+  transition: background .2s;
 }
 .ad-lesson-call:hover { background: var(--red-deep); }
 
+/* CTA «Добавить урок или событие»: красная 519×68 r34 на (428,885) + красный круг 67×68 вплотную справа со стрелкой;
+   группа 586 по центру (left 322 в контейнере 1228), 46px под панелью */
 .ad-hero-cta {
   display: flex; justify-content: center;
-  margin-top: clamp(28px, 4vw, 58px);
+  margin-top: 46px;
   position: relative;
   z-index: 2;
 }
+.ad-sched-cta {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  width: 519px; height: 68px;
+  margin: 0 67px 0 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 34px;
+  background: #CC3A3A;
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s;
+}
+.ad-sched-cta:hover { background: var(--red-deep); }
+.ad-sched-cta-arrow { position: absolute; right: -67px; top: 0; width: 67px; height: 68px; }
+.ad-sched-cta-arrow img { display: block; position: absolute; max-width: none; }
+.ad-sched-cta-arrow-circle { left: 0; top: 0; width: 67px; height: 68px; }
+.ad-sched-cta-arrow-glyph { left: 15px; top: 15.6px; width: 37px; height: 36.82px; } /* центр (33.5,34), как у учителя */
 
 /* Универсальная кнопка «Добавить …» / «Создать группу» с круглой стрелкой */
 .ad .ad-create-btn {
@@ -280,10 +371,10 @@
   background: #CC3A3A;
   color: var(--white);
   border-radius: 34px;
-  padding: 0 clamp(24px, 3vw, 46px);
+  padding: 0 clamp(24px, calc(3 * var(--vwz)), 46px);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.4vw, 32px);
+  font-size: clamp(22px, calc(2.4 * var(--vwz)), 32px);
   letter-spacing: -0.05em;
   line-height: 0.805;
   transition: background .2s;
@@ -309,19 +400,19 @@
 .ad-section {
   max-width: 1441px;
   margin: 0 auto;
-  padding: clamp(60px, 8vw, 130px) clamp(20px, 3vw, 40px) 0;
+  padding: clamp(60px, calc(8 * var(--vwz)), 130px) clamp(20px, calc(3 * var(--vwz)), 40px) 0;
   position: relative;
 }
 /* Bottom breathing room под секцией "Домашние задания и библиотека" — иначе
    pill "История занятий" вплотную упирается в шапку блока "Чаты". */
-#library.ad-section { padding-bottom: clamp(60px, 8vw, 100px); }
+#library.ad-section { padding-bottom: clamp(60px, calc(8 * var(--vwz)), 100px); }
 .ad-section-dark {
   position: relative;
   background: var(--dark-bg) url('/dashboard/bg-chat.jpg') center/cover no-repeat;
   color: var(--white);
   max-width: none;
-  padding: clamp(60px, 8vw, 130px) 0 clamp(60px, 8vw, 130px);
-  margin-top: clamp(40px, 5vw, 80px);
+  padding: clamp(60px, calc(8 * var(--vwz)), 130px) 0 clamp(60px, calc(8 * var(--vwz)), 130px);
+  margin-top: clamp(40px, calc(5 * var(--vwz)), 80px);
   overflow: hidden;
 }
 .ad-section-dark::before {
@@ -336,17 +427,17 @@
   z-index: 1;
   max-width: 1441px;
   margin: 0 auto;
-  padding: 0 clamp(20px, 3vw, 40px);
+  padding: 0 clamp(20px, calc(3 * var(--vwz)), 40px);
 }
 .ad-sub {
   text-align: center;
   color: var(--ink);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(16px, 1.8vw, 24px);
+  font-size: clamp(16px, calc(1.8 * var(--vwz)), 24px);
   letter-spacing: -0.05em;
   line-height: 0.96;
-  margin: 0 0 clamp(60px, 6vw, 90px);
+  margin: 0 0 clamp(60px, calc(6 * var(--vwz)), 90px);
 }
 
 /* ============================================================
@@ -354,7 +445,7 @@
    ============================================================ */
 .ad-hw-list {
   display: flex; flex-direction: column;
-  gap: clamp(18px, 2vw, 30px);
+  gap: clamp(18px, calc(2 * var(--vwz)), 30px);
   max-width: 1087px;
   margin: 0 auto;
 }
@@ -363,11 +454,11 @@
   display: flex; align-items: center; justify-content: center;
   background: var(--lime);
   border-radius: var(--radius-card);
-  min-height: clamp(96px, 9.5vw, 137px);
-  padding: 0 clamp(80px, 8vw, 110px);
+  min-height: clamp(96px, calc(9.5 * var(--vwz)), 137px);
+  padding: 0 clamp(80px, calc(8 * var(--vwz)), 110px);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(24px, 2.9vw, 40px);
+  font-size: clamp(24px, calc(2.9 * var(--vwz)), 40px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--ink);
@@ -378,7 +469,7 @@
 .ad-hw-pill .raw { color: var(--red); }
 .ad-hw-pill .ad-arrow-btn {
   position: absolute;
-  right: clamp(20px, 2.5vw, 36px);
+  right: clamp(20px, calc(2.5 * var(--vwz)), 36px);
   top: 50%;
   transform: translateY(-50%);
   width: 67px; height: 67px;
@@ -390,26 +481,26 @@
    ============================================================ */
 .ad-chats {
   display: flex; flex-direction: column;
-  gap: clamp(14px, 1.6vw, 22px);
+  gap: clamp(14px, calc(1.6 * var(--vwz)), 22px);
   max-width: 1108px;
   margin: 0 auto;
 }
 .ad-chat {
   position: relative;
   display: flex; align-items: center;
-  gap: clamp(16px, 1.8vw, 26px);
+  gap: clamp(16px, calc(1.8 * var(--vwz)), 26px);
   background: var(--panel-lime);
   border-radius: var(--radius-card);
-  min-height: clamp(120px, 11vw, 153px);
-  padding: clamp(20px, 2vw, 26px) clamp(80px, 8vw, 110px) clamp(20px, 2vw, 26px) clamp(20px, 2vw, 30px);
+  min-height: clamp(120px, calc(11 * var(--vwz)), 153px);
+  padding: clamp(20px, calc(2 * var(--vwz)), 26px) clamp(80px, calc(8 * var(--vwz)), 110px) clamp(20px, calc(2 * var(--vwz)), 26px) clamp(20px, calc(2 * var(--vwz)), 30px);
 }
 .ad-chat.group { background: var(--panel-red-mut); color: var(--white); }
 .ad-chat.group .ad-chat-name,
 .ad-chat.group .ad-chat-preview { color: var(--white); }
 .ad-chat-avatar {
   flex: 0 0 auto;
-  width: clamp(74px, 8vw, 103px);
-  height: clamp(74px, 8vw, 103px);
+  width: clamp(74px, calc(8 * var(--vwz)), 103px);
+  height: clamp(74px, calc(8 * var(--vwz)), 103px);
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
@@ -427,12 +518,12 @@
 .ad-chat-body {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  gap: clamp(6px, 0.8vw, 14px);
+  gap: clamp(6px, calc(0.8 * var(--vwz)), 14px);
 }
 .ad-chat-name {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(20px, 2.4vw, 32px);
+  font-size: clamp(20px, calc(2.4 * var(--vwz)), 32px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--ink);
@@ -440,7 +531,7 @@
 .ad-chat-preview {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(15px, 1.8vw, 24px);
+  font-size: clamp(15px, calc(1.8 * var(--vwz)), 24px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--ink);
@@ -452,31 +543,31 @@
 .ad-chat-preview b { font-weight: 700; }
 .ad-chat-badge {
   position: absolute;
-  top: clamp(14px, 1.5vw, 22px);
-  right: clamp(90px, 9vw, 128px);
+  top: clamp(14px, calc(1.5 * var(--vwz)), 22px);
+  right: clamp(90px, calc(9 * var(--vwz)), 128px);
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--red);
   color: var(--white);
   border-radius: 20.5px;
-  height: clamp(28px, 2.7vw, 36px);
-  padding: 0 clamp(14px, 1.4vw, 22px);
+  height: clamp(28px, calc(2.7 * var(--vwz)), 36px);
+  padding: 0 clamp(14px, calc(1.4 * var(--vwz)), 22px);
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(14px, 1.4vw, 20px);
+  font-size: clamp(14px, calc(1.4 * var(--vwz)), 20px);
   letter-spacing: -0.05em;
   line-height: 0.878;
   white-space: nowrap;
 }
 .ad-chat-arrow {
   position: absolute;
-  right: clamp(18px, 2vw, 30px);
+  right: clamp(18px, calc(2 * var(--vwz)), 30px);
   top: 50%;
   transform: translateY(-50%);
 }
 .ad-chat-count-badge {
   position: absolute;
-  left: clamp(90px, 8vw, 115px);
-  top: clamp(58px, 6vw, 82px);
+  left: clamp(90px, calc(8 * var(--vwz)), 115px);
+  top: clamp(58px, calc(6 * var(--vwz)), 82px);
   display: inline-flex; align-items: center; justify-content: center;
   background: rgba(223, 237, 140, 0.65);
   color: var(--ink);
@@ -490,7 +581,7 @@
 }
 .ad-chats-footer {
   display: flex; justify-content: center;
-  margin-top: clamp(28px, 4vw, 48px);
+  margin-top: clamp(28px, calc(4 * var(--vwz)), 48px);
 }
 
 /* ============================================================
@@ -524,7 +615,7 @@
   display: grid;
   grid-template-columns: repeat(3, 382px);
   justify-content: center;
-  gap: clamp(20px, 3vw, 42px);
+  gap: clamp(20px, calc(3 * var(--vwz)), 42px);
   margin: 0 auto;
 }
 .ad-teacher {
@@ -586,17 +677,17 @@
 }
 .ad-teacher-photo .ad-avatar-fb {
   width: 100%; height: 100%;
-  font-size: clamp(48px, 6vw, 96px);
+  font-size: clamp(48px, calc(6 * var(--vwz)), 96px);
 }
 .ad-teacher-body {
-  padding: clamp(20px, 2.4vw, 34px) clamp(20px, 2vw, 30px) clamp(24px, 3vw, 40px);
+  padding: clamp(20px, calc(2.4 * var(--vwz)), 34px) clamp(20px, calc(2 * var(--vwz)), 30px) clamp(24px, calc(3 * var(--vwz)), 40px);
   display: flex; flex-direction: column;
   gap: 12px;
 }
 .ad-teacher-name {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.4vw, 32px);
+  font-size: clamp(22px, calc(2.4 * var(--vwz)), 32px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--white);
@@ -614,7 +705,7 @@
 .ad-teacher-desc {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: clamp(16px, 1.8vw, 24px);
+  font-size: clamp(16px, calc(1.8 * var(--vwz)), 24px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--white);
@@ -643,13 +734,13 @@
   font-size: 18px;
   letter-spacing: -0.05em;
   line-height: 0.975;
-  margin-bottom: clamp(20px, 2.5vw, 34px);
+  margin-bottom: clamp(20px, calc(2.5 * var(--vwz)), 34px);
   padding: 0;
 }
 .ad-sort-wrap {
   position: relative;
   display: inline-block;
-  margin-bottom: clamp(20px, 2.5vw, 34px);
+  margin-bottom: clamp(20px, calc(2.5 * var(--vwz)), 34px);
 }
 .ad-sort-wrap .ad-sort { margin-bottom: 0; }
 .ad-sort-pop {
@@ -711,25 +802,25 @@
 .ad-students-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: clamp(14px, 1.5vw, 20px) clamp(16px, 2vw, 24px);
+  gap: clamp(14px, calc(1.5 * var(--vwz)), 20px) clamp(16px, calc(2 * var(--vwz)), 24px);
 }
 .ad-stu {
   position: relative;
   display: flex; align-items: center;
   background: var(--panel-lime);
   border-radius: var(--radius-card);
-  height: clamp(110px, 10.5vw, 139px);
-  padding: 0 0 0 clamp(14px, 1.4vw, 20px);
+  height: clamp(110px, calc(10.5 * var(--vwz)), 139px);
+  padding: 0 0 0 clamp(14px, calc(1.4 * var(--vwz)), 20px);
   overflow: hidden;
 }
 .ad-stu-avatar {
   flex: 0 0 auto;
-  width: clamp(70px, 6.7vw, 93px);
-  height: clamp(70px, 6.7vw, 93px);
+  width: clamp(70px, calc(6.7 * var(--vwz)), 93px);
+  height: clamp(70px, calc(6.7 * var(--vwz)), 93px);
   border-radius: 82px;
   overflow: hidden;
   background: #d9d9d9;
-  margin-right: clamp(14px, 1.8vw, 24px);
+  margin-right: clamp(14px, calc(1.8 * var(--vwz)), 24px);
 }
 .ad-stu-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ad-avatar-fb {
@@ -738,7 +829,7 @@
   color: #fff;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(20px, 2.2vw, 32px);
+  font-size: clamp(20px, calc(2.2 * var(--vwz)), 32px);
   letter-spacing: -0.02em;
   text-transform: uppercase;
   user-select: none;
@@ -747,7 +838,7 @@
   flex: 1;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(20px, 2.4vw, 32px);
+  font-size: clamp(20px, calc(2.4 * var(--vwz)), 32px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   color: var(--ink);
@@ -774,7 +865,7 @@
   color: var(--lime);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: clamp(22px, 2.4vw, 32px);
+  font-size: clamp(22px, calc(2.4 * var(--vwz)), 32px);
   letter-spacing: -0.05em;
   line-height: 0.975;
   border-radius: 29.5px 0 0 29.5px;
@@ -783,7 +874,7 @@
 
 .ad-panel-footer {
   display: flex; justify-content: center;
-  margin-top: clamp(24px, 3vw, 45px);
+  margin-top: clamp(24px, calc(3 * var(--vwz)), 45px);
   position: relative;
 }
 
@@ -1246,3 +1337,427 @@
 .tr > .tr-add-lesson-backdrop > .tr-add-lesson {
   margin: 0 auto;
 }
+
+/* Масштаб на широких экранах: вложенный .tr (модалки, переиспользующие teacher-UI) не должен
+   умножать zoom страницы ещё раз; модалки целиком в окне через --modal-zoom (см. useProportionalZoom). */
+.ad .tr { zoom: 1; min-height: 0; } /* обёртка .tr в админке — только для стилей; min-height 100vh корня учителя давала пустой зазор перед подвалом */
+.ad .tr-add-lesson-backdrop,
+.ad .files-modal-backdrop,
+.ad .asm-backdrop { zoom: var(--modal-zoom, 1); }
+
+/* ============================================================
+   Выбор типа события (Figma 2522:2733): тёмная модалка 472×413
+   ============================================================ */
+.ad .tr .tr-add-lesson.ad-event-picker {
+  width: 472px;
+  background: #1E1E1E;
+  padding: 79px 37px 54px; /* «Другое событие» 291+68 = 359 + 54 = 413 */
+  display: block;
+}
+.ad .tr .ad-event-picker .tr-add-lesson-close { right: 34.67px; } /* 472 − 424 − 13.33 */
+.ad .tr .ad-event-picker .tr-add-lesson-title {
+  width: 338px; /* заголовок в две строки, как в макете */
+  margin: 0 auto 56.6px; /* 79 + 2×31.2 = 141.4 → «Урок» на 198 */
+  color: #DFED8C;
+}
+.ad .ad-event-picker-btn {
+  display: block;
+  box-sizing: border-box;
+  width: 398px; height: 68px;
+  border: 0; padding: 0;
+  border-radius: 34px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 0.975;
+  letter-spacing: -1.2px;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.ad .ad-event-picker-btn--lesson {
+  margin-bottom: 25px; /* 198+68 → 291 */
+  background: rgba(204, 58, 58, 0.5);
+  color: rgba(255, 255, 255, 0.5);
+}
+.ad .ad-event-picker-btn--lesson:hover { background: rgba(204, 58, 58, 0.75); color: #FFF; }
+.ad .ad-event-picker-btn--other { background: #DFED8C; color: #1E1E1E; }
+.ad .ad-event-picker-btn--other:hover { background: var(--lime-deep); }
+
+/* ============================================================
+   «Добавить новое событие (подробнее)» — лекция (Figma 2522:322): 686×1105
+   название 202, организатор 294, тип 386, дата/время 478, «Опишите событие» 593,
+   поле 651 (139), счётчик 802, стоимость 842, «Создать» 975
+   ============================================================ */
+/* Модалки по центру экрана; высокие (лекция) листаются внутри backdrop за счёт margin:auto */
+.ad .tr .tr-add-lesson-backdrop { overflow-y: auto; align-items: center; }
+.ad .tr .tr-add-lesson { margin: auto; }
+.ad .tr .tr-add-lesson.ad-lecture-modal { padding-bottom: 62px; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--full,
+.ad .tr .ad-lecture-modal .tr-add-lesson-row--picker { margin-top: 24px; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-title + .tr-add-lesson-pill--full { margin-top: 0; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--input { padding: 0 !important; cursor: text; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--input input {
+  width: 100%; height: 100%;
+  border: 0; outline: 0; background: transparent;
+  padding: 0 40px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -1.2px;
+  color: #1E1E1E;
+}
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--input input::placeholder { color: rgba(30, 30, 30, 0.7); }
+.ad .tr .ad-lecture-desc-label {
+  margin: 47px 0 26.8px; /* 546 + 47 = 593; 593 + 31.2 + 26.8 = 651 */
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 0.975;
+  letter-spacing: -1.6px;
+  color: #1E1E1E;
+}
+.ad .tr .ad-lecture-desc {
+  display: block;
+  box-sizing: border-box;
+  width: 100%; height: 139px;
+  border: 0; outline: 0;
+  border-radius: 29.5px;
+  background: #FFF;
+  padding: 18px 40px;
+  resize: none;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -1.2px;
+  color: #1E1E1E;
+}
+.ad .tr .ad-lecture-counter {
+  margin: 12px 20px 0 0; /* 790 + 12 = 802; правый край на 612 */
+  text-align: right;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 0.975;
+  letter-spacing: -0.8px;
+  color: rgba(30, 30, 30, 0.7);
+}
+.ad .tr .ad-lecture-counter.is-max { color: #CC3A3A; }
+.ad .tr .ad-lecture-modal .ad-lecture-counter + .tr-add-lesson-pill--full { margin-top: 24.4px; } /* 817.6 → 842 */
+.ad .tr .ad-lecture-modal .tr-add-lesson-footer { margin-top: 65px; } /* 910 → 975 */
+
+/* ============================================================
+   Полный календарь админа (по карандашу в панели): все ученики и учителя, листается
+   ============================================================ */
+.ad .ad-cal-backdrop {
+  position: fixed; inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  zoom: var(--modal-zoom, 1);
+}
+.ad .ad-cal {
+  position: relative;
+  box-sizing: border-box;
+  width: 1228px; max-width: calc(100vw - 40px);
+  margin: auto;
+  background: rgba(30, 30, 30, 0.96);
+  border-radius: 29.5px;
+  padding: 45px 50px 42px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+}
+.ad .ad-cal-close {
+  position: absolute; top: 34px; right: 33.67px;
+  width: 15.33px; height: 15.34px;
+  border: 0; padding: 0; background: transparent;
+  cursor: pointer; transition: opacity .15s;
+}
+.ad .ad-cal-close img { display: block; width: 15.33px; height: 15.34px; }
+.ad .ad-cal-close:hover { opacity: .7; }
+.ad .ad-cal-title {
+  margin: 0 0 8px;
+  text-align: center;
+  font-weight: 500; font-size: 32px; line-height: 0.975; letter-spacing: -1.6px;
+  color: #DFED8C;
+}
+.ad .ad-cal-sub {
+  margin: 0 0 32px;
+  text-align: center;
+  font-weight: 500; font-size: 18px; line-height: 1; letter-spacing: -0.9px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.ad .ad-cal-list { position: relative; height: 692px; } /* 4 плашки: 4×149 + 3×32 */
+.ad .ad-cal-list-scroll { box-sizing: border-box; height: 692px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.ad .ad-cal-list-scroll::-webkit-scrollbar { display: none; }
+.ad .ad-cal-list-bar { position: absolute; top: 0; right: -32px; width: 7px; border-radius: 3.5px; background: rgba(255,255,255,0.14); }
+.ad .ad-cal-list-bar-thumb { width: 7px; border-radius: 3.5px; background: #DFED8C; will-change: transform; }
+.ad .ad-schedule--cal { margin-top: 0; }
+.ad .ad-cal-empty { padding: 60px 0; text-align: center; font-weight: 500; font-size: 24px; letter-spacing: -1.2px; color: rgba(255,255,255,0.7); }
+
+/* Figma 2522:504 «Добавить событие (функционал)»: заполненные состояния и открытые списки */
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--input input { font-size: 32px; letter-spacing: -1.6px; } /* значение 32/500, плейсхолдер 24 */
+.ad .tr .ad-lecture-modal .tr-add-lesson-pill--input input::placeholder { font-size: 24px; letter-spacing: -1.2px; }
+.ad .tr .ad-lecture-picker--full { width: 100%; flex: none; margin-top: 24px; } /* 578×217: шапка 68 + список 149 */
+.ad .tr .ad-lecture-picker-empty { padding: 40px 24px; text-align: center; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -1px; color: rgba(30,30,30,0.7); }
+.ad .tr .ad-lecture-desc { font-size: 24px; line-height: 0.975; letter-spacing: -1.2px; padding: 12px 76px; } /* текст 24/500 на (130,1110), ширина 426 */
+.ad .tr .ad-lecture-modal .ad-lecture-price--filled { width: 184px !important; margin-left: auto; margin-right: auto; } /* заполненная стоимость: 184×68 по центру */
+.ad .tr .ad-lecture-modal .ad-lecture-price--filled input { padding: 0; font-weight: 700; font-size: 36px; letter-spacing: -1.8px; text-transform: uppercase; }
+/* линия между рядами в полноширинном списке (организатор/тип): 503 на x=83 (Figma 2522:504 Line 5), а не 206 как в половинках */
+.ad .tr .ad-lecture-picker--full .tr-al-dlist-item + .tr-al-dlist-item::before { width: 503px; background-image: url('/dashboard/picker-line-503.svg'); background-size: 503px 1px; }
+/* Figma 2522:560 «Добавить событие (заполненный)»: готовая к отправке «Создать» — чёрная с лаймовым текстом */
+/* Figma 2522:378 «Добавить новый урок (заполненный)» — та же готовая кнопка у урока */
+.ad .tr .ad-lecture-modal .tr-add-lesson-btn:not(:disabled),
+.ad .tr .ad-lesson-modal .tr-add-lesson-btn:not(:disabled) { background: #1E1E1E !important; color: #DFED8C !important; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-btn:not(:disabled):hover,
+.ad .tr .ad-lesson-modal .tr-add-lesson-btn:not(:disabled):hover { background: #333 !important; }
+
+/* Figma 2522:2603 «Событие добавлено в календарь»: 503×500; заголовок на 86 (2 строки), галочка 69 на 189,
+   подпись 20/500 серая на 275, имя 36/700 на 295, дата 36/500 на 339, ← 46×47 на 412 */
+.ad .tr .ad-lecture-modal.tr-add-lesson--success { height: 500px; padding: 86px 5px 41px; }
+.ad .tr .ad-lecture-modal .tr-add-lesson-success-check { margin-top: 40.6px; } /* 86 + 62.4 → 189 */
+.ad .tr .ad-lecture-success-sub {
+  margin-top: 17px; /* 189 + 69 → 275 */
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 0.975;
+  letter-spacing: -1px;
+  color: rgba(30, 30, 30, 0.7);
+  text-align: center;
+  white-space: nowrap;
+}
+.ad .tr .ad-lecture-modal .tr-add-lesson-success-name { margin-top: 0.5px; } /* 275 + 19.5 → 295 */
+.ad .tr .ad-lecture-modal .tr-add-lesson-success-back { margin-top: 37.9px; } /* 339 + 35.1 → 412 */
+
+/* Figma 2522:354 «Добавить новый урок» (админ): 686×650; учитель 202, ученик 294, дата/время 386, «Создать» 519 */
+.ad .tr .ad-lesson-modal .tr-add-lesson-pill--full + .tr-add-lesson-pill--full,
+.ad .tr .ad-lesson-modal .ad-lecture-picker--full + .tr-add-lesson-pill--full,
+.ad .tr .ad-lesson-modal .tr-add-lesson-pill--full + .ad-lecture-picker--full,
+.ad .tr .ad-lesson-modal .ad-lecture-picker--full + .ad-lecture-picker--full { margin-top: 24px; } /* 419 → 443 и под открытым списком тоже */
+.ad .tr .ad-lesson-modal:not(.tr-add-lesson--success) .tr-add-lesson-footer { margin-top: 65px; } /* 454 → 519 */
+/* Figma 2522:402 «Добавить новый урок (функционал)»: открытые дата/время 279×217 с зазором 20 (54…333, 353…632) */
+.ad .tr .ad-lesson-modal .tr-add-lesson-row--picker { gap: 20px; }
+.ad .tr .ad-lesson-modal .tr-add-lesson-title + .ad-lecture-picker--full { margin-top: 0; }
+
+/* Figma 2522:2590 «Урок добавлен в календарь» (админ): 503×475; заголовок 86 (2 строки), галочка 69 на 189,
+   имя 36/700 на 271, дата 36/500 на 315, ← 46×47 на 387 */
+.ad .tr .ad-lesson-modal.tr-add-lesson--success { height: 475px; padding: 86px 5px 41px; }
+.ad .tr .ad-lesson-modal .tr-add-lesson-success-check { margin-top: 40.6px; } /* 86 + 62.4 → 189 */
+.ad .tr .ad-lesson-modal .tr-add-lesson-success-name { margin-top: 13px; } /* 189 + 69 → 271 */
+.ad .tr .ad-lesson-modal .tr-add-lesson-success-back { margin-top: 36.9px; } /* 315 + 35.1 → 387 */
+
+/* ============================================================
+   Figma 4052:244 «Домашние задания и библиотека» (админ): фрейм 1441×890 на y=1328 (шапка 193 + блок 1130 + 5);
+   плашка 918×83 на (262,107); ряды 1087×137 на x=160, y 300/455/610 (шаг 155); стрелка 71 на x=1209; низ 143
+   ============================================================ */
+#library.ad-section { padding: 112px 0 143px; } /* 5 + 107 → плашка на 1435 страницы */
+#library .ad-badge-wrap { margin: 0 0 110px; height: 83px; } /* 190 → 300 */
+#library .ad-badge {
+  box-sizing: border-box;
+  width: 918px; height: 83px;
+  padding: 0;
+  font-size: 40px;
+  letter-spacing: -2px;
+  line-height: 75px; /* 83 − 2×4 */
+  white-space: nowrap;
+}
+#library .hw-pill-list { max-width: 1120px; padding-right: 33px; box-sizing: border-box; } /* ряды 1087 от x=160.5 */
+#library .hw-pill { font-size: 40px; letter-spacing: -2px; }
+#library .hw-pill-body { padding: 0 100px 0 134px; } /* текст по центру страницы (721), а не плашки (704) */
+#library .hw-pill .raw { margin-left: 0; } /* в макете обычный пробел: «Библиотека Raw English» */
+#library .hw-pill-arrow { right: -33px; } /* круг 1209…1280 при ряде до 1247 */
+
+/* ============================================================
+   Figma 4005:194 «Чаты» (админ): фрейм 1441×1185 на y=2293 (75 после библиотеки);
+   плашка «ЧАТЫ» 251×83 на 48; карточка на 219 (frame-top 171); низ 1185 − 1056 = 129;
+   фон: фото (−205,−43) 1874×1249 blur 6, градиент 1545×297 на (−41,−26) 0.77→0
+   ============================================================ */
+.ad .tr #chats.ad-chats-section { margin-top: 0; padding: 74px 40px 71px; } /* Figma 4053:285 (1241) + 4053:291 (следующий блок с 3460): чаты 2219…3460, плашка 4053:262 на 2292 → +73, низ 3460 − 3389 = 71 */
+.ad .tr .ad-chats-section .tr-chats-frame { height: 1097px; }
+.ad .tr .ad-chats-section .tr-chats-card { top: 150px; } /* плашка 83 + 67 → карточка на 198 (page 2442 в группе) */
+/* «Создать группу»: lime 308.58×68 r34 на (427,1029) внутри фрейма, Inter 700 32 lh 80.53% tracking −1.6; лаймовый круг 67×68 (Ellipse 36) с тёмной стрелкой (Vector 42 = ic-arrow-right) справа вплотную */
+.ad .tr .ad-chats-create {
+  position: absolute;
+  left: 427px; top: 1029px;
+  box-sizing: border-box;
+  width: 308.58px; height: 68px;
+  padding: 0; border: 0;
+  border-radius: 34px;
+  background: #DFED8C;
+  color: #1E1E1E;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -1.6px;
+  line-height: 0.8053;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s;
+}
+.ad .tr .ad-chats-create:hover { background: var(--lime-deep); }
+.ad .tr .ad-chats-create-arrow { position: absolute; left: 100%; top: 0; width: 67px; height: 68px; }
+.ad .tr .ad-chats-create-arrow img { display: block; position: absolute; max-width: none; }
+.ad .tr .ad-chats-create-arrow-circle { left: 0; top: 0; width: 67px; height: 68px; }
+.ad .tr .ad-chats-create-arrow-glyph { left: 15px; top: 15.6px; width: 37px; height: 36.82px; } /* стрелка 32 на x+18, центр (33.5,34) */
+.ad .tr #chats.ad-chats-section::before { top: -43px; }
+.ad .tr #chats.ad-chats-section::after { top: -26px; height: 297px; background: linear-gradient(180.17deg, rgba(0,0,0,0.77) 16.3%, rgba(0,0,0,0) 99.26%); }
+.ad .tr .ad-chats-section .tr-chats-badge { width: 251px; }
+
+/* ============================================================
+   Figma 4053:291 «Список учителей» (админ): фрейм 1441×1140 на y=3460;
+   плашка 491×83 на (475,99); карточки 382/383/382 × 754 на x 106/529/953, y 273 (зазор 41); фото 382 сверху;
+   имя 32/700 на (38,416) карточки, «о преподавателе» 15/500 на (38,506), описание 24/500 на (38,526);
+   карандаш 54 на (300,673) карточки; стрелки 71 по центру карточек: слева x 68, справа 1372; низ 113
+   ============================================================ */
+#teachers.ad-section { padding: 99px 0 113px; }
+#teachers .ad-badge-wrap { margin: 0 0 91px; height: 83px; } /* 182 → 273 */
+#teachers .ad-badge { box-sizing: border-box; width: 491px; height: 83px; padding: 0; font-size: 40px; letter-spacing: -2px; line-height: 75px; white-space: nowrap; }
+.ad-tcards.ad-teachers-wrap { max-width: none; width: 1441px; padding: 0; margin: 0 auto; }
+.ad-tcards .ad-teachers { grid-template-columns: 382px 383px 382px; gap: 41px; justify-content: center; }
+.ad-tcards .ad-teacher { width: auto; height: 754px; min-height: 754px; border-radius: 29.5px; background: #CC3A3A; }
+.ad-tcards .ad-teacher-photo { width: 100%; height: 382px; aspect-ratio: auto; border-radius: 29.5px; }
+.ad-tcards .ad-teacher-body { padding: 34px 38px 0; gap: 0; } /* имя на 416 = 382 + 34 */
+.ad-tcards .ad-teacher-name { font-size: 32px; letter-spacing: -1.6px; line-height: 0.975; }
+.ad-tcards .ad-teacher-meta { margin-top: 27.6px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; } /* 416 + 62.4 → 506 */
+.ad-tcards .ad-teacher-desc { margin-top: 5.4px; width: 321px; font-size: 24px; letter-spacing: -1.2px; line-height: 0.975; } /* 506 + 14.6 → 526 */
+.ad-tcards .ad-teacher-edit { right: 28px; bottom: 27px; width: 54px; height: 54px; border: 0; background: #DFED8C; }
+.ad-tcards .ad-teacher-edit img { display: block; position: absolute; left: 13px; top: 12px; width: 30px; height: 29.97px; }
+.ad-tcards .ad-teacher-edit:hover { transform: none; background: var(--lime-deep); }
+#teachers .ad-teachers-arrow { width: 71px; height: 71px; top: 341px; transform: none; } /* 614 от фрейма − 273 (верх обёртки карточек) */
+#teachers .ad-teachers-arrow:hover { transform: scale(1.05); }
+#teachers .ad-teachers-arrow--left { left: 68px; }
+#teachers .ad-teachers-arrow--right { left: auto; right: 68px; } /* в макете 1372 (вылезает за край 1441 на 2px и режется вьюпортом); зеркально левой: 68 от края, заход на карточку 33 */
+#teachers .ad-teachers-arrow img { display: block; position: absolute; left: -4px; top: -4px; width: 79px; height: 79px; max-width: none; } /* экспорт 79 с белой обводкой вокруг круга 71 */
+#teachers .ad-teachers-arrow:disabled { cursor: default; } /* в макете обе стрелки полноцветные */
+#teachers .ad-teachers-arrow:disabled:hover { transform: none; }
+
+/* ============================================================
+   Figma 4054:293 «Список учеников» (админ): фрейм 1441×1137 на y=4600 (сразу после учителей);
+   фон — фото шапки (1519×1350 → center −160), плашка 554×83 на 75, карточка на 222 (плашка + 64), низ 1137 − 1037 = 100
+   ============================================================ */
+.ad .tr .ad-students-section {
+  position: relative;
+  max-width: none;
+  margin: 0;
+  padding: 75px 0 100px;
+  background: var(--dark-bg) url('/dashboard/bg-hero-teacher.webp') center -160px / auto 1350px no-repeat;
+  color: var(--white);
+  overflow: hidden;
+}
+.ad .tr .ad-students-section .tr-students { margin: 0 auto; }
+.ad .tr .ad-students-section .tr-badge-wrap { margin: 0 0 64px; height: 83px; }
+
+/* ============================================================
+   Figma 4054:295 «Входящие заявки учеников» (админ): фрейм 1441×963 на y=5737;
+   плашка 718×83 на 93, подзаголовок 194, ряды 908(+244) × 137 на 324/479/634, стрелка 71 на 1209, «и ещё N» 789…857, низ 106.
+   Внутренняя раскладка = учительская 4025:218 (плашка 64 → +29), стили raw-teacher.css.
+   ============================================================ */
+.ad .tr #leads.ad-leads-section { padding: 93px 0 106px; }
+.ad .tr #leads.ad-leads-section.tr-section--apps-open { padding-bottom: 64px; } /* Figma 2522:3924 «Если учеников больше»: полоска до 1141, фрейм 1205 */
+
+/* ============================================================
+   Figma 2522:3812 «При нажатии на ученика» (админ): раскрытая заявка 1086×604;
+   карандаш уровня — тёмный круг 54 на (1025, +42) с лаймовым карандашом 30 на (14,11);
+   «Назначить учителя» 329×60 на (557, +513), Inter 700 24, lh 80.53%, tracking −1.2
+   ============================================================ */
+.ad .tr .tr-app-lvl-edit { left: 865px; top: 42px; }
+.ad .tr .tr-app-lvl-edit img { display: block; position: absolute; left: 14px; top: 11px; width: 30px; height: 29.97px; max-width: none; }
+.ad .tr .tr-app-assign { left: 397px; top: 513px; bottom: auto; transform: none; font-size: 24px; letter-spacing: -1.2px; line-height: 0.8053; }
+
+/* ============================================================
+   Figma 2522:263 «При нажатии» — выбор учителя для заявки: белый экран 1441×1116;
+   плашка 491×83 на 105; карточки учителей как в блоке (294); стрелки 67×68 на 77 и 1301 (y 637);
+   внизу карточки: кнопка-чат 54 на (27, низ 27), выбор 54 по центру, наполовину за нижним краем (низ −27), карандаш на (301, низ 27)
+   ============================================================ */
+.ad-assign-overlay { position: fixed; inset: 0; z-index: 250; /* ниже календаря (300), чтобы кнопка-календарь на карточке открывала его поверх */ background: #fff; overflow-y: auto; } /* zoom наследуется от .ad — не дублировать */
+.ad-assign-page { position: relative; width: 1441px; margin: 0 auto; padding: 105px 0 68px; box-sizing: border-box; }
+.ad-assign-close { position: absolute; top: 34px; right: 33.67px; width: 13.33px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 2; }
+.ad-assign-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.ad-assign-close:hover { opacity: .7; }
+.ad-assign-page .ad-badge-wrap { display: flex; justify-content: center; height: 83px; margin: 0 0 106px; } /* 188 → 294 */
+.ad-assign-page .ad-badge { box-sizing: border-box; width: 491px; height: 83px; padding: 0; font-size: 40px; letter-spacing: -2px; line-height: 75px; white-space: nowrap; }
+.ad-assign-page .ad-teachers-wrap { max-width: none; width: 1441px; padding: 0; margin: 0 auto; position: relative; }
+.ad-assign-arrow { position: absolute; top: 343px; width: 67px; height: 68px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 3; transition: transform .2s; } /* 637 − 294 */
+.ad-assign-arrow:hover { transform: scale(1.05); }
+.ad-assign-arrow:disabled { cursor: default; }
+.ad-assign-arrow--left { left: 77px; }
+.ad-assign-arrow--right { left: 1301px; }
+.ad-assign-arrow img { display: block; position: absolute; max-width: none; }
+.ad-assign-arrow-circle { left: -7px; top: -7px; width: 81px; height: 82px; } /* экспорт с белой обводкой */
+.ad-assign-arrow-glyph { left: 15px; top: 15.6px; width: 37px; height: 36.82px; }
+.ad-assign-arrow--left .ad-assign-arrow-glyph { transform: rotate(180deg); }
+.ad-assign-chat { position: absolute; left: 27px; bottom: 27px; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 50%; background: #DFED8C; cursor: pointer; z-index: 2; transition: background .18s; }
+.ad-assign-chat:hover { background: var(--lime-deep); }
+.ad-assign-chat img { display: block; position: absolute; left: 15px; top: 14.5px; width: 27px; height: 27px; }
+.ad-assign-pick { position: absolute; left: 164px; bottom: -27px; width: 54px; height: 54px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 3; }
+.ad-assign-pick img { display: block; position: absolute; max-width: none; }
+.ad-assign-pick-circle { left: -8px; top: -8px; width: 70px; height: 70px; } /* экспорт 70 с обводкой 8 вокруг круга 54 */
+.ad-assign-pick-check { left: 12px; top: 15px; width: 29px; height: 24px; } /* Vector 57 23×18 на (15,18) минус штрих */
+.ad-assign-pick:disabled { cursor: default; }
+.ad-assign-card { overflow: visible; } /* кнопка выбора выходит за нижний край */
+.ad-assign-card .ad-teacher-photo { position: relative; z-index: 0; }
+
+/* ============================================================
+   Figma 2522:2955 «Преподаватель назначен» — 503×452 лайм, r 29.5;
+   таймер 16/500 на 33 (центр +0.5), крестик 13.33 на (456,34), заголовок 32/500 две строки на 86,
+   круг 69 на (217,185) + галочка 35×29 (экспорт) на (234,205), имя 36/700 на 276, подпись 15/500 на 317
+   ============================================================ */
+.ad-confirm-overlay { position: fixed; inset: 0; z-index: 1300; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; animation: tr-fade-in .2s ease; }
+.ad-confirm { position: relative; width: 503px; height: 452px; box-sizing: border-box; border-radius: 29.5px; background: #DFED8C; color: #1E1E1E; font-family: 'Inter', sans-serif; animation: tr-pop-in .32s cubic-bezier(.34, 1.56, .64, 1); }
+.ad-confirm-timer { position: absolute; top: 33px; left: calc(50% + 0.5px); transform: translateX(-50%); width: 68px; text-align: center; font-size: 16px; font-weight: 500; letter-spacing: -0.8px; line-height: 0.975; color: rgba(30, 30, 30, .7); white-space: nowrap; }
+.ad-confirm-close { position: absolute; top: 34px; right: 33.67px; width: 13.33px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.ad-confirm-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.ad-confirm-close:hover { opacity: .7; }
+.ad-confirm-title { position: absolute; top: 86px; left: 6px; width: 492px; text-align: center; font-size: 32px; font-weight: 500; letter-spacing: -1.6px; line-height: 0.975; }
+.ad-confirm-check { position: absolute; left: 217px; top: 185px; width: 69px; height: 69px; }
+.ad-confirm-check img { display: block; position: absolute; max-width: none; }
+.ad-confirm-check-circle { left: 0; top: 0; width: 69px; height: 69px; }
+.ad-confirm-check-mark { left: 17px; top: 20px; width: 35px; height: 29px; }
+.ad-confirm-name { position: absolute; top: 276px; left: 0; width: 100%; text-align: center; font-size: 36px; font-weight: 700; letter-spacing: -1.8px; line-height: 0.975; white-space: nowrap; }
+.ad-confirm-student { position: absolute; top: 317px; left: 0; width: 100%; text-align: center; font-size: 15px; font-weight: 500; letter-spacing: -0.75px; line-height: 0.975; white-space: nowrap; }
+
+/* ============================================================
+   Figma 2522:191 / Group 287 «При нажатии» — карточка преподавателя 812×755, rgba(30,30,30,.66), r 29.5.
+   Координаты от левого верха модалки (106,67 в макете): крестик lime 13.34 на (769,31); фото 366 на (57,57);
+   кнопка «фото» 54 lime на (79,344) + камера 34.69×27.35 на (89,357); контакты: подписи 15 на 537/591/645, значения 24 на +19;
+   имя 32/700 на (458,54) шириной 290; «о преподавателе» на (458,137); описание 24 на (458,157) шириной 321;
+   цифры 40/700 на (457,350) и (619,350), подписи 15 на (458,393) и (624,393); кнопки 297×53 r34 на (458,566) и (458,634)
+   ============================================================ */
+.ad-tmodal { position: relative; width: 812px; height: 755px; box-sizing: border-box; border-radius: 29.5px; background: rgba(30, 30, 30, .66); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; font-family: 'Inter', sans-serif; font-weight: 500; }
+.ad-tmodal-close { position: absolute; top: 31px; right: 29.66px; width: 13.34px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 2; }
+.ad-tmodal-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.ad-tmodal-close:hover { opacity: .7; }
+.ad-tmodal-photo { position: absolute; left: 57px; top: 57px; width: 366px; height: 366px; border-radius: 29.5px; overflow: hidden; background: #333; }
+.ad-tmodal-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ad-tmodal-photo .ad-avatar-fb { width: 100%; height: 100%; font-size: 96px; }
+.ad-tmodal-camera { position: absolute; left: 22px; bottom: 25px; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 50%; background: #DFED8C; cursor: pointer; z-index: 2; transition: background .18s; }
+.ad-tmodal-camera:hover:not(:disabled) { background: var(--lime-deep); }
+.ad-tmodal-camera:disabled { cursor: progress; opacity: .7; }
+.ad-tmodal-camera img { display: block; position: absolute; left: 10px; top: 13px; width: 34.69px; height: 27.35px; }
+.ad-tmodal-field { position: absolute; left: 58px; width: 401px; }
+.ad-tmodal-field--mail { top: 537px; }
+.ad-tmodal-field--phone { top: 591px; }
+.ad-tmodal-field--pass { top: 645px; }
+.ad-tmodal-label { font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.ad-tmodal-value { margin-top: 4.4px; font-size: 24px; letter-spacing: -1.2px; line-height: 1.09; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* подпись 14.6 + 4.4 → значение на +19 */
+.ad-tmodal-name { position: absolute; left: 458px; top: 54px; width: 290px; font-size: 32px; font-weight: 700; letter-spacing: -1.6px; line-height: 0.975; }
+.ad-tmodal-meta { position: absolute; left: 458px; top: 137px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.ad-tmodal-desc { position: absolute; left: 458px; top: 157px; width: 321px; max-height: 187px; overflow: hidden; font-size: 24px; letter-spacing: -1.2px; line-height: 0.975; } /* до 8 строк — не наезжает на цифры (350) */
+.ad-tmodal-stat { position: absolute; top: 350px; }
+.ad-tmodal-stat--month { left: 457px; }
+.ad-tmodal-stat--year { left: 619px; }
+.ad-tmodal-stat-num { height: 45px; font-size: 40px; font-weight: 700; letter-spacing: -2px; line-height: 0.8053; }
+.ad-tmodal-stat-label { position: absolute; top: 43px; left: 1px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.ad-tmodal-stat--year .ad-tmodal-stat-label { left: 5px; }
+.ad-tmodal-btn { position: absolute; left: 458px; width: 297px; height: 53px; box-sizing: border-box; border: 0; border-radius: 34px; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 20px; letter-spacing: -1px; line-height: 0.975; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter .18s; }
+.ad-tmodal-btn:hover { filter: brightness(.95); }
+.ad-tmodal-btn--schedule { top: 566px; background: #DFED8C; color: #1E1E1E; font-weight: 500; }
+.ad-tmodal-btn--off { top: 634px; background: #CC3A3A; color: #fff; font-weight: 700; }

@@ -57,40 +57,6 @@ const APPLICATIONS_VISIBLE = 3
 /* Мок других учителей — куда можно передать ученика.
    В проде — fetch учителей из БД (кроме текущего). */
 
-/* Мок ответов на тест с лендинга. Реально придёт из БД
-   по каждой заявке (question, chosen index, correct index). */
-const SAMPLE_QUESTIONS = [
-  {
-    text: ["When I got to work", "I remembered that ___", "my mobile at home."],
-    options: ["a) I'd leave", "b) I was leaving", "c) I'd left", "d) I left"],
-    correct: 2, chosen: 2,
-  },
-  {
-    text: ["My father ___", "be a builder."],
-    options: ["a) used to", "b) was", "c) use to", "d) did use to"],
-    correct: 0, chosen: 1,
-  },
-  {
-    text: ["___ I worked hard,", "I didn't pass the test."],
-    options: ["a) Although", "b) So", "c) Because", "d) But"],
-    correct: 0, chosen: 0,
-  },
-  {
-    text: ["The book ___", "on the table yesterday."],
-    options: ["a) is", "b) was", "c) were", "d) are"],
-    correct: 1, chosen: 1,
-  },
-  {
-    text: ["She ___ in London", "since 2010."],
-    options: ["a) live", "b) lives", "c) has lived", "d) had lived"],
-    correct: 2, chosen: 3,
-  },
-  {
-    text: ["___ you like", "some tea?"],
-    options: ["a) Do", "b) Would", "c) Are", "d) Will"],
-    correct: 1, chosen: 1,
-  },
-]
 const Q_PER_PAGE = 3
 
 const LESSONS = [
@@ -972,7 +938,7 @@ export default function TeacherRawDashboard({
     }
   }
   // Реальные ответы теста берём из initialApplications[expandedAppId].testAnswers
-  // (если тест пройден). Иначе фолбэчимся на SAMPLE_QUESTIONS (mock).
+  // (если тест пройден). Иначе список пустой — показываем «Ученик ещё не прошёл тест».
   // Формат из БД: {text: string, options: string[], chosen, correct}. Приводим
   // к рендер-формату {text: string[], options: string[], chosen, correct} —
   // многострочный текст пока не режем, оборачиваем в 1-элемент.
@@ -989,7 +955,8 @@ export default function TeacherRawDashboard({
         correct: it.correct,
       }))
     }
-    return SAMPLE_QUESTIONS
+    // Теста нет — вопросов не показываем (демо-вопросы вводили в заблуждение)
+    return []
   }, [expandedApp])
   const qTotalPages = Math.max(1, Math.ceil(questions.length / Q_PER_PAGE))
   const currentQuestions = questions.slice(qPage * Q_PER_PAGE, (qPage + 1) * Q_PER_PAGE)
@@ -1142,7 +1109,7 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260908-edit" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-notest" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
@@ -1623,6 +1590,9 @@ export default function TeacherRawDashboard({
                 {isOpen && (
                   <>
                     <div className="tr-app-questions">
+                      {questions.length === 0 && (
+                        <div className="tr-app-notest" role="status">Ученик ещё не прошёл тест</div>
+                      )}
                       {qTotalPages > 1 && (
                         <button
                           type="button"
@@ -1808,20 +1778,15 @@ export default function TeacherRawDashboard({
             )}
           </div>
           <div id="calendar" className="tr-schedule-actions">
-            {calendarConnection?.connected ? (
-              <a
-                className="tr-sched-btn lime"
-                href="https://calendar.google.com/calendar/r"
-                target="_blank"
-                rel="noreferrer"
-              >
-                открыть календарь
-              </a>
-            ) : (
-              <a className="tr-sched-btn lime" href="/api/google/oauth/start">
-                подключить календарь
-              </a>
-            )}
+            {/* Всегда «открыть календарь» как в Figma; подключение Google Calendar — на плашке выше. */}
+            <a
+              className="tr-sched-btn lime"
+              href="https://calendar.google.com/calendar/r"
+              target="_blank"
+              rel="noreferrer"
+            >
+              открыть календарь
+            </a>
             <button
               type="button"
               className="tr-sched-btn lime"

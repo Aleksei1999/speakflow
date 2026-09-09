@@ -33,6 +33,8 @@ interface EditLessonModalProps {
     scheduledAtISO: string
   }
   onClose: () => void
+  /** Переопределяет сохранение (админ: перенос лекции). По умолчанию — rescheduleLesson. */
+  reschedule?: (scheduledAtISO: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 type ModalState = 'idle' | 'picking' | 'saving'
@@ -54,7 +56,7 @@ function buildEditDateOptions(): DateOption[] {
   return out
 }
 
-export default function EditLessonModal({ lesson, onClose }: EditLessonModalProps) {
+export default function EditLessonModal({ lesson, onClose, reschedule }: EditLessonModalProps) {
   const router = useRouter()
 
   const allDateOptions = useMemo(() => buildEditDateOptions(), [])
@@ -124,7 +126,9 @@ export default function EditLessonModal({ lesson, onClose }: EditLessonModalProp
     setState('saving')
     const dt = new Date(selectedDate.y, selectedDate.m, selectedDate.d, selectedTime.h, selectedTime.min, 0, 0)
     try {
-      const res = await rescheduleLesson({ lessonId: lesson.id, scheduledAt: dt.toISOString() })
+      const res = reschedule
+        ? await reschedule(dt.toISOString())
+        : await rescheduleLesson({ lessonId: lesson.id, scheduledAt: dt.toISOString() })
       if (res.ok) {
         router.refresh()
         onClose()
