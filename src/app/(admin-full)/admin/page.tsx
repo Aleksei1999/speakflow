@@ -287,7 +287,7 @@ export default async function AdminDashboardFullPage() {
 
   let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
   try {
-    initialChats = await fetchChatList()
+    initialChats = await fetchChatList({ includeGroups: true, allGroups: true })
   } catch (e) {
     console.error("[admin] chat list fetch failed", e)
   }

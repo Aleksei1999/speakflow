@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   invalidateTeacherMaterials,
   invalidateStudentMaterials,
@@ -108,16 +109,24 @@ export async function DELETE(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
+    // Админ удаляет любой материал (ДЗ и библиотека из кабинета админа), учитель — только свой.
+    let isAdmin = false
     const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
     if (!teacherProfileId) {
-      return NextResponse.json(
-        { error: 'Профиль преподавателя не найден' },
-        { status: 403 }
-      )
+      const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if ((prof as { role?: string } | null)?.role === 'admin') isAdmin = true
+      else {
+        return NextResponse.json(
+          { error: 'Профиль преподавателя не найден' },
+          { status: 403 }
+        )
+      }
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: any = isAdmin ? createAdminClient() : supabase
 
     // Fetch material + verify ownership
-    const { data: material, error: fetchErr } = await supabase
+    const { data: material, error: fetchErr } = await db
       .from('materials')
       .select('id, teacher_id, storage_path, lesson_id')
       .eq('id', id)
@@ -126,18 +135,18 @@ export async function DELETE(
       console.error('Ошибка чтения материала:', fetchErr)
       return NextResponse.json({ error: 'Ошибка базы данных' }, { status: 500 })
     }
-    if (!material || material.teacher_id !== teacherProfileId) {
+    if (!material || (!isAdmin && material.teacher_id !== teacherProfileId)) {
       return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
     }
 
     // Snapshot the set of affected students BEFORE deleting the row —
     // material_shares get cascaded away and we'd lose visibility data.
-    await invalidateAffectedStudents(supabase, id, material.lesson_id ?? null)
+    await invalidateAffectedStudents(db, id, material.lesson_id ?? null)
 
     // Remove storage object first — if this fails we bail out so we don't
     // orphan the row pointing at a live file.
     if (material.storage_path) {
-      const { error: rmErr } = await supabase.storage
+      const { error: rmErr } = await db.storage
         .from(BUCKET)
         .remove([material.storage_path])
       if (rmErr && !/not.*found/i.test(rmErr.message || '')) {
@@ -149,11 +158,9 @@ export async function DELETE(
       }
     }
 
-    const { error: delErr } = await supabase
-      .from('materials')
-      .delete()
-      .eq('id', id)
-      .eq('teacher_id', teacherProfileId)
+    let delQuery = db.from('materials').delete().eq('id', id)
+    if (!isAdmin) delQuery = delQuery.eq('teacher_id', teacherProfileId)
+    const { error: delErr } = await delQuery
     if (delErr) {
       console.error('Ошибка удаления материала:', delErr)
       return NextResponse.json(

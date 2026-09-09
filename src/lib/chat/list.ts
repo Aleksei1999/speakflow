@@ -56,7 +56,7 @@ export type ChatListItem = DirectChatItem | GroupChatItem
  * управляется флагом includeGroups (backward-compat alias includeTeacherGroups).
  */
 export async function fetchChatList(
-  opts: { includeTeacherGroups?: boolean; includeGroups?: boolean } = {},
+  opts: { includeTeacherGroups?: boolean; includeGroups?: boolean; allGroups?: boolean } = {},
 ): Promise<ChatListItem[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -164,7 +164,7 @@ export async function fetchChatList(
 
   const shouldLoadGroups = !!(opts.includeTeacherGroups || opts.includeGroups)
   const groups: GroupChatItem[] = shouldLoadGroups
-    ? await fetchGroupsForUser(admin, meId)
+    ? await fetchGroupsForUser(admin, meId, !!opts.allGroups)
     : []
 
   return [...direct, ...groups]
@@ -177,7 +177,8 @@ export async function fetchChatList(
  *   • last message text + sender + createdAt,
  *   • unread count = сообщения с created_at > my last_read_at, кроме моих.
  */
-async function fetchGroupsForUser(admin: any, userId: string): Promise<GroupChatItem[]> {
+/** allGroups — админ видит все группы платформы (он не владелец и не участник). */
+async function fetchGroupsForUser(admin: any, userId: string, allGroups = false): Promise<GroupChatItem[]> {
   // 1) Группы где юзер teacher-owner.
   const { data: tp } = await admin
     .from('teacher_profiles')
@@ -203,6 +204,10 @@ async function fetchGroupsForUser(admin: any, userId: string): Promise<GroupChat
   const memberIds = new Set<string>()
   for (const m of (memRows ?? []) as any[]) memberIds.add(m.group_id)
 
+  if (allGroups) {
+    const { data: every } = await admin.from('teacher_groups').select('id')
+    for (const g of (every ?? []) as any[]) ownedIds.add(g.id)
+  }
   const allGroupIds = Array.from(new Set([...ownedIds, ...memberIds]))
   if (!allGroupIds.length) return []
 

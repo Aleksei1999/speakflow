@@ -16,7 +16,6 @@ import { createPortal } from "react-dom"
 import { useFitZoom } from "@/components/dashboard/useFitZoom"
 
 const subscribeNoop = () => () => {}
-import { ArrowIcon } from "@/components/icons/ArrowIcon"
 
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client"
 import {
@@ -68,32 +67,15 @@ function initialsOf(name: string | null | undefined): string {
     (parts[1]?.[0] ?? "").toUpperCase()
 }
 
-function SendIcon() {
-  return <ArrowIcon direction="right" size={14} />
+// Иконки — экспорт Figma 2522:6807 «Чат с учителем» (public/dashboard/chat/*), те же, что в ChatModal.
+function Ic({ src, w, h, className }: { src: string; w: number; h: number; className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" aria-hidden width={w} height={h} className={className} />
 }
-function AttachIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  )
-}
-function PhotoIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden>
-      <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="7" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M18 14l-4-4-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  )
-}
-function DocIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden>
-      <path d="M3 5a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  )
-}
+function SendIcon() { return <Ic src="/dashboard/chat/send-arrow.svg" w={19} h={22.09} className="tr-chat-send-arrow" /> } // Vector 45
+function AttachIcon() { return <Ic src="/dashboard/chat/plus.svg" w={20.48} h={20.48} /> }   // Group 309
+function PhotoIcon() { return <Ic src="/dashboard/chat/ic-photo.svg" w={21.67} h={20} /> } // Group 310
+function DocIcon() { return <Ic src="/dashboard/chat/ic-doc.svg" w={22} h={21} /> }        // Vector
 function FileIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
@@ -101,19 +83,12 @@ function FileIcon() {
     </svg>
   )
 }
-function CameraIcon() {
-  return (
-    <svg viewBox="0 0 30 24" width="26" height="22" fill="none" aria-hidden>
-      <path d="M4 6h5l2-3h8l2 3h5v14H4V6z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
-      <circle cx="15" cy="13" r="4.5" stroke="currentColor" strokeWidth="2.2" />
-    </svg>
-  )
-}
 
 interface GroupChatModalProps {
   groupId: string
   groupName: string
-  memberCount: number
+  /** Не показывается в шапке (макет 2522:6807), оставлен для совместимости вызовов */
+  memberCount?: number
   currentUserId: string
   currentRole: GroupChatRole
   onClose: () => void
@@ -122,7 +97,6 @@ interface GroupChatModalProps {
 export default function GroupChatModal({
   groupId,
   groupName,
-  memberCount,
   currentUserId,
   currentRole,
   onClose,
@@ -364,13 +338,6 @@ export default function GroupChatModal({
     })
   }, [messages, currentUserId])
 
-  const canCall = currentRole === "teacher" || currentRole === "admin"
-
-  function startCall() {
-    // Открываем групповую комнату в новой вкладке — параллельно чат остаётся.
-    window.open(`/group-call/${groupId}`, "_blank", "noopener,noreferrer")
-  }
-
   // Портал в body + масштаб как у страницы, но не больше, чем влезает в окно.
   const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false)
   const fitZoom = useFitZoom(1228, 815)
@@ -381,7 +348,7 @@ export default function GroupChatModal({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/chat-modal.css?v=20260908-wide" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/group-chat.css?v=20260908-sides" />
+      <link rel="stylesheet" href="/dashboard/group-chat.css?v=20260909-figma" />
       <div className="tr-chat-backdrop" style={{ zoom: fitZoom }} onClick={onClose}>
         <div
           className="tr-chat"
@@ -397,32 +364,8 @@ export default function GroupChatModal({
               <span className="tr-chat-avatar-fb">{initialsOf(groupName)}</span>
             </div>
             <h2 className="tr-chat-name">{groupName}</h2>
-            {canCall && (
-              <div className="tr-chat-actions">
-                <button
-                  type="button"
-                  className="tr-chat-icon-btn"
-                  aria-label="Начать групповой звонок"
-                  title="Начать групповой звонок"
-                  onClick={startCall}
-                >
-                  <CameraIcon />
-                </button>
-              </div>
-            )}
-            <div className="tr-chat-lvl" title="Участников в группе">
-              {memberCount}
-            </div>
-            <button
-              type="button"
-              className="tr-chat-close"
-              aria-label="Закрыть чат"
-              onClick={onClose}
-            >
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </button>
+            {/* По макету 2522:6807 в шапке только аватар и имя: кнопки звонка и счётчика участников нет */}
+            {/* Крестика в макете нет: закрытие по Esc и клику по фону */}
           </header>
 
           <div className="tr-chat-body" ref={bodyRef}>
@@ -523,13 +466,13 @@ export default function GroupChatModal({
                   <AttachIcon />
                 </button>
                 {attachOpen && (
-                  <div className="tr-chat-attach-menu" role="menu">
+                  <div className="tr-chat-attach-menu tr-chat-attach-menu--two" role="menu">
                     <button type="button" role="menuitem" onClick={() => pickFile("image")}>
-                      <PhotoIcon />
+                      <span className="tr-chat-attach-ic"><PhotoIcon /></span>
                       <span>Фото или видео</span>
                     </button>
                     <button type="button" role="menuitem" onClick={() => pickFile("document")}>
-                      <DocIcon />
+                      <span className="tr-chat-attach-ic"><DocIcon /></span>
                       <span>Документ</span>
                     </button>
                   </div>

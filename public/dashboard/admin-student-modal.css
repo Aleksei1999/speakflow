@@ -1,9 +1,13 @@
 /* ============================================================
-   Admin student modal — carte-de-visite ученика в стиле teacher.
-   Glass-контейнер (rgba white 20% + blur 8px), фото 366×366,
-   стрик, био от учителя, статы, контакты, баланс + действия.
+   Карточка ученика для админа — Figma 2522:106 (Group 358): модалка 812×755, rgba(30,30,30,.85), r 29.5.
+   Координаты от левого верха модалки (361,67 в макете):
+     крестик lime 13.34 на (769,31); фото 366 на (57,57); кнопка «фото» 54 lime на (79,344) + камера 34.69×27.35 на (89,357);
+     огоньки 22.5×30 на y 441, x 58 + i·27.27; контакты: подписи 15 на 537/591/645, значения 24 на +19;
+     имя 32/700 на (458,54) шириной 290; «Послений комментарий о ученике» на (458,137); комментарий 24 на (458,157) шириной 321;
+     «25» 40/700 на (457,252) + подпись на (458,295); «3» на (457,350) + подпись (458,393); «2» на (619,350) + подпись (624,393);
+     баланс 296×71 на (459,542): тёмная часть 130×71, «баланс:» 24 на (483,562), сумма 36/700 lime по центру 708 на 548, «рублей» 15 на (606,587);
+     «Открыть расписание» 297×53 lime на (458,634)
    ============================================================ */
-
 .asm-backdrop {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.55);
@@ -13,236 +17,61 @@
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
-
 .asm {
   position: relative;
-  width: min(920px, calc(100vw - 40px));
-  max-height: calc(100vh - 40px);
-  overflow: auto;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  width: 812px; height: 755px;
+  box-sizing: border-box;
   border-radius: 29.5px;
-  padding: 32px;
+  /* стекло как у плашек расписания (по просьбе заказчика) */
+  background: rgba(60, 60, 60, 0.39);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  outline: 1px solid rgba(255, 255, 255, 0.22); outline-offset: -1px;
   color: #fff;
   font-family: 'Inter', sans-serif;
-  display: flex; flex-direction: column;
-  gap: 28px;
-}
-
-.asm-close {
-  position: absolute; top: 16px; right: 20px;
-  width: 32px; height: 32px;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: 0; color: #fff; cursor: pointer;
-  border-radius: 50%;
-  transition: background .15s ease;
-}
-.asm-close:hover { background: rgba(255,255,255,0.08); }
-
-.asm-grid {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 32px;
-  align-items: start;
-}
-
-/* Photo column */
-.asm-photo-col { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
-.asm-photo {
-  position: relative;
-  width: 300px; height: 300px;
-  border-radius: 29.5px;
-  overflow: hidden;
-  background: #333;
-  border: 0; padding: 0; cursor: pointer;
-}
-.asm-photo:disabled { cursor: wait; opacity: 0.7; }
-.asm-photo > img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.asm-avatar-fb {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 96px;
-  color: #fff;
-  letter-spacing: -0.05em;
-}
-.asm-photo-cam {
-  position: absolute;
-  left: 14px; bottom: 14px;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: #CCE94E;
-  display: inline-flex; align-items: center; justify-content: center;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-.asm-upload-err {
-  color: #ff8b8b;
-  font-size: 13px;
-}
-
-.asm-flames { display: flex; gap: 4px; }
-.asm-flame { width: 30px; height: 34px; display: block; }
-
-/* Info column */
-.asm-info-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-.asm-name {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 32px;
-  line-height: 1.05;
-  letter-spacing: -0.05em;
-  color: #fff;
-}
-
-.asm-bio-wrap { display: flex; flex-direction: column; gap: 6px; }
-.asm-bio-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
 }
-.asm-bio {
-  font-size: 18px;
-  line-height: 1.2;
-  font-weight: 600;
-  color: #fff;
-  display: flex; flex-direction: column;
-}
-.asm-bio--empty { font-weight: 400; color: rgba(255,255,255,0.6); }
-.asm-bio-author {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-}
+.asm-close { position: absolute; top: 31px; right: 29.66px; width: 13.34px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 2; }
+.asm-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.asm-close:hover { opacity: .7; }
 
-/* 1 сверху (full width), 2 снизу (2 колонки). */
-.asm-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 24px;
-  row-gap: 20px;
-  padding-top: 4px;
-}
-.asm-stat:first-child { grid-column: 1 / -1; }
-.asm-stat {
-  display: flex; flex-direction: column; align-items: flex-start;
-  gap: 8px;
-}
-.asm-stat-num {
-  font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 40px;
-  line-height: 0.9;
-  letter-spacing: -0.05em;
-  color: #fff;
-}
-.asm-stat-label {
-  font-size: 14px;
-  line-height: 1.2;
-  color: rgba(255, 255, 255, 0.7);
-}
+.asm-photo { position: absolute; left: 57px; top: 57px; width: 366px; height: 366px; border-radius: 29.5px; overflow: hidden; background: #333; }
+.asm-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.asm-avatar-fb { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 96px; font-weight: 700; color: #fff; }
+.asm-photo-cam { position: absolute; left: 22px; bottom: 25px; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 50%; background: #DFED8C; cursor: pointer; z-index: 2; transition: background .18s; }
+.asm-photo-cam:hover:not(:disabled) { background: var(--lime-deep, #cfe06a); }
+.asm-photo-cam:disabled { cursor: progress; opacity: .7; }
+.asm-photo-cam img { display: block; position: absolute; left: 10px; top: 13px; width: 34.69px; height: 27.35px; }
+.asm-upload-err { position: absolute; left: 58px; top: 480px; font-size: 13px; color: #ffb3b3; }
 
-/* Footer */
-.asm-foot {
-  display: flex; flex-wrap: wrap; align-items: flex-end;
-  gap: 24px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-}
-.asm-contacts { display: flex; flex-direction: column; gap: 14px; min-width: 260px; }
-.asm-contact-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-.asm-contact-val {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-}
+.asm-flames { position: absolute; left: 58px; top: 441px; display: flex; gap: 4.77px; } /* шаг 27.27 = 22.5 + 4.77 */
+.asm-flame { width: 22.5px; height: 30px; display: block; }
 
-.asm-actions {
-  margin-left: auto;
-  display: flex; flex-direction: column; gap: 14px;
-  align-items: flex-end;
-  min-width: 297px;
-}
-/* Balance-pill — Figma node 4168:91.
-   Общий контейнер 296×71 с лаймовым полупрозрачным фоном,
-   слева тёмный колпачок 130×71 с надписью «баланс:». */
-.asm-balance-pill {
-  position: relative;
-  width: 296px;
-  max-width: 100%;
-  height: 71px;
-  border-radius: 29.5px;
-  background: rgba(223, 237, 140, 0.36);
-  display: flex; align-items: center;
-  overflow: hidden;
-  font-family: 'Inter', sans-serif;
-}
-.asm-balance-cap {
-  flex: 0 0 130px;
-  height: 100%;
-  background: rgba(30, 30, 30, 0.79);
-  border-radius: 29.5px;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: #DFED8C;
-  font-weight: 500;
-  font-size: 18px;
-  letter-spacing: -0.05em;
-}
-.asm-balance-value {
-  flex: 1;
-  display: flex; align-items: baseline; justify-content: center;
-  gap: 6px;
-  padding: 0 12px 0 4px;
-}
-.asm-balance-num {
-  color: #DFED8C;
-  font-weight: 700;
-  font-size: 36px;
-  line-height: 1.16;
-  letter-spacing: -0.05em;
-}
-.asm-balance-unit {
-  color: rgba(223, 237, 140, 0.7);
-  font-weight: 500;
-  font-size: 15px;
-  letter-spacing: -0.05em;
-}
+.asm-field { position: absolute; left: 58px; width: 401px; }
+.asm-field--mail { top: 537px; }
+.asm-field--phone { top: 591px; }
+.asm-field--pass { top: 645px; }
+.asm-contact-label { font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.asm-contact-val { margin-top: 4.4px; font-size: 24px; letter-spacing: -1.2px; line-height: 1.09; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.asm-btn {
-  width: 297px;
-  max-width: 100%;
-  height: 53px;
-  padding: 0 24px;
-  border-radius: 34px;
-  border: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  letter-spacing: -0.03em;
-  cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background .15s ease, transform .1s ease;
-}
-.asm-btn--schedule {
-  background: #DFED8C;
-  color: #1E1E1E;
-}
-.asm-btn--schedule:hover { background: #CCE94E; }
+.asm-name { position: absolute; left: 458px; top: 54px; width: 290px; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -1.6px; line-height: 0.975; }
+.asm-bio-label { position: absolute; left: 458px; top: 137px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.asm-bio { position: absolute; left: 458px; top: 157px; width: 321px; max-height: 94px; overflow: hidden; font-size: 24px; letter-spacing: -1.2px; line-height: 0.975; } /* до 4 строк — не наезжает на «25» (252) */
+.asm-bio--empty { color: rgba(255, 255, 255, .6); }
+.asm-bio-author { position: absolute; left: 458px; top: 232px; font-size: 13px; color: rgba(255, 255, 255, .5); white-space: nowrap; }
 
-@media (max-width: 780px) {
-  .asm-grid { grid-template-columns: 1fr; }
-  .asm-photo, .asm-photo > * { width: 100%; height: auto; aspect-ratio: 1 / 1; }
-  .asm-photo { max-width: 360px; }
-  .asm-foot { flex-direction: column; align-items: stretch; }
-  .asm-actions { margin-left: 0; }
-  .asm-stats { grid-template-columns: 1fr 1fr; column-gap: 16px; }
-}
+.asm-stat { position: absolute; }
+.asm-stat--year { left: 457px; top: 252px; }
+.asm-stat--lectures { left: 457px; top: 350px; }
+.asm-stat--clubs { left: 619px; top: 350px; }
+.asm-stat-num { height: 45px; font-size: 40px; font-weight: 700; letter-spacing: -2px; line-height: 0.8053; }
+.asm-stat-label { position: absolute; top: 43px; left: 1px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.asm-stat--clubs .asm-stat-label { left: 5px; }
+
+.asm-balance-pill { position: absolute; left: 459px; top: 542px; width: 296px; height: 71px; border-radius: 29.5px; background: rgba(223, 237, 140, .36); }
+.asm-balance-cap { position: absolute; left: 0; top: 0; width: 130px; height: 71px; box-sizing: border-box; padding: 20px 0 0 24px; border-radius: 29.5px; background: rgba(30, 30, 30, .79); font-size: 24px; letter-spacing: -1.2px; line-height: 1.29; color: #fff; white-space: nowrap; }
+.asm-balance-num { position: absolute; left: 147px; top: 6px; width: 140px; text-align: left; /* по просьбе заказчика: сумма выровнена по левому краю, как «рублей» */ font-size: 36px; font-weight: 700; letter-spacing: -1.8px; line-height: 1.16; color: #DFED8C; white-space: nowrap; }
+.asm-balance-unit { position: absolute; left: 147px; top: 45px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(223, 237, 140, .7); white-space: nowrap; }
+
+.asm-btn--schedule { position: absolute; left: 458px; top: 634px; width: 297px; height: 53px; box-sizing: border-box; border: 0; border-radius: 34px; display: flex; align-items: center; justify-content: center; background: #DFED8C; color: #1E1E1E; font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 500; letter-spacing: -1px; line-height: 0.975; cursor: pointer; white-space: nowrap; transition: filter .18s; }
+.asm-btn--schedule:hover { filter: brightness(.95); }

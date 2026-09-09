@@ -133,7 +133,6 @@ export default function AdminStudentModal({
 
   const name = data?.full_name || seedName
   const avatar = avatarOverride ?? data?.avatar_url ?? seedAvatar
-  const streak = data?.current_streak ?? 0
   const balance = data?.balance_rub ?? 0
   const lessonsYear = data?.lessons_this_year ?? 0
   const bio = data?.bio_content
@@ -147,118 +146,88 @@ export default function AdminStudentModal({
 
   return (
     <div className="asm-backdrop" onClick={onClose}>
-      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260908-zoom" />
-      <div className="asm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260909-glass" />
+      {/* Figma 2522:106 (Group 358): фото и контакты слева, имя / комментарий / статы / баланс / кнопка справа */}
+      <div className="asm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={name}>
         <button type="button" className="asm-close" aria-label="Закрыть" onClick={onClose}>
-          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" aria-hidden>
-            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
         </button>
 
-        <div className="asm-grid">
-          {/* Photo + streak flames */}
-          <div className="asm-photo-col">
-            <button
-              type="button"
-              className="asm-photo"
-              onClick={() => fileRef.current?.click()}
-              disabled={avatarUploading}
-              aria-label="Изменить фото ученика"
-            >
-              <Avatar name={name} src={avatar ?? undefined} />
-              <span className="asm-photo-cam" aria-hidden>
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                  <path d="M4 7h4l1.5-2h5L16 7h4v12H4V7z" stroke="#1E1E1E" strokeWidth="2" strokeLinejoin="round" />
-                  <circle cx="12" cy="13" r="4" stroke="#1E1E1E" strokeWidth="2" />
-                </svg>
-              </span>
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleFile}
+        <div className="asm-photo">
+          <Avatar name={name} src={avatar ?? undefined} />
+          <button
+            type="button"
+            className="asm-photo-cam"
+            onClick={() => fileRef.current?.click()}
+            disabled={avatarUploading}
+            aria-label={avatarUploading ? "Загружаем…" : "Изменить фото ученика"}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dashboard/ic-camera-dark.svg" alt="" aria-hidden width={34.69} height={27.35} />
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFile} />
+        </div>
+        {uploadError && <div className="asm-upload-err">{uploadError}</div>}
+
+        <div className="asm-flames" aria-label={`Уровень ${cefr}`}>
+          {Array.from({ length: 6 }, (_, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              className="asm-flame"
+              src={i < litCount ? "/dashboard/student/flame/filled.svg" : "/dashboard/student/flame/empty.svg"}
+              alt=""
+              width={22.5}
+              height={30}
             />
-            {uploadError && <div className="asm-upload-err">{uploadError}</div>}
-
-            <div className="asm-flames" aria-label={`Уровень ${cefr}`}>
-              {Array.from({ length: 6 }, (_, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  className="asm-flame"
-                  src={i < litCount ? "/dashboard/student/flame/filled.svg" : "/dashboard/student/flame/empty.svg"}
-                  alt=""
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Name + bio + stats */}
-          <div className="asm-info-col">
-            <h2 className="asm-name">{name}</h2>
-
-            <div className="asm-bio-wrap">
-              <div className="asm-bio-label">Послений комментарий о ученике</div>
-              {bio ? (
-                <div className="asm-bio">
-                  {bio.split(/\r?\n/).map((line, i) => (
-                    <span key={i}>{line}</span>
-                  ))}
-                </div>
-              ) : (
-                <div className="asm-bio asm-bio--empty">Учитель ещё не оставил комментарий.</div>
-              )}
-              {bioAuthor && <div className="asm-bio-author">{bioAuthor}</div>}
-            </div>
-
-            <div className="asm-stats">
-              <div className="asm-stat">
-                <div className="asm-stat-num">{lessonsYear}</div>
-                <div className="asm-stat-label">количество<br />занятий с начала года</div>
-              </div>
-              <div className="asm-stat">
-                <div className="asm-stat-num">0</div>
-                <div className="asm-stat-label">количество<br />лекций</div>
-              </div>
-              <div className="asm-stat">
-                <div className="asm-stat-num">0</div>
-                <div className="asm-stat-label">участие в клубах<br />по интересам</div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Contacts + balance/actions */}
-        <div className="asm-foot">
-          <div className="asm-contacts">
-            <div>
-              <div className="asm-contact-label">почта</div>
-              <div className="asm-contact-val">{data?.email || "—"}</div>
-            </div>
-            <div>
-              <div className="asm-contact-label">телефон</div>
-              <div className="asm-contact-val">{data?.phone || "—"}</div>
-            </div>
-          </div>
-          <div className="asm-actions">
-            <div className="asm-balance-pill" aria-label={`Баланс: ${balance} рублей`}>
-              <span className="asm-balance-cap">баланс:</span>
-              <div className="asm-balance-value">
-                <span className="asm-balance-num">{balance.toLocaleString("ru-RU")}</span>
-                <span className="asm-balance-unit">рублей</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="asm-btn asm-btn--schedule"
-              onClick={() => onOpenSchedule(studentId)}
-            >
-              Открыть расписание
-            </button>
-          </div>
+        <div className="asm-field asm-field--mail">
+          <div className="asm-contact-label">почта</div>
+          <div className="asm-contact-val" title={data?.email || undefined}>{data?.email || "–"}</div>
         </div>
+        <div className="asm-field asm-field--phone">
+          <div className="asm-contact-label">телефон</div>
+          <div className="asm-contact-val">{data?.phone || "–"}</div>
+        </div>
+        <div className="asm-field asm-field--pass">
+          <div className="asm-contact-label">пароль</div>
+          <div className="asm-contact-val">••••••••</div>
+        </div>
+
+        <h2 className="asm-name">{name}</h2>
+        <div className="asm-bio-label">Послений комментарий о ученике</div>
+        {bio ? (
+          <div className="asm-bio" title={bio}>{bio}</div>
+        ) : (
+          <div className="asm-bio asm-bio--empty">Учитель ещё не оставил комментарий.</div>
+        )}
+        {bio && bioAuthor && <div className="asm-bio-author">{bioAuthor}</div>}
+
+        <div className="asm-stat asm-stat--year">
+          <div className="asm-stat-num">{lessonsYear}</div>
+          <div className="asm-stat-label">количество<br />занятий с начала года</div>
+        </div>
+        <div className="asm-stat asm-stat--lectures">
+          <div className="asm-stat-num">0</div>
+          <div className="asm-stat-label">количество<br />лекций</div>
+        </div>
+        <div className="asm-stat asm-stat--clubs">
+          <div className="asm-stat-num">0</div>
+          <div className="asm-stat-label">участие в клубах<br />по интересам</div>
+        </div>
+
+        <div className="asm-balance-pill" aria-label={`Баланс: ${balance} рублей`}>
+          <span className="asm-balance-cap">баланс:</span>
+          <span className="asm-balance-num">{balance.toLocaleString("ru-RU").replace(/\u00a0/g, ".")}</span>
+          <span className="asm-balance-unit">рублей</span>
+        </div>
+
+        <button type="button" className="asm-btn asm-btn--schedule" onClick={() => onOpenSchedule(studentId)}>
+          Открыть расписание
+        </button>
       </div>
     </div>
   )

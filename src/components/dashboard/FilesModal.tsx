@@ -320,6 +320,17 @@ export function FilesModal({
                 {selectLabel}
               </button>
             )}
+            {/* Figma 2522:10358 «В папке»: рядом с «Выбрать» (772) сразу стоит красная «Удалить» (957);
+                без выбранных файлов она открывает режим выбора */}
+            {showSelect && !selectMode && inFolder && (
+              <button
+                type="button"
+                className="files-modal-btn files-modal-btn--danger"
+                onClick={() => setSelectMode(true)}
+              >
+                {deleteLabel}
+              </button>
+            )}
 
             {/* Figma 2522:4140: «Удалить» 160×46 red на (957,718) без счётчика; «Отмена» слева от неё оставлена
                 по просьбе заказчика, чтобы выходить из режима выбора без закрытия модалки */}

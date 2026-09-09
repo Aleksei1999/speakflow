@@ -18,9 +18,10 @@ import type { ChatListItem } from "@/lib/chat/list"
 import AdminAddLessonModal from "./AdminAddLessonModal"
 import AdminAddLectureModal from "./AdminAddLectureModal"
 import AdminStudentModal from "./AdminStudentModal"
+import AdminCreateGroupModal from "./AdminCreateGroupModal"
 import EditLessonModal from "@/app/(teacher-full)/teacher/EditLessonModal"
 import { rescheduleLecture } from "./admin-actions"
-import { ArrowDown as AlmArrowDown, ArrowLeftLime as AlmArrowLeftLime, CloseIcon as AlmCloseIcon, type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
+import { type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
 
 /* ============================================================
    Admin Dashboard — Raw English
@@ -114,7 +115,8 @@ function useProportionalZoom() {
   useEffect(() => {
     const apply = () => {
       const w = window.innerWidth
-      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1
+      // Ниже 1441 страница тоже масштабируется (иначе блоки шириной 1441 вылезают за край окна и режутся)
+      const z = Math.min(w / 1441, 1.4)
       document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4))
       // Модалки лежат внутри .ad и наследуют масштаб страницы. Самая высокая — 686×869:
       // если с масштабом страницы она не влезает в окно (поля 20px), уменьшаем модалки до вмещающегося.
@@ -268,6 +270,18 @@ export default function AdminRawDashboard({
   const [libraryFiles, setLibraryFiles] = useState<FileItem[]>([])
   const [homeworkFiles, setHomeworkFiles] = useState<FileItem[]>([])
   const [hwUploadTarget, setHwUploadTarget] = useState<string | null>(null)
+  // Figma 2522:3740: клик по «Домашние задания» открывает выбор ученика (панель как в списке учеников), затем ДЗ выбранного
+  const [hwPickerOpen, setHwPickerOpen] = useState(false)
+  useEffect(() => {
+    ;(window as any).__openHwPicker = () => setHwPickerOpen(true)
+    return () => { delete (window as any).__openHwPicker }
+  }, [])
+  useEffect(() => {
+    if (!hwPickerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setHwPickerOpen(false) }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [hwPickerOpen])
   const [hwUploading, setHwUploading] = useState(false)
   const hwFileRef = useRef<HTMLInputElement | null>(null)
   const [homeworkVersion, setHomeworkVersion] = useState(0)
@@ -320,18 +334,21 @@ export default function AdminRawDashboard({
     { id: string; label: string; scheduledAtISO: string; kind: "lesson" | "lecture" } | null
   >(null)
 
-  // Создание группы
-  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  // Создание группы (Figma 2522:2968 участники → 2522:2921 название → 2522:2579 готово).
+  // API требует учителя группы, в макете его выбора нет — добавлен отдельный шаг «Выберите учителя группы»
+  // между участниками и названием, в оформлении шага участников.
+  const [groupStep, setGroupStep] = useState<null | "form" | "participants" | "teacher" | "name" | "success" | "form-success">(null)
   const [groupName, setGroupName] = useState("")
   const [groupTeacherId, setGroupTeacherId] = useState<string>("")
   const [groupStudentSel, setGroupStudentSel] = useState<Set<string>>(new Set())
   const [groupSubmitting, setGroupSubmitting] = useState(false)
   const [groupError, setGroupError] = useState<string | null>(null)
-  const [groupSuccess, setGroupSuccess] = useState(false)
-  // Список teacher_profiles (id + user_id + full_name) — грузим при первом открытии.
-  const [teacherProfiles, setTeacherProfiles] = useState<Array<{ id: string; name: string }>>([])
+  const [groupBackEnabled, setGroupBackEnabled] = useState(false)
+  const groupOpen = groupStep !== null
+  // Список teacher_profiles (id + full_name) — грузим при первом открытии.
+  const [teacherProfiles, setTeacherProfiles] = useState<Array<{ id: string; name: string; avatar: string | null }>>([])
   useEffect(() => {
-    if (!groupModalOpen || teacherProfiles.length > 0) return
+    if (!groupOpen || teacherProfiles.length > 0) return
     let cancelled = false
     ;(async () => {
       try {
@@ -339,12 +356,40 @@ export default function AdminRawDashboard({
         if (!r.ok) return
         const j = await r.json()
         if (cancelled) return
-        setTeacherProfiles((j.teachers ?? []).map((t: any) => ({ id: t.teacherProfileId, name: t.name })))
+        setTeacherProfiles((j.teachers ?? []).map((t: any) => ({ id: t.teacherProfileId, name: t.name, avatar: t.avatarUrl ?? null })))
       } catch (e) { console.error("[admin groups] teachers fetch", e) }
     })()
     return () => { cancelled = true }
-  }, [groupModalOpen, teacherProfiles.length])
-
+  }, [groupOpen, teacherProfiles.length])
+  // Figma 2522:2943: таймер 0:59 → 0:00, пока он идёт — можно вернуться назад; после — группа окончательно сохранена
+  const [groupBackSec, setGroupBackSec] = useState(59)
+  useEffect(() => {
+    if (groupStep !== "success" && groupStep !== "form-success") { setGroupBackEnabled(false); return }
+    setGroupBackEnabled(true)
+    setGroupBackSec(59)
+    const iv = setInterval(() => setGroupBackSec((s) => (s > 0 ? s - 1 : 0)), 1000)
+    const t = setTimeout(() => setGroupBackEnabled(false), 60_000)
+    return () => { clearInterval(iv); clearTimeout(t) }
+  }, [groupStep])
+  useEffect(() => {
+    if (!groupOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeGroupModal() }
+    document.addEventListener("keydown", onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupOpen])
+  function toggleGroupSel(id: string) {
+    setGroupStudentSel((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
+  function closeGroupModal() {
+    setGroupStep(null)
+    setGroupStudentSel(new Set())
+    setGroupName("")
+    setGroupTeacherId("")
+    setGroupError(null)
+  }
   async function submitCreateGroup() {
     const trimmed = groupName.trim()
     if (!trimmed || !groupTeacherId || groupStudentSel.size < 1 || groupSubmitting) return
@@ -353,25 +398,14 @@ export default function AdminRawDashboard({
       const res = await fetch("/api/admin/groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmed,
-          teacher_id: groupTeacherId,
-          student_ids: Array.from(groupStudentSel),
-        }),
+        body: JSON.stringify({ name: trimmed, teacher_id: groupTeacherId, student_ids: Array.from(groupStudentSel) }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setGroupError(j.error || "Не удалось создать группу")
         return
       }
-      setGroupSuccess(true)
-      setTimeout(() => {
-        setGroupModalOpen(false)
-        setGroupSuccess(false)
-        setGroupName("")
-        setGroupTeacherId("")
-        setGroupStudentSel(new Set())
-      }, 2000)
+      setGroupStep(groupStep === "form" ? "form-success" : "success")
     } catch (e) {
       setGroupError(e instanceof Error ? e.message : "Не удалось создать группу")
     } finally {
@@ -705,7 +739,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="/dashboard/raw-admin.css?v=20260909-tmodal"
+        href="/dashboard/raw-admin.css?v=20260909-hw"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
@@ -776,7 +810,7 @@ export default function AdminRawDashboard({
         </div>
         <HwPillList
           items={[
-            { label: "Домашние задания", onClick: () => setHomeworkOpen(true) },
+            { label: "Домашние задания", onClick: () => setHwPickerOpen(true) },
             { label: <>Библиотека <span className="raw">Raw English</span></>, onClick: () => setLibraryOpen(true) },
             { label: "История занятий", href: "/admin/history" },
           ]}
@@ -908,7 +942,7 @@ export default function AdminRawDashboard({
            </CustomScroll>
           </div>
           {/* Figma 4053:262: «Создать группу» 308.58×68 lime на x=533 (frame 427), 42 под карточкой; лаймовый круг 67×68 с тёмной стрелкой вплотную справа */}
-          <button type="button" className="ad-chats-create" onClick={() => setGroupModalOpen(true)}>
+          <button type="button" className="ad-chats-create" onClick={() => setGroupStep("form")}>
             Создать группу
             <span className="ad-chats-create-arrow" aria-hidden>
               <img className="ad-chats-create-arrow-circle" src="/dashboard/ic-arrow-circle-lime.svg" alt="" width={67} height={68} />
@@ -1058,7 +1092,7 @@ export default function AdminRawDashboard({
               </div>
             </CustomScroll>
             <div className="tr-panel-footer">
-              <button type="button" className="tr-create-group" onClick={() => setGroupModalOpen(true)}>
+              <button type="button" className="tr-create-group" onClick={() => setGroupStep("participants")}>
                 Создать группу
                 <span className="tr-create-group-arrow" aria-hidden>
                   <img src="/dashboard/ic-arrow-circle-red.svg" alt="" width={67} height={68} className="tr-create-group-arrow-circle" />
@@ -1390,11 +1424,58 @@ export default function AdminRawDashboard({
         />
       )}
 
-      {/* Модалка выбора ученика — открывается когда админ кликнул «Загрузить для ученика» */}
-      <HwStudentPickerBridge
-        students={sortedStudents}
-        onPick={(id) => setHwUploadTarget(id)}
-      />
+      {/* Figma 2522:3740 «Домашние задания (окно)»: панель 1228×725 как в списке учеников — «Сортировать» на (54,57),
+          сетка учеников 539×139 в две колонки с 151, трек 7×495 на 1203, крестик lime на (1181,31). Клик по ученику открывает его ДЗ */}
+      {hwPickerOpen && (
+        <div className="tr">
+          <div className="files-modal-backdrop ad-hw-picker-backdrop" onClick={() => setHwPickerOpen(false)}>
+            <div className="tr-panel ad-hw-picker" role="dialog" aria-modal="true" aria-label="Домашние задания: выберите ученика" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="ad-hw-picker-close" aria-label="Закрыть" onClick={() => setHwPickerOpen(false)}>
+                <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+              </button>
+              <div className="tr-sort-wrap">
+                <button type="button" className="tr-sort" aria-expanded={sortOpen} aria-haspopup="listbox" onClick={() => setSortOpen((v) => !v)}>
+                  Сортировать
+                </button>
+                {sortOpen && (
+                  <div className="tr-sort-pop" role="listbox">
+                    {SORT_OPTIONS.map((o) => (
+                      <button key={o.id} type="button" role="option" aria-selected={sortId === o.id} className={`tr-sort-opt ${sortId === o.id ? "on" : ""}`} onClick={() => { setSortId(o.id); setSortOpen(false) }}>
+                        <span className="dot" aria-hidden />
+                        <span className="lbl">{o.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <CustomScroll className="tr-students-list" track={495} ariaLabel="Ученики">
+                <div className="tr-students-grid">
+                  {sortedStudents.map((s) => (
+                    <div
+                      className="tr-stu"
+                      key={s.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => { setHwPickerOpen(false); setHwUploadTarget(s.id) }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setHwPickerOpen(false); setHwUploadTarget(s.id) } }}
+                    >
+                      <div className="tr-stu-avatar">
+                        <Avatar name={s.name} src={s.avatar} />
+                      </div>
+                      <div className="tr-stu-name">
+                        {s.name.split(/\s+/).map((part, i) => (
+                          <span key={i} className="tr-stu-name-line">{part}</span>
+                        ))}
+                      </div>
+                      <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                    </div>
+                  ))}
+                </div>
+              </CustomScroll>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модалка карточки учителя (Figma 2208-62) — реальные данные + upload фото */}
       {teacherModal && (
@@ -1592,10 +1673,10 @@ export default function AdminRawDashboard({
         />
       )}
 
-      {/* Создание группы — используем тот же UI как AddLessonModal
-          (Figma 2208-463 / 599 / 2560). Классы .tr-add-lesson-* + .tr обёртка. */}
-      {groupModalOpen && (
-        <CreateGroupModal
+      {/* Создание группы (админ): Figma 2522:2968 участники → название + учитель → готово. Разметка и стили — как у учителя (.tr-modal-*) */}
+      {/* Figma 2522:592 «Создать группу» из блока «Чаты»: название + преподаватель + ученики + «Создать» */}
+      {groupStep === "form" && (
+        <AdminCreateGroupModal
           teachers={teacherProfiles}
           students={sortedStudents.map((s) => ({ id: s.id, name: s.name }))}
           groupName={groupName}
@@ -1603,13 +1684,217 @@ export default function AdminRawDashboard({
           groupTeacherId={groupTeacherId}
           setGroupTeacherId={setGroupTeacherId}
           groupStudentSel={groupStudentSel}
-          setGroupStudentSel={setGroupStudentSel}
+          toggleStudent={toggleGroupSel}
           submitting={groupSubmitting}
           error={groupError}
-          success={groupSuccess}
           onSubmit={submitCreateGroup}
-          onClose={() => setGroupModalOpen(false)}
+          onClose={closeGroupModal}
         />
+      )}
+      {groupOpen && groupStep !== "form" && (
+        <div className="tr ad-group-flow">
+          <div className="tr-modal-backdrop" onClick={closeGroupModal}>
+            {/* Figma 2522:2968 «Создание группы»: 686×869, заголовок top 79, ряды 539×139 с 183 (шаг 178),
+                чекбоксы 36 на x=52, «Создать группу» 357×68 at (165,750) */}
+            {groupStep === "participants" && (
+              <div className="tr-modal tr-modal--group" role="dialog" aria-modal="true" aria-labelledby="ad-group-title" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="tr-modal-close" aria-label="Закрыть" onClick={closeGroupModal}>
+                  <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+                </button>
+                <h2 id="ad-group-title" className="tr-modal-title">Выберите участников группы</h2>
+                <div className="tr-modal-list">
+                  {sortedStudents.map((s) => {
+                    const on = groupStudentSel.has(s.id)
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`tr-modal-row ${on ? "on" : ""}`}
+                        role="checkbox"
+                        aria-checked={on}
+                        onClick={() => toggleGroupSel(s.id)}
+                      >
+                        <span className={`tr-modal-check ${on ? "on" : ""}`} aria-hidden>
+                          <img className="tr-modal-check-circle" src={on ? "/dashboard/files/check-on.svg" : "/dashboard/files/check-off.svg"} alt="" width={36} height={36} />
+                          {on && <img className="tr-modal-check-mark" src="/dashboard/files/check-mark.svg" alt="" width={20} height={17} />}
+                        </span>
+                        <div className="tr-stu tr-stu--modal">
+                          <div className="tr-stu-avatar">
+                            <Avatar name={s.name} src={s.avatar} />
+                          </div>
+                          <div className="tr-stu-name">
+                            {s.name.split(/\s+/).map((part, i) => (
+                              <span key={i} className="tr-stu-name-line">{part}</span>
+                            ))}
+                          </div>
+                          <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="tr-modal-footer">
+                  <button
+                    type="button"
+                    className="tr-create-group tr-create-group--modal"
+                    onClick={() => setGroupStep("teacher")}
+                    disabled={groupStudentSel.size < 2}
+                  >
+                    Создать группу
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Шаг учителя (в макете нет): та же модалка, что у участников, один выбор, кнопка «Далее» */}
+            {groupStep === "teacher" && (
+              <div className="tr-modal tr-modal--group" role="dialog" aria-modal="true" aria-labelledby="ad-group-teacher-title" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="tr-modal-close" aria-label="Закрыть" onClick={closeGroupModal}>
+                  <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
+                </button>
+                <h2 id="ad-group-teacher-title" className="tr-modal-title">Выберите учителя группы</h2>
+                <div className="tr-modal-list" role="radiogroup">
+                  {teacherProfiles.length === 0 && <div className="ad-group-teacher-empty">Загружаем список учителей…</div>}
+                  {teacherProfiles.map((tp) => {
+                    const on = groupTeacherId === tp.id
+                    return (
+                      <button
+                        key={tp.id}
+                        type="button"
+                        className={`tr-modal-row ${on ? "on" : ""}`}
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setGroupTeacherId(on ? "" : tp.id)}
+                      >
+                        <span className={`tr-modal-check ${on ? "on" : ""}`} aria-hidden>
+                          <img className="tr-modal-check-circle" src={on ? "/dashboard/files/check-on.svg" : "/dashboard/files/check-off.svg"} alt="" width={36} height={36} />
+                          {on && <img className="tr-modal-check-mark" src="/dashboard/files/check-mark.svg" alt="" width={20} height={17} />}
+                        </span>
+                        <div className="tr-stu tr-stu--modal ad-group-teacher-row">
+                          <div className="tr-stu-avatar">
+                            <Avatar name={tp.name} src={tp.avatar} />
+                          </div>
+                          <div className="tr-stu-name">
+                            {tp.name.split(/\s+/).map((part, i) => (
+                              <span key={i} className="tr-stu-name-line">{part}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="tr-modal-footer">
+                  <button
+                    type="button"
+                    className="tr-create-group tr-create-group--modal"
+                    onClick={() => setGroupStep("name")}
+                    disabled={!groupTeacherId}
+                  >
+                    Далее
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Figma 2522:2921 «Имя группы после создания»: 686×428, крестик (638,35), заголовок 79, поле 578×68 на (54,196)
+                с плейсхолдером «название группы», «Готово» 182×68 на (252,298) */}
+            {groupStep === "name" && (
+              <div className="tr-modal tr-modal--name ad-group-name" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={closeGroupModal}>
+                  <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+                </button>
+                <h2 className="tr-modal-title tr-modal-title--dark">Введите название группы</h2>
+                <input
+                  type="text"
+                  className="tr-modal-input"
+                  placeholder="название группы"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  autoFocus
+                />
+                <div className="tr-modal-footer">
+                  <button
+                    type="button"
+                    className={`tr-modal-done${groupSubmitting ? " busy" : ""}`}
+                    onClick={submitCreateGroup}
+                    disabled={!groupName.trim() || !groupTeacherId || groupSubmitting}
+                  >
+                    Готово
+                  </button>
+                  {groupError && (
+                    <div className="tr-add-lesson-error" role="alert" style={{ marginTop: 12 }}>{groupError}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Figma 2522:2617 «Оповещение о созданой группе» (после формы из чатов): 503×527; таймер на 33; заголовок «Группа добавлена / в чаты» на 86;
+                галочка 69 на (217,189); название группы 20/500 на 275; учитель 36/700 на 295; ученики 32/500 на 339 (до двух строк); назад 46×47 на (229,438) */}
+            {groupStep === "form-success" && (
+              <div className="tr-modal tr-modal--success ad-group-success ad-group-form-success" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                <div className="ad-group-success-timer" aria-live="off">{`0:${String(groupBackSec).padStart(2, "0")}`}</div>
+                <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={closeGroupModal}>
+                  <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+                </button>
+                <p className="tr-modal-success-title">
+                  Группа добавлена
+                  <br />
+                  {nb("в чаты")}
+                </p>
+                <div className="tr-modal-success-check" aria-hidden>
+                  <img className="tr-modal-success-check-circle" src="/dashboard/ic-check-circle.svg" alt="" width={69} height={69} />
+                  <img className="tr-modal-success-check-mark" src="/dashboard/ic-check-mark.svg" alt="" width={35} height={29} />
+                </div>
+                <div className="ad-group-form-success-sub">{groupName || "Группа"}</div>
+                <h3 className="tr-modal-success-name">{teacherProfiles.find((tp) => tp.id === groupTeacherId)?.name ?? "Преподаватель"}</h3>
+                <div className="ad-group-form-success-students">
+                  {nb(sortedStudents.filter((s) => groupStudentSel.has(s.id)).map((s) => s.name).join(", "))}
+                </div>
+                <button
+                  type="button"
+                  className="tr-modal-success-back"
+                  aria-label={groupBackEnabled ? "Вернуться к форме" : "Отменить нельзя — прошло 60 сек"}
+                  onClick={() => setGroupStep("form")}
+                  disabled={!groupBackEnabled}
+                >
+                  <img className="tr-modal-success-back-circle" src="/dashboard/ic-back-circle-red.svg" alt="" width={46} height={47} />
+                  <img className="tr-modal-success-back-glyph" src="/dashboard/ic-back-arrow-white.svg" alt="" width={25} height={22.09} />
+                </button>
+              </div>
+            )}
+
+            {/* Figma 2522:2943: 503×431; таймер 0:59 на 33; заголовок 86 (две строки); галочка 69 at (217,185); имя 36 bold на 278; назад 46×47 at (229,353) */}
+            {groupStep === "success" && (
+              <div className="tr-modal tr-modal--success ad-group-success" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                <div className="ad-group-success-timer" aria-live="off">{`0:${String(groupBackSec).padStart(2, "0")}`}</div>
+                <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={closeGroupModal}>
+                  <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+                </button>
+                <p className="tr-modal-success-title">
+                  Группа создана
+                  <br />
+                  {nb("и появится у вас в чатах")}
+                </p>
+                <div className="tr-modal-success-check" aria-hidden>
+                  <img className="tr-modal-success-check-circle" src="/dashboard/ic-check-circle.svg" alt="" width={69} height={69} />
+                  <img className="tr-modal-success-check-mark" src="/dashboard/ic-check-mark.svg" alt="" width={35} height={29} />
+                </div>
+                <h3 className="tr-modal-success-name">{groupName || "Группа"}</h3>
+                <button
+                  type="button"
+                  className="tr-modal-success-back"
+                  aria-label={groupBackEnabled ? "Вернуться к вводу названия" : "Отменить нельзя — прошло 60 сек"}
+                  onClick={() => setGroupStep("name")}
+                  disabled={!groupBackEnabled}
+                >
+                  <img className="tr-modal-success-back-circle" src="/dashboard/ic-back-circle-red.svg" alt="" width={46} height={47} />
+                  <img className="tr-modal-success-back-glyph" src="/dashboard/ic-back-arrow-white.svg" alt="" width={25} height={22.09} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1827,226 +2112,4 @@ function EventPickerAndForms({
   )
 }
 
-/**
- * Мостик через window-callback: FilesModal-onFilePicked закрывает модалку,
- * затем открывается StudentPicker. Проще, чем поднимать sib-state.
- */
-function HwStudentPickerBridge({
-  students,
-  onPick,
-}: {
-  students: Array<{ id: string; name: string; avatar?: string | null }>
-  onPick: (id: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  useEffect(() => {
-    ;(window as any).__openHwPicker = () => setOpen(true)
-    return () => { delete (window as any).__openHwPicker }
-  }, [])
-  if (!open) return null
-  return (
-    <div
-      className="files-modal-backdrop"
-      onClick={() => setOpen(false)}
-      style={{ zIndex: 250 }}
-    >
-      <div
-        className="files-modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 600, height: "auto", padding: 40 }}
-      >
-        <h3 style={{ margin: "0 0 20px", fontFamily: "Inter", fontWeight: 700, fontSize: 24 }}>
-          Выберите ученика
-        </h3>
-        <div style={{ maxHeight: 400, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          {students.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className="files-modal-btn"
-              onClick={() => {
-                onPick(s.id)
-                setOpen(false)
-              }}
-              style={{ textAlign: "left" }}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
 
-/**
- * Модалка «Создать группу» — те же .tr-add-lesson-* классы что у AddLessonModal.
- * Поля: название чата (input), teacher-picker (dropdown), students multiselect
- * (список pill'ов с чекбоксом слева), кнопка «Создать».
- */
-function CreateGroupModal({
-  teachers,
-  students,
-  groupName,
-  setGroupName,
-  groupTeacherId,
-  setGroupTeacherId,
-  groupStudentSel,
-  setGroupStudentSel,
-  submitting,
-  error,
-  success,
-  onSubmit,
-  onClose,
-}: {
-  teachers: Array<{ id: string; name: string }>
-  students: Array<{ id: string; name: string }>
-  groupName: string
-  setGroupName: (v: string) => void
-  groupTeacherId: string
-  setGroupTeacherId: (v: string) => void
-  groupStudentSel: Set<string>
-  setGroupStudentSel: React.Dispatch<React.SetStateAction<Set<string>>>
-  submitting: boolean
-  error: string | null
-  success: boolean
-  onSubmit: () => void
-  onClose: () => void
-}) {
-  const [pickerOpen, setPickerOpen] = useState<'teacher' | 'students' | null>(null)
-  const selectedTeacher = teachers.find((t) => t.id === groupTeacherId)
-  const selectedStudentsLabel = groupStudentSel.size === 0
-    ? null
-    : students.filter((s) => groupStudentSel.has(s.id)).map((s) => s.name).join(', ')
-
-  return (
-    <div className="tr"><div className="tr-add-lesson-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose() }}>
-      <div className="tr-add-lesson" role="dialog" aria-modal="true">
-        <button type="button" className="tr-add-lesson-close" aria-label="Закрыть" onClick={onClose}>
-          <AlmCloseIcon />
-        </button>
-
-        {success ? (
-          <>
-            <div className="tr-add-lesson-success-title">Группа добавлена<br />в чаты</div>
-            <div className="tr-add-lesson-success-check">
-              <svg viewBox="0 0 69 69" width="69" height="69" fill="none" aria-hidden>
-                <circle cx="34.5" cy="34.5" r="34.5" fill="#1E1E1E" />
-                <path d="M20 35l10 10 20-22" stroke="#FFFFFF" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div className="tr-add-lesson-success-name">«{groupName}»</div>
-          </>
-        ) : (
-          <>
-            <h2 className="tr-add-lesson-title">Создать группу</h2>
-
-            {/* Название чата */}
-            <div className="tr-add-lesson-pill tr-add-lesson-pill--full"
-              style={{ padding: 0, background: '#FFF' }}>
-              <input
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="введите название чата"
-                style={{
-                  width: '100%', height: '100%', border: 0, outline: 0, background: 'transparent',
-                  padding: '0 40px', textAlign: 'center',
-                  fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 24,
-                  letterSpacing: '-1.2px', color: '#1E1E1E',
-                }}
-              />
-            </div>
-
-            {/* Teacher-picker */}
-            {pickerOpen === 'teacher' ? (
-              <div className="tr-add-lesson-dropdown">
-                <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--dropdown-head"
-                  onClick={() => setPickerOpen(null)}>
-                  <span className="tr-add-lesson-pill-placeholder">выберите преподавателя</span>
-                  <AlmArrowLeftLime />
-                </button>
-                <div className="tr-add-lesson-dropdown-list" role="listbox">
-                  {teachers.length === 0 ? (
-                    <div className="tr-add-lesson-dropdown-empty">Преподавателей нет</div>
-                  ) : (
-                    teachers.map((t, i) => (
-                      <button key={t.id} type="button" role="option"
-                        aria-selected={groupTeacherId === t.id}
-                        className={`tr-add-lesson-dropdown-item${groupTeacherId === t.id ? ' is-selected' : ''}${i > 0 ? ' has-divider' : ''}`}
-                        onClick={() => { setGroupTeacherId(t.id); setPickerOpen(null) }}>
-                        {t.name}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            ) : (
-              <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--full"
-                onClick={() => setPickerOpen('teacher')}>
-                {selectedTeacher
-                  ? <span className="tr-add-lesson-pill-value">{selectedTeacher.name}</span>
-                  : <span className="tr-add-lesson-pill-placeholder">выберите преподавателя</span>}
-                <AlmArrowDown />
-              </button>
-            )}
-
-            {/* Students multi-picker */}
-            {pickerOpen === 'students' ? (
-              <div className="tr-add-lesson-dropdown">
-                <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--full tr-add-lesson-pill--dropdown-head"
-                  onClick={() => setPickerOpen(null)}>
-                  <span className="tr-add-lesson-pill-placeholder">
-                    выберите учеников ({groupStudentSel.size} выбрано)
-                  </span>
-                  <AlmArrowLeftLime />
-                </button>
-                <div className="tr-add-lesson-dropdown-list" role="listbox">
-                  {students.length === 0 ? (
-                    <div className="tr-add-lesson-dropdown-empty">Учеников нет</div>
-                  ) : (
-                    students.map((s, i) => {
-                      const sel = groupStudentSel.has(s.id)
-                      return (
-                        <button key={s.id} type="button" role="option" aria-selected={sel}
-                          className={`tr-add-lesson-dropdown-item${sel ? ' is-selected' : ''}${i > 0 ? ' has-divider' : ''}`}
-                          onClick={() => {
-                            setGroupStudentSel((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(s.id)) next.delete(s.id); else next.add(s.id)
-                              return next
-                            })
-                          }}>
-                          {sel ? '✓ ' : ''}{s.name}
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            ) : (
-              <button type="button" className="tr-add-lesson-pill tr-add-lesson-pill--full"
-                onClick={() => setPickerOpen('students')}>
-                {selectedStudentsLabel
-                  ? <span className="tr-add-lesson-pill-value" style={{
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 460,
-                    }}>{selectedStudentsLabel}</span>
-                  : <span className="tr-add-lesson-pill-placeholder">выберите учеников</span>}
-                <AlmArrowDown />
-              </button>
-            )}
-
-            <div className="tr-add-lesson-footer">
-              <button type="button" className="tr-add-lesson-btn"
-                disabled={!groupName.trim() || !groupTeacherId || groupStudentSel.size === 0 || submitting}
-                onClick={onSubmit}>
-                {submitting ? 'Создаём…' : 'Создать'}
-              </button>
-              {error && <div className="tr-add-lesson-error" role="alert">{error}</div>}
-            </div>
-          </>
-        )}
-      </div>
-    </div></div>
-  )
-}

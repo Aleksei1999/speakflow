@@ -1731,7 +1731,7 @@
    имя 32/700 на (458,54) шириной 290; «о преподавателе» на (458,137); описание 24 на (458,157) шириной 321;
    цифры 40/700 на (457,350) и (619,350), подписи 15 на (458,393) и (624,393); кнопки 297×53 r34 на (458,566) и (458,634)
    ============================================================ */
-.ad-tmodal { position: relative; width: 812px; height: 755px; box-sizing: border-box; border-radius: 29.5px; background: rgba(30, 30, 30, .66); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; font-family: 'Inter', sans-serif; font-weight: 500; }
+.ad-tmodal { position: relative; width: 812px; height: 755px; box-sizing: border-box; border-radius: 29.5px; background: rgba(60, 60, 60, 0.39); backdrop-filter: blur(32px) saturate(180%); -webkit-backdrop-filter: blur(32px) saturate(180%); outline: 1px solid rgba(255, 255, 255, 0.22); outline-offset: -1px; color: #fff; font-family: 'Inter', sans-serif; font-weight: 500; } /* стекло как у плашек расписания (по просьбе заказчика) */
 .ad-tmodal-close { position: absolute; top: 31px; right: 29.66px; width: 13.34px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 2; }
 .ad-tmodal-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
 .ad-tmodal-close:hover { opacity: .7; }
@@ -1759,5 +1759,63 @@
 .ad-tmodal-stat--year .ad-tmodal-stat-label { left: 5px; }
 .ad-tmodal-btn { position: absolute; left: 458px; width: 297px; height: 53px; box-sizing: border-box; border: 0; border-radius: 34px; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 20px; letter-spacing: -1px; line-height: 0.975; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter .18s; }
 .ad-tmodal-btn:hover { filter: brightness(.95); }
-.ad-tmodal-btn--schedule { top: 566px; background: #DFED8C; color: #1E1E1E; font-weight: 500; }
-.ad-tmodal-btn--off { top: 634px; background: #CC3A3A; color: #fff; font-weight: 700; }
+.ad .ad-tmodal-btn--schedule { top: 566px; background: #DFED8C; color: #1E1E1E; font-weight: 500; } /* .ad .ad-… — иначе «.ad a { color: inherit }» красит ссылку в белый */
+.ad .ad-tmodal-btn--off { top: 634px; background: #CC3A3A; color: #fff; font-weight: 700; }
+
+/* ============================================================
+   Создание группы у админа: 2522:2968 участники → шаг учителя (в макете нет, оформление как у участников) →
+   2522:2921 название (686×428, поле 196, «Готово» 298) → 2522:2579 готово. Разметка учителя .tr-modal-*.
+   ============================================================ */
+.ad .tr .tr-modal-backdrop { z-index: 240; }
+.ad .tr .ad-group-name .tr-modal-input::placeholder { text-transform: none; }
+.ad-group-teacher-row .tr-stu-name { padding-right: 40px; } /* без пилюли уровня — имя может занять правую часть ряда */
+.ad .tr .tr-modal-list .ad-group-teacher-empty { padding: 24px 0; font-family: 'Inter', sans-serif; font-size: 24px; letter-spacing: -1.2px; color: rgba(255, 255, 255, .7); }
+/* Figma 2522:2943 «после создания группы»: таймер 16/500 rgba(30,30,30,.7) шириной 68 на 33, центр +0.5 */
+.ad .tr .ad-group-success-timer { position: absolute; top: 33px; left: calc(50% + 0.5px); transform: translateX(-50%); width: 68px; text-align: center; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 500; letter-spacing: -0.8px; line-height: 0.975; color: rgba(30, 30, 30, .7); white-space: nowrap; }
+
+/* ============================================================
+   Figma 2522:592 «Создать группу» (из блока «Чаты»): 686×649; название 202, преподаватели 294, ученики 386 (зазор 24),
+   «Создать» 519 (454 + 65), низ 62. Раскрытые списки — как в «Добавить новый урок» (578×217)
+   ============================================================ */
+.ad .tr .tr-add-lesson.ad-group-modal { padding-bottom: 62px; }
+.ad .tr .ad-group-modal .tr-add-lesson-pill--input { padding: 0 !important; cursor: text; }
+.ad .tr .ad-group-modal .tr-add-lesson-pill--input input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 40px; text-align: center; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -1.2px; color: #1E1E1E; }
+.ad .tr .ad-group-modal .tr-add-lesson-pill--input input::placeholder { color: rgba(30, 30, 30, 0.7); }
+.ad .tr .ad-group-modal .tr-add-lesson-pill--full + .tr-add-lesson-pill--full,
+.ad .tr .ad-group-modal .ad-lecture-picker--full + .tr-add-lesson-pill--full,
+.ad .tr .ad-group-modal .tr-add-lesson-pill--full + .ad-lecture-picker--full,
+.ad .tr .ad-group-modal .ad-lecture-picker--full + .ad-lecture-picker--full { margin-top: 24px; }
+.ad .tr .ad-group-modal .tr-add-lesson-footer { margin-top: 65px; }
+.ad .tr .ad-group-modal .ad-group-modal-names { max-width: 440px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Figma 2522:450: чекбокс 25 на (83, центр ряда) — 29 от края пилюли; галочка 11×9 на (90,467) → (7,8) внутри круга */
+.ad .tr .ad-group-modal .ad-group-item { position: relative; }
+.ad .tr .ad-group-modal .ad-group-check { position: absolute; left: 29px; top: 50%; width: 25px; height: 25px; margin-top: -12.5px; }
+.ad .tr .ad-group-modal .ad-group-check img { display: block; position: absolute; max-width: none; }
+.ad .tr .ad-group-modal .ad-group-check-circle { left: 0; top: 0; width: 25px; height: 25px; }
+.ad .tr .ad-group-modal .ad-group-check-mark { left: 6px; top: 7px; width: 13px; height: 11px; } /* экспорт 11×9 со штрихом */
+/* Figma 2522:610 «Создать группу (заполнен)»: значения 32/500 (плейсхолдер 24), имена учеников с многоточием шириной до 466,
+   готовая «Создать» — чёрная с лаймовым текстом */
+.ad .tr .ad-group-modal .tr-add-lesson-pill--input input { font-size: 32px; letter-spacing: -1.6px; }
+.ad .tr .ad-group-modal .tr-add-lesson-pill--input input::placeholder { font-size: 24px; letter-spacing: -1.2px; }
+.ad .tr .ad-group-modal .ad-group-modal-names { max-width: 466px; }
+.ad .tr .ad-group-modal .tr-add-lesson-btn:not(:disabled) { background: #1E1E1E !important; color: #DFED8C !important; }
+.ad .tr .ad-group-modal .tr-add-lesson-btn:not(:disabled):hover { background: #333 !important; }
+/* Figma 2522:2617 «Оповещение о созданой группе»: 503×527; галочка на 189; название 20/500 на 275; учитель 36/700 на 295;
+   ученики 32/500 на 339 шириной 315 (до двух строк, дальше многоточие); назад на 438 */
+.ad .tr .tr-modal--success.ad-group-form-success { height: 527px; }
+.ad .tr .ad-group-form-success .tr-modal-success-check { top: 189px; }
+.ad .tr .ad-group-form-success .ad-group-form-success-sub { position: absolute; top: 275px; left: calc(50% + 0.5px); transform: translateX(-50%); width: 270px; text-align: center; font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 500; letter-spacing: -1px; line-height: 0.975; color: rgba(30, 30, 30, .7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ad .tr .ad-group-form-success .tr-modal-success-name { top: 295px; }
+.ad .tr .ad-group-form-success .ad-group-form-success-students { position: absolute; top: 339px; left: 50%; transform: translateX(-50%); width: 315px; max-height: 62.4px; overflow: hidden; text-align: center; font-family: 'Inter', sans-serif; font-size: 32px; font-weight: 500; letter-spacing: -1.6px; line-height: 0.975; color: #1E1E1E; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ad .tr .ad-group-form-success .tr-modal-success-back { top: 438px; }
+
+/* ============================================================
+   Figma 2522:3740 «Домашние задания (окно)»: панель списка учеников 1228×725 в модалке (низ 79 = 725 − 57 − 48 − 46 − 495);
+   крестик lime 13.34 на (1181,31)
+   ============================================================ */
+.ad .tr .ad-hw-picker-backdrop { z-index: 240; }
+.ad .tr .tr-panel.ad-hw-picker { width: 1228px; height: 725px; padding-bottom: 79px; }
+.ad .tr .ad-hw-picker .tr-stu { cursor: pointer; }
+.ad .tr .ad-hw-picker-close { position: absolute; top: 31px; right: 33.66px; width: 13.34px; height: 13.34px; padding: 0; border: 0; background: transparent; cursor: pointer; z-index: 4; }
+.ad .tr .ad-hw-picker-close img { display: block; width: 15.33px; height: 15.34px; margin: -1px 0 0 -1px; }
+.ad .tr .ad-hw-picker-close:hover { opacity: .7; }
