@@ -249,6 +249,17 @@ export default function StudentRawDashboard({
   calendarConnection,
 }: StudentRawDashboardProps = {}) {
   const router = useRouter()
+  // Возврат с оплаты (?topup=return): вебхук ЮKassa зачисляет баланс с задержкой в секунды —
+  // несколько раз перечитываем страницу, затем убираем параметр из адреса.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get("topup") !== "return") return
+    let n = 0
+    const t = window.setInterval(() => { n += 1; router.refresh(); if (n >= 5) window.clearInterval(t) }, 3000)
+    url.searchParams.delete("topup"); window.history.replaceState(null, "", url.pathname + (url.search || ""))
+    return () => window.clearInterval(t)
+  }, [router])
   const [addLessonOpen, setAddLessonOpen] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [homeworkOpen, setHomeworkOpen] = useState(false)

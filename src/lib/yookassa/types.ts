@@ -66,6 +66,20 @@ export interface CreatePaymentParams {
   metadata?: Record<string, string>
   /** Ключ идемпотентности (используется lesson_id) */
   idempotencyKey: string
+  /** Чек 54-ФЗ (если у магазина включена фискализация через ЮKassa). */
+  receipt?: YooKassaReceipt
+}
+
+export interface YooKassaReceipt {
+  customer: { email?: string; phone?: string }
+  items: Array<{
+    description: string
+    quantity: string
+    amount: YooKassaAmount
+    vat_code: number
+    payment_subject?: string
+    payment_mode?: string
+  }>
 }
 
 export interface CreateRefundParams {

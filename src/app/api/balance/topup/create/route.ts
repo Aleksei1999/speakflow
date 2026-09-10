@@ -118,7 +118,23 @@ export async function POST(request: NextRequest) {
     const topupId = insertRes.data.id as string
 
     // YooKassa createPayment.
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://speakflow.ru'
+    // Возврат после оплаты — на боевой домен (NEXT_PUBLIC_APP_URL = https://raw-english.com).
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'https://raw-english.com'
+    // Чек 54-ФЗ: только если у магазина включена фискализация через ЮKassa
+    // (YOOKASSA_RECEIPT_ENABLED=1). Ставка НДС — YOOKASSA_VAT_CODE (1 = без НДС).
+    const receipt = process.env.YOOKASSA_RECEIPT_ENABLED === '1'
+      ? {
+          customer: { email, phone: normalizedPhone },
+          items: [{
+            description: `Пополнение баланса Raw English`,
+            quantity: '1.00',
+            amount: { value: (amountKopecks / 100).toFixed(2), currency: 'RUB' },
+            vat_code: Number.parseInt(process.env.YOOKASSA_VAT_CODE ?? '1', 10) || 1,
+            payment_subject: 'service',
+            payment_mode: 'full_payment',
+          }],
+        }
+      : undefined
     const yookassa = getYooKassaClient()
     let ykPayment: Awaited<ReturnType<typeof yookassa.createPayment>>
     try {
@@ -132,6 +148,7 @@ export async function POST(request: NextRequest) {
           kind: 'balance',
         },
         idempotencyKey: topupId,
+        receipt,
       })
     } catch (e) {
       // Откатываем topup — YooKassa не взяла заявку.

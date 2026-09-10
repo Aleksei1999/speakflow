@@ -116,6 +116,7 @@ export class YooKassaClient {
         capture: true,
         description: params.description,
         metadata: params.metadata,
+        ...(params.receipt ? { receipt: params.receipt } : {}),
       },
       params.idempotencyKey
     )
