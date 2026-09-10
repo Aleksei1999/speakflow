@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { ensureProfile } from "@/lib/auth/ensure-profile"
+import { ensureTrialRequest } from "@/lib/trial-lesson/ensure-request"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
@@ -23,6 +24,8 @@ export default async function StudentNewPage() {
     role = healed.role
     if (!role) redirect("/login")
   }
+  // Новый ученик без уроков и заявок → заявка админу (идемпотентно, fail-soft).
+  if (role === "student") { try { await ensureTrialRequest(user.id) } catch {} }
   if (role !== "student") {
     if (role === "teacher" || role === "admin") redirect("/teacher")
     redirect("/login")

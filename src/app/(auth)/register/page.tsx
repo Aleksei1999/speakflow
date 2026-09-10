@@ -65,14 +65,11 @@ function RegisterPageContent() {
         setBusy(false)
         return
       }
-      // Confirm email включён — сессии нет, показываем «проверьте почту».
-      if (!res?.session) {
-        setCheckEmail(email.trim())
-        setBusy(false)
-        return
-      }
-      router.push('/student')
-      router.refresh()
+      // Окно «Спасибо! Ваша заявка принята» (Figma 2522:2441) — как на лендинге.
+      // Confirm email включён: сессии нет, вход после ссылки из письма.
+      setCheckEmail(email.trim())
+      setBusy(false)
+      if (res?.session) router.refresh()
     } catch {
       setErr('Не удалось зарегистрироваться. Попробуй позже.')
       setBusy(false)
@@ -85,6 +82,17 @@ function RegisterPageContent() {
       <link rel="stylesheet" href="/landing/raw2/raw2.css" />
       <div className="raw2-auth-bg" />
 
+      {checkEmail ? (
+        /* Figma 2522:2441 «Контакты отправлены» — те же классы, что на лендинге */
+        <div className="raw2-sent-modal" role="dialog" aria-modal="false">
+          <p className="raw2-sent-msg">
+            Спасибо!<br />
+            Ваша заявка принята, <b>мы свяжемся</b><br />
+            <b>с вами</b> в ближайшее время.
+          </p>
+          <button type="button" className="btn btn-red" onClick={() => router.push('/login')}>Ок</button>
+        </div>
+      ) : (
       <div className="raw2-login raw2-login--page" role="dialog" aria-modal="false">
         <Link href="/" className="raw2-login-close" aria-label="На главную">×</Link>
 
@@ -93,19 +101,8 @@ function RegisterPageContent() {
           <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => router.push('/teach')}>Учитель</button>
         </div>
 
-        {checkEmail ? (
-          <>
-            <div className="raw2-login-title">Проверьте почту</div>
-            <p className="raw2-login-check-msg">
-              Мы отправили ссылку для подтверждения на<br />
-              <b>{checkEmail}</b>.<br />
-              Перейдите по ссылке из письма, чтобы войти в личный кабинет.
-            </p>
-            <Link href="/login" className="btn btn-red" style={{ alignSelf: 'center', marginTop: 8, textAlign: 'center' }}>
-              Ок
-            </Link>
-          </>
-        ) : (
+        {(
+
           <>
             <div className="raw2-login-title">Регистрация для входа в ЛК</div>
 
@@ -125,6 +122,7 @@ function RegisterPageContent() {
           </>
         )}
       </div>
+      )}
 
       <style jsx global>{`
         html:has(.raw2-auth-page) .auth-scope { padding: 0 !important; background: transparent !important; display: block !important; min-height: 0 !important; }

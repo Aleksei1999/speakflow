@@ -1,4 +1,5 @@
 import { ensureProfile } from '@/lib/auth/ensure-profile'
+import { ensureTrialRequest } from '@/lib/trial-lesson/ensure-request'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -60,6 +61,8 @@ export async function GET(request: Request) {
   if (user) {
     // Самолечение: если триггер handle_new_user не создал профиль — создаём здесь.
     try { await ensureProfile(user) } catch (e) { console.error('[auth/callback] ensureProfile failed', e) }
+    // Регистрация ученика = заявка у админа (идемпотентно).
+    try { await ensureTrialRequest(user.id) } catch (e) { console.error('[auth/callback] ensureTrialRequest failed', e) }
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('role, language')

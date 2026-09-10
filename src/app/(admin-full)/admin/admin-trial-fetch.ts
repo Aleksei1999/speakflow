@@ -107,6 +107,6 @@ export async function fetchTrialApplicationsForAdmin(): Promise<TrialApplication
     } satisfies TrialApplication
   })
 
-  // Бизнес-правило: если ученик не прошёл тест — заявка не показывается.
-  return items.filter((i) => i.test)
+  // Регистрация ученика = заявка: показываем все, тег «тест пройден / не пройден» — из макета.
+  return items
 }
