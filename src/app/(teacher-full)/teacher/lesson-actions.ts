@@ -334,7 +334,7 @@ export async function cancelLesson(
   if (delRes.error) {
     return { ok: false, error: `cancel lessons: ${delRes.error.message}` }
   }
-  void notifyLessonCancelled({ lessonId, cancelledByUserId: auth.userId }).catch(() => {})
+  void notifyLessonCancelled({ lessonId, cancelledByUserId: auth.userId }).catch((e) => console.warn("[(teacher-full)/teacher/lesson-actions]", e))
 
   invalidateTeacherStudents(ownerUserId)
   invalidateTeacherDashboard(ownerUserId)
@@ -532,7 +532,7 @@ export async function rescheduleLesson(
       lessonId: input.lessonId,
       oldScheduledAt: lesson.scheduled_at,
       changedByUserId: ownerUserId,
-    }).catch(() => {})
+    }).catch((e) => console.warn("[(teacher-full)/teacher/lesson-actions]", e))
   }
 
   return { ok: true }

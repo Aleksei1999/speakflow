@@ -1,20 +1,6 @@
-// Russian -> Latin transliteration.
-//
-// Scheme: ICAO Doc 9303 / Russian "passport" rules (2014 edition).
-// Differs from GOST 7.79 in a few characters but is what most users see in
-// their Russian biometric passports — closest to "what users expect their
-// name to look like in English".
-//
-// Examples:
-//   Алексей -> Aleksei
-//   Кратковская -> Kratkovskaia (passport scheme; -ская = -skaia)
-//   Дмитрий -> Dmitrii
-//   Андрей Евгеньевич -> Andrei Evgenevich
-//   Юлия -> Iuliia
-//
-// Behaviour for already-Latin input: returned unchanged (case preserved).
-// Mixed strings (e.g. "Anna Каренина") get only the Cyrillic chunks
-// transliterated; Latin chunks are left as-is.
+// Транслитерация RU → Latin по схеме ICAO Doc 9303 (загранпаспорт РФ 2014) —
+// так пользователи привыкли видеть своё имя. Латиница возвращается как есть,
+// в смешанных строках транслитерируются только кириллические куски.
 
 const RU_LOWER_MAP: Record<string, string> = {
   а: "a",

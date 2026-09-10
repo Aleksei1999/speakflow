@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Telegram fan-out to admins (fire-and-forget)
-    if (APPLICATIONS_TELEGRAM) void notifyAdmins({ leadId: lead.id, data: d }).catch(() => {})
+    if (APPLICATIONS_TELEGRAM) void notifyAdmins({ leadId: lead.id, data: d }).catch((e) => console.warn("[landing/lead]", e))
 
     return NextResponse.json({ ok: true, id: lead.id })
   } catch (err) {
@@ -223,7 +223,7 @@ async function notifyAdmins(args: {
           chatId: a.telegram_chat_id!,
           text,
           parseMode: "HTML",
-        }).catch(() => {})
+        }).catch((e) => console.warn("[landing/lead]", e))
       )
   )
 }

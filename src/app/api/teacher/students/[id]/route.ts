@@ -94,7 +94,8 @@ export async function GET(
       supabase as any,
       role === "admin" ? "admin" : "teacher",
       teacherProfileId,
-      studentId
+      studentId,
+      user.id
     )
     if (!result.ok) {
       // not_found | no_shared_lessons | deleted — все мапятся в 404.

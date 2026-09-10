@@ -61,7 +61,7 @@ export async function POST(
       .update({ avatar_url: publicUrl })
       .eq("id", id)
     if (updErr) {
-      await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([path]).catch((e) => console.warn("[admin/students/[id]/avatar]", e))
       console.error("[admin/students/avatar] update error", updErr)
       return NextResponse.json({ error: "Не удалось сохранить аватар" }, { status: 500 })
     }

@@ -2,7 +2,6 @@
 // DELETE /api/lessons/[id]
 //
 // Отмена ОДНОГО урока (без затрагивания подписки, если урок входит
-// в серию — subscription_id остаётся, ends_on не меняется).
 //
 // Когда стоит дёрнуть этот endpoint vs /api/booking/cancel:
 //   - /api/booking/cancel — UI-обёртка с поддержкой refund-логики,
@@ -118,12 +117,11 @@ export async function DELETE(
       duration_minutes: number
       status: string
       price: number
-      subscription_id: string | null
     }
     const { data: lesson, error: lessonErr } = await supabase
       .from('lessons')
       .select(
-        'id, student_id, teacher_id, scheduled_at, duration_minutes, status, price, subscription_id'
+        'id, student_id, teacher_id, scheduled_at, duration_minutes, status, price'
       )
       .eq('id', id)
       .maybeSingle<LessonRow>()
@@ -251,7 +249,6 @@ export async function DELETE(
         cancelled_by_role: isStudent ? 'student' : isTeacher ? 'teacher' : 'admin',
         reason: reason ? reason.slice(0, 200) : null,
         previous_status: lesson.status,
-        subscription_id: lesson.subscription_id,
         scheduled_at: lesson.scheduled_at,
         via: 'rest_delete',
       },
@@ -267,9 +264,6 @@ export async function DELETE(
     return NextResponse.json({
       ok: true,
       lesson_id: id,
-      // True если урок был occurrence в серии. UI может показать
-      // подсказку «остальные уроки серии не отменены».
-      from_subscription: lesson.subscription_id !== null,
     })
   } catch (error) {
     console.error('[lessons/delete] unexpected', error)

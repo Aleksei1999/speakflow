@@ -104,7 +104,7 @@ export async function fetchThreadMessages(peerId: string): Promise<ChatMessage[]
   const messages = rows.map(rowToChatMessage)
   await signAttachmentUrlsInPlace(supabase, messages)
 
-  markThreadReadInternal(supabase as UntypedSupabase, userId, slots).catch(() => {})
+  markThreadReadInternal(supabase as UntypedSupabase, userId, slots).catch((e) => console.warn("[chat/actions]", e))
 
   return messages
 }
@@ -184,7 +184,7 @@ export async function uploadAttachment({
     .select('*')
     .single()
   if (insErr || !row) {
-    await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).remove([objectPath]).catch(() => {})
+    await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).remove([objectPath]).catch((e) => console.warn("[chat/actions]", e))
     throw new Error(`uploadAttachment: insert failed: ${insErr?.message ?? 'unknown'}`)
   }
 

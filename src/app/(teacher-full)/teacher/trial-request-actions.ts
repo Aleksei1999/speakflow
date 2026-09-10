@@ -8,6 +8,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireTeacher } from "@/lib/teacher/require"
 import { invalidateTeacherDashboard, invalidateTeacherStudents } from "@/lib/cache/invalidate"
+import { resolveTeacherProfileId } from "@/lib/teacher/require"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedSupabase = any
@@ -16,17 +17,6 @@ export interface TrialActionResult {
   ok: boolean
   error?: string
 }
-
-async function resolveTeacherProfileId(userId: string): Promise<string | null> {
-  const admin = createAdminClient() as UntypedSupabase
-  const { data } = await admin
-    .from("teacher_profiles")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle()
-  return (data as { id: string } | null)?.id ?? null
-}
-
 // Заявки бывают двух типов:
 //   trial_lesson_requests.id (raw UUID) — student уже зарегистрирован
 //   landing_leads.id с префиксом "lead:" — анонимный лид с лендинга

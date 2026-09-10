@@ -25,6 +25,9 @@ import { normalizePhoneRu } from "@/lib/validators/contact"
 import { disconnectStudentGoogleCalendar } from "./calendar-actions"
 import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
 import StudentLectureModal, { type LectureForModal } from "@/components/dashboard/StudentLectureModal"
+import { initialsOf, paletteFor } from "@/lib/ui/initials"
+import { pluralize } from "@/lib/ru/plural"
+import { useClock } from "@/lib/dashboard-ui"
 
 // Roast-level → композитный SVG (все цвета уже внутри одного файла).
 // Лого для модалки «уровень обновлён» — файлы лендинга (пропорции совпадают с группой в Figma 2522:2637);
@@ -46,14 +49,7 @@ const ROAST_LEVEL_SVG: Record<string, string> = {
   "Well Done": "/dashboard/student/levels/well-done.svg",
 }
 
-/* ============================================================
-   Student Dashboard — Raw English
-   Pixel-perfect implementation of Figma «Ученик RAW english»
-   (file YSwlSQF1n6QIpGTOohlMOd, node 2208:1427).
-   Реальные данные из page.tsx (getCachedStudentDashboard),
-   недостающие поля (баланс, чаты, лекторий) — placeholder,
-   строго под макет.
-   ============================================================ */
+/* Student Dashboard — Figma «Ученик RAW english» (file YSwlSQF1n6QIpGTOohlMOd, node 2208:1427). */
 
 const NAV = [
   { href: "#schedule", label: "Расписание и календарь" },
@@ -93,26 +89,6 @@ const LECTORY_RIGHT = {
   date: "07.07.2026",
   tag: "Tecnolodgy",
 }
-
-function useClock() {
-  const [now, setNow] = useState<Date | null>(null)
-  useEffect(() => {
-    setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
-const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2)
-  return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "?"
-}
-function paletteFor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
-}
 function Avatar({ name, src, className = "" }: { name: string; src?: string | null; className?: string }) {
   const [failed, setFailed] = useState(false)
   // Сбрасываем failed при изменении src (например после upload) — иначе
@@ -151,15 +127,6 @@ function Avatar({ name, src, className = "" }: { name: string; src?: string | nu
     />
   )
 }
-
-function pluralize(n: number, one: string, few: string, many: string) {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
-  return many
-}
-
 interface StudentRawDashboardProps {
   studentId?: string
   firstName?: string
@@ -637,7 +604,6 @@ export default function StudentRawDashboard({
   const nowMs = now ? now.getTime() : 0
   const cutoff = nowMs - 60 * 60 * 1000
   // Только реальные уроки; никаких моков — иначе кажется что бэк не работает.
-  // Уроки ученика
   const lessonEvents = initialLessons
     .filter((l) => !nowMs || new Date(l.scheduledAt).getTime() >= cutoff)
     .map((l) => ({
@@ -746,7 +712,7 @@ export default function StudentRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260908-success" />
 
-      {/* ================== HERO: nav + SCHEDULE ================== */}
+      {/* HERO: nav + SCHEDULE */}
       <div className="st-hero">
         <nav className="st-nav">
           <Link href="/student" className="st-brand" aria-label="Raw English">
@@ -843,7 +809,7 @@ export default function StudentRawDashboard({
         </section>
       </div>
 
-      {/* ================== HOMEWORK + LIBRARY + HISTORY (lime bars) ================== */}
+      {/* HOMEWORK + LIBRARY + HISTORY (lime bars) */}
       <section id="homework" className="st-bars-section">
         <div className="st-badge-wrap">
           <span className="st-badge on-light-dark-outline">
@@ -863,7 +829,7 @@ export default function StudentRawDashboard({
         />
       </section>
 
-      {/* ================== CHATS ================== */}
+      {/* CHATS */}
       {/* Полностью повторяет teacher-блок (`.tr-chats-frame`). Стили в raw-teacher.css. */}
       <section id="chats" className="st-chats-section tr-section">
         <div className="tr-chats-frame">
@@ -1060,7 +1026,7 @@ export default function StudentRawDashboard({
         />
       )}
 
-      {/* ================== LECTORY (lime) ================== */}
+      {/* LECTORY (lime) */}
       <section id="calls" className="st-lectory-section">
         <div className="st-badge-wrap">
           <span className="st-badge on-light-dark-outline">
@@ -1174,7 +1140,7 @@ export default function StudentRawDashboard({
         </div>
       </section>
 
-      {/* ================== BALANCE + STATS ================== */}
+      {/* BALANCE + STATS */}
       <section id="balance" className="st-balance-section">
         <div className="st-balance-grid">
           <div className="st-balance-card">
@@ -1339,7 +1305,7 @@ export default function StudentRawDashboard({
         </Link>
       </section>
 
-      {/* ================== PAY METHOD MODAL — Figma 2522:2400 «Пополнение баланса (выбранный зелёный)» ================== */}
+      {/* PAY METHOD MODAL — Figma 2522:2400 «Пополнение баланса (выбранный зелёный)» */}
       {payMethodOpen && (
         <div className="st-pay-backdrop" onClick={() => !topupBusy && setPayMethodOpen(false)}>
           <div className="st-pay-modal" role="dialog" aria-modal="true" aria-label="Способ оплаты" onClick={(e) => e.stopPropagation()}>
@@ -1357,7 +1323,7 @@ export default function StudentRawDashboard({
         </div>
       )}
 
-      {/* ================== LEVEL UP MODAL — Figma 2522:2631 «Когда уровень повышается» ================== */}
+      {/* LEVEL UP MODAL — Figma 2522:2631 «Когда уровень повышается» */}
       {levelUpOpen && (
         <div className="st-lvl-backdrop" onClick={closeLevelUp}>
           <div className="st-lvl-modal" role="dialog" aria-modal="true" aria-label="Уровень обновлён" onClick={(e) => e.stopPropagation()}>
@@ -1372,7 +1338,6 @@ export default function StudentRawDashboard({
         </div>
       )}
 
-      {/* ================== FOOTER ================== */}
       <SiteFooter
         onSupportClick={async () => {
           // «Написать в поддержку» → открываем обычный ChatModal с админом.
@@ -1392,11 +1357,8 @@ export default function StudentRawDashboard({
   )
 }
 
-// ---------------------------------------------------------------------------
-// StudentGoogleCalendarBanner: аналог tr-варианта — показывает статус Google
-// Calendar-подключения ученика и CTA «Подключить/Отключить». В preview-режиме
+// StudentGoogleCalendarBanner: аналог tr-варианта; в preview-режиме
 // (connection не передан) не рендерится.
-// ---------------------------------------------------------------------------
 function StudentGoogleCalendarBanner({
   connection,
   onDisconnected,

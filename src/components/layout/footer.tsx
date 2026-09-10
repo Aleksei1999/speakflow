@@ -12,7 +12,6 @@ const footerLinks: Array<{
     links: [
       { href: "/teachers", label: "Преподаватели" },
       { href: "/#pricing", label: "Тарифы" },
-      { href: "/#formats", label: "Speaking Clubs" },
       { href: "/#quiz", label: "Тест уровня" },
     ],
   },

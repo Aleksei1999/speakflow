@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { invalidateStudentDashboard } from '@/lib/cache/invalidate'
 import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
 import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .single()
     if (insErr || !mat?.id) {
-      await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([path]).catch((e) => console.warn("[admin/homework/upload]", e))
       return NextResponse.json({ error: 'Ошибка сохранения записи' }, { status: 500 })
     }
 
@@ -89,11 +90,7 @@ export async function POST(request: NextRequest) {
       target_id: studentId,
     })
 
-    // Инвалидируем dashboard-кэш ученика (чтобы hw modal сразу подтянул новый файл).
-    try {
-      const { invalidateStudentDashboard } = await import('@/lib/cache/invalidate')
-      invalidateStudentDashboard(studentId)
-    } catch {}
+    invalidateStudentDashboard(studentId)
 
     return NextResponse.json({ ok: true, id: mat.id })
   } catch (e) {

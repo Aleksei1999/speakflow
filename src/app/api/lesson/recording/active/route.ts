@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   const gate = await requireLessonParticipant(lessonId)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   const { data: rec } = (await (gate.admin as any)
     .from("lesson_recordings")
     .select("id, storage_prefix, status, started_at")

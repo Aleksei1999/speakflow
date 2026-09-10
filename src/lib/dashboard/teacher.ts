@@ -1,43 +1,19 @@
-// ============================================================
-// /teacher dashboard — single-RPC snapshot loader
-// ------------------------------------------------------------
-// Before this helper, src/app/(dashboard)/teacher/page.tsx fired
-// 10+ separate Supabase queries (profile, teacher_profile, today,
-// upcoming, hosted-clubs, month/prev-month counts, completed-month
-// earnings, week stats, active lessons, trial-id map, ...). On a
-// cold start under revalidate=30 this added 600–900 ms of serial
-// network latency before the page could even start rendering.
+// Снапшот teacher-дашборда одним RPC `public.get_teacher_dashboard` +
+// per-user `unstable_cache` с тегом `teacher-dashboard-<uid>`.
 //
-// public.get_teacher_dashboard(p_user_id) returns the entire
-// payload in one round-trip as jsonb. We wrap it in
-// `unstable_cache` keyed by user id with a 30s TTL and a
-// per-user tag (`teacher-dashboard-${userId}`) so mutation
-// endpoints can invalidate it explicitly.
-//
-// IMPORTANT: the `unstable_cache` callback must NOT touch the
-// request cookie context. We use the service-role admin client
-// inside — the page has already verified the cookies-based auth
-// upstream (cookies() + redirect("/login")) BEFORE calling us.
-// Inside the SQL function `SECURITY DEFINER` enforces that
-// `auth.uid() = p_user_id` (or admin), so even if a caller smuggles
-// a foreign uid we'd 42501-fail at the DB. But we pass the
-// service-role bypass at the network level — the SQL guard is
-// the safety net, not the only gate.
-// ============================================================
+// IMPORTANT: callback `unstable_cache` не трогает cookie context — внутри
+// service-role admin client, поэтому caller обязан аутентифицировать
+// пользователя ДО вызова. SQL-guard в функции — страховка, не единственный гейт.
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// --- Tag helper ----------------------------------------------
 export const teacherDashboardTag = (userId: string) =>
   `teacher-dashboard-${userId}`
 
-// --- Types ---------------------------------------------------
-// Shape mirrors what get_teacher_dashboard returns. We type only
-// the keys consumed by the page; unknown fields stay as `any`
-// to avoid noisy SQL/TS drift when the RPC grows.
-
+// Shape повторяет ответ get_teacher_dashboard; типизируем только ключи,
+// нужные странице.
 export type TeacherDashboardProfile = {
   id: string
   full_name: string | null
@@ -124,12 +100,8 @@ export type TeacherDashboard = {
   generated_at: string
 }
 
-// --- Loader (uncached) ---------------------------------------
 async function loadTeacherDashboard(userId: string): Promise<TeacherDashboard | null> {
   const admin = createAdminClient()
-  // FIXME(types): Database typegen doesn't include this RPC yet (see
-  // 074_get_teacher_dashboard migration). Cast keeps the rest of the
-  // module fully typed.
   const { data, error } = await (admin as any).rpc('get_teacher_dashboard', {
     p_user_id: userId,
   })
@@ -169,12 +141,6 @@ function normaliseTeacherDashboard(raw: any): TeacherDashboard {
   }
 }
 
-// --- Cached wrapper ------------------------------------------
-// 30s TTL — same horizon as the page's own `revalidate = 30`,
-// so consecutive renders within a navigation burst share state
-// without hitting Postgres. mutation endpoints invalidate the
-// tag for instant fresh-read when something the teacher will
-// notice changes (new lesson booked, recording finalized, etc).
 export function getCachedTeacherDashboard(
   userId: string,
 ): Promise<TeacherDashboard | null> {

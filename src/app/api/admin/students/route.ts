@@ -5,10 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 
-// ---------------------------------------------------------------
-// GET /api/admin/students?limit=100&search=&sort=recent|name
-// List of students for admin grid with basic XP + lesson totals.
-// ---------------------------------------------------------------
+// GET /api/admin/students?limit=100&search=&sort=recent|name — список учеников для админ-грида.
 
 export const dynamic = "force-dynamic"
 

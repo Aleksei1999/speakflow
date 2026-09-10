@@ -4,8 +4,8 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { Ratelimit } from "@upstash/ratelimit"
-import { Redis } from "@upstash/redis"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getRedis } from "@/lib/redis"
 
 export type RateLimitOptions = {
   /** Logical bucket name, e.g. "auth:signup". */
@@ -38,34 +38,6 @@ export function getClientIp(req: NextRequest): string {
 /** Префикс для всех ключей. Изолируем от любых других @upstash/ratelimit
  *  instances, которые могут жить в том же Upstash аккаунте. */
 const KEY_PREFIX = "ratelimit:speakflow"
-
-let _redisChecked = false
-let _redis: Redis | null = null
-
-function getRedis(): Redis | null {
-  if (_redisChecked) return _redis
-  _redisChecked = true
-  // Vercel Marketplace integration ставит KV_REST_API_URL/_TOKEN.
-  // Прямая установка Upstash CLI/Dashboard — UPSTASH_REDIS_REST_URL/_TOKEN.
-  // Поддерживаем оба формата.
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN
-  if (!url || !token) {
-    _redis = null
-    return null
-  }
-  try {
-    _redis = new Redis({ url, token })
-    return _redis
-  } catch (e) {
-    console.warn("[rate-limit] failed to init Upstash Redis:", (e as Error)?.message)
-    _redis = null
-    return null
-  }
-}
-
 /**
  * Ratelimit-инстансы кешируются по (max, windowSeconds), потому что:
  *   1) их дешевле переиспользовать (ephemeralCache работает внутри одной

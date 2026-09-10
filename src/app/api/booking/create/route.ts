@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Validate request body
     const parsed = bookingSchema.safeParse(body)
     if (!parsed.success) {
       const firstError = parsed.error.issues[0]
@@ -27,7 +26,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Verify user is authenticated
     const {
       data: { user },
       error: authError,
@@ -48,7 +46,6 @@ export async function POST(request: NextRequest) {
     })
     if (limited) return limited
 
-    // Verify user has student role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -74,7 +71,6 @@ export async function POST(request: NextRequest) {
     // подсказок «записаться снова» на дашборде.
     const wantsPin: boolean = Boolean((body as Record<string, unknown>)?.pin)
 
-    // Prevent booking in the past
     const scheduledDate = new Date(scheduledAt)
     if (scheduledDate <= new Date()) {
       return NextResponse.json(
@@ -83,7 +79,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prevent booking more than 30 days ahead
     const maxDate = new Date()
     maxDate.setDate(maxDate.getDate() + 30)
     if (scheduledDate > maxDate) {
@@ -93,7 +88,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prevent student from booking with themselves (if they are also a teacher)
     if (teacherId === user.id) {
       return NextResponse.json(
         { error: 'Нельзя забронировать урок у самого себя' },
@@ -101,8 +95,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify teacher exists and is active.
-    // Client passes auth user_id; resolve to teacher_profiles.id for FK columns.
+    // Клиент передаёт auth user_id; резолвим в teacher_profiles.id для FK-колонок.
     type TeacherProfileLite = {
       id: string
       hourly_rate: number
@@ -132,12 +125,9 @@ export async function POST(request: NextRequest) {
 
     const teacherProfileId = teacherProfile.id
 
-    // ─────────────────────────────────────────────────────────────────
-    // RULE: один день — один преподаватель.
-    // Если в этот же календарный день (Europe/Moscow) у ученика уже
-    // есть активный урок с ДРУГИМ преподавателем — отклоняем.
-    // К тому же преподу можно бронировать сколько угодно слотов.
-    // ─────────────────────────────────────────────────────────────────
+    // RULE: один день — один преподаватель. Если в этот же календарный день
+    // (Europe/Moscow) у ученика уже есть активный урок с ДРУГИМ преподавателем —
+    // отклоняем. К тому же преподу можно бронировать сколько угодно слотов.
     {
       const dayMs = 24 * 60 * 60 * 1000
       // Окно «день в Москве» считаем грубо как ±12ч от слота — этого
@@ -193,7 +183,6 @@ export async function POST(request: NextRequest) {
 
     // Call is_slot_available() to prevent double-booking (atomic check).
     // p_teacher_id expects teacher_profiles.id (matches lessons.teacher_id FK).
-    // FIXME(types): Postgrest rpc generic не резолвится с минимальной Database (нужны Views/Relationships)
     const { data: isAvailable, error: slotError } = await (supabase.rpc as any)(
       'is_slot_available',
       {
@@ -250,7 +239,6 @@ export async function POST(request: NextRequest) {
 
     // Урок создаётся сервером (service_role): клиенту INSERT в lessons закрыт.
     // Стоимость — рассчитанная выше price (списывается с баланса при завершении).
-    // FIXME(types): Postgrest InsertBuilder инференсится в never
     type CreatedLessonRow = {
       id: string
       price: number
@@ -311,9 +299,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не удалось создать урок' }, { status: 500 })
     }
 
-    // Set Jitsi room name using the DB-generated lesson ID
+    // Имя комнаты по DB-сгенерированному id урока.
     const jitsiRoomName = `speakflow-${lesson.id}`
-    // FIXME(types): Postgrest UpdateBuilder инференсится в never
     const adminDb = createAdminClient()
     await (adminDb.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
@@ -386,19 +373,11 @@ export async function POST(request: NextRequest) {
       console.error('[booking/create] Google push failed', e)
     }
 
-    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
+    void notifyLessonBooked({ lessonId: lesson.id }).catch((e) => console.warn("[booking/create]", e))
 
-    // The teacher's «Мои ученики» list is derived from lessons; invalidate
-    // its cached snapshot so the new student shows up on next request.
-    // `teacherId` is the teacher's auth user_id (we resolved teacher_profiles
-    // via `.eq('user_id', teacherId)` above).
+    // teacherId — auth user_id преподавателя (теги кешей per-user).
     invalidateTeacherStudents(teacherId)
-    // Студенческий dashboard RPC snapshot включает stats + upcoming_lessons —
-    // новый урок должен сразу появиться у студента.
     invalidateStudentDashboard(user.id)
-    // Teacher /teacher dashboard RPC snapshot: today/upcoming/week_stats/month_stats.
-    // teacherId здесь — auth user_id преподавателя (resolved выше через
-    // .eq('user_id', teacherId)).
     invalidateTeacherDashboard(teacherId)
 
     // Business-level audit: бронирование ученика. Data-trigger тоже ловит
@@ -433,7 +412,6 @@ export async function POST(request: NextRequest) {
       const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
       const weekday = wd ? wdMap[wd] ?? null : null
       if (weekday !== null && Number.isFinite(hh)) {
-        // FIXME(types): student_preferred_slots не в Database — нужен typegen
         await (supabase.from('student_preferred_slots') as any)
           .upsert(
             {

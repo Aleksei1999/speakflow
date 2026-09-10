@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
   })
   if (limited) return limited
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   type RecordingFinalizeRow = {
     id: string
     status: 'recording' | 'finalized' | 'failed'
@@ -109,7 +108,6 @@ export async function POST(req: NextRequest) {
   const seqMax = Math.max(seqT, seqS)
   const chunksCount = Math.max(1, seqMax, Number(rec.chunks_count ?? 0))
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   const { error } = await (gate.admin as any)
     .from("lesson_recordings")
     .update({
@@ -143,15 +141,9 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Cron 055_complete_finished_lessons флипнет lesson.status →
-  // 'completed' в течение минуты, после чего month earnings / week
-  // completed-count у учителя и stats/upcoming у студента изменятся.
-  // Сбрасываем кешированные dashboard-снапшоты обеих сторон —
-  // следующий рендер увидит свежие данные сразу, как cron отработает.
-  // Если lesson уже completed — invalidate всё равно безопасен (no-op
-  // для тэга без подписчиков).
+  // Cron complete_finished_lessons переведёт lesson в 'completed' в течение
+  // минуты — сбрасываем dashboard-снапшоты обеих сторон заранее (no-op безопасен).
   try {
-    // gate.lesson — это lessons row с teacher_id / student_id (см. lesson-auth).
     const lessonRow: any = (gate as any).lesson
     const teacherProfileId = lessonRow?.teacher_id
     const studentUserId = lessonRow?.student_id

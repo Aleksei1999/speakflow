@@ -58,7 +58,6 @@ export async function POST(req: NextRequest) {
   })
   if (limited) return limited
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   const { data: rec } = (await (gate.admin as any)
     .from("lesson_recordings")
     .select("id, storage_prefix, status")
@@ -73,7 +72,6 @@ export async function POST(req: NextRequest) {
 
   const roleTag = gate.role === "student" ? "S" : "T"
 
-  // FIXME(types): RPC 'lesson_recordings_next_seq' missing in Database type
   // Атомарное выделение seq через SECURITY DEFINER RPC — без гонок.
   const { data: assigned, error: rpcErr } = await (gate.admin.rpc as any)(
     "lesson_recordings_next_seq",
@@ -102,7 +100,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Не удалось создать upload URL" }, { status: 500 })
   }
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   // chunks_count = MAX(next_seq_t, next_seq_s) для UI индикатора.
   // Доп. фильтр lesson_id — defense-in-depth, страхует от регрессий.
   await (gate.admin as any)

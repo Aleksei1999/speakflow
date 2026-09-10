@@ -1,26 +1,7 @@
-// ---------------------------------------------------------------
-// Shared loader for the "teacher views student profile" page.
-//
-// Used by:
-//   • src/app/api/teacher/students/[id]/route.ts (JSON endpoint)
-//   • src/app/(dashboard)/teacher/students/[id]/page.tsx (SSR)
-//
-// Why one module:
-//   Self-fetch from a Server Component back into our own API route
-//   doubles cookie parsing + auth.getUser() (см. недавний perf-аудит,
-//   feedback в TeacherStudentsPage.loadInitialSnapshot). Сюда логику
-//   вынесли, route.ts становится тонким wrapper'ом.
-//
-// Access policy:
-//   - Admin: всегда видит студента.
-//   - Teacher: ТОЛЬКО если есть хоть один lesson (any status), где
-//     teacher_id = его teacher_profiles.id и student_id = $1.
-//   - Если нет доступа / профиль удалён / роль ≠ student → возвращаем
-//     null; вызывающий код отвечает 404 (не 403 — чтобы не палить
-//     existence).
-//
-// Returned shape — см. StudentProfilePayload ниже.
-// ---------------------------------------------------------------
+// Loader «учитель смотрит профиль ученика», общий для API route и SSR.
+// Доступ: admin — всегда; teacher — только при наличии общего lesson (любой
+// статус). Нет доступа / профиль удалён / роль ≠ student → caller отвечает 404
+// (не 403 — чтобы не палить existence).
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { toRoastLevel } from "@/lib/levels/mapping"
@@ -37,9 +18,9 @@ export type StudentProfilePayload = {
     cefr: string | null
     streak: number
     total_xp: number
-    /** Текущий roast-level от total_xp (не usable-в-DB current_level из user_progress). */
+    /** Текущий roast-level (из english_level). */
     level: string
-    /** 0..100, % внутри текущего уровня по XP. 100 для Well Done. */
+    /** 0..100, прогресс внутри текущего уровня. 100 для Well Done. */
     level_progress_pct: number
   }
   stats: {
@@ -81,12 +62,6 @@ export type StudentProfilePayload = {
     submitted_at: string | null
     grade: number | null
   }>
-  achievements: Array<{
-    slug: string
-    title: string
-    earned_at: string
-    icon_url: string | null
-  }>
 }
 
 export type AccessDeniedReason = "not_found" | "no_shared_lessons" | "deleted"
@@ -118,9 +93,9 @@ export async function loadTeacherStudentProfile(
   supabase: SupabaseClient,
   viewerRole: ViewerRole,
   viewerTeacherProfileId: string | null,
-  studentId: string
+  studentId: string,
+  viewerUserId: string | null = null
 ): Promise<LoadResult> {
-  // ------- Access check -------
   // Teacher имеет доступ только если есть общий lesson. Admin — всегда.
   if (viewerRole === "teacher") {
     if (!viewerTeacherProfileId) {
@@ -146,7 +121,6 @@ export async function loadTeacherStudentProfile(
     }
   }
 
-  // ------- Student profile -------
   const { data: profile, error: profileErr } = await (supabase as any)
     .from("profiles")
     .select("id, full_name, avatar_url, email, role, created_at")
@@ -158,12 +132,9 @@ export async function loadTeacherStudentProfile(
     return { ok: false, reason: "deleted" }
   }
 
-  // ------- Per-student aggregates: lessons, progress, achievements,
-  // homework, material shares, reviews — параллельно. -------
   const [
     lessonsRes,
     progressRes,
-    achievementsRes,
     homeworkRes,
     materialSharesRes,
     reviewsRes,
@@ -182,24 +153,16 @@ export async function loadTeacherStudentProfile(
       .select("total_xp, current_streak, english_level")
       .eq("user_id", studentId)
       .maybeSingle(),
-    (supabase as any)
-      .from("user_achievements")
-      .select(
-        "earned_at, achievement:achievement_definitions ( slug, title, icon_url )"
-      )
-      .eq("user_id", studentId)
-      .order("earned_at", { ascending: false })
-      .limit(60),
     // homework — только этого преподавателя для teacher; для admin'а так же
     // ограничим viewerTeacherProfileId если задан, иначе показываем всё.
-    viewerRole === "teacher" && viewerTeacherProfileId
+    viewerRole === "teacher" && viewerUserId
       ? (supabase as any)
           .from("homework")
           .select(
             "id, title, due_date, status, submitted_at, grade, score_10"
           )
           .eq("student_id", studentId)
-          .eq("teacher_id", viewerTeacherProfileId)
+          .eq("teacher_id", viewerUserId)
           .order("due_date", { ascending: false })
           .limit(20)
       : (supabase as any)
@@ -256,7 +219,6 @@ export async function loadTeacherStudentProfile(
       ? allLessons.filter((l) => l.teacher_id === viewerTeacherProfileId)
       : allLessons
 
-  // ------- Stats -------
   const now = Date.now()
   let total = 0
   let completed = 0
@@ -315,17 +277,15 @@ export async function loadTeacherStudentProfile(
       duration_minutes: l.duration_minutes,
     }))
 
-  // ------- Progress / level -------
   const up: { total_xp?: number; current_streak?: number; english_level?: string | null } =
     (progressRes.data as any) || {}
   const total_xp = up.total_xp || 0
   const streak = up.current_streak || 0
-  // Уровень — из user_progress.english_level (XP-геймификации в продукте нет).
+  // Уровень — из user_progress.english_level.
   const cefr = (up.english_level && String(up.english_level).trim()) || "A1"
   const roastLevel = toRoastLevel(cefr)
   const level_progress_pct = 100
 
-  // ------- Rating -------
   const reviewRows: Array<{ rating: number | null }> = (reviewsRes.data || []) as any
   const ratingsArr = reviewRows
     .map((r) => (typeof r.rating === "number" ? r.rating : null))
@@ -337,13 +297,11 @@ export async function loadTeacherStudentProfile(
         )
       : null
 
-  // ------- needs_attention -------
   const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000
   const noLessonsRecent =
     lastNonCancelledTs === 0 || lastNonCancelledTs < fourteenDaysAgo
   const needs_attention = streak === 0 || noLessonsRecent
 
-  // ------- Materials -------
   type ShareRow = {
     created_at: string
     material:
@@ -390,7 +348,6 @@ export async function loadTeacherStudentProfile(
     .filter((x): x is NonNullable<typeof x> => !!x)
     .slice(0, 30)
 
-  // ------- Homework -------
   type HwRow = {
     id: string
     title: string
@@ -407,8 +364,7 @@ export async function loadTeacherStudentProfile(
     due_at: h.due_date,
     status: h.status,
     submitted_at: h.submitted_at,
-    // grade — int 0..100; score_10 — numeric 0..10 (мигр 029). UI хочет один —
-    // приоритет: score_10 (10 = новая шкала). Fallback на grade.
+    // grade — int 0..100; score_10 — numeric 0..10. Приоритет score_10, fallback на grade.
     grade:
       typeof h.score_10 === "number"
         ? h.score_10
@@ -417,27 +373,6 @@ export async function loadTeacherStudentProfile(
           : null,
   }))
 
-  // ------- Achievements (earned only) -------
-  type AchRow = {
-    earned_at: string
-    achievement:
-      | { slug: string; title: string; icon_url: string | null }
-      | Array<{ slug: string; title: string; icon_url: string | null }>
-      | null
-  }
-  const achRows: AchRow[] = (achievementsRes.data || []) as any
-  const achievements = achRows
-    .map((a) => {
-      const def = Array.isArray(a.achievement) ? a.achievement[0] : a.achievement
-      if (!def) return null
-      return {
-        slug: def.slug,
-        title: def.title,
-        earned_at: a.earned_at,
-        icon_url: def.icon_url,
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => !!x)
 
   return {
     ok: true,
@@ -467,7 +402,6 @@ export async function loadTeacherStudentProfile(
       recent,
       materials,
       homework,
-      achievements,
     },
   }
 }

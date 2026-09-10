@@ -1,20 +1,6 @@
-// ---------------------------------------------------------------
-// Lesson participant gate for API routes.
-//
-// Stops the auth bypass that existed in /api/lesson/* routes — those
-// routes used createAdminClient() and trusted lessonId/userId from the
-// request body, which let any logged-in user read or write to any
-// lesson by guessing/seeing a lessonId in the URL.
-//
-// Usage:
-//   const gate = await requireLessonParticipant(lessonId)
-//   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
-//   const { user, lesson, role, admin } = gate
-//
-// `role` is one of "student" | "teacher" | "admin" — admin is allowed
-// because back-office actions are intentionally bypassing RLS.
-// `admin` is the service-role client, returned only AFTER auth passed.
-// ---------------------------------------------------------------
+// Гейт «участник урока» для /api/lesson/*: проверяет auth и связь caller'а
+// с уроком (student / teacher / admin), не доверяя lessonId/userId из body.
+// IMPORTANT: service-role `admin` из результата использовать только ПОСЛЕ гейта.
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -86,9 +72,8 @@ export async function requireLessonParticipant(
 
   const admin = createAdminClient()
 
-  // 1. Caller's profile role. Явно реджектим DB-ошибки — иначе они
-  // молча превращались в profileRole='student' и admin/teacher
-  // мог получить ограниченный доступ.
+  // Явно реджектим DB-ошибки — иначе они молча превращались в
+  // profileRole='student' и admin/teacher получал ограниченный доступ.
   const { data: profile, error: profileErr } = await admin
     .from("profiles")
     .select("role")
@@ -100,7 +85,6 @@ export async function requireLessonParticipant(
   }
   const profileRole = (profile?.role as Role | undefined) ?? "student"
 
-  // 2. Lesson lookup. Use admin client — we'll authorise manually below.
   const { data: lesson, error: lessonErr } = await admin
     .from("lessons")
     .select("id, student_id, teacher_id, status, scheduled_at, duration_minutes")
@@ -113,9 +97,8 @@ export async function requireLessonParticipant(
     return { ok: false, status: 404, error: "Урок не найден" }
   }
 
-  // 3. teacher_profiles.id — needed both to authorise teachers and to
-  //    let teacher routes write the right teacher_id without trusting
-  //    the body.
+  // teacher_profiles.id нужен и для авторизации, и чтобы teacher-роуты
+  // писали teacher_id, не доверяя body.
   let teacherProfileId: string | null = null
   if (profileRole === "teacher") {
     const { data: tp, error: tpErr } = await admin
@@ -130,7 +113,6 @@ export async function requireLessonParticipant(
     teacherProfileId = tp?.id ?? null
   }
 
-  // 4. Resolve relationship to THIS lesson.
   let role: Role | null = null
   if (profileRole === "admin") {
     role = "admin"
@@ -148,7 +130,7 @@ export async function requireLessonParticipant(
     return { ok: false, status: 403, error: "Нет доступа к этому уроку" }
   }
 
-  // 5. Активность урока — опционально. Админу тоже не даём, чтобы
+  // Активность урока — опционально. Админу тоже не даём, чтобы
   // случайно не подложить домашку/материал в архивный урок: пусть
   // открывает запись урока, а не пишет в неё.
   if (options.requireActive) {

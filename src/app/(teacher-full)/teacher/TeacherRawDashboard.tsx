@@ -20,13 +20,11 @@ import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher
 import type { LessonRequestRow } from "./request-actions"
 import { acceptTrialRequest, declineTrialRequest } from "./trial-request-actions"
 import { useRouter } from "next/navigation"
+import { initialsOf, paletteFor } from "@/lib/ui/initials"
+import { pluralize } from "@/lib/ru/plural"
+import { useClock, levelLabel, formatRub } from "@/lib/dashboard-ui"
 
-/* ============================================================
-   Teacher Dashboard — Raw English
-   Pixel-perfect implementation of Figma «Учитель RAW english»
-   (file YSwlSQF1n6QIpGTOohlMOd, node 2208:955).
-   Placeholder data preserved; JSX + CSS rebuilt to match Figma.
-   ============================================================ */
+/* Teacher Dashboard — Figma «Учитель RAW english» (file YSwlSQF1n6QIpGTOohlMOd, node 2208:955). */
 
 const STUDENTS = [
   { id: "1", name: "Вадим Думович", level: "A1", addedAt: 6, nextLessonMin: 120, avatar: "/dashboard/avatar-male.jpg" },
@@ -53,8 +51,7 @@ const APPLICATIONS = [
 ]
 const APPLICATIONS_VISIBLE = 3
 
-/* Мок других учителей — куда можно передать ученика.
-   В проде — fetch учителей из БД (кроме текущего). */
+/* Мок других учителей — куда можно передать ученика. */
 
 const Q_PER_PAGE = 3
 
@@ -95,46 +92,6 @@ function useProportionalZoom() {
     return () => window.removeEventListener("resize", apply)
   }, [])
 }
-
-function useClock() {
-  const [now, setNow] = useState<Date | null>(null)
-  useEffect(() => {
-    setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
-
-/** Кириллизирует А (латинская → русская) для уровней A1/A2, остальные (B1/B2/C1/C2) — как есть */
-function levelLabel(lvl: string) {
-  if (lvl === "A1") return "А1"
-  if (lvl === "A2") return "А2"
-  return lvl
-}
-
-/** «55400» → «55.400». Копейки округляем к рублям (в БД всё в копейках). */
-function formatRub(kopecks: number): string {
-  const rub = Math.round(kopecks / 100)
-  return String(rub).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-}
-
-const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2)
-  return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "?"
-}
-function paletteFor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
-}
-function pluralize(n: number, one: string, few: string, many: string) {
-  const mod10 = n % 10, mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
-  return many
-}
 function Avatar({ name, src, className = "" }: { name: string; src?: string; className?: string }) {
   const [failed, setFailed] = useState(!src)
   if (!src || failed) {
@@ -160,9 +117,8 @@ interface TeacherRawDashboardProps {
   }>
   /** profiles.id (auth.uid) текущего учителя — нужен для чата. */
   teacherId?: string
-  /** Объединённое расписание из Google Calendar + lessons.
-   *  Если undefined — preview-режим (падаем на LESSONS mock).
-   *  Если пустой массив — реально ничего нет (показываем «Нет событий»). */
+  /** Расписание из lessons. undefined — preview-режим (LESSONS mock),
+   *  пустой массив — реально ничего нет («Нет событий»). */
   initialSchedule?: ScheduleItem[]
   /** Статус подключения Google Calendar — для CTA-баннера. */
   calendarConnection?: {
@@ -344,7 +300,7 @@ export default function TeacherRawDashboard({
 
   async function handleHwUpload(file: File) {
     const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    // 1) Оптимистично добавляем в список
+    // Оптимистично добавляем в список
     setHwFiles((prev) => [
       { id: tempId, name: file.name, status: "loading", progress: 0.05 },
       ...prev,
@@ -370,7 +326,6 @@ export default function TeacherRawDashboard({
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file.bin"
       const storagePath = `${user.id}/${Date.now()}_${safeName}`
 
-      // 2) Заливаем в bucket
       const { error: upErr } = await supabase.storage
         .from("teacher-materials")
         .upload(storagePath, file, { contentType: file.type, upsert: false })
@@ -378,7 +333,6 @@ export default function TeacherRawDashboard({
 
       setProgress(0.9)
 
-      // 3) POST метаданных → создаст row в materials + signed URL
       const metaRes = await fetch("/api/teacher/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -400,7 +354,6 @@ export default function TeacherRawDashboard({
       const created = await metaRes.json()
 
       clearInterval(tick)
-      // 4) Заменяем temp-item на реальный
       setHwFiles((prev) => prev.map((x) =>
         x.id === tempId
           ? {
@@ -421,7 +374,6 @@ export default function TeacherRawDashboard({
     }
   }
 
-  // ------------------- HOMEWORK PER-STUDENT -------------------
   // Список папок ДЗ (общий пул) — грузим при открытии для ученика.
   useEffect(() => {
     if (!hwStudentId) { setHwFolders([]); return }
@@ -493,7 +445,6 @@ export default function TeacherRawDashboard({
         .upload(storagePath, file, { contentType: file.type, upsert: false })
       if (upErr) throw upErr
       setProgress(0.85)
-      // 1) create material — в текущей папке ДЗ.
       const metaRes = await fetch("/api/teacher/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -514,7 +465,6 @@ export default function TeacherRawDashboard({
       }
       const created = await metaRes.json()
       setProgress(0.95)
-      // 2) share to student
       const shareRes = await fetch(`/api/teacher/materials/${created.id}/share`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -704,8 +654,7 @@ export default function TeacherRawDashboard({
     authorName: string | null
     lessonAt: string | null
   } | null>(null)
-  // «Об ученике» — общая заметка, любой teacher/admin может редактировать
-  // (см. миграцию 20260901030000_student_shared_notes.sql).
+  // «Об ученике» — общая заметка, любой teacher/admin может редактировать.
   const [studentBio, setStudentBio] = useState<{
     content: string
     updatedByName: string | null
@@ -1009,12 +958,9 @@ export default function TeacherRawDashboard({
     return () => document.removeEventListener("mousedown", onDoc)
   }, [sortOpen])
 
-  // ------------------- SCHEDULE VIEW (Google Calendar + lessons) -------------------
-  // Если initialSchedule не пришёл (preview / нет БД) — падаем на LESSONS mock,
-  // маппим mock в тот же вид, что и реальные события.
-  //
-  // cutoff завязан на реактивный `now` из useClock() — ре-рендерится каждые 30с
-  // и одновременно удовлетворяет react-hooks/purity (никаких Date.now() в render).
+  // Если initialSchedule не пришёл (preview / нет БД) — падаем на LESSONS mock.
+  // cutoff завязан на реактивный `now` из useClock() (ре-рендер каждые 30с),
+  // никаких Date.now() в render — react-hooks/purity.
   const nowMs = now ? now.getTime() : 0
   const scheduleView = useMemo(() => {
     if (initialSchedule && initialSchedule.length > 0) {
@@ -1030,7 +976,7 @@ export default function TeacherRawDashboard({
           const date = d.toLocaleDateString("ru", { day: "2-digit", month: "2-digit", year: "2-digit" })
           // Для урока из БД — редиректим на нашу комнату /lesson/[id];
           // meetingUrl используем только если явно задан (Google Meet и т.п.).
-          // s.id приходит с префиксом "lesson:" (см. calendar-actions.ts:141) —
+          // s.id приходит с префиксом "lesson:" —
           // снимаем его, иначе получится /lesson/lesson:UUID и /lesson/[id] упадёт на "/".
           const lessonUuid = s.id.startsWith("lesson:") ? s.id.slice("lesson:".length) : s.id
           const roomHref = s.source === "lesson" ? `/lesson/${lessonUuid}` : null
@@ -1077,7 +1023,7 @@ export default function TeacherRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />
 
-      {/* ================== HERO: nav + dark backdrop that hosts STUDENTS ================== */}
+      {/* HERO: nav + dark backdrop that hosts STUDENTS */}
       <div className="tr-hero">
         <nav className="tr-nav">
           <Link href="/teacher" className="tr-brand" aria-label="Raw English">
@@ -1306,7 +1252,7 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      {/* ================== STUDENT MODAL (клик по ученику из списка) ================== */}
+      {/* STUDENT MODAL (клик по ученику из списка) */}
       {studentModalData && (
         <div className="tr-modal-backdrop" onClick={() => setStudentModalId(null)}>
           <div
@@ -1424,7 +1370,7 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      {/* ================== TRANSFER MODAL (передача ученика другому учителю) ================== */}
+      {/* TRANSFER MODAL (передача ученика другому учителю) */}
       {transferOpen && studentModalData && (
         <div className="tr-modal-backdrop tr-modal-backdrop--top" onClick={() => setTransferOpen(false)}>
           {/* Figma 2522:2456 «Передача ученика»: 686×706, заголовок 79 (2 строки), пилюля 578×68 на 202,
@@ -1469,7 +1415,6 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      {/* ================== CHAT MODAL (universal: teacher↔any) ================== */}
       {chatPeer && (
         <ChatModal
           peerId={chatPeer.id}
@@ -1484,7 +1429,6 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== GROUP CHAT MODAL ================== */}
       {groupChat && teacherId && (
         <GroupChatModal
           groupId={groupChat.id}
@@ -1496,7 +1440,7 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== APPLICATIONS ================== */}
+      {/* APPLICATIONS */}
       <section id="applications" className={`tr-section${appsExpanded ? " tr-section--apps-open" : ""}`}>
         <div className="tr-badge-wrap">
           <span className="tr-badge">
@@ -1679,7 +1623,7 @@ export default function TeacherRawDashboard({
         )}
       </section>
 
-      {/* ================== SCHEDULE (dark) ================== */}
+      {/* SCHEDULE (dark) */}
       <section id="schedule" className="tr-section tr-section-dark">
         <div className="tr-inner">
           <div className="tr-badge-wrap">
@@ -1772,7 +1716,7 @@ export default function TeacherRawDashboard({
         </div>
       </section>
 
-      {/* ================== INCOME (red) ================== */}
+      {/* INCOME (red) */}
       <section id="income" className="tr-section tr-section-red">
         <div className="tr-inner">
           <div className="tr-income-card">
@@ -1818,7 +1762,7 @@ export default function TeacherRawDashboard({
         </div>
       </section>
 
-      {/* ================== CHATS ================== */}
+      {/* CHATS */}
       <section id="chats" className="tr-section">
         <div className="tr-chats-frame">
           <div className="tr-chats-badge">
@@ -1950,7 +1894,7 @@ export default function TeacherRawDashboard({
         </div>
       </section>
 
-      {/* ================== HOMEWORK ================== */}
+      {/* HOMEWORK */}
       <section id="homework" className="tr-section">
         <div className="tr-badge-wrap">
           <span className="tr-badge">
@@ -1972,8 +1916,7 @@ export default function TeacherRawDashboard({
         />
       </section>
 
-      {/* ================== FOOTER ================== */}
-      {/* ================== INCOME INFO MODAL ================== */}
+      {/* INCOME INFO MODAL */}
       {incomeInfoOpen && (
         <div className="tr-modal-backdrop" onClick={() => setIncomeInfoOpen(false)}>
           <div className="tr-income-info" role="dialog" aria-modal="true" aria-labelledby="tr-inc-info-title" onClick={(e) => e.stopPropagation()}>
@@ -2005,7 +1948,6 @@ export default function TeacherRawDashboard({
 
       <SiteFooter variant="teacher" onSupportClick={openAdminChat} />
 
-      {/* ================== ADD LESSON MODAL ================== */}
       {addLessonOpen && (
         <AddLessonModal
           students={studentsState.map((s) => ({
@@ -2018,7 +1960,6 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== EDIT LESSON MODAL ================== */}
       {editLesson && (
         <EditLessonModal
           lesson={editLesson}
@@ -2026,7 +1967,6 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== LESSON REQUESTS MODAL ================== */}
       {requestsOpen && (
         <LessonRequestsModal
           requests={initialRequests ?? []}
@@ -2039,7 +1979,6 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== LIBRARY FILES MODAL ================== */}
       {hwFilesOpen && (
         <FilesModal
           title="Библиотека Raw English"
@@ -2087,7 +2026,7 @@ export default function TeacherRawDashboard({
         />
       )}
 
-      {/* ================== HOMEWORK STUDENT PICKER ================== */}
+      {/* HOMEWORK STUDENT PICKER */}
       {hwPickerOpen && (
         <div className="tr-modal-backdrop" onClick={() => setHwPickerOpen(false)}>
           {/* Как «Создание группы» (Figma 2522:2822: 686×869, заголовок 79, ряды 539×139 с 183 шагом 178),
@@ -2144,7 +2083,6 @@ export default function TeacherRawDashboard({
         </div>
       )}
 
-      {/* ================== HOMEWORK PER-STUDENT FILES MODAL ================== */}
       {hwStudentId && (
         <FilesModal
           title={`Домашка — ${studentsState.find((s) => s.id === hwStudentId)?.name ?? "ученик"}`}
@@ -2195,12 +2133,8 @@ export default function TeacherRawDashboard({
   )
 }
 
-// ---------------------------------------------------------------------------
-// GoogleCalendarBanner: всегда показывает статус подключения.
-//   - connected=false → красная плашка + CTA «Подключить»
-//   - connected=true  → лаймовая плашка «Подключён: email» + «Отключить»
+// GoogleCalendarBanner: статус подключения + CTA «Подключить» / «Отключить».
 // В preview-режиме (connection не передан) не рендерится.
-// ---------------------------------------------------------------------------
 
 interface GoogleCalendarBannerProps {
   connection?: {

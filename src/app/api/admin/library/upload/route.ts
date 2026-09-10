@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .single()
     if (insErr || !mat?.id) {
-      await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([path]).catch((e) => console.warn("[admin/library/upload]", e))
       console.error('[admin/library/upload] insert', insErr)
       return NextResponse.json({ error: 'Ошибка сохранения' }, { status: 500 })
     }

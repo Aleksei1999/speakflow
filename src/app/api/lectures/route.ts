@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .single()
     if (insErr || !inserted?.id) {
-      if (storagePath) await admin.storage.from(BUCKET).remove([storagePath]).catch(() => {})
+      if (storagePath) await admin.storage.from(BUCKET).remove([storagePath]).catch((e) => console.warn("[lectures]", e))
       console.error('[lectures POST] insert', insErr)
       return NextResponse.json({ error: 'Ошибка сохранения' }, { status: 500 })
     }

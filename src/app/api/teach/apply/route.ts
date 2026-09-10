@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         original_first_name: d.first_name,
         original_last_name: d.last_name,
       },
-    }).catch(() => {})
+    }).catch((e) => console.warn("[teach/apply]", e))
 
     return NextResponse.json({ ok: true, id: app.id })
   } catch (err) {
@@ -183,7 +183,7 @@ async function notifyAdmins(args: {
           chatId: a.telegram_chat_id as number,
           text,
           parseMode: "HTML",
-        }).catch(() => {})
+        }).catch((e) => console.warn("[teach/apply]", e))
       )
   )
 }

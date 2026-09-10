@@ -5,22 +5,14 @@
 
 import { useEffect, useRef, useState } from "react"
 import { fromRoastLevel } from "@/lib/levels/mapping"
+import { initialsOf, paletteFor } from "@/lib/ui/initials"
 
 const AVATAR_PALETTE = ["#5f7a8b", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
-function initialsOf(n: string) {
-  const parts = n.trim().split(/\s+/).slice(0, 2)
-  return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "?"
-}
-function paletteFor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
-}
 function Avatar({ name, src }: { name: string; src?: string | null }) {
   const [failed, setFailed] = useState(!src)
   if (!src || failed) {
     return (
-      <div className="asm-avatar-fb" style={{ background: paletteFor(name) }} aria-hidden>
+      <div className="asm-avatar-fb" style={{ background: paletteFor(name, AVATAR_PALETTE) }} aria-hidden>
         {initialsOf(name)}
       </div>
     )

@@ -98,7 +98,7 @@ async function loadStudentMaterials(
   const groupMembershipQ = (admin as any)
     .from('teacher_group_members')
     .select('group_id')
-    .eq('member_id', userId)
+    .eq('student_id', userId)
 
   const [publicRes, lessonsRes, sharesDirectRes, hwRes, groupsRes] =
     await Promise.all([publicQ, studentLessonsQ, directSharesQ, studentHwQ, groupMembershipQ])

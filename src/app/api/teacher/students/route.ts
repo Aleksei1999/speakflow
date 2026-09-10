@@ -3,15 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
-// ---------------------------------------------------------------
-// GET /api/teacher/students
-//   Aggregates teacher's students from `lessons` where teacher_id
-//   = teacher_profiles.id of the logged-in user.
-//
-//   Query params:
-//     level = A1|A2|B1|B2|C1|C2|all   (default: all)
-//     q     = search string (name or email, case-insensitive)
-// ---------------------------------------------------------------
+// GET /api/teacher/students?level=A1..C2|all&q= — ученики учителя, агрегированные из lessons.
 
 const LEVEL_ENUM = ['all', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
 
@@ -20,11 +12,9 @@ const querySchema = z.object({
   q: z.string().trim().max(200).optional(),
 })
 
-// Which lesson statuses count as "upcoming / booked" (used to compute next_lesson_at)
-// Должно совпадать с ACTIVE_STUDENT_STATUSES минус финальные (completed / no_show / cancelled).
-// Включаем pending_payment — старые уроки (до a2a0600) создавались с этим статусом и
-// остаются "впереди" для пользователя; включаем in_progress — если слот чуть-чуть
-// стартовал, его всё равно стоит показывать как "ближайший".
+// Статусы для next_lesson_at: ACTIVE_STUDENT_STATUSES минус финальные.
+// pending_payment — старые уроки остаются «впереди»; in_progress — только что
+// стартовавший слот всё ещё показываем как ближайший.
 const UPCOMING_STATUSES = new Set([
   'scheduled',
   'confirmed',
@@ -33,10 +23,8 @@ const UPCOMING_STATUSES = new Set([
   'pending_payment',
 ])
 
-// Which lesson statuses qualify a student as "мой ученик".
-// Исключаем cancelled/no_show; включаем pending_payment до интеграции Yookassa
-// (TEMP: a2a0600) — старые уроки были созданы с этим статусом ещё ДО перехода
-// на бесплатное бронирование и должны попадать в список учеников.
+// Статусы, при которых ученик считается «моим»: без cancelled/no_show;
+// pending_payment — старые уроки, созданные до бесплатного бронирования.
 const ACTIVE_STUDENT_STATUSES = new Set([
   'scheduled',
   'confirmed',
@@ -89,7 +77,6 @@ export async function GET(request: NextRequest) {
     }
     const { level: levelFilter, q } = parsed.data
 
-    // Pull all lessons belonging to this teacher in a single query.
     const { data: lessonRows, error: lErr } = await supabase
       .from('lessons')
       .select(
@@ -106,12 +93,10 @@ export async function GET(request: NextRequest) {
     const now = Date.now()
     const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000
 
-    // Aggregate per-student helpers
     const studentIds = new Set<string>()
     const lastLessonByStudent: Record<string, string> = {} // most recent (any status)
     const completedCountByStudent: Record<string, number> = {}
     const lastAnyLessonTsByStudent: Record<string, number> = {}
-    // For "next lesson" we keep the earliest upcoming (future, booked/confirmed/scheduled)
     const nextLessonByStudent: Record<
       string,
       { scheduled_at: string; id: string; notes: string | null }
@@ -125,7 +110,6 @@ export async function GET(request: NextRequest) {
       if (!ACTIVE_STUDENT_STATUSES.has(row.status)) continue
       studentIds.add(sid)
 
-      // Track last lesson overall (ordered desc already)
       if (!lastLessonByStudent[sid]) {
         lastLessonByStudent[sid] = row.scheduled_at
       }
@@ -184,7 +168,6 @@ export async function GET(request: NextRequest) {
     const progMap: Record<string, any> = {}
     for (const p of progress || []) progMap[p.user_id] = p
 
-    // Build enriched records
     const all = (profiles || []).map((p: any) => {
       const pr = progMap[p.id] || {}
       const completed = pr.lessons_completed ?? completedCountByStudent[p.id] ?? 0
@@ -244,7 +227,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply filters
     let filtered = all
     if (levelFilter !== 'all') {
       filtered = filtered.filter((s) => s.english_level === levelFilter)

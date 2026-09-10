@@ -38,7 +38,9 @@ export async function GET(_req: NextRequest) {
           try {
             const { signedUrl } = await createSignedUrl(supabase, 'teacher-materials', m.storage_path, { expiresIn: 3600 })
             signed_url = signedUrl
-          } catch {}
+          } catch (e) {
+            console.warn('[admin] signed url failed', e)
+          }
         }
         return {
           id: m.id,

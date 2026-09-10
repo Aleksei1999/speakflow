@@ -1,22 +1,6 @@
-// ---------------------------------------------------------------
-// Secure lesson file upload.
-//
-// Hardening (replaces a route that bypassed auth + auto-created a
-// PUBLIC bucket from inside the request handler):
-//   1. requireLessonTeacherOrAdmin gate — caller must be the teacher
-//      of THIS lesson, or an admin. userId/teacher_id are NEVER read
-//      from the body; they come from the gate.
-//   2. Server-side 50 MB limit (defence in depth — middleware/CDN
-//      should also limit, but never trust that).
-//   3. Filename sanitised to [A-Za-z0-9._-], capped at 100 chars,
-//      with a random 8-char slug to prevent collision/overwrite of
-//      another participant's file.
-//   4. Bucket must already exist (created via migration). We do not
-//      auto-create it from a request handler — that previously made
-//      the bucket public, which would expose every uploaded file.
-//   5. Material row is private by default (is_public: false). The
-//      bucket itself should be private; signed URLs handle reads.
-// ---------------------------------------------------------------
+// Загрузка файла урока. IMPORTANT: userId/teacher_id берутся из гейта, не из
+// body; bucket должен существовать заранее (авто-создание из handler'а делало
+// его публичным); material row приватная (is_public: false), чтение — signed URL.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
@@ -35,7 +19,6 @@ const BUCKET = 'lesson-files'
 function sanitizeFilename(raw: string): string {
   // Strip any path components a client might smuggle in.
   const base = (raw || '').split('/').pop()!.split('\\').pop()!.trim()
-  // Split name/ext so we can guarantee a fallback extension.
   const dot = base.lastIndexOf('.')
   let name = dot > 0 ? base.slice(0, dot) : base
   let ext = dot > 0 ? base.slice(dot + 1) : ''
@@ -47,7 +30,6 @@ function sanitizeFilename(raw: string): string {
 
   let safe = `${name}.${ext}`
   if (safe.length > 100) {
-    // Keep the extension; trim the name part.
     const keep = 100 - (ext.length + 1)
     safe = `${name.slice(0, Math.max(1, keep))}.${ext}`
   }
@@ -71,7 +53,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не передан файл или lessonId' }, { status: 400 })
     }
 
-    // Auth + lesson ownership gate.
     // WRITE: запрещаем загрузку файлов после отмены / завершения урока.
     const gate = await requireLessonTeacherOrAdmin(lessonId, { requireActive: true })
     if (!gate.ok) {
@@ -126,13 +107,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Safe filename + collision-resistant path.
     const safeName = sanitizeFilename(file.name || 'file.bin')
     const slug = randomUUID().slice(0, 8)
     const path = `lessons/${lessonId}/${Date.now()}-${slug}-${safeName}`
 
-    // Upload. Bucket MUST exist (created via migration). MIME ставим
-    // проверенный, а не доверяем file.type.
+    // MIME ставим проверенный, а не доверяем file.type.
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
       .upload(path, file, {
@@ -151,13 +130,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg || 'Upload failed' }, { status: 500 })
     }
 
-    // 5. Public URL (works only if bucket is public; otherwise consumers
-    //    should use signed URLs). We still store it for parity with other
-    //    routes — `is_public: false` keeps the row gated.
+    // Public URL храним для parity с другими роутами; `is_public: false` держит row закрытой.
     const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path)
 
-    // 6. teacher_id from gate, never from body.
-    //    Admin uploading on behalf of a lesson: use lesson.teacher_id.
+    // teacher_id из гейта, не из body; admin — lesson.teacher_id.
     const teacherId = teacherProfileId ?? lesson.teacher_id
     if (!teacherId) {
       return NextResponse.json(
@@ -178,7 +154,6 @@ export async function POST(request: NextRequest) {
       is_public: false,
     }
 
-    // FIXME(types): materials Insert in Database type lacks storage_path/mime_type columns
     const { data: mat, error: matError } = await (admin.from('materials') as any)
       .insert(insertRow)
       .select()
@@ -186,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     if (matError) {
       // Best-effort cleanup so we don't orphan the storage object.
-      await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([path]).catch((e) => console.warn("[lesson/upload]", e))
       return NextResponse.json({ error: matError.message }, { status: 500 })
     }
 

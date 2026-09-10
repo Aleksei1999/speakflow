@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (insErr || !inserted?.id) {
       console.error('[me/homework/upload] insert error', insErr)
       // rollback storage
-      await admin.storage.from(BUCKET).remove([storagePath]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([storagePath]).catch((e) => console.warn("[me/homework/upload]", e))
       return NextResponse.json({ error: 'Ошибка сохранения записи' }, { status: 500 })
     }
 

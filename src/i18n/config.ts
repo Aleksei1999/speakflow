@@ -1,15 +1,6 @@
-// ---------------------------------------------------------------------------
-// i18n config — single-locale runtime via next-intl.
-//
-// Site is rendered at a single URL tree (no /en/... prefix). Locale is
-// resolved per-request from (in order):
-//   1. profile.language (cookie `rwen_locale` mirrors it for guests / SSR)
-//   2. cookie `rwen_locale`
-//   3. default 'ru'
-//
-// Date / time formatting always uses Europe/Moscow timezone — our users
-// are based in Russia regardless of UI language.
-// ---------------------------------------------------------------------------
+// i18n: одно URL-дерево без префикса локали; локаль per-request из
+// profile.language → cookie `rwen_locale` → 'ru'. Даты всегда в Europe/Moscow —
+// пользователи в России независимо от языка UI.
 
 export type Locale = 'ru' | 'en'
 

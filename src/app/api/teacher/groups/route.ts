@@ -3,21 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { assertAllStudents, assertOwnStudents } from '@/lib/groups/validate'
+import { resolveTeacherProfileId } from '@/lib/teacher/require'
 const postSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional().nullable(),
   student_ids: z.array(z.string().uuid()).max(500).optional(),
 })
-
-async function resolveTeacherProfileId(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from('teacher_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data?.id ?? null
-}
-
 // ---------------------------------------------------------------
 // GET /api/teacher/groups — list of teacher's groups + member_count
 // ---------------------------------------------------------------
@@ -31,7 +22,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },
@@ -90,7 +81,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },

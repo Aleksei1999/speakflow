@@ -131,7 +131,7 @@ export async function fetchGroupMessages(groupId: string): Promise<GroupMessage[
   }
 
   // Mark read (fire-and-forget — не блокируем возврат).
-  markGroupReadInternal(admin, groupId, auth.userId).catch(() => {})
+  markGroupReadInternal(admin, groupId, auth.userId).catch((e) => console.warn("[groupchat/actions]", e))
 
   const messages = rows.map<GroupMessage>((r) => {
     const info = nameById.get(r.sender_id)
@@ -273,7 +273,7 @@ export async function uploadGroupAttachment(
     .select('id, group_id, sender_id, sender_role, text, attachment_url, attachment_type, created_at')
     .single()
   if (insErr || !row) {
-    await supabase.storage.from(GROUP_ATTACHMENTS_BUCKET).remove([objectPath]).catch(() => {})
+    await supabase.storage.from(GROUP_ATTACHMENTS_BUCKET).remove([objectPath]).catch((e) => console.warn("[groupchat/actions]", e))
     throw new Error(`uploadGroupAttachment: insert failed: ${insErr?.message ?? 'unknown'}`)
   }
 
@@ -305,7 +305,7 @@ export async function markGroupRead(groupId: string): Promise<void> {
   const auth = await tryGetUser()
   if (!auth) return
   const admin = createAdminClient() as UntypedSupabase
-  await markGroupReadInternal(admin, groupId, auth.userId).catch(() => {})
+  await markGroupReadInternal(admin, groupId, auth.userId).catch((e) => console.warn("[groupchat/actions]", e))
 }
 
 async function markGroupReadInternal(

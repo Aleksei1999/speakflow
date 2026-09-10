@@ -7,15 +7,11 @@ import { PASSWORD_MIN } from "@/lib/validations";
 import RoastQuiz from "./RoastQuiz";
 import { ArrowIcon } from "@/components/icons/ArrowIcon";
 
-/* ------------------------------------------------------------------
-   RAW ENGLISH — new landing (Figma "Главная RAW english")
-   Faithful rebuild of the 10-section design. Styles: /landing/raw2/raw2.css
-   Photos: /landing/raw2/*.jpg (exported from Figma)
-   ------------------------------------------------------------------ */
+/* Лендинг RAW ENGLISH по Figma «Главная RAW english».
+   Стили: /landing/raw2/raw2.css, фото: /landing/raw2/*.jpg */
 
 const CONTACT_HREF = "#contact";
 
-/* ---------- inline icons ---------- */
 /**
  * Filled стрелка ← / → как в pill-arrow дашборда (Figma node 4140:86).
  * Использует единый ArrowIcon (37×37), CSS-размер через .btn-arrow / .disc.
@@ -23,7 +19,6 @@ const CONTACT_HREF = "#contact";
 const ArrowRightFilled = () => (
   <ArrowIcon direction="right" size="100%" />
 );
-/* ---------- data ---------- */
 const FEATURES = [
   { icon: "ic-bubble.svg", iconActive: "ic-bubble-red.svg", title: <>Разговорные<br />клубы</>, body: <>Speaking club<br /><b>с носителями</b><br />каждый день.</> },
   { icon: "ic-cv-black.png", iconActive: "ic-cv.png", title: <>CV / резюме</>, body: <>Составляем резюме<br />на английском<br /><b>вместе с вами</b><br />для трудоустройства.</> },
@@ -488,7 +483,7 @@ export default function LandingRaw2() {
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/landing/raw2/raw2.css?v=20260908-glass" />
 
-      {/* ============ NAV ============ */}
+      {/* NAV */}
       <nav className="raw2-nav">
         <Link href="/" className="brand" aria-label="Raw English">
           <img src="/landing/raw2/logo-raw-word.svg" alt="Raw English" className="logo-img" />
@@ -505,7 +500,7 @@ export default function LandingRaw2() {
         </div>
       </nav>
 
-      {/* ============ HERO ============ */}
+      {/* HERO */}
       <header className="raw2-hero" style={{ backgroundImage: "url(/landing/raw2/hero.webp)" }}>
         <div className="wrap">
           <div className="glass">
@@ -524,7 +519,7 @@ export default function LandingRaw2() {
         <div className="bubble">Ты пройдешь путь от страха<br />сказать слово до умения<br />шутить на английском.</div>
       </header>
 
-      {/* ============ SYSTEM ============ */}
+      {/* SYSTEM */}
       <section id="system" className="raw2-system">
         <div className="wrap">
           <div className="badge-wrap">
@@ -559,7 +554,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ QUIZ CTA ============ */}
+      {/* QUIZ CTA */}
       <section className="raw2-quiz">
         <div className="wrap">
           <div className="card">
@@ -581,7 +576,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ FOUNDER ============ */}
+      {/* FOUNDER */}
       <section id="founder" className="raw2-founder" style={{ backgroundImage: "url(/landing/raw2/founder.jpg)" }}>
         <div className="wrap">
           <span className="badge-title badge-title--outline-lime">
@@ -615,7 +610,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ FREE FIRST LESSON ============ */}
+      {/* FREE FIRST LESSON */}
       <section className="raw2-free">
         <div className="wrap">
           <div className="badge-wrap">
@@ -631,7 +626,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ PRICING ============ */}
+      {/* PRICING */}
       <section id="price" className="raw2-price" style={{ backgroundImage: "url(/landing/raw2/pricing-bg.jpg)" }}>
         <div className="wrap">
           <div className="badge-wrap">
@@ -656,7 +651,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ FAQ ============ */}
+      {/* FAQ */}
       <section className="raw2-faq">
         <img src="/landing/raw2/mascot-r.svg" alt="" aria-hidden className="mascot" />
         <div className="wrap">
@@ -681,7 +676,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ CONTACT ============ */}
+      {/* CONTACT */}
       <section id="contact" className="raw2-contact">
         <img src="/landing/raw2/raw-watermark.svg" alt="" aria-hidden className="watermark" />
         <div className="wrap">
@@ -704,7 +699,7 @@ export default function LandingRaw2() {
         </div>
       </section>
 
-      {/* ============ FOOTER ============ */}
+      {/* FOOTER */}
       <footer className="raw2-footer">
         <div className="wrap">
           <div className="inner">
@@ -728,7 +723,7 @@ export default function LandingRaw2() {
         </div>
       </footer>
 
-      {/* ============ LOGIN POPUP (Ученик / Учитель) ============ */}
+      {/* LOGIN POPUP (Ученик / Учитель) */}
       {loginOpen && (
         <div className="raw2-modal-overlay" onClick={() => setLoginOpen(false)}>
           <div className="raw2-login" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -793,7 +788,7 @@ export default function LandingRaw2() {
         </div>
       )}
 
-      {/* ============ CTA POPUP (Figma 2522:2375 «Форма для связи») ============ */}
+      {/* CTA POPUP (Figma 2522:2375 «Форма для связи») */}
       {ctaOpen && (
         <div className="raw2-modal-overlay" onClick={() => setCtaOpen(false)}>
           <div className="raw2-cta" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -816,7 +811,7 @@ export default function LandingRaw2() {
         </div>
       )}
 
-      {/* ============ SENT POPUP (Figma «Контакты отправлены») ============ */}
+      {/* SENT POPUP (Figma «Контакты отправлены») */}
       {sent && (
         <div className="raw2-modal-overlay" onClick={() => setSent(false)}>
           <div className="raw2-sent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">

@@ -20,15 +20,12 @@ import AdminCreateGroupModal from "./AdminCreateGroupModal"
 import EditLessonModal from "@/app/(teacher-full)/teacher/EditLessonModal"
 import { rescheduleLecture } from "./admin-actions"
 import { type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
+import { initialsOf, paletteFor } from "@/lib/ui/initials"
+import { pluralize } from "@/lib/ru/plural"
+import { useClock, levelLabel } from "@/lib/dashboard-ui"
 
-/* ============================================================
-   Admin Dashboard — Raw English
-   Pixel-perfect implementation of Figma «Администратор RAW english»
-   (file YSwlSQF1n6QIpGTOohlMOd, node 2208:1206).
-   Реальные данные — из page.tsx (профили из БД); чаты и содержимое
-   заявок — placeholder, строго под макет.
-   Scope: `.ad`
-   ============================================================ */
+/* Admin Dashboard — Figma «Администратор RAW english» (file YSwlSQF1n6QIpGTOohlMOd,
+   node 2208:1206). CSS scope: `.ad`. */
 
 const NAV = [
   { href: "#schedule", label: "Занятия и расписание" },
@@ -79,42 +76,6 @@ function useProportionalZoom() {
     return () => window.removeEventListener("resize", apply)
   }, [])
 }
-
-function useClock() {
-  const [now, setNow] = useState<Date | null>(null)
-  useEffect(() => {
-    setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
-
-function levelLabel(lvl: string) {
-  if (lvl === "A1") return "А1"
-  if (lvl === "A2") return "А2"
-  return lvl
-}
-// Круглая стрелка ← 79×79 (лаймовая заливка + белая обводка), точно
-// по SVG из макета — используется в carousel учителей и в модалке.
-
-const AVATAR_PALETTE = [
-  "#b63f37",
-  "#8f5a2b",
-  "#5e6b3a",
-  "#3d5566",
-  "#7a3a54",
-  "#b58f2a",
-]
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2)
-  return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "?"
-}
-function paletteFor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
-}
 function Avatar({
   name,
   src,
@@ -145,15 +106,6 @@ function Avatar({
     />
   )
 }
-
-function pluralize(n: number, one: string, few: string, many: string) {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
-  return many
-}
-
 interface AdminRawDashboardProps {
   adminUserId?: string
   teachers?: Array<{ id: string; name: string; avatar: string | null
@@ -236,7 +188,7 @@ export default function AdminRawDashboard({
   const [libraryVersion, setLibraryVersion] = useState(0)
   const [libraryUploading, setLibraryUploading] = useState(false)
 
-  // Папки Библиотеки (миграция 20260905100000). Верхний уровень = список папок,
+  // Папки Библиотеки. Верхний уровень = список папок,
   // клик по папке → activeFolderId → показываем файлы этой папки.
   const [libraryFolders, setLibraryFolders] = useState<FolderItem[]>([])
   const [libraryFolderId, setLibraryFolderId] = useState<string | null>(null)
@@ -363,7 +315,6 @@ export default function AdminRawDashboard({
     }
   }
 
-  // Refetch folders when library modal opens or something changed.
   useEffect(() => {
     if (!libraryOpen) return
     let cancelled = false
@@ -377,7 +328,6 @@ export default function AdminRawDashboard({
     return () => { cancelled = true }
   }, [libraryOpen, libraryVersion])
 
-  // Refetch files INSIDE the currently-open folder.
   useEffect(() => {
     if (!libraryOpen || !libraryFolderId) return
     let cancelled = false
@@ -618,7 +568,7 @@ export default function AdminRawDashboard({
         text: [it.text], options: it.options, chosen: it.chosen, correct: it.correct,
       }))
     }
-    // Теста нет — вопросов не показываем (раньше подставлялись демо-вопросы, что вводило в заблуждение)
+    // Теста нет — вопросов не показываем.
     return []
   }, [expandedApp])
   const qTotalPages = Math.max(1, Math.ceil(questions.length / Q_PER_PAGE_ADMIN))
@@ -643,8 +593,6 @@ export default function AdminRawDashboard({
     return () => document.removeEventListener("mousedown", onDoc)
   }, [sortOpen])
 
-  // Render schedule from real lessons — увеличили окно до 10 и добавили
-  // имена учителя+ученика чтобы админ сразу видел кто с кем.
   // Все ближайшие уроки и события (для полного календаря); в панели — 3 ближайших по дате:
   // прошедший урок уходит, на его место поднимается следующий.
   const allScheduleView = (upcomingLessons ?? []).map((l) => {
@@ -686,7 +634,7 @@ export default function AdminRawDashboard({
                         {/* карандаш — экспорт Figma 4027:221 (Group 193), лаймовый круг 44 задаётся стилем */}
                         <img src="/dashboard/ic-edit-pencil.svg" alt="" aria-hidden width={24.44} height={24.42} />
                       </button>
-                      {/* «начать звонок» убрана по просьбе заказчика (2026-09-09): админ не участвует в звонках */}
+                      {/* «начать звонок» убрана по просьбе заказчика: админ не участвует в звонках */}
                     </div>
                   )
   }
@@ -707,7 +655,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
 
-      {/* ================== HERO: nav + dark card holding SCHEDULE ================== */}
+      {/* HERO: nav + dark card holding SCHEDULE */}
       <div className="ad-hero">
         <nav className="ad-nav">
           <Link href="/admin" className="ad-brand" aria-label="Raw English">
@@ -758,7 +706,7 @@ export default function AdminRawDashboard({
         </section>
       </div>
 
-      {/* ================== HOMEWORK & LIBRARY ================== */}
+      {/* HOMEWORK & LIBRARY */}
       <section id="library" className="ad-section">
         <div className="ad-badge-wrap">
           <span className="ad-badge">
@@ -774,8 +722,7 @@ export default function AdminRawDashboard({
         />
       </section>
 
-      {/* ================== CHATS ==================
-          Верстка 1:1 как у учителя — переиспользуем .tr-chats-* / .tr-chat-row-*.
+      {/* Верстка 1:1 как у учителя — переиспользуем .tr-chats-* / .tr-chat-row-*.
           Обёрнуто в <div className="tr">, чтобы правила из raw-teacher.css
           применились. Групповые чаты рендерим тоже (админ входит в них как обычный
           участник). Кнопка «Создать группу» — под списком. */}
@@ -911,7 +858,7 @@ export default function AdminRawDashboard({
       </section>
       </div>
 
-      {/* ================== TEACHERS (Figma 2208-62 / 2208-1406 / 2208-1408) ================== */}
+      {/* TEACHERS (Figma 2208-62 / 2208-1406 / 2208-1408) */}
       <section id="teachers" className="ad-section">
         <div className="ad-badge-wrap">
           <span className="ad-badge">
@@ -981,7 +928,7 @@ export default function AdminRawDashboard({
         </div>
       </section>
 
-      {/* ================== STUDENTS (dark bg) ================== */}
+      {/* STUDENTS (dark bg) */}
       {/* Figma 4054:293 «Список учеников» (админ): фрейм 1441×1137 на y=4600, фон как у шапки;
           плашка 554×83 на 75, карточка 1228×815 на 222, ряды 539×139 (2 колонки), трек 7×495, «Создать группу» 357×68 на 919.
           Разметка и стили — как у учителя (4020:217), в .tr для raw-teacher.css. */}
@@ -1060,7 +1007,7 @@ export default function AdminRawDashboard({
       </section>
       </div>
 
-      {/* ================== INCOMING APPLICATIONS (UI 1:1 как у учителя) ================== */}
+      {/* INCOMING APPLICATIONS (UI 1:1 как у учителя) */}
       {/* Оборачиваем в .tr чтобы применились teacher CSS (.tr-section, .tr-badge-wrap,
           .tr-sub, .tr-apps, .tr-app*). Без .tr-обёртки .tr-*  селекторы не сработают. */}
       <div className="tr">
@@ -1246,7 +1193,6 @@ export default function AdminRawDashboard({
       </section>
       </div>
 
-      {/* ================== FOOTER ================== */}
       <SiteFooter variant="admin" />
 
       {groupChat && adminUserId && (

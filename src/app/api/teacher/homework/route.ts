@@ -41,9 +41,6 @@ const postSchema = z.object({
   attachments: z.array(attachmentSchema).max(20).default([]),
 })
 
-// ---------------------------------------------------------------
-// Derive UI-facing status given DB status + due date
-// ---------------------------------------------------------------
 function deriveUiStatus(row: any): 'submitted' | 'reviewed' | 'overdue' | 'assigned' {
   if (row.status === 'submitted') return 'submitted'
   if (row.status === 'reviewed') return 'reviewed'
@@ -60,9 +57,6 @@ function applyFilter(rows: any[], status: string): any[] {
   return rows.filter((r) => deriveUiStatus(r) === status)
 }
 
-// ---------------------------------------------------------------
-// GET /api/teacher/homework
-// ---------------------------------------------------------------
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -73,7 +67,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    // Verify teacher role
     const { data: profile, error: pErr } = await supabase
       .from('profiles')
       .select('id, role')
@@ -153,20 +146,16 @@ export async function GET(request: NextRequest) {
     }
     if (scoreN > 0) avgScore = Math.round((scoreSum / scoreN) * 10) / 10
 
-    // Apply filter tab
     let filtered = applyFilter(allRows, status)
 
-    // Search by title / student name — title first (fast), then gather student names
+    // Поиск: сначала по title; по имени ученика — после резолва профилей ниже.
     if (q && q.length > 0) {
-      // We need student names for search — fetch them below, but title match first
       const needle = q.toLowerCase()
       filtered = filtered.filter((r) =>
         (r.title || '').toLowerCase().includes(needle)
       )
-      // Full student-name search will be applied after we resolve names below.
     }
 
-    // Sort
     switch (sort) {
       case 'due_soon':
         filtered.sort(
@@ -198,7 +187,6 @@ export async function GET(request: NextRequest) {
         break
     }
 
-    // Trim
     const limited = filtered.slice(0, limit)
 
     // Resolve student profiles (name + avatar + level) in one batch
@@ -269,10 +257,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Secondary filter: student-name match if q provided and title didn't match
+    // Добавляем строки, совпавшие только по имени ученика (из полного набора).
     if (q && q.length > 0) {
-      // Already filtered by title; now additionally include rows where student_name matches.
-      // Re-run from the full set to catch student-name-only matches.
       const needle = q.toLowerCase()
       const byTitleIds = new Set(enriched.map((r) => r.id))
       const moreByName = applyFilter(allRows, status)
@@ -338,10 +324,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ---------------------------------------------------------------
-// POST /api/teacher/homework — create
-// body: { student_id, title, description?, due_date, lesson_id?, attachments? }
-// ---------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()

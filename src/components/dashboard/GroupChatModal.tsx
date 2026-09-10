@@ -187,8 +187,8 @@ export default function GroupChatModal({
           if (row.attachment_url) {
             fetchGroupMessages(groupId).then((rows) => {
               setMessages(rows.map(toUi))
-              markGroupRead(groupId).catch(() => {})
-            }).catch(() => {})
+              markGroupRead(groupId).catch((e) => console.warn("[dashboard/GroupChatModal]", e))
+            }).catch((e) => console.warn("[dashboard/GroupChatModal]", e))
             return
           }
           setMessages((prev) => {
@@ -206,7 +206,7 @@ export default function GroupChatModal({
               },
             ]
           })
-          markGroupRead(groupId).catch(() => {})
+          markGroupRead(groupId).catch((e) => console.warn("[dashboard/GroupChatModal]", e))
         },
       )
       .subscribe((status, err) => {
@@ -215,7 +215,7 @@ export default function GroupChatModal({
         if (status === "SUBSCRIBED") {
           fetchGroupMessages(groupId)
             .then((rows) => setMessages(rows.map(toUi)))
-            .catch(() => {})
+            .catch((e) => console.warn("[dashboard/GroupChatModal]", e))
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           console.warn("[group-chat] realtime status:", status, err ?? "")
         }

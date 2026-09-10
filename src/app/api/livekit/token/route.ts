@@ -1,7 +1,4 @@
-// POST /api/livekit/token  body: { lessonId: uuid }
-// Эксперимент-only endpoint для теста LiveKit на ветке livekit-experiment.
-// Возвращает { token, url, room, isModerator }.
-// Параллельно живёт с /api/jitsi/token — не заменяет.
+// POST /api/livekit/token  body: { lessonId: uuid } → { token, url, room, isModerator }
 
 import { NextRequest, NextResponse } from "next/server"
 import * as Sentry from "@sentry/nextjs"
@@ -41,8 +38,7 @@ export async function POST(req: NextRequest) {
   })
   if (limited) return limited
 
-  // Статус и временное окно — как у /api/jitsi/token: отменённый/завершённый
-  // урок не пускаем, до окна — 425, после — 410.
+  // Отменённый/завершённый урок не пускаем, до окна — 425, после — 410.
   const lessonStatus = gate.lesson.status ?? ""
   if (lessonStatus === "cancelled") {
     return NextResponse.json({ error: "Урок отменён" }, { status: 409 })

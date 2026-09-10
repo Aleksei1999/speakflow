@@ -1,9 +1,4 @@
-// ---------------------------------------------------------------------------
-// Server-side locale helpers. Use these inside server components, server
-// actions, and route handlers when you need to know the active UI locale
-// outside of next-intl's `getRequestConfig` (e.g., to pick a localised
-// email template or to pass `locale` to formatLessonTime).
-// ---------------------------------------------------------------------------
+// Server-side локаль вне next-intl getRequestConfig (email-шаблоны, formatLessonTime).
 import 'server-only'
 import { cookies } from 'next/headers'
 

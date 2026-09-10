@@ -144,9 +144,9 @@ export default function LessonVideoRoom({
   const toggleFullscreen = () => {
     if (typeof document === "undefined") return
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {})
+      document.exitFullscreen().catch((e) => console.warn("[lesson/LessonVideoRoom]", e))
     } else {
-      document.documentElement.requestFullscreen().catch(() => {})
+      document.documentElement.requestFullscreen().catch((e) => console.warn("[lesson/LessonVideoRoom]", e))
     }
   }
 
@@ -195,7 +195,7 @@ export default function LessonVideoRoom({
               type="button"
               className="lvr-winbtn"
               aria-label="Свернуть"
-              onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }}
+              onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch((e) => console.warn("[lesson/LessonVideoRoom]", e)) }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/lesson/icons/win-82.svg" alt="" aria-hidden />

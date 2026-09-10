@@ -4,6 +4,7 @@
 // и в lesson-actions.ts, и в любых будущих teacher server-actions.
 // ---------------------------------------------------------------------------
 
+import { createAdminClient } from "@/lib/supabase/admin"
 import 'server-only'
 
 import { createClient } from '@/lib/supabase/server'
@@ -46,4 +47,11 @@ export async function tryGetTeacher(): Promise<TeacherAuth | null> {
   } catch {
     return null
   }
+}
+
+/** teacher_profiles.id по auth user id (через service role). */
+export async function resolveTeacherProfileId(userId: string): Promise<string | null> {
+  const admin = createAdminClient() as unknown as { from: (t: string) => any }
+  const { data } = await admin.from("teacher_profiles").select("id").eq("user_id", userId).maybeSingle()
+  return (data as { id: string } | null)?.id ?? null
 }

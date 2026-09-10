@@ -1,15 +1,9 @@
 "use client"
 
 /**
- * LiveKit Stage + bottom-bar controls. Используется внутри `lesson-room-client.tsx`
- * как замена Jitsi iframe + .vc кнопок, когда NEXT_PUBLIC_VIDEO_PROVIDER=livekit.
- *
- * Сохраняем визуальный язык .vm/.vc — те же CSS-классы (`vm`, `vc`, `cb`,
- * `live-badge`, `quality-badge`), чтобы внешний layout (header, stats,
- * sidebar) остался без изменений.
- *
- * Recording-pipeline (useLessonRecorder) и two-tab guard живут в parent —
- * recorder работает через свой getUserMedia и не зависит от LiveKit.
+ * LiveKit Stage + bottom-bar controls внутри `lesson-room-client.tsx`. Использует
+ * те же CSS-классы (`vm`, `vc`, `cb`, `live-badge`, `quality-badge`), чтобы внешний
+ * layout не менялся. Recorder (useLessonRecorder) живёт в parent и от LiveKit не зависит.
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -44,7 +38,7 @@ interface Props {
   onFullscreen?: () => void
   fullscreenSupported: boolean
   onEnd: () => void
-  // Сообщаем parent'у о связи (для quality-badge — единая семантика с Jitsi).
+  // Сообщаем parent'у о связи (для quality-badge).
   onQuality?: (q: "good" | "fair" | "poor" | "lost" | "unknown") => void
   // hangup извне (auto-hangup по closeAtMs). Parent инкрементит счётчик.
   hangupSignal?: number
@@ -225,7 +219,7 @@ export function LiveKitLessonStage({
       onError={(e) => {
         setError(e?.message ?? "LiveKit error")
         // Room unmount'ится через `if (error) return` ниже — SDK сам сделает
-        // disconnect и cleanup track'ов при unmount LiveKitRoom (см. #4 аудита).
+        // disconnect и cleanup track'ов при unmount LiveKitRoom.
         Sentry.captureException(e, {
           tags: { provider: "livekit", lesson_id: lessonId },
         })
@@ -310,8 +304,7 @@ function StageInner({
     }
   }, [hangupSignal, room])
 
-  // Маппим LiveKit ConnectionQuality → наши категории и пробрасываем в parent
-  // для рендера .quality-badge той же семантикой что Jitsi.
+  // Маппим LiveKit ConnectionQuality → наши категории для .quality-badge в parent.
   // Явно передаём localParticipant — без него hook ищет ParticipantContext
   // и валит компонент с 'No participant provided'.
   const { localParticipant } = useLocalParticipant()
@@ -406,7 +399,7 @@ function Stage() {
     )
   }
 
-  // Обычная tile-сетка. До 10 участников (клубы/лекции).
+  // Обычная tile-сетка. До 10 участников (лекции).
   const count = Math.min(10, Math.max(1, cameraTiles.length))
   return (
     <div className="lk-stage-grid" data-count={count}>
@@ -457,9 +450,9 @@ function ScreenTile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
 
   const toggle = () => {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {})
+      document.exitFullscreen().catch((e) => console.warn("[lesson/livekit-stage]", e))
     } else {
-      ref.current?.requestFullscreen().catch(() => {})
+      ref.current?.requestFullscreen().catch((e) => console.warn("[lesson/livekit-stage]", e))
     }
   }
 

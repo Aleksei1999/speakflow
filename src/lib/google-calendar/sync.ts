@@ -143,7 +143,7 @@ async function syncTeacherFromGoogle(teacherUserId: string): Promise<TeacherSync
     }
   }
 
-  await markSynced(teacherUserId).catch(() => {})
+  await markSynced(teacherUserId).catch((e) => console.warn("[google-calendar/sync]", e))
   return result
 }
 

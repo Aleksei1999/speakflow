@@ -49,13 +49,12 @@ export async function GET() {
       notification_prefs: Record<string, any> | null
       ui_prefs: Record<string, any> | null
       profile_visibility: Record<string, any> | null
-      subscription_tier: string | null; subscription_until: string | null
       telegram_chat_id: number | null; telegram_username: string | null
     }
     const { data, error } = (await supabase
       .from('profiles')
       .select(
-        'id, email, first_name, last_name, full_name, avatar_url, phone, timezone, city, language, notification_prefs, ui_prefs, profile_visibility, subscription_tier, subscription_until, telegram_chat_id, telegram_username'
+        'id, email, first_name, last_name, full_name, avatar_url, phone, timezone, city, language, notification_prefs, ui_prefs, profile_visibility, telegram_chat_id, telegram_username'
       )
       .eq('id', user.id)
       .maybeSingle()) as { data: SettingsRow | null; error: any }
@@ -89,10 +88,6 @@ export async function GET() {
       notifications: { ...DEFAULT_NOTIFICATIONS, ...(data.notification_prefs ?? {}) },
       ui: { ...DEFAULT_UI, ...(data.ui_prefs ?? {}) },
       visibility: { ...DEFAULT_VISIBILITY, ...(data.profile_visibility ?? {}) },
-      subscription: {
-        tier: data.subscription_tier ?? 'free',
-        until: data.subscription_until,
-      },
       connected,
     })
   } catch (err) {

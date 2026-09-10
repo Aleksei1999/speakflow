@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Auth
     const {
       data: { user },
       error: authError,
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
     })
     if (limited) return limited
 
-    // Проверяем роль текущего пользователя — должен быть teacher
     const { data: currentProfile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -92,7 +90,6 @@ export async function POST(request: NextRequest) {
 
     const teacherProfileId = teacherProfile.id
 
-    // Ученик не может быть самим учителем
     if (studentId === user.id) {
       return NextResponse.json(
         { error: 'Нельзя назначить урок самому себе' },
@@ -100,7 +97,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, что studentId — существующий пользователь с ролью student
     const { data: studentProfile, error: studentError } = await supabase
       .from('profiles')
       .select('id, role')
@@ -124,7 +120,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Это не ваш ученик' }, { status: 403 })
     }
 
-    // Время: в будущем и не более +30 дней
     const scheduledDate = new Date(scheduledAt)
     if (isNaN(scheduledDate.getTime())) {
       return NextResponse.json(
@@ -147,7 +142,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Длительность: 25 / 50 / 60 / 90 минут.
     if (![25, 50, 60, 90].includes(durationMinutes)) {
       return NextResponse.json(
         { error: 'Длительность должна быть 25, 50, 60 или 90 минут' },
@@ -156,7 +150,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка доступности слота (p_teacher_id = teacher_profiles.id)
-    // FIXME(types): rpc generic не резолвится с минимальной Database
     const { data: isAvailable, error: slotError } = await (supabase.rpc as any)(
       'is_slot_available',
       {
@@ -208,7 +201,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Стоимость — рассчитанная выше price; списывается с баланса ученика при завершении.
-    // FIXME(types): Postgrest InsertBuilder инференсится в never
     type CreatedLessonRow = {
       id: string
       price: number
@@ -253,22 +245,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ошибка создания урока' }, { status: 500 })
     }
 
-    // Имя комнаты Jitsi по DB-сгенерированному id
+    // Имя комнаты по DB-сгенерированному id урока.
     const jitsiRoomName = `speakflow-${lesson.id}`
-    // FIXME(types): Postgrest UpdateBuilder инференсится в never
     await (createAdminClient().from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
       .eq('id', lesson.id)
 
-    void notifyLessonBooked({ lessonId: lesson.id }).catch(() => {})
+    void notifyLessonBooked({ lessonId: lesson.id }).catch((e) => console.warn("[booking/teacher-create]", e))
 
-    // Teacher's cached «Мои ученики» list is derived from lessons — invalidate.
-    // user.id is the teacher's auth user_id (we resolved teacher_profiles via
-    // .eq('user_id', user.id) at the top).
+    // user.id — auth user_id учителя (теги кешей per-user).
     invalidateTeacherStudents(user.id)
-    // Student dashboard snapshot включает stats + upcoming_lessons.
     invalidateStudentDashboard(studentId)
-    // Teacher dashboard RPC snapshot: today/upcoming/week/month counters.
     invalidateTeacherDashboard(user.id)
 
     // Business-level audit: учитель назначил урок ученику.

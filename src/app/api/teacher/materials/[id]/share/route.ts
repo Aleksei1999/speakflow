@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { invalidateStudentMaterials } from '@/lib/cache/invalidate'
+import { resolveTeacherProfileId } from '@/lib/teacher/require'
 
 /**
  * Collapse share targets (student / homework / group) to the set of student
@@ -59,16 +60,6 @@ const postSchema = z
 const deleteSchema = z.object({
   share_ids: z.array(z.string().uuid()).min(1).max(500),
 })
-
-async function resolveTeacherProfileId(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from('teacher_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data?.id ?? null
-}
-
 async function assertMaterialOwnership(
   supabase: any,
   materialId: string,
@@ -153,7 +144,7 @@ export async function GET(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },
@@ -200,7 +191,7 @@ export async function POST(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },
@@ -351,7 +342,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },

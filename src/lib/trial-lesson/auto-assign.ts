@@ -241,7 +241,7 @@ export async function autoAssignTrial(args: {
     preferredSlot: args.preferredSlot,
     teacherUserId,
     status,
-  }).catch(() => {})
+  }).catch((e) => console.warn("[trial-lesson/auto-assign]", e))
 
   return {
     requestId,
@@ -323,7 +323,7 @@ async function notifyAdmins(args: {
         chatId: a.telegram_chat_id as number,
         text: adminText,
         parseMode: "HTML",
-      }).catch(() => {})
+      }).catch((e) => console.warn("[trial-lesson/auto-assign]", e))
     )
   }
 
@@ -343,7 +343,7 @@ async function notifyAdmins(args: {
         chatId: teacherRow.data.telegram_chat_id as number,
         text: teacherText,
         parseMode: "HTML",
-      }).catch(() => {})
+      }).catch((e) => console.warn("[trial-lesson/auto-assign]", e))
     )
   }
 

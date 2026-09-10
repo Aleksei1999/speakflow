@@ -1,15 +1,6 @@
-// ---------------------------------------------------------------------------
-// next-intl request config — runs on every server-rendered route.
-//
-// We DON'T use locale URL prefixing — locale comes from the cookie
-// `rwen_locale` (set by the settings page when the user changes
-// language, or by /api/auth/callback after login from profiles.language).
-//
-// On the server we never directly read profile.language inside the
-// next-intl request config (cookies() is the only stable per-request
-// signal accessible from getRequestConfig). The settings PATCH writes
-// both the cookie AND profiles.language → they stay in sync.
-// ---------------------------------------------------------------------------
+// next-intl request config. Локаль — только из cookie `rwen_locale` (cookies() —
+// единственный стабильный per-request сигнал в getRequestConfig); settings PATCH
+// и /api/auth/callback пишут и cookie, и profiles.language, чтобы они не расходились.
 import { getRequestConfig } from 'next-intl/server'
 import { cookies } from 'next/headers'
 

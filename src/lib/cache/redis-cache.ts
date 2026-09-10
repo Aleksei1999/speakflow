@@ -2,37 +2,7 @@
 // переживает deploy и общий для всех регионов. Только для статичных
 // справочников, per-user данные сюда не кладём. Fail-open: Redis недоступен → loader.
 import "server-only"
-import { Redis } from "@upstash/redis"
-
-let _redis: Redis | null = null
-let _initFailed = false
-
-function getRedis(): Redis | null {
-  if (_redis) return _redis
-  if (_initFailed) return null
-  // Vercel marketplace prefix — KV_REST_*; standalone Upstash — UPSTASH_REDIS_*.
-  // Поддерживаем оба, чтобы тот же код жил локально и в проде.
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN
-  if (!url || !token) {
-    _initFailed = true
-    return null
-  }
-  try {
-    _redis = new Redis({ url, token })
-    return _redis
-  } catch (e) {
-    console.warn(
-      "[redis-cache] failed to init Upstash Redis:",
-      (e as Error)?.message
-    )
-    _initFailed = true
-    return null
-  }
-}
-
+import { getRedis } from "@/lib/redis"
 // Глобальный префикс — изолирует от @upstash/ratelimit и других
 // клиентов, которые могут писать в тот же физический Redis.
 const KEY_PREFIX = "cache:speakflow:"

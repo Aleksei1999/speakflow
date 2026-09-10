@@ -96,7 +96,7 @@ export async function notifyLessonBooked(args: {
     date,
     time,
     duration: lesson.duration_minutes ?? 50,
-  }).catch(() => {})
+  }).catch((e) => console.warn("[notifications/booking]", e))
 
   if (teacherUserId) {
     void sendNotification(teacherUserId, "booking_confirmation", {
@@ -105,7 +105,7 @@ export async function notifyLessonBooked(args: {
       date,
       time,
       duration: lesson.duration_minutes ?? 50,
-    }).catch(() => {})
+    }).catch((e) => console.warn("[notifications/booking]", e))
   }
 }
 
@@ -171,7 +171,7 @@ export async function notifyLessonCancelled(args: {
       time,
       duration: lesson.duration_minutes ?? 50,
       reason: args.reason ?? lesson.cancellation_reason ?? null,
-    }).catch(() => {})
+    }).catch((e) => console.warn("[notifications/booking]", e))
   }
 }
 
@@ -235,6 +235,6 @@ export async function notifyLessonRescheduled(args: {
       oldDate,
       oldTime,
       duration: lesson.duration_minutes ?? 50,
-    }).catch(() => {})
+    }).catch((e) => console.warn("[notifications/booking]", e))
   }
 }

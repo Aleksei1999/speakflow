@@ -25,7 +25,7 @@ export default async function StudentNewPage() {
     if (!role) redirect("/login")
   }
   // Новый ученик без уроков и заявок → заявка админу (идемпотентно, fail-soft).
-  if (role === "student") { try { await ensureTrialRequest(user.id) } catch {} }
+  if (role === "student") { try { await ensureTrialRequest(user.id) } catch (e) { console.error("[student] ensureTrialRequest", e) } }
   if (role !== "student") {
     if (role === "teacher" || role === "admin") redirect("/teacher")
     redirect("/login")

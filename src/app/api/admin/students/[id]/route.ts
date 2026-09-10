@@ -4,15 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 
-// ---------------------------------------------------------------
-// GET /api/admin/students/[id]
-// Detailed summary of a single student for the admin drawer.
-//
-// TODO(audit): когда появятся PATCH/DELETE — обернуть logAuditEvent с
-//   category:'admin', action:'student_<op>', target_type:'profiles'.
-//   Сам факт изменения роли/баланса дополнительно ловится generic-триггером
-//   audit_profiles_change → category='data'.
-// ---------------------------------------------------------------
+// GET /api/admin/students/[id] — сводка по ученику для админ-карточки.
+// TODO(audit): при появлении PATCH/DELETE — logAuditEvent(category 'admin', action 'student_<op>').
 
 export const dynamic = "force-dynamic"
 
@@ -151,7 +144,6 @@ export async function GET(
       : student.user_progress
 
     // Заметка учителя об ученике (student_shared_notes) — источник для «Послений комментарий».
-    // Cast: типы Supabase генерятся из миграций старее, чем добавление этой таблицы.
     const bioRes = await (admin as any)
       .from("student_shared_notes")
       .select("content, updated_at, updated_by")

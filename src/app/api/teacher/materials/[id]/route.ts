@@ -8,6 +8,7 @@ import {
   invalidateStudentMaterials,
 } from '@/lib/cache/invalidate'
 import { materialSharedWithTeacherStudent } from '@/lib/materials/access'
+import { resolveTeacherProfileId } from '@/lib/teacher/require'
 
 const BUCKET = 'teacher-materials'
 
@@ -25,16 +26,6 @@ const patchSchema = z
   })
 
 const idSchema = z.string().uuid({ message: 'Некорректный идентификатор' })
-
-async function resolveTeacherProfileId(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from('teacher_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data?.id ?? null
-}
-
 /**
  * Invalidate cached materials lists for every student who could see this
  * material (shares + lesson participants). Best-effort; never throws.
@@ -112,7 +103,7 @@ export async function DELETE(
 
     // Админ удаляет любой материал (ДЗ и библиотека из кабинета админа), учитель — только свой.
     let isAdmin = false
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
       if ((prof as { role?: string } | null)?.role === 'admin') isAdmin = true
@@ -211,7 +202,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },

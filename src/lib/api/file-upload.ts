@@ -1,15 +1,6 @@
-// Безопасность загрузок файлов.
-//
-//   1. preflightSize() — отбиваем 413 ДО request.formData() если
-//      Content-Length превышает лимит. formData() при больших файлах
-//      буферит всё в память — если не отрубить заранее, можем уйти
-//      в OOM.
-//   2. detectMimeFromMagicBytes() — сверяем реальный тип файла с
-//      сигнатурой первых байт. Клиент может выдать любой file.type;
-//      доверяемся только тому что в bytes реально лежит.
-//   3. assertAllowedMime() — whitelist по расширению + magic bytes.
-//   4. verifyFileSafety() — sha256 → VirusTotal lookup. Реджектим
-//      только при подтверждённом malicious-verdict (≥3 AV-detections).
+// Безопасность загрузок: preflightSize (413 до formData(), иначе большой body
+// буферится в память → OOM), MIME по magic bytes + whitelist (file.type клиента
+// не доверяем), VirusTotal hash-lookup (fail-open).
 
 import { createHash } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
@@ -153,9 +144,7 @@ export async function verifyFileType(file: File): Promise<VerifiedFile | NextRes
   return { detectedMime: detected, mimeType: resolved }
 }
 
-// ---------------------------------------------------------------
-// AV scanning (VirusTotal). Hash-based, fail-open.
-// ---------------------------------------------------------------
+// AV scanning (VirusTotal): hash-based, fail-open.
 
 export interface SafetyResult {
   safe: boolean

@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Verify user is authenticated
     const {
       data: { user },
       error: authError,
@@ -52,7 +51,6 @@ export async function POST(request: NextRequest) {
     })
     if (limited) return limited
 
-    // Fetch the lesson
     type LessonRow = {
       id: string
       student_id: string
@@ -104,7 +102,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check lesson is in a cancellable status
     const cancellableStatuses = ['pending_payment', 'booked']
     if (!cancellableStatuses.includes(lesson.status)) {
       return NextResponse.json(
@@ -113,7 +110,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine refund eligibility based on cancellation policy
     const scheduledAt = new Date(lesson.scheduled_at)
     const now = new Date()
     const hoursUntilLesson =
@@ -130,8 +126,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update lesson status to cancelled
-    // FIXME(types): Postgrest UpdateBuilder инференсится в never из-за неполной Database (без Views/Relationships)
     const { error: updateError } = await (supabase.from('lessons') as any)
       .update({
         status: 'cancelled',
@@ -180,11 +174,9 @@ export async function POST(request: NextRequest) {
       lessonId,
       cancelledByUserId: user.id,
       reason: reason || null,
-    }).catch(() => {})
+    }).catch((e) => console.warn("[booking/cancel]", e))
 
-    // Teacher's «Мои ученики» list is derived from lessons → invalidate.
-    // `lesson.teacher_id` references teacher_profiles(id); resolve to the
-    // teacher's auth user_id for the per-user tag.
+    // lesson.teacher_id → teacher_profiles(id); для per-user тегов нужен auth user_id.
     {
       type TeacherUserLookup = { user_id: string }
       const { data: tpRow } = await supabase
@@ -194,16 +186,11 @@ export async function POST(request: NextRequest) {
         .maybeSingle<TeacherUserLookup>()
       if (tpRow?.user_id) {
         invalidateTeacherStudents(tpRow.user_id)
-        // Teacher dashboard RPC snapshot: today/upcoming/week_stats — все
-        // меняются при отмене урока. Передаём auth user_id (не teacher_profile_id).
         invalidateTeacherDashboard(tpRow.user_id)
       }
     }
-    // Student dashboard snapshot включает stats + upcoming_lessons; после
-    // отмены оба меняются.
     invalidateStudentDashboard(lesson.student_id)
 
-    // Prepare notification data (actual sending handled by separate module)
     const notificationData = {
       type: 'lesson_cancelled' as const,
       lessonId,

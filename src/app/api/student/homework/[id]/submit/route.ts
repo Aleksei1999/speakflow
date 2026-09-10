@@ -171,7 +171,7 @@ export async function POST(
             },
           })
           // Best-effort: убираем зловредный файл из Storage.
-          await admin.storage.from(HOMEWORK_BUCKET).remove([path]).catch(() => {})
+          await admin.storage.from(HOMEWORK_BUCKET).remove([path]).catch((e) => console.warn("[student/homework/[id]/submit]", e))
           return NextResponse.json(
             {
               error: "av_detected",

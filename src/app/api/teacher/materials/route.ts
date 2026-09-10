@@ -355,7 +355,7 @@ export async function POST(request: NextRequest) {
       })
       // Чистим зловредный файл из bucket — он там оказался через
       // direct-upload и БД-записи у него ещё нет.
-      await admin.storage.from(BUCKET).remove([storage_path]).catch(() => {})
+      await admin.storage.from(BUCKET).remove([storage_path]).catch((e) => console.warn("[teacher/materials]", e))
       return NextResponse.json(
         {
           error: 'av_detected',

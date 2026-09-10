@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { resolveTeacherProfileId } from '@/lib/teacher/require'
 
 const idSchema = z.string().uuid({ message: 'Некорректный идентификатор группы' })
 
@@ -13,16 +14,6 @@ const patchSchema = z
   .refine((obj) => Object.keys(obj).length > 0, {
     message: 'Нет полей для обновления',
   })
-
-async function resolveTeacherProfileId(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from('teacher_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data?.id ?? null
-}
-
 // ---------------------------------------------------------------
 // GET /api/teacher/groups/[id] — detail + members
 // ---------------------------------------------------------------
@@ -45,7 +36,7 @@ export async function GET(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },
@@ -145,7 +136,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },
@@ -212,7 +203,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const teacherProfileId = await resolveTeacherProfileId(supabase, user.id)
+    const teacherProfileId = await resolveTeacherProfileId(user.id)
     if (!teacherProfileId) {
       return NextResponse.json(
         { error: 'Профиль преподавателя не найден' },

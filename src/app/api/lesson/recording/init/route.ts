@@ -43,7 +43,6 @@ export async function POST(req: NextRequest) {
 
   const admin = gate.admin
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   type RecordingRow = { id: string; storage_prefix: string; status: 'recording' | 'finalized' | 'failed'; started_at: string }
   // UNIQUE lesson_id → 0 или 1 row.
   const { data: existing } = (await (admin as any)
@@ -90,7 +89,6 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.warn("[recording/init] cleanup failed-row chunks failed:", e)
     }
-    // FIXME(types): 'lesson_recordings' table missing in Database type
     await (admin as any)
       .from("lesson_recordings")
       .delete()
@@ -102,7 +100,6 @@ export async function POST(req: NextRequest) {
   const recordingId = crypto.randomUUID()
   const storagePrefix = `lessons/${gate.lesson.id}/${recordingId}/`
 
-  // FIXME(types): 'lesson_recordings' table missing in Database type
   const { data: row, error } = (await (admin as any)
     .from("lesson_recordings")
     .insert({

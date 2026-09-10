@@ -116,7 +116,7 @@ export async function deleteFolders(ids: string[]): Promise<void> {
     .in("folder_id", ids)
   const paths = ((mats ?? []) as any[]).map((m) => m.storage_path).filter(Boolean) as string[]
   if (paths.length) {
-    await admin.storage.from("teacher-materials").remove(paths).catch(() => {})
+    await admin.storage.from("teacher-materials").remove(paths).catch((e: unknown) => console.warn("[materials/folders]", e))
   }
   if (mats && mats.length) {
     await admin.from("material_shares").delete().in("material_id", (mats as any[]).map((m) => m.id))

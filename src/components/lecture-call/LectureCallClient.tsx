@@ -34,8 +34,8 @@ export default function LectureCallClient({ lectureId, title }: Props) {
 
   const toggleFullscreen = () => {
     if (typeof document === "undefined") return
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
-    else document.documentElement.requestFullscreen().catch(() => {})
+    if (document.fullscreenElement) document.exitFullscreen().catch((e) => console.warn("[lecture-call/LectureCallClient]", e))
+    else document.documentElement.requestFullscreen().catch((e) => console.warn("[lecture-call/LectureCallClient]", e))
   }
 
   const tokenBody = useMemo(() => ({ lectureId }), [lectureId])
@@ -54,7 +54,7 @@ export default function LectureCallClient({ lectureId, title }: Props) {
               type="button"
               className="lvr-winbtn"
               aria-label="Свернуть"
-              onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }}
+              onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch((e) => console.warn("[lecture-call/LectureCallClient]", e)) }}
               title={`Лекция · ${title}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

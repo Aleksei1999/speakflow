@@ -1,20 +1,6 @@
-// ---------------------------------------------------------------------------
-// signed-url.ts — единая точка получения подписанных URL'ов на Storage.
-//
-// Зачем:
-//   • TTL по умолчанию = 1 час. Раньше в коде встречались 60-300s (chunk
-//     upload — другой API), 3600s (materials) и **7 ДНЕЙ** (homework client) —
-//     долгие TTL — это утечка: ссылка валидна и после revoke share/файла.
-//   • Hard min = 60s — короче нет смысла (race с CDN), длиннее = не норм.
-//   • Hard max = 3600s — выше нельзя для consumer-flow; если очень нужно
-//     дольше (download для admin/cron) — это отдельный admin-helper.
-//   • При желании можно передать `download: true` чтобы заставить браузер
-//     сохранять файл с правильным именем вместо inline-preview.
-//
-// Использование:
-//   import { createSignedUrl } from '@/lib/supabase/signed-url'
-//   const { signedUrl, error } = await createSignedUrl(supabase, 'teacher-materials', path)
-// ---------------------------------------------------------------------------
+// Единая точка получения подписанных URL'ов на Storage. TTL clamped в [60, 3600]:
+// длинные TTL — утечка (ссылка живёт после revoke share/файла), короче минуты —
+// race с CDN; если нужно дольше часа (admin/cron) — отдельный admin-helper.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 

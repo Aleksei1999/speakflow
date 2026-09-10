@@ -1,29 +1,14 @@
-// ============================================================
-// Student dashboard — single-RPC snapshot loader
-// ------------------------------------------------------------
-// Раньше (dashboard)/student/page.tsx делал ~11 параллельных
-// Supabase round-trip'ов + 3 follow-up'а (trial teachers /
-// referrals / embeds). Это RPC `public.get_student_dashboard`
-// (миграция 073) собирает всё за один SQL и возвращает JSONB.
-//
-// SECURITY DEFINER + явная проверка auth.uid() внутри функции,
-// поэтому здесь безопасно использовать `createAdminClient` —
-// RLS обходится сознательно: аутентификация уже прошла на
-// уровне server-component, а RPC сам валидирует caller'а.
-//
-// Кеш — per-user `unstable_cache` с тегом `student-dashboard-<uid>`.
-// TTL=30s совпадает с прежним `revalidate=30` на странице.
-// ============================================================
+// Снапшот student-дашборда одним RPC `public.get_student_dashboard`
+// (SECURITY DEFINER с проверкой auth.uid() — поэтому admin client безопасен;
+// caller аутентифицирует заранее) + per-user `unstable_cache` с тегом `student-dashboard-<uid>`.
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// ---- Tag helper ---------------------------------------------
 export const studentDashboardTag = (userId: string): string =>
   `student-dashboard-${userId}`
 
-// ---- Types --------------------------------------------------
 export type StudentDashboardProfile = {
   id: string
   full_name: string | null
@@ -138,7 +123,6 @@ export type StudentDashboard = {
   generated_at: string
 }
 
-// ---- Uncached impl ------------------------------------------
 async function loadStudentDashboardImpl(
   userId: string
 ): Promise<StudentDashboard> {
@@ -180,7 +164,6 @@ async function loadStudentDashboardImpl(
   }
 }
 
-// ---- Cached wrapper ------------------------------------------
 export function getCachedStudentDashboard(
   userId: string
 ): Promise<StudentDashboard> {
