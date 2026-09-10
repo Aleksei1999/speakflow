@@ -23,6 +23,8 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit/log'
+import { deleteEventFromGoogle } from '@/lib/google-calendar/client'
+import { notifyLessonCancelled as notifyLessonCancelledBoth } from '@/lib/notifications/booking'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 import {
   invalidateStudentDashboard,
@@ -203,17 +205,32 @@ export async function DELETE(
       )
     }
 
-    // ---- cache invalidation ----
+    // ---- cache invalidation + Google Calendar (fail-soft) ----
     invalidateStudentDashboard(lesson.student_id)
     {
-      const { data: tRow } = await supabase
+      const adminDb = createAdminClient() as any
+      const { data: tRow } = await adminDb
         .from('teacher_profiles')
         .select('user_id')
         .eq('id', lesson.teacher_id)
-        .maybeSingle<{ user_id: string }>()
+        .maybeSingle()
       if (tRow?.user_id) {
         invalidateTeacherDashboard(tRow.user_id)
         invalidateTeacherStudents(tRow.user_id)
+      }
+      const { data: gRow } = await adminDb
+        .from('lessons')
+        .select('google_event_id, student_google_event_id')
+        .eq('id', id)
+        .maybeSingle()
+      if (gRow?.google_event_id && tRow?.user_id) {
+        await deleteEventFromGoogle(tRow.user_id, gRow.google_event_id).catch(() => false)
+      }
+      if (gRow?.student_google_event_id) {
+        await deleteEventFromGoogle(lesson.student_id, gRow.student_google_event_id).catch(() => false)
+      }
+      if (gRow?.google_event_id || gRow?.student_google_event_id) {
+        await adminDb.from('lessons').update({ google_event_id: null, student_google_event_id: null }).eq('id', id)
       }
     }
 
@@ -236,7 +253,8 @@ export async function DELETE(
 
     // Phase-4: нотификация преподу (subscription-events skip'нет
     // самого препода-инициатора и student-only флаг lesson_reminders).
-    void notifyLessonCancelled(createAdminClient(), id, user.id).catch(
+    // Уведомляем ту сторону, которая не отменяла (ученику и/или учителю).
+    void notifyLessonCancelledBoth({ lessonId: id, cancelledByUserId: user.id, reason }).catch(
       (err) => console.error('[lessons/delete] notify failed', err)
     )
 

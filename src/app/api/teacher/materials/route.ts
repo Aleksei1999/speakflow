@@ -134,9 +134,11 @@ export async function GET(request: NextRequest) {
       .select(
         'id, title, description, file_type, mime_type, file_size, level, tags, use_count, storage_path, file_url, lesson_id, is_public, created_at, folder_id'
       )
-      .eq('teacher_id', tp.id)
       .order('created_at', { ascending: false })
-    if (folderFilter) listQ = listQ.eq('folder_id', folderFilter)
+    // Внутри папки библиотеки учитель видит свои файлы + публичные (админские
+    // и других учителей) — библиотека общая. Без папки — только свои.
+    if (folderFilter) listQ = listQ.eq('folder_id', folderFilter).or(`teacher_id.eq.${tp.id},is_public.eq.true`)
+    else listQ = listQ.eq('teacher_id', tp.id)
     const { data: allRows, error } = await listQ
     if (error) {
       console.error('Ошибка загрузки материалов:', error)

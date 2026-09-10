@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server"
 import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
 import { requireLessonParticipant } from "@/lib/api/lesson-auth"
+import { computeLessonAccess } from "@/lib/lesson-access"
+import { LESSON_JOIN_WINDOW } from "@/lib/constants"
 import { createLiveKitToken, getLiveKitConfig } from "@/lib/livekit/token"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 
@@ -31,6 +33,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
+  // Статус и временное окно — как у /api/jitsi/token: отменённый/завершённый
+  // урок не пускаем, до окна — 425, после — 410.
+  const lessonStatus = gate.lesson.status ?? ""
+  if (lessonStatus === "cancelled") {
+    return NextResponse.json({ error: "Урок отменён" }, { status: 409 })
+  }
+  if (lessonStatus !== "booked" && lessonStatus !== "in_progress") {
+    return NextResponse.json({ error: "Урок недоступен для подключения" }, { status: 409 })
+  }
+  const access = computeLessonAccess({
+    scheduledAt: gate.lesson.scheduled_at ?? new Date(0).toISOString(),
+    durationMinutes: gate.lesson.duration_minutes ?? 50,
+    status: lessonStatus,
+  })
+  if (access.status === "waiting") {
+    const minutesUntilJoin = Math.ceil((access.openAtMs - access.nowMs) / 60000)
+    return NextResponse.json(
+      { error: `Комната откроется за ${LESSON_JOIN_WINDOW} мин до старта (через ~${minutesUntilJoin} мин)` },
+      { status: 425 }
+    )
+  }
+  if (access.status === "expired") {
+    return NextResponse.json({ error: "Время урока истекло" }, { status: 410 })
+  }
+  // Первое подключение переводит урок в in_progress — иначе cron mark_missed_lessons
+  // пометит проведённый урок как no_show, а complete_finished_lessons никогда не сработает.
+  if (lessonStatus === "booked") {
+    await gate.admin.from("lessons").update({ status: "in_progress" }).eq("id", gate.lesson.id).eq("status", "booked")
+  }
   const limited = await enforceRateLimitStrict(req, {
     name: "livekit:token",
     keyParts: [gate.user.id, getClientIp(req)],

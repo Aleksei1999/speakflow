@@ -427,7 +427,7 @@ export default function TeacherRawDashboard({
           file_size: file.size,
           mime_type: file.type || "application/octet-stream",
           tags: [],
-          is_public: false,
+          is_public: true, // библиотека общая — видят ученики и админ
           folder_id: libFolderId,
         }),
       })

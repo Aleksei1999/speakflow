@@ -56,7 +56,9 @@ export async function POST(request: NextRequest) {
       .eq('id', teacher_id)
       .maybeSingle()
     if (!tp?.id) return NextResponse.json({ error: 'Преподаватель не найден' }, { status: 400 })
-
+    if (startMs < Date.now() - 60_000) return NextResponse.json({ error: 'Нельзя создать урок в прошлом' }, { status: 400 })
+    const { data: stu } = await admin.from('profiles').select('id, role').eq('id', student_id).maybeSingle()
+    if (!stu?.id || stu.role !== 'student') return NextResponse.json({ error: 'Ученик не найден' }, { status: 400 })
     // Простая проверка занятости: любой урок этого преподавателя в окне [start-1h, start+1h]
     const windowFrom = new Date(startMs - 60 * 60_000).toISOString()
     const windowTo = new Date(startMs + duration * 60_000 + 60 * 60_000).toISOString()
@@ -64,20 +66,35 @@ export async function POST(request: NextRequest) {
       .from('lessons')
       .select('id, scheduled_at, duration_minutes, status')
       .eq('teacher_id', tp.id)
-      .in('status', ['scheduled', 'confirmed', 'booked'])
+      .in('status', ['scheduled', 'confirmed', 'booked', 'in_progress', 'pending_payment'])
       .gte('scheduled_at', windowFrom)
       .lte('scheduled_at', windowTo)
     const endMs = startMs + duration * 60_000
-    for (const r of (busy ?? []) as any[]) {
+    const overlaps = (rows: any[]) => rows.some((r) => {
       const s = Date.parse(r.scheduled_at)
-      if (!Number.isFinite(s)) continue
+      if (!Number.isFinite(s)) return false
       const e = s + (r.duration_minutes || 50) * 60_000
-      if (s < endMs && e > startMs) {
-        return NextResponse.json(
-          { error: 'В это время у преподавателя уже есть урок', code: 'slot_busy' },
-          { status: 409 },
-        )
-      }
+      return s < endMs && e > startMs
+    })
+    if (overlaps((busy ?? []) as any[])) {
+      return NextResponse.json(
+        { error: 'В это время у преподавателя уже есть урок', code: 'slot_busy' },
+        { status: 409 },
+      )
+    }
+    // Занятость ученика (у него может быть урок с другим преподавателем)
+    const { data: stuBusy } = await admin
+      .from('lessons')
+      .select('id, scheduled_at, duration_minutes, status')
+      .eq('student_id', student_id)
+      .in('status', ['scheduled', 'confirmed', 'booked', 'in_progress', 'pending_payment'])
+      .gte('scheduled_at', windowFrom)
+      .lte('scheduled_at', windowTo)
+    if (overlaps((stuBusy ?? []) as any[])) {
+      return NextResponse.json(
+        { error: 'В это время у ученика уже есть урок', code: 'slot_busy_student' },
+        { status: 409 },
+      )
     }
 
     // Приоритет: явно указанная админом цена > hourly_rate учителя > 0
@@ -98,6 +115,9 @@ export async function POST(request: NextRequest) {
       .single()
     if (insErr || !ins?.id) {
       console.error('[admin/lessons][POST] insert', insErr)
+      if (insErr?.code === '23P01') {
+        return NextResponse.json({ error: 'В это время у преподавателя уже есть урок', code: 'slot_busy' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Не удалось создать урок' }, { status: 500 })
     }
 

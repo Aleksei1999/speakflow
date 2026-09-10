@@ -7,6 +7,7 @@ import {
   invalidateTeacherMaterials,
   invalidateStudentMaterials,
 } from '@/lib/cache/invalidate'
+import { materialSharedWithTeacherStudent } from '@/lib/materials/access'
 
 const BUCKET = 'teacher-materials'
 
@@ -123,10 +124,11 @@ export async function DELETE(
       }
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db: any = isAdmin ? createAdminClient() : supabase
+    let db: any = isAdmin ? createAdminClient() : supabase
 
-    // Fetch material + verify ownership
-    const { data: material, error: fetchErr } = await db
+    // Fetch material + verify ownership. Читаем через service-role: RLS учителя
+    // не видит файл ученика/админа, а нам нужно проверить share-доступ ниже.
+    const { data: material, error: fetchErr } = await (createAdminClient() as any)
       .from('materials')
       .select('id, teacher_id, storage_path, lesson_id')
       .eq('id', id)
@@ -135,8 +137,16 @@ export async function DELETE(
       console.error('Ошибка чтения материала:', fetchErr)
       return NextResponse.json({ error: 'Ошибка базы данных' }, { status: 500 })
     }
-    if (!material || (!isAdmin && material.teacher_id !== teacherProfileId)) {
+    if (!material) {
       return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
+    }
+    // Учитель может удалить чужой по teacher_id файл, если он расшарен его
+    // ученику (домашка от админа / работа ученика). Публичные файлы админа — нет.
+    if (!isAdmin && material.teacher_id !== teacherProfileId) {
+      const adminDb = createAdminClient() as any
+      const allowed = await materialSharedWithTeacherStudent(adminDb, teacherProfileId as string, id)
+      if (!allowed) return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
+      db = adminDb
     }
 
     // Snapshot the set of affected students BEFORE deleting the row —
@@ -158,8 +168,7 @@ export async function DELETE(
       }
     }
 
-    let delQuery = db.from('materials').delete().eq('id', id)
-    if (!isAdmin) delQuery = delQuery.eq('teacher_id', teacherProfileId)
+    const delQuery = db.from('materials').delete().eq('id', id)
     const { error: delErr } = await delQuery
     if (delErr) {
       console.error('Ошибка удаления материала:', delErr)

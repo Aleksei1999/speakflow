@@ -720,17 +720,18 @@ async function logNotification(
   }
 ): Promise<void> {
   try {
-    // FIXME(types): generated Database type for `notifications` is stale —
-    // real table has `data`/`status`/`error_message` (added by later migrations).
-    // Runtime payload is correct; regenerate types to drop this cast.
-    await supabase.from('notifications').insert({
+    // Живая таблица notifications (005): user_id, type, channel, title, body,
+    // metadata, is_read, sent_at. Полезную нагрузку и статус кладём в metadata —
+    // по metadata->>lesson_id работает идемпотентность напоминаний.
+    const { error } = await supabase.from('notifications').insert({
       user_id: params.userId,
       type: params.type,
       channel: params.channel,
-      data: params.data as unknown as import('@/types/database').Json,
-      status: params.status,
-      error_message: params.errorMessage,
+      title: params.type,
+      body: params.errorMessage ? `${params.status}: ${params.errorMessage}` : params.status,
+      metadata: { ...params.data, status: params.status, error_message: params.errorMessage } as unknown as import('@/types/database').Json,
     } as never)
+    if (error) console.error('[notifications] Ошибка записи лога уведомления:', error.message)
   } catch (err) {
     // Логирование не должно ломать основной флоу.
     console.error('[notifications] Ошибка записи лога уведомления:', err)

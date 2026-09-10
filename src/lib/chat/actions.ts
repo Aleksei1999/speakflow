@@ -11,6 +11,8 @@
 import { randomUUID } from 'node:crypto'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { canChat } from './access'
 import { createSignedUrl } from '@/lib/supabase/signed-url'
 import {
   CHAT_ATTACHMENTS_BUCKET,
@@ -65,6 +67,11 @@ async function loadPeerRole(supabase: UntypedSupabase, peerId: string): Promise<
   return data.role as ChatRole
 }
 
+async function assertCanChat(userId: string, role: ChatRole, peerId: string, peerRole: ChatRole): Promise<void> {
+  const ok = await canChat(createAdminClient() as UntypedSupabase, { id: userId, role }, { id: peerId, role: peerRole })
+  if (!ok) throw new Error('Forbidden: вы не можете писать этому пользователю')
+}
+
 function isChatRole(role: unknown): role is ChatRole {
   return role === 'teacher' || role === 'student' || role === 'admin'
 }
@@ -111,10 +118,9 @@ export async function sendMessage({ peerId, text }: SendMessageInput): Promise<C
   if (!peerId) throw new Error('peerId required')
   if (!trimmed) throw new Error('Empty message')
   const { supabase, userId, role } = await requireUser()
-
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
+  await assertCanChat(userId, role, peerId, peerRole)
   const slots = computeSlots({ id: userId, role }, { id: peerId, role: peerRole })
-
   const { data, error } = await (supabase as UntypedSupabase)
     .from('chat_messages')
     .insert({
@@ -147,10 +153,9 @@ export async function uploadAttachment({
   if (!peerId) throw new Error('peerId required')
   if (!file) throw new Error('file required')
   const { supabase, userId, role } = await requireUser()
-
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
+  await assertCanChat(userId, role, peerId, peerRole)
   const slots = computeSlots({ id: userId, role }, { id: peerId, role: peerRole })
-
   // Storage path: {slot_a_id}/{slot_b_id}/{uuid}-{name} — RLS policy пускает,
   // если auth.uid() совпадает с любым из первых двух сегментов пути.
   const safeName = sanitizeFilename(file.name || 'file')

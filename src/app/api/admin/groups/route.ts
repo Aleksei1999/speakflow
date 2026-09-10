@@ -33,8 +33,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Bad body' }, { status: 400 })
     }
     const { name, teacher_id, student_ids } = parsed.data
-
     const admin = createAdminClient() as any
+    const { data: tpRow } = await admin.from('teacher_profiles').select('id').eq('id', teacher_id).maybeSingle()
+    if (!tpRow?.id) return NextResponse.json({ error: 'Преподаватель не найден' }, { status: 400 })
+    const uniqueIds = Array.from(new Set(student_ids))
+    const { data: studs } = await admin.from('profiles').select('id').eq('role', 'student').in('id', uniqueIds)
+    if ((studs ?? []).length !== uniqueIds.length) {
+      return NextResponse.json({ error: 'В группу можно добавлять только учеников' }, { status: 400 })
+    }
     const { data: g, error: insErr } = await admin
       .from('teacher_groups')
       .insert({ teacher_id, name, description: null })
@@ -45,12 +51,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Не удалось создать группу' }, { status: 500 })
     }
 
-    const rows = Array.from(new Set(student_ids)).map((sid) => ({ group_id: g.id, student_id: sid }))
+    const rows = uniqueIds.map((sid) => ({ group_id: g.id, student_id: sid }))
     const { error: memErr } = await admin.from('teacher_group_members').insert(rows)
     if (memErr) {
-      console.warn('[admin/groups] members insert warning', memErr)
+      console.error('[admin/groups] members insert', memErr)
+      await admin.from('teacher_groups').delete().eq('id', g.id)
+      return NextResponse.json({ error: 'Не удалось добавить участников' }, { status: 500 })
     }
-
     return NextResponse.json({ ok: true, id: g.id })
   } catch (e) {
     console.error('[admin/groups][POST]', e)

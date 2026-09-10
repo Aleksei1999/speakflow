@@ -59,11 +59,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, lessons: 0, sent: 0, skipped: 0 })
   }
 
+  // lessons.teacher_id — это teacher_profiles.id, а уведомления шлём по profiles.id.
+  const { data: tps } = await supabase
+    .from('teacher_profiles')
+    .select('id, user_id')
+    .in('id', Array.from(new Set(lessons.map((l: any) => l.teacher_id))))
+  const teacherUserById = new Map<string, string>((tps || []).map((t: any) => [t.id, t.user_id]))
+
   // Pre-fetch profile names once.
   const userIds = new Set<string>()
   for (const l of lessons) {
     userIds.add(l.student_id)
-    userIds.add(l.teacher_id)
+    const tu = teacherUserById.get(l.teacher_id)
+    if (tu) userIds.add(tu)
   }
 
   const { data: profiles } = await supabase
@@ -87,18 +95,18 @@ export async function GET(request: NextRequest) {
     const dateStr = formatLessonDayLong(lesson.scheduled_at)
     const timeStr = formatLessonTime(lesson.scheduled_at)
     const joinUrl = `${appUrl}/lesson/${lesson.id}`
+    const teacherUserId = teacherUserById.get(lesson.teacher_id)
     const studentName = nameById.get(lesson.student_id) || ''
-    const teacherName = nameById.get(lesson.teacher_id) || 'Преподаватель'
-
-    for (const recipientId of [lesson.student_id, lesson.teacher_id]) {
+    const teacherName = (teacherUserId && nameById.get(teacherUserId)) || 'Преподаватель'
+    for (const recipientId of [lesson.student_id, teacherUserId].filter(Boolean) as string[]) {
       // Skip if already logged for this (user, lesson) in the last 6h.
       const { data: already } = await supabase
         .from('notifications')
         .select('id')
         .eq('type', 'lesson_reminder')
         .eq('user_id', recipientId)
-        .filter('data->>lesson_id', 'eq', lesson.id)
-        .gte('created_at', sixHoursAgo)
+        .filter('metadata->>lesson_id', 'eq', lesson.id)
+        .gte('sent_at', sixHoursAgo)
         .limit(1)
 
       if (already && already.length > 0) {

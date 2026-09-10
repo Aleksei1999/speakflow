@@ -35,11 +35,18 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message || "Некорректные данные" }, { status: 400 })
     }
-    const teacherId = parsed.data.teacherId
-
     const [kind, uuid] = id.split(":", 2)
     const admin = createAdminClient()
-
+    // trial_lesson_requests.assigned_teacher_id → teacher_profiles.id, а UI шлёт profiles.id учителя.
+    let teacherId = parsed.data.teacherId
+    {
+      const { data: byId } = await (admin as any).from("teacher_profiles").select("id").eq("id", teacherId).maybeSingle()
+      if (!byId?.id) {
+        const { data: byUser } = await (admin as any).from("teacher_profiles").select("id").eq("user_id", teacherId).maybeSingle()
+        if (!byUser?.id) return NextResponse.json({ error: "Преподаватель не найден" }, { status: 400 })
+        teacherId = byUser.id as string
+      }
+    }
     let data: any = null
     if (kind === "trial") {
       const res = await (admin.from("trial_lesson_requests") as any)

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-
+import { assertAllStudents } from '@/lib/groups/validate'
 const idSchema = z.string().uuid({ message: 'Некорректный идентификатор группы' })
 
 const postSchema = z.object({
@@ -76,6 +76,9 @@ export async function POST(
     }
 
     const unique = Array.from(new Set(parsed.data.student_ids))
+    if (!(await assertAllStudents(unique))) {
+      return NextResponse.json({ error: 'В группу можно добавлять только учеников' }, { status: 400 })
+    }
     const rows = unique.map((sid) => ({ group_id: id, student_id: sid }))
 
     const { data: inserted, error } = await supabase

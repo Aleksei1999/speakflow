@@ -1,11 +1,13 @@
 // Save a pre-computed quiz result (from the landing-page popup) to level_tests,
 // linking it to the freshly-signed-up user.
 
+import type { NextRequest } from 'next/server'
+import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
+import { applyTestLevel } from '@/lib/levels/apply-test-level'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { createClient } from '@/lib/supabase/server'
-import { invalidateUserProgress } from '@/lib/cache/invalidate'
 
 const RAW_LEVEL_MAP: Record<string, string> = {
   raw: 'Raw',
@@ -46,7 +48,14 @@ export async function POST(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
+  if (!user) return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+  const limited = await enforceRateLimitStrict(request as NextRequest, {
+    name: 'api:level-test',
+    keyParts: [user.id, getClientIp(request as NextRequest)],
+    max: 5,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
   const levelDb = RAW_LEVEL_MAP[parsed.data.level]
   if (!levelDb) {
     return NextResponse.json({ error: 'Неизвестный уровень' }, { status: 400 })
@@ -71,18 +80,8 @@ export async function POST(request: Request) {
   }
 
   // Sync english_level onto user_progress for students
-  if (user?.id) {
-    // FIXME(types): supabase-js infers Update params as 'never' on minimal Database type
-    const { error: progressError } = await (supabase.from('user_progress') as any)
-      .update({ english_level: levelDb })
-      .eq('user_id', user.id)
-
-    if (progressError) {
-      console.error('[level-test] progress sync failed:', progressError)
-    } else {
-      invalidateUserProgress(user.id)
-    }
-  }
+  // user_progress не имеет UPDATE-политики для пользователя → пишем service-role.
+  await applyTestLevel(user.id, levelDb)
 
   return NextResponse.json({ id: data?.id, level: levelDb })
 }

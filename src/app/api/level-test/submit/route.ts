@@ -1,3 +1,4 @@
+import { applyTestLevel } from '@/lib/levels/apply-test-level'
 import { NextResponse } from 'next/server'
 import { levelTestSubmitSchema } from '@/lib/validations'
 import { questions } from '@/lib/level-test-questions'
@@ -81,6 +82,9 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Failed to save level test result:', insertError)
     }
+
+    // Результат теста — уровень ученика на платформе (учитель/админ могут поменять вручную).
+    if (user?.id) await applyTestLevel(user.id, level)
 
     return NextResponse.json({ score, level, totalQuestions })
   } catch {

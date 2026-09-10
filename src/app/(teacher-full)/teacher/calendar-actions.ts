@@ -107,6 +107,7 @@ export async function fetchTeacherSchedule(): Promise<ScheduleItem[]> {
     .from('lessons')
     .select('id, scheduled_at, duration_minutes, status, student_id, jitsi_room_name')
     .eq('teacher_id', teacherPk)
+    .neq('status', 'cancelled')
     .gte('scheduled_at', from)
     .lte('scheduled_at', to)
     .order('scheduled_at', { ascending: true })

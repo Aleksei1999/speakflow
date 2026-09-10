@@ -36,7 +36,7 @@ import {
   invalidateTeacherDashboard,
   invalidateStudentDashboard,
 } from '@/lib/cache/invalidate'
-import { notifyLessonRescheduled } from '@/lib/notifications/booking'
+import { notifyLessonRescheduled, notifyLessonCancelled } from '@/lib/notifications/booking'
 
 // google_calendar_* / lessons ещё не полностью в generated Database типах.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +47,9 @@ const FALLBACK_PRICE_KOPECKS = 100_000
 
 // Статусы, при которых lessons-строка считается «занимающей слот».
 // Не включаем cancelled / completed / no_show.
-const BUSY_LESSON_STATUSES = ['booked', 'in_progress', 'scheduled', 'confirmed'] as const
+const BUSY_LESSON_STATUSES = ['booked', 'in_progress', 'pending_payment', 'scheduled', 'confirmed'] as const
+// Статусы, из которых урок можно переносить.
+const RESCHEDULABLE_STATUSES = new Set(['booked', 'pending_payment', 'in_progress'])
 
 export interface CreateLessonInput {
   /** profiles.id студента (auth.uid). */
@@ -89,6 +91,9 @@ export async function createLesson(
   const startMs = Date.parse(input.scheduledAt)
   if (Number.isNaN(startMs)) {
     return { ok: false, code: 'validation', error: 'Некорректная дата урока' }
+  }
+  if (startMs < Date.now() - 60_000) {
+    return { ok: false, code: 'validation', error: 'Нельзя создать урок в прошлом' }
   }
   const endMs = startMs + DEFAULT_DURATION_MIN * 60_000
   const startISO = new Date(startMs).toISOString()
@@ -165,6 +170,9 @@ export async function createLesson(
   if (!student) {
     return { ok: false, code: 'validation', error: 'Ученик не найден' }
   }
+  if (student.role !== 'student') {
+    return { ok: false, code: 'validation', error: 'Урок можно назначить только ученику' }
+  }
 
   // ---------- 6. Slot busy: Google Calendar ----------
   // Ходим в Google ТОЛЬКО если подключён. Fail-soft внутри isSlotBusyInGoogle
@@ -207,11 +215,14 @@ export async function createLesson(
   if (conn.connected) {
     try {
       const summary = `Урок с ${student.full_name || 'учеником'}`
+      // Если у ученика подключён свой календарь — событие пушим туда отдельно,
+      // а не приглашаем attendee (иначе у него будет два события).
+      const studentHasCal = (await hasGoogleCalendar(student.id)).connected
       const eventId = await pushEventToGoogle(auth.userId, {
         summary,
         startISO,
         endISO,
-        attendees: student.email
+        attendees: !studentHasCal && student.email
           ? [{ email: student.email, displayName: student.full_name || undefined }]
           : undefined,
         extendedProps: {
@@ -231,8 +242,7 @@ export async function createLesson(
         }
       }
       // И в личный календарь ученика, если он подключён
-      const stuConn = await hasGoogleCalendar(student.id)
-      if (stuConn.connected) {
+      if (studentHasCal) {
         const { data: teaProf } = await admin.from('profiles').select('full_name').eq('id', auth.userId).maybeSingle()
         const studentEventId = await pushEventToGoogle(student.id, {
           summary: `Урок с ${(teaProf as { full_name: string | null } | null)?.full_name || 'преподавателем'}`,
@@ -306,7 +316,7 @@ export async function cancelLesson(
   // Загружаем урок для owner-проверки + чтобы узнать google_event_id.
   const lessonRes = await admin
     .from('lessons')
-    .select('id, teacher_id, student_id, google_event_id')
+    .select('id, teacher_id, student_id, google_event_id, student_google_event_id, status')
     .eq('id', lessonId)
     .maybeSingle()
   if (lessonRes.error) {
@@ -317,6 +327,8 @@ export async function cancelLesson(
     teacher_id: string
     student_id: string | null
     google_event_id: string | null
+    student_google_event_id: string | null
+    status: string | null
   } | null
   if (!lesson) return { ok: false, error: 'Урок не найден' }
   if (!isAdmin && lesson.teacher_id !== teacherPk) {
@@ -328,16 +340,29 @@ export async function cancelLesson(
     ownerUserId = (ownerRes.data as { user_id: string } | null)?.user_id ?? auth.userId
   }
 
-  // Параллельно: удаляем строку из lessons + удаляем event в Google (fail-soft).
+  if (lesson.status === 'cancelled') return { ok: true }
+  if (lesson.status === 'completed' || lesson.status === 'no_show') {
+    return { ok: false, error: `Нельзя отменить урок со статусом ${lesson.status}` }
+  }
+
+  // Мягкая отмена (история, оплаты и аудит сохраняются) + удаляем события
+  // в Google у учителя и у ученика (fail-soft).
   const [delRes] = await Promise.all([
-    admin.from('lessons').delete().eq('id', lessonId),
+    admin
+      .from('lessons')
+      .update({ status: 'cancelled', cancelled_by: auth.userId, google_event_id: null, student_google_event_id: null })
+      .eq('id', lessonId),
     lesson.google_event_id
-      ? deleteEventFromGoogle(ownerUserId, lesson.google_event_id)
+      ? deleteEventFromGoogle(ownerUserId, lesson.google_event_id).catch(() => false)
+      : Promise.resolve(false),
+    lesson.student_id && lesson.student_google_event_id
+      ? deleteEventFromGoogle(lesson.student_id, lesson.student_google_event_id).catch(() => false)
       : Promise.resolve(false),
   ])
   if (delRes.error) {
-    return { ok: false, error: `delete lessons: ${delRes.error.message}` }
+    return { ok: false, error: `cancel lessons: ${delRes.error.message}` }
   }
+  void notifyLessonCancelled({ lessonId, cancelledByUserId: auth.userId }).catch(() => {})
 
   invalidateTeacherStudents(ownerUserId)
   invalidateTeacherDashboard(ownerUserId)
@@ -414,7 +439,7 @@ export async function rescheduleLesson(
 
   const lessonRes = await admin
     .from('lessons')
-    .select('id, teacher_id, student_id, duration_minutes, google_event_id, student_google_event_id, scheduled_at')
+    .select('id, teacher_id, student_id, duration_minutes, google_event_id, student_google_event_id, scheduled_at, status')
     .eq('id', input.lessonId)
     .maybeSingle()
   if (lessonRes.error) {
@@ -428,8 +453,15 @@ export async function rescheduleLesson(
     google_event_id: string | null
     student_google_event_id: string | null
     scheduled_at: string
+    status: string | null
   } | null
   if (!lesson) return { ok: false, code: 'not_found', error: 'Урок не найден' }
+  if (!RESCHEDULABLE_STATUSES.has(lesson.status ?? '')) {
+    return { ok: false, code: 'validation', error: `Нельзя перенести урок со статусом ${lesson.status}` }
+  }
+  if (startMs < Date.now() - 60_000) {
+    return { ok: false, code: 'validation', error: 'Нельзя перенести урок в прошлое' }
+  }
   if (!isAdmin && lesson.teacher_id !== teacherPk) {
     return { ok: false, code: 'forbidden', error: 'Forbidden: not lesson owner' }
   }

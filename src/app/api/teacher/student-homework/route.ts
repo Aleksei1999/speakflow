@@ -5,7 +5,7 @@
 // material_shares(target_type='student'). Это «личная домашка» — файлы,
 // которые видит только этот ученик (в отличие от библиотеки — там public).
 //
-// Auth: teacher/admin. Owner-check: material.teacher_id = teacher_profiles.id.
+// Auth: teacher/admin. Учитель — только для своих учеников (lessons/заявки/группы).
 // ---------------------------------------------------------------------------
 
 // @ts-nocheck
@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createSignedUrl } from '@/lib/supabase/signed-url'
+import { teacherHasStudent } from '@/lib/materials/access'
 
 const querySchema = z.object({
   studentId: z.string().uuid(),
@@ -59,6 +60,11 @@ export async function GET(request: NextRequest) {
     if (!teacherProfileId && role !== 'admin') {
       return NextResponse.json({ error: 'teacher_profiles not found' }, { status: 403 })
     }
+    // Учитель видит домашку только своих учеников — но ВСЮ (в т.ч. файлы,
+    // загруженные админом или самим учеником: у них teacher_id-заглушка).
+    if (role !== 'admin' && teacherProfileId && !(await teacherHasStudent(admin, teacherProfileId, studentId))) {
+      return NextResponse.json({ error: 'Это не ваш ученик' }, { status: 403 })
+    }
 
     // material_shares → material_ids для этого студента.
     const { data: shares } = await admin
@@ -79,7 +85,6 @@ export async function GET(request: NextRequest) {
       .from('materials')
       .select('id, title, storage_path, file_url, mime_type, file_size, created_at, teacher_id, folder_id')
       .in('id', materialIds)
-    if (teacherProfileId) matsQuery = matsQuery.eq('teacher_id', teacherProfileId)
     if (folderId) matsQuery = matsQuery.eq('folder_id', folderId)
 
     const { data: mats } = await matsQuery

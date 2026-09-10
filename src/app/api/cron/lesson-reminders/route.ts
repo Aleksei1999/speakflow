@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNotification } from '@/lib/notifications/service'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-
+import { formatLessonDayLong, formatLessonTime } from '@/lib/time'
 /**
  * Cron-джоб: напоминания об уроках.
  *
@@ -70,11 +68,19 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // lessons.teacher_id — teacher_profiles.id → profiles.id
+    const { data: tps } = (await supabase
+      .from('teacher_profiles')
+      .select('id, user_id')
+      .in('id', Array.from(new Set(lessons.map((l) => l.teacher_id))))) as { data: Array<{ id: string; user_id: string }> | null }
+    const teacherUserById = new Map<string, string>((tps || []).map((t) => [t.id, t.user_id]))
+
     // Собираем уникальные ID пользователей
     const userIds = new Set<string>()
     for (const lesson of lessons) {
       userIds.add(lesson.student_id)
-      userIds.add(lesson.teacher_id)
+      const tu = teacherUserById.get(lesson.teacher_id)
+      if (tu) userIds.add(tu)
     }
 
     type ParticipantProfile = { id: string; full_name: string; email: string }
@@ -92,12 +98,11 @@ export async function GET(request: NextRequest) {
     const errors: string[] = []
 
     for (const lesson of lessons) {
-      const scheduledDate = new Date(lesson.scheduled_at)
-      const dateStr = format(scheduledDate, 'd MMMM yyyy', { locale: ru })
-      const timeStr = format(scheduledDate, 'HH:mm', { locale: ru })
-
+      const dateStr = formatLessonDayLong(lesson.scheduled_at)
+      const timeStr = formatLessonTime(lesson.scheduled_at)
+      const teacherUserId = teacherUserById.get(lesson.teacher_id)
       const studentProfile = profileMap.get(lesson.student_id)
-      const teacherProfile = profileMap.get(lesson.teacher_id)
+      const teacherProfile = teacherUserId ? profileMap.get(teacherUserId) : undefined
 
       const joinUrl = `${process.env.NEXT_PUBLIC_APP_URL}/lesson/${lesson.id}`
 
@@ -120,9 +125,9 @@ export async function GET(request: NextRequest) {
       }
 
       // Напоминание преподавателю
-      if (teacherProfile) {
+      if (teacherProfile && teacherUserId) {
         try {
-          await sendNotification(lesson.teacher_id, 'lesson_reminder', {
+          await sendNotification(teacherUserId, 'lesson_reminder', {
             name: teacherProfile.full_name,
             teacherOrStudentName: studentProfile?.full_name || 'Студент',
             date: dateStr,

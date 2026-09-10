@@ -11,6 +11,7 @@
 // Возвращает: { id, created: boolean }  — created=false если найден свежий (в 24h) существующий.
 // ---------------------------------------------------------------------------
 
+import { applyTestLevel } from '@/lib/levels/apply-test-level'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       console.error('[level-test/import] insert failed', insErr)
       return NextResponse.json({ error: 'Не удалось сохранить тест' }, { status: 500 })
     }
+    await applyTestLevel(user.id, toRoastLevel(parsed.data.level))
 
     return NextResponse.json({ id: inserted.id as string, created: true })
   } catch (e) {

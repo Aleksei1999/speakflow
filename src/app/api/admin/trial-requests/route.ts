@@ -64,13 +64,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
           id, status, notes, created_at, updated_at,
-          level_test_id, assigned_teacher_id, assigned_lesson_id,
-          student:profiles!trial_lesson_requests_user_id_fkey (
-            id, full_name, email, phone, avatar_url, english_goal
-          ),
-          teacher:profiles!trial_lesson_requests_assigned_teacher_id_fkey (
-            id, full_name, avatar_url, email
-          )
+          level_test_id, assigned_teacher_id, assigned_lesson_id, user_id
         `
       )
       .order("created_at", { ascending: false })
@@ -86,7 +80,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Ошибка базы данных" }, { status: 500 })
     }
 
-    return NextResponse.json({ requests: data ?? [], count: (data ?? []).length })
+    // PostgREST-embed через FK не работает (user_id → auth.users, assigned_teacher_id → teacher_profiles),
+    // поэтому student/teacher (profiles) подтягиваем отдельными запросами.
+    const rows = (data ?? []) as any[]
+    const tpIds = Array.from(new Set(rows.map((r) => r.assigned_teacher_id).filter(Boolean)))
+    const { data: tps } = tpIds.length
+      ? await admin.from("teacher_profiles").select("id, user_id").in("id", tpIds)
+      : { data: [] as any[] }
+    const tpUserById = new Map((tps ?? []).map((t: any) => [t.id, t.user_id]))
+    const profileIds = Array.from(new Set([...rows.map((r) => r.user_id), ...Array.from(tpUserById.values())].filter(Boolean)))
+    const { data: profiles } = profileIds.length
+      ? await admin.from("profiles").select("id, full_name, email, phone, avatar_url, english_goal").in("id", profileIds)
+      : { data: [] as any[] }
+    const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+    const requests = rows.map((r) => {
+      const s = byId.get(r.user_id)
+      const t = r.assigned_teacher_id ? byId.get(tpUserById.get(r.assigned_teacher_id)) : null
+      return {
+        ...r,
+        student: s ? { id: s.id, full_name: s.full_name, email: s.email, phone: s.phone, avatar_url: s.avatar_url, english_goal: s.english_goal } : null,
+        teacher: t ? { id: t.id, full_name: t.full_name, avatar_url: t.avatar_url, email: t.email } : null,
+      }
+    })
+    return NextResponse.json({ requests, count: requests.length })
   } catch (err) {
     console.error("Ошибка в GET /api/admin/trial-requests:", err)
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 })

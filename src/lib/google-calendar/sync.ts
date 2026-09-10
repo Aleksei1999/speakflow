@@ -10,6 +10,7 @@
 // Платформа → Google для лекций (pushLectureToGoogle / updateLectureInGoogle / deleteLectureFromGoogle):
 // у лекций нет колонки с id события, поэтому событие ищем по private extendedProperty lectureId=<id>.
 
+import { nameKey } from '@/lib/ru/name-match'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   deleteEventFromGoogle,
@@ -196,8 +197,10 @@ interface LectureLike { id: string; title: string; host_name: string | null; sch
 export async function lectureHostUserId(hostName: string | null): Promise<string | null> {
   if (!hostName) return null
   const admin = createAdminClient() as Db
-  const { data } = await admin.from('profiles').select('id').eq('role', 'teacher').eq('full_name', hostName.trim()).limit(1).maybeSingle()
-  const userId = (data as { id: string } | null)?.id
+  // Имя ведущего сравниваем через nameKey (кириллица/латиница, порядок слов) — как в списке лекций.
+  const { data } = await admin.from('profiles').select('id, full_name').eq('role', 'teacher')
+  const key = nameKey(hostName)
+  const userId = ((data ?? []) as Array<{ id: string; full_name: string | null }>).find((p) => nameKey(p.full_name ?? '') === key)?.id
   if (!userId) return null
   const conn = await hasGoogleCalendar(userId)
   return conn.connected ? userId : null
@@ -247,6 +250,13 @@ export async function updateLectureInGoogle(l: LectureLike): Promise<void> {
     for (const eventId of await findLectureEventIds(userId, l.id)) {
       await updateEventInGoogle(userId, eventId, { startISO, endISO }).catch(() => false)
     }
+  }
+}
+
+/** Удалить событие лекции только у одного пользователя (отмена записи). */
+export async function deleteLectureFromGoogleForUser(userId: string, lectureId: string): Promise<void> {
+  for (const eventId of await findLectureEventIds(userId, lectureId)) {
+    await deleteEventFromGoogle(userId, eventId).catch(() => false)
   }
 }
 

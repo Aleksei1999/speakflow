@@ -54,6 +54,15 @@ export async function POST(request: NextRequest) {
     if (!['main', 'tall', 'small'].includes(slot)) {
       return NextResponse.json({ error: 'Неверный slot (main/tall/small)' }, { status: 400 })
     }
+    if (Date.parse(scheduledAt) < Date.now()) {
+      return NextResponse.json({ error: 'Дата лекции уже прошла' }, { status: 400 })
+    }
+    if (duration < 15 || duration > 300) {
+      return NextResponse.json({ error: 'Длительность от 15 до 300 минут' }, { status: 400 })
+    }
+    if (price < 0) {
+      return NextResponse.json({ error: 'Цена не может быть отрицательной' }, { status: 400 })
+    }
 
     const admin = createAdminClient() as any
 

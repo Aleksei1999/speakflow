@@ -61,7 +61,7 @@ export async function fetchTrialApplications(): Promise<TrialApplication[]> {
     admin
       .from("trial_lesson_requests")
       .select("id, user_id, level_test_id, created_at, status")
-      .eq("assigned_teacher_id", auth.userId)
+      .eq("assigned_teacher_id", teacherProfileId)
       .in("status", ["assigned", "pending", "new", "scheduled"])
       .order("created_at", { ascending: true })
       .limit(50),

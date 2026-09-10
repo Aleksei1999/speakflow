@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-
+import { createAdminClient } from "@/lib/supabase/admin"
+import { canChat } from "@/lib/chat/access"
 export const dynamic = "force-dynamic"
 
 // GET /api/chat/peer/[id] — публичный (для авторизованного) профиль
@@ -22,7 +23,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!prof) return NextResponse.json({ error: "not found" }, { status: 404 })
-
+  // Профиль собеседника отдаём только тем, кто может с ним переписываться.
+  const { data: me } = await (supabase as any).from("profiles").select("role").eq("id", user.id).maybeSingle()
+  const allowed = me?.role && prof.role && (await canChat(createAdminClient(), { id: user.id, role: me.role }, { id: prof.id, role: prof.role }))
+  if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 })
   let englishLevel: string | null = null
   let teacher: {
     bio: string | null

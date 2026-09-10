@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
 import { ArrowIcon } from "@/components/icons/ArrowIcon"
 
@@ -257,6 +258,7 @@ export default function AdminRawDashboard({
     | { id: string; role: "teacher" | "student" | "admin"; name: string; avatar: string | null; level?: string | null }
     | null
   >(null)
+  const router = useRouter()
   const [chatUnreadOverride, setChatUnreadOverride] = useState<Record<string, number>>({})
   const [groupUnreadOverride, setGroupUnreadOverride] = useState<Record<string, number>>({})
   const [groupChat, setGroupChat] = useState<{ id: string; name: string; memberCount: number } | null>(null)
@@ -408,6 +410,8 @@ export default function AdminRawDashboard({
         return
       }
       setGroupStep(groupStep === "form" ? "form-success" : "success")
+      // Список чатов приходит с сервера (initialChats) — обновляем, чтобы новая группа появилась без перезагрузки.
+      router.refresh()
     } catch (e) {
       setGroupError(e instanceof Error ? e.message : "Не удалось создать группу")
     } finally {
