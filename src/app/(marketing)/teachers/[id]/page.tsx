@@ -31,7 +31,7 @@ async function getTeacherData(userId: string) {
 
   // Fetch teacher profile joined with profile
   type TeacherDataRow = TeacherProfile & {
-    profiles: Pick<Profile, "id" | "full_name" | "avatar_url" | "email"> | null
+    profiles: Pick<Profile, "id" | "full_name" | "avatar_url"> | null
   }
   const { data: teacherData, error: teacherError } = await supabase
     .from("teacher_profiles")
@@ -41,8 +41,7 @@ async function getTeacherData(userId: string) {
       profiles!teacher_profiles_user_id_fkey (
         id,
         full_name,
-        avatar_url,
-        email
+        avatar_url
       )
     `
     )

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { ensureProfile } from "@/lib/auth/ensure-profile"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
@@ -14,8 +15,14 @@ export default async function StudentNewPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
-  const role = await getCachedRole(user.id)
-  if (!role) redirect("/login")
+  let role = await getCachedRole(user.id)
+  if (!role) {
+    // Аккаунт без строки profiles (триггер регистрации падал) — создаём профиль,
+    // иначе /student → /login → /student зациклится.
+    const healed = await ensureProfile(user)
+    role = healed.role
+    if (!role) redirect("/login")
+  }
   if (role !== "student") {
     if (role === "teacher" || role === "admin") redirect("/teacher")
     redirect("/login")

@@ -4,6 +4,7 @@
 //
 // Защита: Arcjet (shield + bot) + rate-limit IP + email-валидация Arcjet + email-rate-limit + dedup 5min.
 
+import { APPLICATIONS_TELEGRAM } from "@/lib/notifications/flags"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Telegram fan-out to admins (fire-and-forget)
-    void notifyAdmins({ leadId: lead.id, data: d }).catch(() => {})
+    if (APPLICATIONS_TELEGRAM) void notifyAdmins({ leadId: lead.id, data: d }).catch(() => {})
 
     return NextResponse.json({ ok: true, id: lead.id })
   } catch (err) {

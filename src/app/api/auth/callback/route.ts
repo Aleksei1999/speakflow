@@ -1,3 +1,4 @@
+import { ensureProfile } from '@/lib/auth/ensure-profile'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -57,6 +58,8 @@ export async function GET(request: Request) {
   let resolvedRole: string | null = null
   let resolvedLanguage: string | null = null
   if (user) {
+    // Самолечение: если триггер handle_new_user не создал профиль — создаём здесь.
+    try { await ensureProfile(user) } catch (e) { console.error('[auth/callback] ensureProfile failed', e) }
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('role, language')

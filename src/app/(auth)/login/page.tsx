@@ -23,9 +23,11 @@ function LoginPageContent() {
   // как в попапе на лендинге: «Войти» активна только когда форма валидна
   const [valid, setValid] = useState(false)
 
+  const callbackError = searchParams.get('error')
   useEffect(() => {
     if (mfaRequired) setErr('MFA-проверка не прошла, попробуй войти снова.')
-  }, [mfaRequired])
+    else if (callbackError === 'auth_failed' || callbackError === 'missing_code') setErr('Ссылка недействительна или устарела. Войди с паролем или запроси новую ссылку.')
+  }, [mfaRequired, callbackError])
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -39,7 +41,11 @@ function LoginPageContent() {
         options: captchaToken ? { captchaToken } : undefined,
       })
       if (error) {
-        setErr('Неверный email или пароль')
+        const m = error.message || ''
+        if (/not confirmed/i.test(m)) setErr('Почта не подтверждена. Открой письмо, которое мы отправили при регистрации.')
+        else if (/banned/i.test(m)) setErr('Аккаунт отключён. Напиши администратору.')
+        else if (/rate limit|too many/i.test(m)) setErr('Слишком много попыток. Подожди минуту и попробуй снова.')
+        else setErr('Неверный email или пароль')
         setBusy(false)
         return
       }
@@ -58,7 +64,8 @@ function LoginPageContent() {
         } catch {}
       }
 
-      if (redirectTo && redirectTo.startsWith('/')) router.push(redirectTo)
+      // Только внутренние пути: «//evil.com» тоже начинается с «/».
+      if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) router.push(redirectTo)
       else if (profile?.role === 'admin') router.push('/admin')
       else if (profile?.role === 'teacher') router.push('/teacher')
       else router.push('/student')

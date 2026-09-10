@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const publicRoutes = ['/', '/teachers', '/teach', '/level-test', '/get-started', '/privacy', '/oferta']
+const publicRoutes = ['/', '/teachers', '/teach', '/level-test', '/get-started', '/privacy', '/oferta', '/new', '/old', '/hero-copy']
+// Публичные префиксы (каталог преподавателей, превью лендингов)
+const publicPrefixes = ['/teachers', '/preview']
 const authRoutes = ['/login', '/register', '/forgot-password']
 // /forgot-password и /reset-password обязаны быть доступны и
 // залогиненным юзерам (смена пароля из /settings, recovery-flow при
@@ -23,7 +25,7 @@ function homeForRole(role: string | null): string {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { user, role, supabase, supabaseResponse } = await updateSession(request)
   const path = request.nextUrl.pathname
 
@@ -32,8 +34,8 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Allow /teachers/* (catalog) as public
-  if (path.startsWith('/teachers')) {
+  // Allow /teachers/* (catalog) and preview pages as public
+  if (publicPrefixes.some((p) => path.startsWith(p))) {
     return supabaseResponse
   }
 
@@ -70,11 +72,16 @@ export async function middleware(request: NextRequest) {
   const userRole = role ?? 'student'
   const userHome = rolePrefixes[userRole] ?? '/student'
 
-  for (const [routeRole, prefix] of Object.entries(rolePrefixes)) {
-    if (path.startsWith(prefix) && routeRole !== userRole) {
-      const url = request.nextUrl.clone()
-      url.pathname = userHome
-      return NextResponse.redirect(url)
+  // Админ — суперпользователь: ему доступны все кабинеты (страницы /teacher и
+  // /student сами пускают admin), а /student/settings нужен для MFA-enrollment —
+  // иначе MFA-gate ниже зациклится с этим же редиректом.
+  if (userRole !== 'admin') {
+    for (const [routeRole, prefix] of Object.entries(rolePrefixes)) {
+      if (path.startsWith(prefix) && routeRole !== userRole) {
+        const url = request.nextUrl.clone()
+        url.pathname = userHome
+        return NextResponse.redirect(url)
+      }
     }
   }
 

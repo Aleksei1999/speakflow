@@ -14,6 +14,7 @@
 //      duration=30 min) and mark the request 'scheduled' with assigned_*.
 //   4. Telegram notification to admins is fire-and-forget.
 
+import { APPLICATIONS_TELEGRAM } from '@/lib/notifications/flags'
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 
@@ -236,7 +237,7 @@ export async function autoAssignTrial(args: {
   }
 
   // 3) Telegram fan-out (fire-and-forget; never block the auth flow).
-  void notifyAdmins({
+  if (APPLICATIONS_TELEGRAM) void notifyAdmins({
     requestId,
     userId,
     preferredSlot: args.preferredSlot,

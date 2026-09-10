@@ -1,3 +1,4 @@
+import { APPLICATIONS_TELEGRAM } from "@/lib/notifications/flags"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
     // name (matches what they'll see in /admin/teacher-applications and the
     // future teacher card), but include the original Cyrillic in parens for
     // disambiguation.
-    void notifyAdmins({
+    if (APPLICATIONS_TELEGRAM) void notifyAdmins({
       applicationId: app.id,
       data: {
         ...d,
