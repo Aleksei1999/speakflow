@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { teacherBookingSchema } from '@/lib/validations'
 import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       price = Math.round((hourlyRate * durationMinutes) / 60)
     }
 
-    // TEMP: пока нет Yookassa — создаём урок сразу как booked с price=0.
+    // Стоимость — рассчитанная выше price; списывается с баланса ученика при завершении.
     // FIXME(types): Postgrest InsertBuilder инференсится в never
     type CreatedLessonRow = {
       id: string
@@ -202,14 +203,15 @@ export async function POST(request: NextRequest) {
       duration_minutes: number
       status: string
     }
-    const { data: lesson, error: insertError } = (await (supabase.from('lessons') as any)
+    // Урок создаётся сервером (service_role): клиенту INSERT в lessons закрыт.
+    const { data: lesson, error: insertError } = (await (createAdminClient().from('lessons') as any)
       .insert({
         student_id: studentId,
         teacher_id: teacherProfileId,
         scheduled_at: scheduledAt,
         duration_minutes: durationMinutes,
         status: 'booked',
-        price: 0,
+        price,
         jitsi_room_name: null,
         cancelled_by: null,
         cancellation_reason: null,
