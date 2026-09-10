@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Не удалось создать урок (' + (insertError.message ?? 'неизвестная ошибка') + ')' },
+        { error: 'Не удалось создать урок' },
         { status: 500 }
       )
     }

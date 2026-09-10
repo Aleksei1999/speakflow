@@ -139,23 +139,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If payment exists and eligible for refund, mark for refund
-    if (refundEligible && lesson.status === 'booked') {
-      const { data: payment } = await supabase
-        .from('payments')
-        .select('id, status')
-        .eq('lesson_id', lessonId)
-        .eq('status', 'succeeded')
-        .single<{ id: string; status: string }>()
-
-      if (payment) {
-        // FIXME(types): Postgrest UpdateBuilder инференсится в never
-        await (supabase.from('payments') as any)
-          .update({ status: 'refunded', refunded_at: new Date().toISOString() })
-          .eq('id', payment.id)
-      }
-    }
-
+    // Оплата уроков идёт с баланса при завершении урока — при отмене до начала
+    // ничего не списано и возвращать нечего. Возвраты карточных платежей
+    // делаются админом через ЮKassa, статус приходит вебхуком refund.succeeded.
     // Google Calendar cleanup: удаляем event у учителя И у ученика (fail-soft).
     // Нужен teacher.user_id — резолвим по teacher_profiles.id.
     if (lesson.google_event_id) {
@@ -242,11 +228,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       refundEligible,
-      message: refundEligible
-        ? 'Урок отменён. Возврат средств будет обработан в течение 3-5 рабочих дней.'
-        : hoursUntilLesson < CANCELLATION_POLICY_HOURS && lesson.status === 'booked'
-          ? `Урок отменён. Возврат не предусмотрен при отмене менее чем за ${CANCELLATION_POLICY_HOURS} часов.`
-          : 'Урок отменён.',
+      message: 'Урок отменён.',
     })
   } catch (error) {
     console.error('Непредвиденная ошибка в cancel API:', error)

@@ -248,11 +248,14 @@ async function handlePaymentSucceeded(
           gross_amount: paymentAmountKopecks,
           platform_fee: platformFee,
           net_amount: netAmount,
-          currency: payment.amount.currency,
           status: 'pending' as const,
         },
         { onConflict: 'lesson_id' }
       )
+      .then((r: { error: { message: string } | null }) => {
+        // Ошибка должна всплыть — иначе YooKassa не повторит вебхук и доход учителя потеряется.
+        if (r.error) throw new Error(`teacher_earnings upsert: ${r.error.message}`)
+      })
   }
 
   // Dashboard snapshot включает stats + upcoming_lessons (status поменялся
@@ -350,7 +353,11 @@ async function handleRefundSucceeded(
   // Не доверяем телу webhook'а: подтверждаем refund через YooKassa API
   // (тот же паттерн, что и для payment.succeeded/canceled). Иначе владелец
   // allowed-IP мог бы отправить поддельный refund и обнулить teacher_earnings.
-  if (refundId) {
+  if (!refundId) {
+    console.warn('[webhook] refund.succeeded без object.id — игнорируем:', yookassaPaymentId)
+    return
+  }
+  {
     try {
       const client = new YooKassaClient()
       const apiRefund = await client.getRefund(refundId)
@@ -449,23 +456,28 @@ async function handleBalanceTopupSucceeded(
     return
   }
 
-  // Атомарно кредитуем баланс через SQL-функцию (upsert + increment).
+  // Сначала атомарно переводим topup pending → succeeded (только один из
+  // параллельных вебхуков получит строку), и лишь потом зачисляем.
+  const { data: claimed, error: claimErr } = await ((supabase as any).from('balance_topups'))
+    .update({
+      status: 'succeeded' as const,
+      paid_at: payment.captured_at ?? new Date().toISOString(),
+    })
+    .eq('id', existingTopup.id)
+    .eq('status', 'pending')
+    .select('id')
+  if (claimErr) throw claimErr
+  if (!claimed || claimed.length === 0) return // уже обработан параллельным вебхуком
   const { error: creditError } = await (supabase as any).rpc('credit_student_balance', {
     uid: existingTopup.user_id,
     amount_add: paidKopecks,
   })
   if (creditError) {
     console.error('[webhook][topup] credit_student_balance failed:', creditError)
+    // Откатываем статус, чтобы повтор вебхука зачислил деньги.
+    await ((supabase as any).from('balance_topups')).update({ status: 'pending' as const, paid_at: null }).eq('id', existingTopup.id)
     throw creditError
   }
-
-  await ((supabase as any).from('balance_topups'))
-    .update({
-      status: 'succeeded' as const,
-      paid_at: payment.captured_at ?? new Date().toISOString(),
-    })
-    .eq('id', existingTopup.id)
-    .eq('status', 'pending') // защита от гонки
 
   invalidateStudentDashboard(existingTopup.user_id)
 }
