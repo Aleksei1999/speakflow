@@ -181,6 +181,12 @@ export async function GET(
       .in("status", ["completed", "confirmed", "done"])
       .gte("scheduled_at", yearStartIso)
 
+        const { data: balRow } = await (createAdminClient() as any)
+      .from("student_balances")
+      .select("balance_kopecks")
+      .eq("user_id", student.id)
+      .maybeSingle()
+    const balanceKopecks = Number(balRow?.balance_kopecks ?? 0)
     return NextResponse.json({
       student: {
         id: student.id,
@@ -195,7 +201,8 @@ export async function GET(
         city: student.city,
         occupation: student.occupation,
         created_at: student.created_at,
-        balance_rub: student.balance_rub ?? 0,
+        // Баланс — из student_balances (пополнения ЮKassa, списания за уроки), не из profiles.balance_rub.
+        balance_rub: Math.round(balanceKopecks / 100),
         subscription_tier: student.subscription_tier ?? "free",
         subscription_until: student.subscription_until ?? null,
         total_xp: up?.total_xp ?? 0,

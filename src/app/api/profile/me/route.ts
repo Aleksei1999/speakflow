@@ -303,6 +303,13 @@ export async function GET(_req: NextRequest) {
     }
     history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
+        // Баланс — из student_balances (RLS: своя строка), не из profiles.balance_rub.
+    const { data: balRow } = await (supabase as any)
+      .from('student_balances')
+      .select('balance_kopecks')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    const balanceKopecks = Number(balRow?.balance_kopecks ?? 0)
     return NextResponse.json({
       profile: {
         id: profile.id,
@@ -314,7 +321,7 @@ export async function GET(_req: NextRequest) {
         phone: profile.phone,
         timezone: profile.timezone,
         created_at: profile.created_at,
-        balance_rub: profile.balance_rub ?? 0,
+        balance_rub: Math.round(balanceKopecks / 100),
         subscription_tier: profile.subscription_tier ?? 'free',
         subscription_until: profile.subscription_until,
         city: profile.city,
