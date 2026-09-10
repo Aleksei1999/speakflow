@@ -72,13 +72,18 @@ export default async function TeacherSummariesPage() {
       admin
         .from("lesson_summaries")
         .select(
-          "lesson_id, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve, created_at",
+          "lesson_id, source, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve, created_at",
         )
         .in("lesson_id", lessonIds),
       admin.from("profiles").select("id, full_name").in("id", studentIds),
     ])
     const sumById = new Map<string, Row["summary"]>()
-    for (const s of (sumRes.data ?? []) as any[]) {
+    // У урока может быть два саммари: по заметкам учителя (manual) и по
+    // транскрипту записи (recording). Показываем транскрипт, если он есть.
+    const sumRows = ((sumRes.data ?? []) as any[]).slice().sort((a, b) =>
+      (a.source === "recording" ? 1 : 0) - (b.source === "recording" ? 1 : 0))
+    for (const s of sumRows) {
+      if (sumById.has(s.lesson_id) && s.source !== "recording") continue
       sumById.set(s.lesson_id, {
         summary_text: s.summary_text || "",
         vocabulary: s.vocabulary ?? [],

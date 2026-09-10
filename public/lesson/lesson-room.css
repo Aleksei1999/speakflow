@@ -55,6 +55,29 @@
   width: 108px;
   height: 62px;
 }
+.lvr-topbar-right { display: flex; align-items: flex-start; gap: 18px; }
+/* Индикатор записи урока */
+.lvr-rec {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 16px; height: 31px; padding: 0 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.lvr-rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3b30; }
+.lvr-rec--recording .lvr-rec-dot { animation: lvr-rec-blink 1.2s ease-in-out infinite; }
+.lvr-rec--paused .lvr-rec-dot { background: #f5c542; }
+.lvr-rec--starting .lvr-rec-dot { background: #9aa0a6; }
+.lvr-rec--error { background: rgba(255, 59, 48, 0.18); }
+.lvr-rec--error .lvr-rec-dot { background: #ff3b30; }
+.lvr-rec-err { max-width: 420px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.lvr-rec-retry {
+  border: 0; border-radius: 10px; padding: 3px 10px; cursor: pointer;
+  background: #fff; color: #1e1e1e; font: inherit; font-size: 12px;
+}
+@keyframes lvr-rec-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
 .lvr-winbtns { display: flex; gap: 12px; margin-top: 16px; /* 58 − 42 */ }
 .lvr-winbtn {
   width: 31px;

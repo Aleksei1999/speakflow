@@ -75,6 +75,7 @@ export async function generateLessonSummary(
     .from("lesson_summaries")
     .select("id")
     .eq("lesson_id", lessonId)
+    .eq("source", "manual")
     .maybeSingle<{ id: string }>()
 
   if (existingSummary) {

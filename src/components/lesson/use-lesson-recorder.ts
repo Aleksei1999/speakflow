@@ -1,6 +1,7 @@
 "use client"
 
-// Запись аудио урока. Каждые ~20с делаем stop+start нового MediaRecorder
+// Запись аудио урока (микрофон каждого участника → чанки в Storage,
+// транскрибация и саммари — кроны). Каждые ~20с делаем stop+start нового MediaRecorder
 // чтобы каждый chunk был полноценным webm с заголовком — иначе Whisper
 // читает только первый кусок.
 
@@ -11,22 +12,20 @@ type Status = "idle" | "starting" | "recording" | "paused" | "stopping" | "stopp
 interface UseLessonRecorderArgs {
   lessonId: string
   isTeacher: boolean
-  jitsiApi: any
   enabled?: boolean
   onStarted?: () => void
   /** Меняй значение, чтобы перезапустить запись (retry после отказа в mic). */
   retryToken?: number
   /**
-   * Опциональный LiveKit Room. Если передан — рекордер:
-   *   1. Возьмёт audio MediaStreamTrack из локального участника
-   *      (без второго getUserMedia → починка NotReadable на Safari/Firefox).
-   *   2. Будет слушать TrackMuted/TrackUnmuted для local audio publication
-   *      → pause/resume записи (privacy: не пишем mute'нутый микрофон).
-   * Передавай null когда video-provider=jitsi: рекордер откатится на свой
-   * getUserMedia + jitsiApi-слушатель.
+   * LiveKit Room (после подключения). Рекордер:
+   *   1. Берёт audio MediaStreamTrack из локального участника
+   *      (без второго getUserMedia → нет NotReadable на Safari/Firefox).
+   *   2. Слушает TrackMuted/TrackUnmuted локального микрофона
+   *      → pause/resume записи (privacy: не пишем выключенный микрофон).
+   * Пока Room не передан (null) — ждём его, а не берём свой getUserMedia.
    *
-   * Тип `any` — в runtime это Room из livekit-client, но мы не хотим
-   * тянуть тяжёлый импорт в файл, который используется и в Jitsi-flow.
+   * Тип `any` — в runtime это Room из livekit-client; не тянем тяжёлый
+   * импорт в хук.
    */
   liveKitRoom?: any
 }
@@ -89,7 +88,6 @@ function pickLiveKitAudioTrack(lp: any): MediaStreamTrack | null {
 export function useLessonRecorder({
   lessonId,
   isTeacher,
-  jitsiApi,
   enabled = true,
   onStarted,
   retryToken = 0,
@@ -312,7 +310,7 @@ export function useLessonRecorder({
         }
       }
 
-      // 2. Fallback (Jitsi flow или LiveKit-room ещё не публикует mic):
+      // 2. Fallback (LiveKit-room не опубликовал микрофон за 30с):
       //    собственный getUserMedia.
       if (!stream) {
         try {
@@ -607,45 +605,7 @@ export function useLessonRecorder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId, isTeacher, enabled, retryToken])
 
-  // Pause / resume при mute в Jitsi. Без подписки запись бы шла даже
-  // когда юзер «выключил микрофон» в UI Jitsi — а это нарушает его
-  // expectation.
-  //
-  // Реализация: restart-pattern несовместим с MediaRecorder.pause() —
-  // мы сами стопаем/пересоздаём recorder, поэтому MediaRecorder в
-  // состоянии "paused" не существует. На mute → disarm interval +
-  // stop текущего (хвост → очередь). На unmute → spawn новый recorder
-  // + новый интервал. См. pauseRecordingRef/resumeRecordingRef внутри
-  // основного useEffect.
-  useEffect(() => {
-    if (!jitsiApi) return
-    const onMute = (data: any) => {
-      try {
-        if (data?.muted) {
-          pauseRecordingRef.current()
-        } else {
-          resumeRecordingRef.current()
-        }
-      } catch (e) {
-        console.warn("[lesson-recorder] pause/resume failed:", e)
-      }
-    }
-    try {
-      jitsiApi.addListener?.("audioMuteStatusChanged", onMute)
-    } catch {
-      /* ignore */
-    }
-    return () => {
-      try {
-        jitsiApi.removeListener?.("audioMuteStatusChanged", onMute)
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [jitsiApi])
-
-  // Pause / resume по mute в LiveKit. Симметрично Jitsi-варианту:
-  // когда юзер кликает microphone-off в LiveKit-controls, мы тоже
+  // Pause / resume по mute в LiveKit: когда юзер кликает microphone-off в LiveKit-controls, мы тоже
   // останавливаем запись — иначе писали бы тишину поверх "выключенного"
   // микрофона. Privacy.
   //

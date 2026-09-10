@@ -10,7 +10,7 @@
    Никаких stats, sidebar, homework карточек.
    ============================================================ */
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 
@@ -20,6 +20,7 @@ import PostLessonNoteModal from "@/components/lesson/PostLessonNoteModal"
 import LessonNotesModal from "@/components/lesson/LessonNotesModal"
 import ChatModal, { CALL_MARKERS } from "@/components/dashboard/ChatModal"
 import { sendMessage as sendChatMessage } from "@/lib/chat/actions"
+import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
 
 const LiveKitLessonStage = dynamic(
   () => import("@/components/lesson/livekit-stage").then((m) => m.LiveKitLessonStage),
@@ -60,6 +61,20 @@ export default function LessonVideoRoom({
   const [postNoteOpen, setPostNoteOpen] = useState(false)    // teacher-only post-lesson отзыв, показывается при выходе
   const [lkHangupSignal, setLkHangupSignal] = useState(0)
   const [fsSupported, setFsSupported] = useState(false)
+  // Запись урока: микрофон каждого участника → чанки в Storage → транскрибация
+  // и саммари кронами. Учитель создаёт запись (init), ученик подхватывает её.
+  // После выхода enabled=false → рекордер дописывает хвост и финализирует.
+  const [lkRoom, setLkRoom] = useState<import("livekit-client").Room | null>(null)
+  const onRoom = useCallback((room: import("livekit-client").Room | null) => setLkRoom(room), [])
+  const [left, setLeft] = useState(false)
+  const [recRetry, setRecRetry] = useState(0)
+  const recorder = useLessonRecorder({
+    lessonId,
+    isTeacher,
+    enabled: !left,
+    liveKitRoom: lkRoom,
+    retryToken: recRetry,
+  })
   // in-call чат: 'closed' | 'open' | 'min' (свёрнут в pill в углу).
   const [chatState, setChatState] = useState<"closed" | "open" | "min">("closed")
   // По макету 2522:6444 чат в комнате — полная модалка 1228×815 без кнопок в шапке:
@@ -110,6 +125,7 @@ export default function LessonVideoRoom({
   const callEndSentRef = useRef(false)
   const doLeave = () => {
     setLeaveOpen(false)
+    setLeft(true)
     setLkHangupSignal((v) => v + 1)
     if (canChat && isTeacher && !callEndSentRef.current) {
       callEndSentRef.current = true
@@ -145,7 +161,7 @@ export default function LessonVideoRoom({
 
   return (
     <>
-      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260908-share" />
+      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260910-rec" />
       <div className="lvr">
        <div className="lvr-canvas" style={{ zoom: roomZoom }}>
         <div className="lvr-topbar">
@@ -153,6 +169,27 @@ export default function LessonVideoRoom({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/landing/raw2/logo-raw-word-white.svg" alt="Raw English" />
           </a>
+          <div className="lvr-topbar-right">
+          {!left && (recorder.status === "recording" || recorder.status === "paused" || recorder.status === "starting" || recorder.status === "error") && (
+            <div
+              className={`lvr-rec lvr-rec--${recorder.status}`}
+              role="status"
+              title={recorder.error ?? (recorder.status === "paused" ? "Микрофон выключен — запись на паузе" : "Урок записывается для конспекта")}
+            >
+              <span className="lvr-rec-dot" aria-hidden />
+              {recorder.status === "recording" && "Запись"}
+              {recorder.status === "paused" && "Пауза"}
+              {recorder.status === "starting" && "Запись…"}
+              {recorder.status === "error" && (
+                <>
+                  <span className="lvr-rec-err">{recorder.error ?? "Запись не идёт"}</span>
+                  <button type="button" className="lvr-rec-retry" onClick={() => setRecRetry((v) => v + 1)}>
+                    Повторить
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <div className="lvr-winbtns">
             <button
               type="button"
@@ -183,6 +220,7 @@ export default function LessonVideoRoom({
               <img src="/lesson/icons/win-84.svg" alt="" aria-hidden />
             </button>
           </div>
+          </div>
         </div>
 
         <div className="lvr-stage">
@@ -201,6 +239,7 @@ export default function LessonVideoRoom({
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenNotes={() => setNotesOpen(true)}
             onShareLink={shareLink}
+            onRoom={onRoom}
           />
         </div>
 
