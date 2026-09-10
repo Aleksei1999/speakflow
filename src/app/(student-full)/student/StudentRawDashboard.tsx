@@ -1215,32 +1215,11 @@ export default function StudentRawDashboard({
               </div>
             </div>
 
-            {balanceHistory.length > 0 && (
-              <ul className="st-bal-history" aria-label="Последние операции по балансу">
-                {balanceHistory.map((t) => {
-                  const label = t.kind === "topup" ? "Пополнение"
-                    : t.kind === "refund" ? "Возврат"
-                    : t.kind === "lesson_charge" ? "Урок"
-                    : "Корректировка"
-                  const d = new Date(t.createdAt)
-                  const date = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`
-                  return (
-                    <li key={t.id} className={`st-bal-op st-bal-op--${t.kind}`}>
-                      <span className="st-bal-op-date">{date}</span>
-                      <span className="st-bal-op-label" title={t.comment ?? undefined}>{label}</span>
-                      <span className="st-bal-op-sum">
-                        {t.amountRub > 0 ? "+" : t.amountRub < 0 ? "−" : ""}{Math.abs(t.amountRub).toLocaleString("ru-RU")} ₽
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
 
           </div>
 
           <div className="st-bal-side">
-            <div className="st-topup-card">
+            <div className="st-topup-card" id="topup">
               <h3>Пополнение<br />баланса</h3>
               <input
                 type="tel"
@@ -1300,9 +1279,31 @@ export default function StudentRawDashboard({
           </div>
         </div>
         {/* Figma: кнопка под карточкой, по центру секции */}
-        <Link href="/student/balance" className="st-bal-topup">
+        {balanceHistory.length > 0 && (
+          <ul className="st-bal-history" aria-label="Последние операции по балансу">
+            {balanceHistory.map((t) => {
+              const label = t.kind === "topup" ? "Пополнение"
+                : t.kind === "refund" ? "Возврат"
+                : t.kind === "lesson_charge" ? "Урок"
+                : "Корректировка"
+              const d = new Date(t.createdAt)
+              const date = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`
+              return (
+                <li key={t.id} className={`st-bal-op st-bal-op--${t.kind}`}>
+                  <span className="st-bal-op-date">{date}</span>
+                  <span className="st-bal-op-label" title={t.comment ?? undefined}>{label}</span>
+                  <span className="st-bal-op-sum">
+                    {t.amountRub > 0 ? "+" : t.amountRub < 0 ? "−" : ""}{Math.abs(t.amountRub).toLocaleString("ru-RU")} ₽
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        <a href="#topup" className="st-bal-topup">
           ПОПОЛНИТЬ БАЛАНС
-        </Link>
+        </a>
       </section>
 
       {/* PAY METHOD MODAL — Figma 2522:2400 «Пополнение баланса (выбранный зелёный)» */}

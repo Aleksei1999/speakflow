@@ -1219,25 +1219,26 @@
   line-height: 1.16;
 }
 
-/* Последние операции по балансу (пополнения / уроки / возвраты) */
+/* Последние операции по балансу — отдельный блок под сеткой, поверх тёмного фона секции */
 .st-bal-history {
-  list-style: none; margin: 28px 0 0; padding: 0;
+  list-style: none; margin: 24px auto 0; padding: 0;
+  width: min(100%, 780px);
   display: flex; flex-direction: column; gap: 8px;
 }
 .st-bal-op {
-  display: flex; align-items: center; gap: 16px;
-  padding: 10px 22px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 12px 24px;
   border-radius: 29.5px;
-  background: rgba(30, 30, 30, 0.06);
+  background: rgba(255, 255, 255, 0.10);
   font-family: 'Inter', sans-serif;
-  font-weight: 600; font-size: 18px; letter-spacing: -0.5px;
-  color: var(--black, #1e1e1e);
+  font-weight: 600; font-size: 20px; letter-spacing: -0.5px;
+  color: var(--white, #fff);
 }
-.st-bal-op-date { flex: 0 0 auto; opacity: 0.55; font-variant-numeric: tabular-nums; }
+.st-bal-op-date { flex: 0 0 auto; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .st-bal-op-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-bal-op-sum { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
-.st-bal-op--topup .st-bal-op-sum { color: #4f7a10; }
-.st-bal-op--refund .st-bal-op-sum, .st-bal-op--lesson_charge .st-bal-op-sum { color: #b23a2a; }
+.st-bal-op--topup .st-bal-op-sum { color: #dfed8c; }
+.st-bal-op--refund .st-bal-op-sum, .st-bal-op--lesson_charge .st-bal-op-sum { color: #ff8c7d; }
 
 /* кнопка под карточкой: 477×76 r50, Inter 700 35 / −1.75px, 62px под карточкой, по центру секции */
 .st-bal-topup {
