@@ -57,6 +57,26 @@ export async function POST(req: NextRequest) {
   if (access.status === "expired") {
     return NextResponse.json({ error: "Время урока истекло" }, { status: 410 })
   }
+  // Ученик подключается только при достаточном балансе (урок списывается при завершении).
+  if (gate.role === "student") {
+    const { data: lessonRow } = await gate.admin.from("lessons").select("price").eq("id", gate.lesson.id).maybeSingle()
+    const price = Number((lessonRow as { price: number | null } | null)?.price ?? 0)
+    if (price > 0) {
+      const { data: paid } = await gate.admin.from("payments").select("id").eq("lesson_id", gate.lesson.id).eq("status", "succeeded").limit(1).maybeSingle()
+      if (!paid) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: bal } = await (gate.admin as any).from("student_balances").select("balance_kopecks").eq("user_id", gate.user.id).maybeSingle()
+        const balance = Number((bal as { balance_kopecks: number | null } | null)?.balance_kopecks ?? 0)
+        if (balance < price) {
+          const rub = (n: number) => Math.round(n / 100).toLocaleString("ru-RU")
+          return NextResponse.json(
+            { error: `Недостаточно средств: урок стоит ${rub(price)} ₽, на балансе ${rub(balance)} ₽. Пополните баланс в кабинете.` },
+            { status: 402 }
+          )
+        }
+      }
+    }
+  }
   // Первое подключение переводит урок в in_progress — иначе cron mark_missed_lessons
   // пометит проведённый урок как no_show, а complete_finished_lessons никогда не сработает.
   if (lessonStatus === "booked") {

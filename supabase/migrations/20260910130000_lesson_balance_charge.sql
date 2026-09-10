@@ -2,7 +2,10 @@
 -- Автосписание стоимости урока с баланса ученика при завершении урока.
 --
 --  * balance_transactions — журнал движений баланса (пополнения, списания).
---  * student_balances может уходить в минус (урок проведён — долг).
+--  * Баланс не уходит в минус: ученик без достаточного баланса не может
+--    подключиться к уроку (проверка в /api/livekit/token). Если к моменту
+--    завершения денег всё же не хватило — списывается остаток, в журнале
+--    отмечается недостача.
 --  * Триггер на lessons: status → completed ⇒ списать lessons.price (копейки),
 --    если урок не был оплачен отдельным платежом (payments.status='succeeded')
 --    и списание ещё не делалось (идемпотентно).
@@ -29,9 +32,6 @@ ALTER TABLE public.balance_transactions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS balance_tx_select_own ON public.balance_transactions;
 CREATE POLICY balance_tx_select_own ON public.balance_transactions
   FOR SELECT TO authenticated USING (user_id = auth.uid());
-
--- Баланс может быть отрицательным (долг за проведённые уроки).
-ALTER TABLE public.student_balances DROP CONSTRAINT IF EXISTS student_balances_balance_kopecks_check;
 
 -- Пополнение: как раньше + строка журнала.
 CREATE OR REPLACE FUNCTION public.credit_student_balance(uid UUID, amount_add BIGINT)
@@ -65,6 +65,8 @@ SET search_path = public
 AS $$
 DECLARE
   v_price BIGINT := COALESCE(NEW.price, 0);
+  v_balance BIGINT;
+  v_charge BIGINT;
   v_new_balance BIGINT;
 BEGIN
   IF NEW.status <> 'completed' OR OLD.status IS NOT DISTINCT FROM 'completed' THEN
@@ -82,13 +84,24 @@ BEGIN
     RETURN NEW;
   END IF;
   INSERT INTO student_balances (user_id, balance_kopecks, updated_at)
-  VALUES (NEW.student_id, -v_price, now())
-  ON CONFLICT (user_id)
-  DO UPDATE SET balance_kopecks = student_balances.balance_kopecks - v_price,
-                updated_at = now()
-  RETURNING balance_kopecks INTO v_new_balance;
+  VALUES (NEW.student_id, 0, now())
+  ON CONFLICT (user_id) DO NOTHING;
+  SELECT balance_kopecks INTO v_balance FROM student_balances WHERE user_id = NEW.student_id FOR UPDATE;
+  v_charge := LEAST(COALESCE(v_balance, 0), v_price);
+  IF v_charge > 0 THEN
+    UPDATE student_balances
+       SET balance_kopecks = balance_kopecks - v_charge, updated_at = now()
+     WHERE user_id = NEW.student_id
+     RETURNING balance_kopecks INTO v_new_balance;
+  ELSE
+    v_new_balance := COALESCE(v_balance, 0);
+  END IF;
   INSERT INTO balance_transactions (user_id, lesson_id, kind, amount_kopecks, balance_after, comment)
-  VALUES (NEW.student_id, NEW.id, 'lesson_charge', -v_price, v_new_balance, 'Урок ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Moscow', 'DD.MM HH24:MI'));
+  VALUES (
+    NEW.student_id, NEW.id, 'lesson_charge', -v_charge, v_new_balance,
+    'Урок ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Moscow', 'DD.MM HH24:MI')
+      || CASE WHEN v_charge < v_price THEN ' — не хватило ' || ((v_price - v_charge) / 100)::text || ' ₽' ELSE '' END
+  );
   RETURN NEW;
 END;
 $$;
