@@ -108,7 +108,6 @@ const PatchSchema = z.object({
   education: z.string().trim().max(1000).optional(),
   certificates: z.array(z.string().trim().min(1).max(160)).max(10).optional(),
   video_intro_url: z.string().url().nullable().optional(),
-  is_listed: z.boolean().optional(),
 })
 
 export async function PATCH(req: NextRequest) {
@@ -174,7 +173,6 @@ export async function PATCH(req: NextRequest) {
     if (data.education !== undefined) tpPatch.education = data.education
     if (data.certificates !== undefined) tpPatch.certificates = data.certificates
     if (data.video_intro_url !== undefined) tpPatch.video_intro_url = data.video_intro_url
-    if (data.is_listed !== undefined) tpPatch.is_listed = data.is_listed
 
     if (Object.keys(tpPatch).length > 0) {
       const { error } = await supabase

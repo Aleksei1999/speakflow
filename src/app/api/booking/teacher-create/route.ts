@@ -7,6 +7,7 @@ import { notifyLessonBooked } from '@/lib/notifications/booking'
 import { logAuditEvent } from '@/lib/audit/log'
 import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from '@/lib/cache/invalidate'
 import { fetchTeacherRates } from '@/lib/settings/rates'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 /**
  * POST /api/booking/teacher-create
@@ -44,6 +45,14 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'booking:teacher-create',
+      keyParts: [user.id],
+      max: 20,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
 
     // Проверяем роль текущего пользователя — должен быть teacher
     const { data: currentProfile, error: profileError } = await supabase
@@ -247,7 +256,7 @@ export async function POST(request: NextRequest) {
     // Имя комнаты Jitsi по DB-сгенерированному id
     const jitsiRoomName = `speakflow-${lesson.id}`
     // FIXME(types): Postgrest UpdateBuilder инференсится в never
-    await (supabase.from('lessons') as any)
+    await (createAdminClient().from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
       .eq('id', lesson.id)
 

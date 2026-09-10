@@ -60,11 +60,13 @@ export async function GET(
     }
     if (lessonById.size === 0) return NextResponse.json({ note: null })
 
-    // Свежая заметка в этих уроках (любой автор).
+    // Свежая заметка в этих уроках от преподавателя (личные заметки
+    // самого ученика — приватные, их не показываем).
     const { data: notes } = await admin
       .from('lesson_notes')
       .select('lesson_id, user_id, content, updated_at')
       .in('lesson_id', Array.from(lessonById.keys()))
+      .neq('user_id', studentId)
       .order('updated_at', { ascending: false })
       .limit(1)
     const latest = ((notes ?? []) as Array<{

@@ -314,7 +314,8 @@ export async function POST(request: NextRequest) {
     // Set Jitsi room name using the DB-generated lesson ID
     const jitsiRoomName = `speakflow-${lesson.id}`
     // FIXME(types): Postgrest UpdateBuilder инференсится в never
-    await (supabase.from('lessons') as any)
+    const adminDb = createAdminClient()
+    await (adminDb.from('lessons') as any)
       .update({ jitsi_room_name: jitsiRoomName })
       .eq('id', lesson.id)
 
@@ -355,7 +356,7 @@ export async function POST(request: NextRequest) {
           extendedProps: { source: 'raw-english', lessonId: lesson.id, side: 'teacher' },
         })
         if (eventId) {
-          await (supabase.from('lessons') as any)
+          await (adminDb.from('lessons') as any)
             .update({ google_event_id: eventId })
             .eq('id', lesson.id)
         }
@@ -376,7 +377,7 @@ export async function POST(request: NextRequest) {
           extendedProps: { source: 'raw-english', lessonId: lesson.id, side: 'student' },
         })
         if (studentEventId) {
-          await (supabase.from('lessons') as any)
+          await (adminDb.from('lessons') as any)
             .update({ student_google_event_id: studentEventId })
             .eq('id', lesson.id)
         }

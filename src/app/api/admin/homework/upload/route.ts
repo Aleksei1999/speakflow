@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const tooBig = preflightSize(request, { maxBytes: MAX_BYTES, message: 'Файл больше 25 МБ' })
+
+    if (tooBig) return tooBig
+
     const fd = await request.formData()
     const file = fd.get('file')
     const studentId = fd.get('studentId')
@@ -33,7 +38,10 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File) || !file.size) {
       return NextResponse.json({ error: 'Файл не передан' }, { status: 400 })
     }
-    if (file.size > MAX_BYTES) return NextResponse.json({ error: 'Файл больше 25 МБ' }, { status: 400 })
+    if (file.size > MAX_BYTES) return NextResponse.json({ error: 'Файл больше 25 МБ' }, { status: 413 })
+    const verified = await verifyFileType(file)
+    if (verified instanceof NextResponse) return verified
+    const mimeType = verified.mimeType
     if (typeof studentId !== 'string' || !studentId) {
       return NextResponse.json({ error: 'studentId required' }, { status: 400 })
     }
@@ -52,7 +60,7 @@ export async function POST(request: NextRequest) {
     const path = `admin-uploads/${studentId}/${ts}_${sanitize(file.name)}`
     const bytes = new Uint8Array(await file.arrayBuffer())
     const up = await admin.storage.from(BUCKET).upload(path, bytes, {
-      contentType: file.type || 'application/octet-stream',
+      contentType: mimeType,
       upsert: false,
     })
     if (up.error) {

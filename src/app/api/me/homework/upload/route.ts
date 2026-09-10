@@ -17,6 +17,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
+import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +38,18 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Content-Length до formData(): большие тела не буферим.
+    const tooBig = preflightSize(request, { maxBytes: MAX_BYTES, message: 'Файл больше 25 МБ' })
+    if (tooBig) return tooBig
+
+    const limited = await enforceRateLimitStrict(request, {
+      name: 'homework:upload',
+      keyParts: [user.id],
+      max: 20,
+      windowSeconds: 60,
+    })
+    if (limited) return limited
+
     const fd = await request.formData()
     const file = fd.get('file')
     const folderId = String(fd.get('folder_id') ?? '') || null
@@ -43,11 +57,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Файл не передан' }, { status: 400 })
     }
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: 'Файл больше 25 МБ' }, { status: 400 })
+      return NextResponse.json({ error: 'Файл больше 25 МБ' }, { status: 413 })
     }
     if (file.size === 0) {
       return NextResponse.json({ error: 'Пустой файл' }, { status: 400 })
     }
+    // Тип файла — по magic bytes и whitelist, а не по file.type от клиента.
+    const verified = await verifyFileType(file)
+    if (verified instanceof NextResponse) return verified
+    const mimeType = verified.mimeType
 
     const admin = createAdminClient() as any
 
@@ -94,7 +112,7 @@ export async function POST(request: NextRequest) {
     const up = await admin.storage
       .from(BUCKET)
       .upload(storagePath, bytes, {
-        contentType: file.type || 'application/octet-stream',
+        contentType: mimeType,
         upsert: false,
       })
     if (up.error) {
@@ -110,7 +128,7 @@ export async function POST(request: NextRequest) {
         title: file.name,
         storage_path: storagePath,
         file_url: '', // enforced NOT NULL в 008 миграции; храним пустоту
-        mime_type: file.type || null,
+        mime_type: mimeType,
         file_size: file.size,
         is_public: false,
         folder_id: folderId,

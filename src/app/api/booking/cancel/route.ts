@@ -121,6 +121,15 @@ export async function POST(request: NextRequest) {
 
     const refundEligible = hoursUntilLesson >= CANCELLATION_POLICY_HOURS
 
+    // Ученик отменяет не позднее чем за 24 часа (та же политика, что в DELETE /api/lessons/[id]
+    // и в DB-триггере guard_lesson_status_from_client).
+    if (isStudent && !isTeacher && !isAdmin && hoursUntilLesson < CANCELLATION_POLICY_HOURS) {
+      return NextResponse.json(
+        { error: 'Отменить урок можно не позднее чем за 24 часа до начала' },
+        { status: 400 }
+      )
+    }
+
     // Update lesson status to cancelled
     // FIXME(types): Postgrest UpdateBuilder инференсится в never из-за неполной Database (без Views/Relationships)
     const { error: updateError } = await (supabase.from('lessons') as any)
@@ -130,6 +139,7 @@ export async function POST(request: NextRequest) {
         cancellation_reason: reason || null,
       })
       .eq('id', lessonId)
+      .in('status', cancellableStatuses)
 
     if (updateError) {
       console.error('Ошибка отмены урока:', updateError)

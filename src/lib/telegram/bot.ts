@@ -5,6 +5,7 @@
  * Telegram-аккаунт через код подтверждения.
  */
 
+import { randomInt } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -81,8 +82,9 @@ export async function sendTelegramMessage({
 export async function generateLinkingCode(userId: string): Promise<string> {
   const supabase = createAdminClient() as unknown as LooseAdmin
 
-  // Генерируем 6-значный код
-  const code = String(Math.floor(100000 + Math.random() * 900000))
+  // 6 символов A-Z0-9 из crypto (36^6 ≈ 2.2 млрд вариантов вместо 900 тыс. цифр)
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const code = Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join('')
 
   // Срок действия: 10 минут
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()

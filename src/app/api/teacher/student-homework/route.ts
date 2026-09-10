@@ -87,7 +87,14 @@ export async function GET(request: NextRequest) {
       .in('id', materialIds)
     if (folderId) matsQuery = matsQuery.eq('folder_id', folderId)
 
-    const { data: mats } = await matsQuery
+    const { data: matsRaw } = await matsQuery
+    // Учителю — свои материалы + файлы ученика/админа (у них teacher_id-заглушка).
+    // Материалы, которыми этому ученику делился другой преподаватель, не отдаём.
+    const mats = (matsRaw ?? []).filter((m: { teacher_id: string; storage_path: string | null }) =>
+      role === 'admin'
+      || m.teacher_id === teacherProfileId
+      || (m.storage_path ?? '').startsWith('student-uploads/')
+      || (m.storage_path ?? '').startsWith('admin-uploads/'))
     const rows = (mats ?? []) as Array<{
       id: string
       title: string
