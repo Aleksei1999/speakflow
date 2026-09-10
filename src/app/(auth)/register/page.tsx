@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, type FormEvent } from 'react'
+import { Suspense, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -15,6 +15,8 @@ function RegisterPageContent() {
   const initialRole = searchParams.get('as') === 'teacher' ? 'teacher' : 'student'
 
   const [role, setRole] = useState<'student' | 'teacher'>(initialRole)
+  // Преподаватели регистрируются заявкой на /teach (одобряет админ), своего кабинета «с ходу» нет.
+  useEffect(() => { if (initialRole === 'teacher') router.replace('/teach') }, [initialRole, router])
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -26,31 +28,6 @@ function RegisterPageContent() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [checkEmail, setCheckEmail] = useState('')
-  const [contact, setContact] = useState('')
-  const [applied, setApplied] = useState(false)
-
-  // Вкладка «Учитель» — заявка админу (одобрение создаёт аккаунт и присылает пароль),
-  // а не самостоятельная регистрация с кабинетом.
-  async function onApply(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setErr('')
-    if (!agree) { setErr('Нужно согласие на обработку данных'); return }
-    setBusy(true)
-    try {
-      const res = await fetch('/api/teach/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim(), contact: contact.trim() || email.trim() }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) { setErr(j.error || 'Не удалось отправить заявку'); setBusy(false); return }
-      setApplied(true)
-    } catch {
-      setErr('Не удалось отправить заявку. Попробуй позже.')
-    } finally {
-      setBusy(false)
-    }
-  }
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErr('')
@@ -112,38 +89,11 @@ function RegisterPageContent() {
         <Link href="/" className="raw2-login-close" aria-label="На главную">×</Link>
 
         <div className="raw2-login-tabs">
-          <button type="button" className={role === 'student' ? 'active' : ''} onClick={() => { setRole('student'); setApplied(false); setErr('') }}>Ученик</button>
-          <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => { setRole('teacher'); setCheckEmail(''); setErr('') }}>Учитель</button>
+          <button type="button" className={role === 'student' ? 'active' : ''} onClick={() => setRole('student')}>Ученик</button>
+          <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => router.push('/teach')}>Учитель</button>
         </div>
 
-        {applied ? (
-          <>
-            <div className="raw2-login-title">Заявка отправлена</div>
-            <p className="raw2-login-check-msg">
-              Мы получили заявку и напишем на<br />
-              <b>{email.trim()}</b>.<br />
-              После одобрения придёт письмо с доступом в кабинет преподавателя.
-            </p>
-            <Link href="/" className="btn btn-red" style={{ alignSelf: 'center', marginTop: 8, textAlign: 'center' }}>
-              Ок
-            </Link>
-          </>
-        ) : role === 'teacher' ? (
-          <>
-            <div className="raw2-login-title">Заявка преподавателя</div>
-
-            <form className="raw2-login-form" onSubmit={onApply}>
-              <input name="first_name" type="text" placeholder="имя" required autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} />
-              <input name="last_name" type="text" placeholder="фамилия" required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} />
-              <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
-              <input name="contact" type="text" placeholder="telegram или телефон" autoComplete="tel" value={contact} onChange={e => setContact(e.target.value)} />
-              <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Отправляем…' : 'Отправить заявку'}</button>
-              {err && <p className="raw2-login-err">{err}</p>}
-              <label className="raw2-check"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>Согласен с обработкой персональных данных</span></label>
-              <Link href="/login" className="raw2-login-reg">Уже есть аккаунт? Войти</Link>
-            </form>
-          </>
-        ) : checkEmail ? (
+        {checkEmail ? (
           <>
             <div className="raw2-login-title">Проверьте почту</div>
             <p className="raw2-login-check-msg">
