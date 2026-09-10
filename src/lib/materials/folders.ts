@@ -79,8 +79,15 @@ export async function createFolder(kind: FolderKind): Promise<{ id: string; name
   return { id: data.id as string, name: data.name as string }
 }
 
+async function assertFolderOwner(admin: any, folderId: string, userId: string, role: string): Promise<void> {
+  if (role === 'admin') return
+  const { data: f } = await admin.from('material_folders').select('created_by').eq('id', folderId).maybeSingle()
+  if (!f || f.created_by !== userId) throw new Error('Forbidden: папку может менять только её создатель или админ')
+}
+
 export async function renameFolder(folderId: string, name: string): Promise<void> {
-  await requireManager()
+  const { userId, role } = await requireManager()
+  await assertFolderOwner(createAdminClient() as any, folderId, userId, role)
   const trimmed = (name || "").trim().slice(0, 80) || "Новая папка"
   const admin = createAdminClient() as any
   const { error } = await admin
@@ -93,10 +100,16 @@ export async function renameFolder(folderId: string, name: string): Promise<void
 
 /** Удалить папки (и все файлы внутри вместе со storage-объектами). */
 export async function deleteFolders(ids: string[]): Promise<void> {
-  await requireManager()
+  const { userId, role } = await requireManager()
   if (!ids.length) return
   const admin = createAdminClient() as any
-
+  for (const id of ids) await assertFolderOwner(admin, id, userId, role)
+  if (role !== 'admin') {
+    // Внутри могут лежать файлы других преподавателей — их удалять нельзя.
+    const { data: tp } = await admin.from('teacher_profiles').select('id').eq('user_id', userId).maybeSingle()
+    const { data: foreign } = await admin.from('materials').select('id').in('folder_id', ids).neq('teacher_id', tp?.id ?? '00000000-0000-0000-0000-000000000000').limit(1)
+    if ((foreign ?? []).length) throw new Error('В папке есть файлы других преподавателей — удалить может только админ')
+  }
   const { data: mats } = await admin
     .from("materials")
     .select("id, storage_path")

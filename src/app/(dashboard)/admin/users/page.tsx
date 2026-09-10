@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client'
 
+import { sanitizeSearch } from '@/lib/api/search'
 import { useState, useEffect, useCallback } from 'react'
 import { useLocale } from 'next-intl'
 import { asTimeLocale, formatDayMonthYearShort } from '@/lib/time'
@@ -117,7 +118,7 @@ function AdminUsersContent() {
 
     if (searchQuery.trim()) {
       query = query.or(
-        `full_name.ilike.%${searchQuery.trim()}%,email.ilike.%${searchQuery.trim()}%`
+        `full_name.ilike.%${sanitizeSearch(searchQuery)}%,email.ilike.%${sanitizeSearch(searchQuery)}%`
       )
     }
 

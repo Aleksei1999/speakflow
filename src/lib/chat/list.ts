@@ -164,7 +164,7 @@ export async function fetchChatList(
 
   const shouldLoadGroups = !!(opts.includeTeacherGroups || opts.includeGroups)
   const groups: GroupChatItem[] = shouldLoadGroups
-    ? await fetchGroupsForUser(admin, meId, !!opts.allGroups)
+    ? await fetchGroupsForUser(admin, meId, !!opts.allGroups && (await isAdminUser(admin, meId)))
     : []
 
   return [...direct, ...groups]
@@ -341,4 +341,11 @@ function attachmentPlaceholder(kind: string): string {
   if (kind === 'image') return 'Изображение'
   if (kind === 'video') return 'Видео'
   return 'Файл'
+}
+
+/** allGroups разрешён только админу — флаг приходит с клиента. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function isAdminUser(admin: any, userId: string): Promise<boolean> {
+  const { data } = await admin.from('profiles').select('role').eq('id', userId).maybeSingle()
+  return (data as { role?: string } | null)?.role === 'admin'
 }

@@ -40,6 +40,11 @@ export async function saveTeacherLessonNote({ lessonId, note }: SaveInput): Prom
   }
 
   const admin = createAdminClient() as any
+  if (profile.role === "teacher") {
+    const { data: tp } = await admin.from("teacher_profiles").select("id").eq("user_id", user.id).maybeSingle()
+    const { data: lesson } = await admin.from("lessons").select("teacher_id").eq("id", lessonId).maybeSingle()
+    if (!tp?.id || !lesson || lesson.teacher_id !== tp.id) throw new Error("Forbidden: это не ваш урок")
+  }
   const { error } = await admin
     .from("lesson_notes")
     .upsert(

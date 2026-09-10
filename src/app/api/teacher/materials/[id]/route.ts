@@ -144,7 +144,9 @@ export async function DELETE(
     // ученику (домашка от админа / работа ученика). Публичные файлы админа — нет.
     if (!isAdmin && material.teacher_id !== teacherProfileId) {
       const adminDb = createAdminClient() as any
-      const allowed = await materialSharedWithTeacherStudent(adminDb, teacherProfileId as string, id)
+      // Чужой файл другого преподавателя удалять нельзя; можно — загруженные админом/учеником для своего ученика.
+      const foreignOwnerAllowed = /^(admin-uploads|admin-library|student-uploads)\//.test(material.storage_path ?? '')
+      const allowed = foreignOwnerAllowed && (await materialSharedWithTeacherStudent(adminDb, teacherProfileId as string, id))
       if (!allowed) return NextResponse.json({ error: 'Материал не найден' }, { status: 404 })
       db = adminDb
     }

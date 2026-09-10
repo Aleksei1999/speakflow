@@ -1,3 +1,4 @@
+import { teacherHasStudent } from '@/lib/materials/access'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -109,6 +110,9 @@ export async function POST(request: NextRequest) {
         { error: 'Указанный пользователь не является учеником' },
         { status: 400 }
       )
+    }
+    if (!(await teacherHasStudent(createAdminClient(), teacherProfileId, studentId))) {
+      return NextResponse.json({ error: 'Это не ваш ученик' }, { status: 403 })
     }
 
     // Время: в будущем и не более +30 дней

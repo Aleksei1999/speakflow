@@ -7,6 +7,8 @@
 // Бизнес-правило: заявка приходит только если ученик прошёл тест
 // (test === true). Отфильтровано на месте, callers могут не заботиться.
 
+import { requireAdmin } from "@/lib/admin-guard"
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fromRoastLevel } from "@/lib/levels/mapping"
 import type { TrialApplication, TrialAnswerLogItem } from "@/app/(teacher-full)/teacher/trial-request-fetch"
@@ -15,8 +17,10 @@ import type { TrialApplication, TrialAnswerLogItem } from "@/app/(teacher-full)/
 type UntypedSupabase = any
 
 export async function fetchTrialApplicationsForAdmin(): Promise<TrialApplication[]> {
+  // Server action доступен по id любому — проверяем админа явно.
+  const gate = await requireAdmin((await createClient()) as UntypedSupabase)
+  if (!gate.ok) return []
   const admin = createAdminClient() as UntypedSupabase
-
   const { data: reqs, error } = await admin
     .from("trial_lesson_requests")
     .select("id, user_id, level_test_id, created_at, status, assigned_teacher_id")

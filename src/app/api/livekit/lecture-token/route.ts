@@ -4,6 +4,7 @@
 // Moderator = admin. Room = `lecture-<id>`.
 
 // @ts-nocheck
+import { nameKey } from "@/lib/ru/name-match"
 import { NextRequest, NextResponse } from "next/server"
 import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient() as any
   const { data: lecture } = await admin
     .from("lectures")
-    .select("id, scheduled_at, duration_minutes, is_published")
+    .select("id, scheduled_at, duration_minutes, is_published, host_name")
     .eq("id", lectureId)
     .maybeSingle()
   if (!lecture || lecture.is_published === false) {
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   const isModerator = prof?.role === "admin"
   // Ученик заходит только по записи; учитель/админ — ведущие.
-  if (prof?.role !== "admin" && prof?.role !== "teacher") {
+  const isHost = prof?.role === "teacher" && !!lecture.host_name && nameKey(prof.full_name ?? "") === nameKey(lecture.host_name)
+  if (prof?.role !== "admin" && !isHost) {
     const { data: reg } = await admin
       .from("lecture_registrations")
       .select("id")

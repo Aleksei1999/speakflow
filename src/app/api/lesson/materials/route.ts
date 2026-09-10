@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // storage_path только из своей папки (иначе подпись чужих файлов teacher-materials), ссылка — только http(s)
+    if (typeof storagePath === 'string' && storagePath && gate.role !== 'admin' && !storagePath.startsWith(`${gate.user.id}/`)) {
+      return NextResponse.json({ error: 'Недопустимый путь файла' }, { status: 400 })
+    }
+    if (typeof fileUrl === 'string' && fileUrl && !/^https?:\/\//i.test(fileUrl)) {
+      return NextResponse.json({ error: 'Недопустимая ссылка' }, { status: 400 })
+    }
     const { data, error } = await (gate.admin.from('materials') as any)
       .insert({
         lesson_id: lessonId,

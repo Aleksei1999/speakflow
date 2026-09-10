@@ -10,6 +10,7 @@
 // Response: { note: {content, updatedAt, authorId, authorName, lessonAt} | null }
 // ---------------------------------------------------------------------------
 
+import { teacherHasStudent } from '@/lib/materials/access'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -35,6 +36,13 @@ export async function GET(
       .maybeSingle<{ role: string }>()
     if (!profile || (profile.role !== 'teacher' && profile.role !== 'admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (profile.role === 'teacher') {
+      const adminDb = createAdminClient() as any
+      const { data: tp } = await adminDb.from('teacher_profiles').select('id').eq('user_id', user.id).maybeSingle()
+      if (!tp?.id || !(await teacherHasStudent(adminDb, tp.id, studentId))) {
+        return NextResponse.json({ error: 'Это не ваш ученик' }, { status: 403 })
+      }
     }
 
     const admin = createAdminClient() as any

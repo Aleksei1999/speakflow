@@ -1,3 +1,4 @@
+import { sanitizeSearch } from "@/lib/api/search"
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
@@ -66,7 +67,7 @@ async function fetchTeachers(searchParams: SearchParams) {
 
   // Search by name
   if (searchParams.search) {
-    query = query.ilike("profiles.full_name", `%${searchParams.search}%`)
+    query = query.ilike("profiles.full_name", `%${sanitizeSearch(searchParams.search)}%`)
   }
 
   // Filter by specializations (uses GIN index on specializations column)

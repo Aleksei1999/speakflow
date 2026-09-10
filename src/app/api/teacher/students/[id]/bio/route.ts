@@ -87,6 +87,9 @@ export async function GET(
     if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
     const admin = createAdminClient() as any
+    if (gate.role === 'teacher' && !(await isMyStudent(admin, gate.user.id, studentId))) {
+      return NextResponse.json({ error: 'Это не ваш ученик' }, { status: 403 })
+    }
     const note = await loadNote(admin, studentId)
     return NextResponse.json({ note })
   } catch (e) {

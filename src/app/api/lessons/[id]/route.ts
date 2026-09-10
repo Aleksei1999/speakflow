@@ -164,6 +164,13 @@ export async function DELETE(
         { status: 403 }
       )
     }
+    // Ученик отменяет не позднее чем за 24 часа (та же политика, что в /api/booking/cancel).
+    if (isStudent && !isTeacher && !isAdmin) {
+      const hoursUntil = (Date.parse(lesson.scheduled_at) - Date.now()) / 3_600_000
+      if (hoursUntil < 24) {
+        return NextResponse.json({ error: 'Отменить урок можно не позднее чем за 24 часа до начала' }, { status: 400 })
+      }
+    }
 
     // ---- status guard ----
     if (FROZEN_STATUSES.has(lesson.status)) {

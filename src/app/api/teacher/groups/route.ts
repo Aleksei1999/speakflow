@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { assertAllStudents } from '@/lib/groups/validate'
+import { assertAllStudents, assertOwnStudents } from '@/lib/groups/validate'
 const postSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional().nullable(),
@@ -115,6 +115,9 @@ export async function POST(request: NextRequest) {
     const { name, description, student_ids } = parsed.data
     if (Array.isArray(student_ids) && student_ids.length > 0 && !(await assertAllStudents(student_ids))) {
       return NextResponse.json({ error: 'В группу можно добавлять только учеников' }, { status: 400 })
+    }
+    if (Array.isArray(student_ids) && student_ids.length > 0 && !(await assertOwnStudents(student_ids, teacherProfileId))) {
+      return NextResponse.json({ error: 'В группу можно добавлять только своих учеников' }, { status: 403 })
     }
     const { data: inserted, error: insErr } = await supabase
       .from('teacher_groups')

@@ -1,3 +1,4 @@
+import { sanitizeSearch } from '@/lib/api/search'
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     if (search && search.trim()) {
-      const term = `%${search.trim()}%`
+      const term = `%${sanitizeSearch(search)}%`
       q = q.or(`full_name.ilike.${term},email.ilike.${term}`)
     }
 

@@ -33,6 +33,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
+  const limited = await enforceRateLimitStrict(req, {
+    name: "livekit:token",
+    keyParts: [gate.user.id, getClientIp(req)],
+    max: 60,
+    windowSeconds: 60,
+  })
+  if (limited) return limited
+
   // Статус и временное окно — как у /api/jitsi/token: отменённый/завершённый
   // урок не пускаем, до окна — 425, после — 410.
   const lessonStatus = gate.lesson.status ?? ""
@@ -82,13 +90,6 @@ export async function POST(req: NextRequest) {
   if (lessonStatus === "booked") {
     await gate.admin.from("lessons").update({ status: "in_progress" }).eq("id", gate.lesson.id).eq("status", "booked")
   }
-  const limited = await enforceRateLimitStrict(req, {
-    name: "livekit:token",
-    keyParts: [gate.user.id, getClientIp(req)],
-    max: 60,
-    windowSeconds: 60,
-  })
-  if (limited) return limited
 
   const isModerator = gate.role === "teacher" || gate.role === "admin"
   const roomName = `lesson-${gate.lesson.id}`

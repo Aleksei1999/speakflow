@@ -17,7 +17,7 @@ import {
 
 const attachmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  url: z.string().trim().min(1).max(1000),
+  url: z.string().trim().min(1).max(1000).regex(/^https?:\/\//i, 'Недопустимая ссылка'),
   size: z.number().int().nonnegative().optional(),
   mime: z.string().trim().max(200).optional(),
 })

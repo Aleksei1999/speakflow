@@ -22,6 +22,7 @@
 //   удаляет событие в Google (fail-soft).
 // ---------------------------------------------------------------------------
 
+import { teacherHasStudent } from '@/lib/materials/access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   deleteEventFromGoogle,
@@ -172,6 +173,9 @@ export async function createLesson(
   }
   if (student.role !== 'student') {
     return { ok: false, code: 'validation', error: 'Урок можно назначить только ученику' }
+  }
+  if (!(await teacherHasStudent(admin, teacherProfile.id, input.studentId))) {
+    return { ok: false, code: 'validation', error: 'Это не ваш ученик — ученика назначает админ' }
   }
 
   // ---------- 6. Slot busy: Google Calendar ----------

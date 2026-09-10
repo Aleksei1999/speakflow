@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { createAdminClient } from '@/lib/supabase/admin'
+import { teacherHasStudent } from '@/lib/materials/access'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -48,7 +50,7 @@ const getQuerySchema = z.object({
 
 const attachmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  url: z.string().trim().min(1).max(1000),
+  url: z.string().trim().min(1).max(1000).regex(/^https?:\/\//i, 'Недопустимая ссылка'),
   size: z.number().int().nonnegative().optional(),
   mime: z.string().trim().max(200).optional(),
 })
@@ -412,15 +414,15 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
+    if (!tp) {
+      const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if ((me as { role?: string } | null)?.role !== 'admin') {
+        return NextResponse.json({ error: 'Профиль преподавателя не найден' }, { status: 403 })
+      }
+    }
     if (tp) {
-      const { data: lessonRow } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('teacher_id', tp.id)
-        .eq('student_id', student_id)
-        .limit(1)
-        .maybeSingle()
-      if (!lessonRow) {
+      const isMine = await teacherHasStudent(createAdminClient(), tp.id, student_id)
+      if (!isMine) {
         return NextResponse.json(
           {
             error:

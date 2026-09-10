@@ -51,7 +51,7 @@ function extractStoragePath(att: {
 
 const attachmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  url: z.string().trim().min(1).max(1000),
+  url: z.string().trim().min(1).max(1000).regex(/^https?:\/\//i, 'Недопустимая ссылка'),
   size: z.number().int().nonnegative().optional(),
   mime: z.string().trim().max(200).optional(),
   /** Optional: явный путь в Storage. Если задан — сканируем содержимое через VT. */
@@ -145,6 +145,9 @@ export async function POST(
       const admin = createAdminClient()
       for (const att of attachments) {
         const path = extractStoragePath(att)
+        if (path && !path.startsWith(`${user.id}/`)) {
+          return NextResponse.json({ error: 'Недопустимый путь файла' }, { status: 400 })
+        }
         if (!path) continue // внешняя ссылка — не наш scope
         const { data: blob, error: dlErr } = await admin.storage
           .from(HOMEWORK_BUCKET)

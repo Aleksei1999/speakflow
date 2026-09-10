@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { createAdminClient } from '@/lib/supabase/admin'
+import { teacherHasStudent } from '@/lib/materials/access'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -223,8 +225,15 @@ export async function POST(
         { status: 400 }
       )
     }
-    const { students = [], homeworks = [], groups = [] } = parsed.data
-
+    const { students: studentsRaw = [], homeworks = [], groups = [] } = parsed.data
+    // Делимся только со своими учениками.
+    const students: string[] = []
+    for (const sid of Array.from(new Set(studentsRaw))) {
+      if (await teacherHasStudent(createAdminClient(), teacherProfileId, sid)) students.push(sid)
+    }
+    if (studentsRaw.length && !students.length && !homeworks.length && !groups.length) {
+      return NextResponse.json({ error: 'Можно делиться только со своими учениками' }, { status: 403 })
+    }
     // Validate that homeworks/groups belong to this teacher (students are
     // validated implicitly by RLS + uniqueness; sharing to a non-student
     // user is harmless because that user still won't satisfy the recipient
