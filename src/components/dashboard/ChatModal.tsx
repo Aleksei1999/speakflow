@@ -26,6 +26,7 @@ import type {
   ChatMessage as DbChatMessage,
   ChatRole,
 } from "@/lib/chat/types"
+import { initialsOf } from "@/lib/ui/initials"
 
 interface UiChatMessage {
   id: string
@@ -119,16 +120,6 @@ function parseCallMarker(text: string): "active" | "ended" | null {
   if (t === CALL_MARKERS.ended) return "ended"
   return null
 }
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("")
-}
-
 function detectKind(file: File): ChatAttachmentType {
   if (file.type.startsWith("image/")) return "image"
   if (file.type.startsWith("video/")) return "video"

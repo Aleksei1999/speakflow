@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
+import { initialsOf } from "@/lib/ui/initials"
 
 interface PeerProfile {
   id: string
@@ -39,11 +40,6 @@ interface Props {
   peerFallbackAvatar?: string | null
   onClose: () => void
 }
-
-function initialsOf(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")
-}
-
 function formatMemberSince(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleDateString("ru", { month: "long", year: "numeric" })

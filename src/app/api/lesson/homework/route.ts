@@ -25,11 +25,15 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      {
+      console.error('[lesson/homework]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     }
     return NextResponse.json(data ?? [])
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/homework]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
 
@@ -75,10 +79,15 @@ export async function POST(request: NextRequest) {
       dueIso = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     }
 
-    // teacher_id: teacher → их teacher_profiles.id, admin → teacher_id урока.
-    let teacherIdForRow: string | null = gate.teacherProfileId
-    if (gate.role === 'admin') {
-      teacherIdForRow = gate.lesson.teacher_id ?? null
+    // homework.teacher_id ссылается на profiles.id (auth user), не на teacher_profiles.id.
+    let teacherIdForRow: string | null = gate.user.id
+    if (gate.role === 'admin' && gate.lesson.teacher_id) {
+      const { data: tp } = await gate.admin
+        .from('teacher_profiles')
+        .select('user_id')
+        .eq('id', gate.lesson.teacher_id)
+        .maybeSingle<{ user_id: string }>()
+      teacherIdForRow = tp?.user_id ?? null
     }
     if (!teacherIdForRow) {
       return NextResponse.json(
@@ -110,10 +119,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      {
+      console.error('[lesson/homework]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     }
     return NextResponse.json(data)
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/homework]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }

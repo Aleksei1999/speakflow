@@ -7,16 +7,12 @@ import { listLecturesForCurrentUser } from '@/lib/lectures/list'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lectureHostUserId, pushLectureToGoogle } from '@/lib/google-calendar/sync'
+import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
 export const dynamic = 'force-dynamic'
 
 const BUCKET = 'lecture-covers'
 const MAX_BYTES = 10 * 1024 * 1024
-
-function sanitize(raw: string) {
-  return raw.replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(0, 120) || 'file'
-}
-
 export async function GET() {
   try {
     const lectures = await listLecturesForCurrentUser()
@@ -73,7 +69,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Обложка больше 10 МБ' }, { status: 400 })
       }
       const ts = Date.now()
-      storagePath = `${ts}_${sanitize(cover.name)}`
+      storagePath = `${ts}_${sanitizeFilename(cover.name)}`
       const bytes = new Uint8Array(await cover.arrayBuffer())
       const up = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
         contentType: cover.type || 'application/octet-stream',

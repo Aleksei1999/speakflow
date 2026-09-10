@@ -233,7 +233,7 @@ export default async function AdminDashboardFullPage() {
     const now = new Date().toISOString()
     const { data: lRows } = await admin
       .from("lessons")
-      .select("id, scheduled_at, title, student_id, teacher_id")
+      .select("id, scheduled_at, student_id, teacher_id")
       .gte("scheduled_at", now)
       .in("status", ["scheduled", "confirmed", "booked"])
       .order("scheduled_at", { ascending: true })
@@ -263,7 +263,7 @@ export default async function AdminDashboardFullPage() {
       return {
         id: r.id,
         scheduledAt: r.scheduled_at,
-        title: r.title || "Урок",
+        title: "Урок",
         studentName: studentNameById.get(r.student_id) ?? null,
         teacherName: teacherUserId ? teacherNameByUserId.get(teacherUserId) ?? null : null,
         teacherUserId,

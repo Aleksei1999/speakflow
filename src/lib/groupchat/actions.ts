@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createSignedUrl } from '@/lib/supabase/signed-url'
 import type { GroupAttachmentType, GroupChatRole, GroupMessage, GroupMessageRow } from './types'
+import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
 const GROUP_ATTACHMENTS_BUCKET = 'group-chat-attachments'
 const SIGNED_URL_TTL = 3600
@@ -299,15 +300,6 @@ export async function uploadGroupAttachment(
   await signGroupAttachmentsInPlace([msg])
   return msg
 }
-
-function sanitizeFilename(raw: string): string {
-  return raw
-    .replace(/\s+/g, '_')
-    .replace(/[^A-Za-z0-9._-]/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 120) || 'file'
-}
-
 export async function markGroupRead(groupId: string): Promise<void> {
   if (!groupId) return
   const auth = await tryGetUser()

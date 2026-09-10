@@ -10,6 +10,7 @@ import {
   invalidateTeacherMaterials,
   invalidateStudentMaterials,
 } from '@/lib/cache/invalidate'
+import { mimeMatchesType, isLinkOnly } from '@/lib/materials/mime'
 
 const BUCKET = 'teacher-materials'
 const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024 // 10 GB
@@ -20,25 +21,6 @@ const LEVEL_ENUM = ['all', 'A1-A2', 'B1', 'B2', 'C1+'] as const
 const LEVELS_FOR_WRITE = ['A1-A2', 'B1', 'B2', 'C1+'] as const
 const SORT_ENUM = ['recent', 'popular', 'name', 'size'] as const
 const SECTION_ENUM = ['recent', 'popular'] as const
-
-// Maps UI type -> MIME prefix or list for filtering
-const TYPE_MIME_MAP: Record<string, string[]> = {
-  pdf: ['application/pdf'],
-  ppt: [
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  ],
-  doc: [
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/rtf',
-    'text/plain',
-  ],
-  video: ['video/'],
-  audio: ['audio/'],
-  img: ['image/'],
-}
-
 const getQuerySchema = z.object({
   type: z.enum(TYPE_ENUM).default('all'),
   level: z.enum(LEVEL_ENUM).default('all'),
@@ -51,22 +33,6 @@ function fileTypeFromName(name: string): string {
   const parts = name.split('.')
   return parts.length > 1 ? parts.pop()!.toLowerCase() : ''
 }
-
-function mimeMatchesType(mime: string | null | undefined, type: string): boolean {
-  if (!mime) return false
-  const patterns = TYPE_MIME_MAP[type]
-  if (!patterns) return false
-  return patterns.some((p) => (p.endsWith('/') ? mime.startsWith(p) : mime === p))
-}
-
-function isLinkOnly(row: { file_url: string | null; storage_path: string | null }): boolean {
-  return (
-    !row.storage_path &&
-    !!row.file_url &&
-    /^https?:\/\//i.test(row.file_url)
-  )
-}
-
 // ---------------------------------------------------------------
 // GET /api/teacher/materials
 // ---------------------------------------------------------------

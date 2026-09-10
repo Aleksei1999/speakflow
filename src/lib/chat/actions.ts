@@ -23,6 +23,7 @@ import {
   type ChatRole,
 } from './types'
 import { computeSlots, readAtColumn } from './slot'
+import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedSupabase = any
@@ -209,17 +210,6 @@ async function markThreadReadInternal(
     console.warn('[chat] markThreadRead failed', error.message)
   }
 }
-
-// ------------------- helpers -------------------
-
-function sanitizeFilename(raw: string): string {
-  return raw
-    .replace(/\s+/g, '_')
-    .replace(/[^A-Za-z0-9._-]/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 120) || 'file'
-}
-
 async function signAttachmentUrlsInPlace(
   supabase: Awaited<ReturnType<typeof createClient>>,
   messages: ChatMessage[],

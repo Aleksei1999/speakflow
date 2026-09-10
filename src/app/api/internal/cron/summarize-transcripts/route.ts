@@ -199,6 +199,7 @@ async function runSummarize(admin: any, target: any) {
   // Уведомление студента — ошибки игнорируем, саммари важнее.
   try {
     await sendNotification(lesson.student_id, "lesson_summary_ready", {
+      summaryUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://raw-english.com"}/student/summaries`,
       lessonId: target.lesson_id,
       summaryId: summary.id,
     })

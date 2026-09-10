@@ -107,12 +107,12 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (error) {
-    // Логируем, но отдаём 200 -- YooKassa будет повторять при non-2xx
-    // Идемпотентность гарантирует безопасность повторной обработки
+    // Сбой БД/API ЮKassa: отдаём 500, чтобы ЮKassa повторила вебхук.
+    // Обработчики идемпотентны, повтор безопасен.
     console.error(`[webhook] Ошибка обработки ${notification.event}:`, error)
+    return NextResponse.json({ error: 'processing failed' }, { status: 500 })
   }
 
-  // YooKassa ожидает быстрый 200 OK
   return NextResponse.json({ status: 'ok' })
 }
 

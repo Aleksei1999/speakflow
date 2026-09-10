@@ -10,6 +10,7 @@
 
 import * as Sentry from "@sentry/nextjs"
 import { useEffect, useState } from "react"
+import { readLocale } from "@/i18n/read-locale"
 
 const COPY = {
   ru: {
@@ -25,13 +26,6 @@ const COPY = {
 } as const
 
 type Locale = keyof typeof COPY
-
-function readLocale(): Locale {
-  if (typeof document === "undefined") return "ru"
-  const m = document.cookie.match(/(?:^|;\s*)rwen_locale=(ru|en)/)
-  return (m?.[1] as Locale) ?? "ru"
-}
-
 export default function GlobalError({
   error,
   reset,

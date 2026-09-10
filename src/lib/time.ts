@@ -219,3 +219,8 @@ export function formatWeekdayShortDayMonthShort(
   return pickSet(locale).weekdayShortDayMonthShort.format(d)
 }
 
+/** «HH:MM» → минуты от начала суток. */
+export function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { saveTeacherLessonNote } from "@/app/(teacher-full)/teacher/lesson-note-actions"
+import { initialsOf } from "@/lib/ui/initials"
 
 interface Props {
   open: boolean
@@ -21,16 +22,6 @@ function CloseIcon() {
   // eslint-disable-next-line @next/next/no-img-element
   return <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
 }
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("")
-}
-
 function normalizeLevel(lvl: string): string {
   if (lvl === "A1") return "А1"
   if (lvl === "A2") return "А2"

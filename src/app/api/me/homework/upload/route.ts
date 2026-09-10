@@ -19,19 +19,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
 import { enforceRateLimitStrict } from '@/lib/api/rate-limit'
+import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
 export const dynamic = 'force-dynamic'
 
 const BUCKET = 'teacher-materials'
 const MAX_BYTES = 25 * 1024 * 1024
-
-function sanitizeName(raw: string): string {
-  return raw
-    .replace(/[^\w.\-]+/g, '_')
-    .replace(/_+/g, '_')
-    .slice(0, 120) || 'file'
-}
-
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -105,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to storage.
     const ts = Date.now()
-    const safeName = sanitizeName(file.name)
+    const safeName = sanitizeFilename(file.name)
     const storagePath = `student-uploads/${user.id}/${ts}_${safeName}`
 
     const bytes = new Uint8Array(await file.arrayBuffer())

@@ -1,12 +1,6 @@
-// Минимальный layout для полностраничного (без DashboardShell)
-// дизайна student-дашборда. Копия подхода `(teacher-full)`: чтобы
-// pixel-perfect макет из Figma (node 2208:1427) не оборачивался в
-// DashboardShell из `(dashboard)/layout.tsx`, у которого свой padding
-// и сайдбар.
-//
-// Дочерние подроуты (`/student/schedule`, `/student/settings` и т.д.)
-// продолжают жить в `(dashboard)/student/*` группе и получают сайдбар
-// как обычно — конфликта URL нет, потому что page.tsx только один.
+// Layout без DashboardShell для полностраничного student-дашборда
+// (Figma node 2208:1427). Подроуты (`/student/schedule` и т.д.) живут
+// в `(dashboard)/student/*` и получают сайдбар как обычно.
 export default function StudentFullLayout({
   children,
 }: {

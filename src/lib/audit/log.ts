@@ -1,24 +1,6 @@
-// ---------------------------------------------------------------
-// Audit logging helper.
-//
-// Writes go through the SECURITY DEFINER RPC `public.audit_log_event`
-// (proxy → `audit.log_event`). Only service_role can call it, so we
-// always use the admin Supabase client.
-//
-// Failure mode: NEVER block the calling endpoint. If the RPC errors,
-// we console.warn and swallow — the original API response must succeed.
-//
-// Example usage:
-//   import { logAuditEvent } from '@/lib/audit/log'
-//   ...
-//   await logAuditEvent(request, {
-//     category: 'payment',
-//     action: 'payment_created',
-//     target_type: 'lessons',
-//     target_id: lessonId,
-//     payload: { amount_kopecks: lesson.price, currency: 'RUB' },
-//   })
-// ---------------------------------------------------------------
+// Audit log: пишем через SECURITY DEFINER RPC `public.audit_log_event`
+// (только service_role → admin client). Ошибка записи НИКОГДА не блокирует
+// вызывающий endpoint — warn и swallow.
 
 import type { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -44,17 +26,11 @@ export type AuditEvent = {
   requestId?: string | null
 }
 
-/**
- * Logical max for inet column — IPv6 textual form is 39, plus zone id ~10.
- * Anything weirder we drop to null (avoid INSERT error from CHECK on inet).
- */
+/** Отбрасываем очевидный мусор до INSERT в inet; полную валидацию не делаем. */
 function safeInet(value: string | null | undefined): string | null {
   if (!value) return null
   const v = value.trim()
   if (!v || v === 'unknown') return null
-  // Best-effort: postgres `inet` accepts both IPv4 and IPv6. We don't
-  // try to fully validate — if the cast fails server-side, the RPC will
-  // error and we'll swallow it. But we drop empty/obvious junk early.
   if (v.length > 64) return null
   return v
 }
@@ -90,9 +66,6 @@ export async function logAuditEvent(
     const requestId = evt.requestId ?? resolveRequestId(req)
 
     const admin = createAdminClient()
-    // Postgrest RPC: function lives in public, args lower-snake_case to
-    // match SQL signature. supabase-js types likely don't know about this
-    // custom RPC yet → cast.
     const { data, error } = await (admin.rpc as any)('audit_log_event', {
       p_category: evt.category,
       p_action: evt.action,

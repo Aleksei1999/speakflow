@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createSignedUrlMap } from '@/lib/supabase/signed-url'
 import { getCachedStudentMaterials } from '@/lib/cache/dashboard'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
+import { mimeMatchesType, isLinkOnly } from '@/lib/materials/mime'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,24 +14,6 @@ const BUCKET = 'teacher-materials'
 const TYPE_ENUM = ['all', 'pdf', 'ppt', 'doc', 'video', 'audio', 'img', 'link'] as const
 const LEVEL_ENUM = ['all', 'A1-A2', 'B1', 'B2', 'C1+'] as const
 const SORT_ENUM = ['recent', 'popular', 'name', 'size'] as const
-
-const TYPE_MIME_MAP: Record<string, string[]> = {
-  pdf: ['application/pdf'],
-  ppt: [
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  ],
-  doc: [
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/rtf',
-    'text/plain',
-  ],
-  video: ['video/'],
-  audio: ['audio/'],
-  img: ['image/'],
-}
-
 const getQuerySchema = z.object({
   type: z.enum(TYPE_ENUM).default('all'),
   level: z.enum(LEVEL_ENUM).default('all'),
@@ -38,22 +21,6 @@ const getQuerySchema = z.object({
   sort: z.enum(SORT_ENUM).default('recent'),
   limit: z.coerce.number().int().min(1).max(500).default(200),
 })
-
-function mimeMatchesType(mime: string | null | undefined, type: string): boolean {
-  if (!mime) return false
-  const patterns = TYPE_MIME_MAP[type]
-  if (!patterns) return false
-  return patterns.some((p) => (p.endsWith('/') ? mime.startsWith(p) : mime === p))
-}
-
-function isLinkOnly(row: { file_url: string | null; storage_path: string | null }): boolean {
-  return (
-    !row.storage_path &&
-    !!row.file_url &&
-    /^https?:\/\//i.test(row.file_url)
-  )
-}
-
 // ---------------------------------------------------------------
 // GET /api/student/materials
 // Returns every material the current user can read (RLS handles the

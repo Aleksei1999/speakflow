@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { invalidateTeacherStats } from '@/lib/cache/invalidate'
+import { initialsOf } from '@/lib/ui/initials'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -9,14 +10,6 @@ const UUID_REGEX =
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
 })
-
-function buildInitials(fullName?: string | null): string {
-  if (!fullName) return ''
-  const parts = fullName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
-  if (parts.length === 0) return ''
-  return parts.map((p) => p.charAt(0).toUpperCase()).join('')
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -110,7 +103,7 @@ export async function GET(
           created_at: row.created_at as string,
           student: {
             full_name: fullName,
-            initials: buildInitials(fullName),
+            initials: initialsOf(fullName, ''),
             avatar_url: (profile?.avatar_url as string | null) ?? null,
           },
         }

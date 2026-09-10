@@ -7,16 +7,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preflightSize, verifyFileType } from '@/lib/api/file-upload'
+import { sanitizeFilename } from '@/lib/files/sanitize-filename'
 
 export const dynamic = 'force-dynamic'
 
 const BUCKET = 'teacher-materials'
 const MAX_BYTES = 25 * 1024 * 1024
-
-function sanitize(raw: string): string {
-  return raw.replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(0, 120) || 'file'
-}
-
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -57,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ts = Date.now()
-    const path = `admin-uploads/${studentId}/${ts}_${sanitize(file.name)}`
+    const path = `admin-uploads/${studentId}/${ts}_${sanitizeFilename(file.name)}`
     const bytes = new Uint8Array(await file.arrayBuffer())
     const up = await admin.storage.from(BUCKET).upload(path, bytes, {
       contentType: mimeType,

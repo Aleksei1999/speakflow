@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimit, getClientIp } from '@/lib/api/rate-limit'
 import { protectPublic } from '@/lib/api/arcjet'
+import { timeToMinutes } from '@/lib/time'
 
 export const revalidate = 30
 
@@ -18,17 +19,6 @@ interface AvailabilityWindow {
   startTime: string
   endTime: string
 }
-
-function parseTime(timeStr: string): { hours: number; minutes: number } {
-  const [hours, minutes] = timeStr.split(':').map(Number)
-  return { hours, minutes }
-}
-
-function timeToMinutes(timeStr: string): number {
-  const { hours, minutes } = parseTime(timeStr)
-  return hours * 60 + minutes
-}
-
 function generateSlotsFromWindow(
   date: string,
   window: AvailabilityWindow,

@@ -30,10 +30,10 @@ async function resolveAffectedStudents(
   if (groups.length > 0) {
     const { data: members } = await supabase
       .from('teacher_group_members')
-      .select('member_id')
+      .select('student_id')
       .in('group_id', groups)
     for (const m of members ?? []) {
-      if (m.member_id) userIds.add(m.member_id)
+      if (m.student_id) userIds.add(m.student_id)
     }
   }
   return Array.from(userIds)

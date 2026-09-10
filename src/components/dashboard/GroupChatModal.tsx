@@ -29,6 +29,7 @@ import type {
   GroupChatRole,
   GroupMessage,
 } from "@/lib/groupchat/types"
+import { initialsOf } from "@/lib/ui/initials"
 
 interface UiMsg {
   id: string
@@ -59,14 +60,6 @@ function toUi(m: GroupMessage): UiMsg {
     createdAt: m.createdAt,
   }
 }
-
-function initialsOf(name: string | null | undefined): string {
-  if (!name) return "?"
-  const parts = name.trim().split(/\s+/)
-  return (parts[0]?.[0] ?? "?").toUpperCase() +
-    (parts[1]?.[0] ?? "").toUpperCase()
-}
-
 // Иконки — экспорт Figma 2522:6807 «Чат с учителем» (public/dashboard/chat/*), те же, что в ChatModal.
 function Ic({ src, w, h, className }: { src: string; w: number; h: number; className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element

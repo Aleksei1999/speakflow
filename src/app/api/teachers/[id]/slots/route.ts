@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { asTimeLocale, formatWeekdayShortDayMonthShort } from '@/lib/time'
+import { timeToMinutes } from '@/lib/time'
 
 // Mirror of the slot algorithm from src/app/api/booking/slots/route.ts:
 // 50-minute duration, 25-minute granularity cursor, 5-minute buffer, subtract
@@ -18,12 +19,6 @@ const querySchema = z.object({
   days: z.coerce.number().int().min(1).max(30).default(7),
   limit: z.coerce.number().int().min(1).max(50).default(8),
 })
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }

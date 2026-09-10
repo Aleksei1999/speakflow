@@ -72,10 +72,10 @@ async function invalidateAffectedStudents(supabase: any, materialId: string, les
       } else if (s.target_type === 'group' && s.target_id) {
         const { data: members } = await supabase
           .from('teacher_group_members')
-          .select('member_id')
+          .select('student_id')
           .eq('group_id', s.target_id)
         for (const m of members ?? []) {
-          if (m.member_id) userIds.add(m.member_id)
+          if (m.student_id) userIds.add(m.student_id)
         }
       }
     }

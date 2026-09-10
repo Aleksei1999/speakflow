@@ -1,16 +1,7 @@
 "use server"
 
-// ---------------------------------------------------------------------------
-// Server actions для «запросов на урок» — очередь входящих реквестов от
-// студентов, которую видит учитель в дашборде и принимает/отклоняет.
-//
-// fetchLessonRequests()  — pending-запросы текущего учителя + join student.
-// acceptLessonRequest()  — создаёт lessons-строку (reuse createLesson) +
-//                          переводит запрос в 'accepted'.
-// rejectLessonRequest()  — переводит запрос в 'rejected'.
-//
-// Все три требуют requireTeacher (student/anon → throws).
-// ---------------------------------------------------------------------------
+// Server actions для «запросов на урок»: очередь входящих реквестов от
+// студентов, которую учитель принимает (через createLesson) или отклоняет.
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireTeacher } from '@/lib/teacher/require'
@@ -20,7 +11,6 @@ import {
 } from '@/lib/cache/invalidate'
 import { createLesson, type CreateLessonResult } from './lesson-actions'
 
-// lesson_requests ещё нет в generated Database типах.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedSupabase = any
 
@@ -35,27 +25,19 @@ export interface LessonRequestRow {
   createdAt: string
 }
 
-// ---------------------------------------------------------------------------
-// fetchLessonRequests
-// ---------------------------------------------------------------------------
-// Возвращает только pending-запросы, адресованные текущему учителю,
-// с денормализованным student.full_name / avatar_url. Отсортировано по
-// requested_at ASC — ближайший к запрашиваемому времени сверху.
-// ---------------------------------------------------------------------------
-
+/** Pending-запросы текущего учителя, requested_at ASC — ближайшие сверху. */
 export async function fetchLessonRequests(): Promise<LessonRequestRow[]> {
   let auth: Awaited<ReturnType<typeof requireTeacher>>
   try {
     auth = await requireTeacher()
   } catch {
-    // На page.tsx это вызывается уже после getCachedRole — но защитимся:
-    // fail-soft возврат пустого массива, чтобы дашборд не свалился.
+    // Fail-soft, чтобы дашборд не свалился.
     return []
   }
 
   const admin = createAdminClient() as UntypedSupabase
 
-  // Резолвим teacher_profiles.id (это teacher_id в lesson_requests).
+  // teacher_profiles.id — это teacher_id в lesson_requests.
   const tpRes = await admin
     .from('teacher_profiles')
     .select('id')
@@ -114,19 +96,6 @@ export async function fetchLessonRequests(): Promise<LessonRequestRow[]> {
   }))
 }
 
-// ---------------------------------------------------------------------------
-// acceptLessonRequest
-// ---------------------------------------------------------------------------
-// 1) Проверяем owner (teacher_id запроса = teacher_profiles.id текущего юзера).
-// 2) Вызываем createLesson (тот же путь, что «добавить урок» вручную): он
-//    сам проверит слот против lessons + Google, инсертнёт lessons, зеркалит
-//    в Google Calendar (fail-soft).
-// 3) Помечаем request как accepted.
-// 4) Инвалидируем teacher-dashboard/students cache.
-// Если slot оказался busy — request НЕ помечаем, возвращаем ошибку наверх,
-// чтобы учитель мог принять на другое время / отклонить.
-// ---------------------------------------------------------------------------
-
 export interface AcceptLessonRequestInput {
   requestId: string
   /** Опционально: если учитель хочет назначить урок на другое время.
@@ -158,7 +127,6 @@ export async function acceptLessonRequest(
 
   const admin = createAdminClient() as UntypedSupabase
 
-  // Резолвим teacher_profiles.id.
   const tpRes = await admin
     .from('teacher_profiles')
     .select('id')
@@ -169,7 +137,6 @@ export async function acceptLessonRequest(
   }
   const teacherPk = (tpRes.data as { id: string }).id
 
-  // Загружаем запрос, проверяем owner + что он ещё pending.
   const reqRes = await admin
     .from('lesson_requests')
     .select('id, student_id, teacher_id, requested_at, status')
@@ -195,20 +162,17 @@ export async function acceptLessonRequest(
 
   const scheduledAt = input.scheduledAt || req.requested_at
 
-  // Reuse existing createLesson: slot check + Google push + invalidate cache.
+  // createLesson сам проверит слот (lessons + Google) и зеркалит в Google.
   const created: CreateLessonResult = await createLesson({
     studentId: req.student_id,
     scheduledAt,
   })
   if (!created.ok) {
-    // Оставляем request как pending — учитель попробует другое время
-    // или reject. Пробрасываем error+code наверх без изменений.
+    // Слот занят — request остаётся pending, учитель выберет другое время.
     return { ok: false, error: created.error, code: created.code }
   }
 
-  // Помечаем запрос принятым. Fail-soft: если update упал — lesson уже создан,
-  // просто логируем; учитель увидит что урок в календаре, а запрос всё ещё
-  // pending — сможет вручную reject-нуть.
+  // Fail-soft: lesson уже создан, при ошибке запрос останется pending.
   const updRes = await admin
     .from('lesson_requests')
     .update({ status: 'accepted' })
@@ -222,10 +186,6 @@ export async function acceptLessonRequest(
 
   return { ok: true, lessonId: created.lessonId }
 }
-
-// ---------------------------------------------------------------------------
-// rejectLessonRequest
-// ---------------------------------------------------------------------------
 
 export interface RejectLessonRequestInput {
   requestId: string
@@ -261,7 +221,6 @@ export async function rejectLessonRequest(
   }
   const teacherPk = (tpRes.data as { id: string }).id
 
-  // Загружаем для owner-проверки.
   const reqRes = await admin
     .from('lesson_requests')
     .select('id, teacher_id, status')

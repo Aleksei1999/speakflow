@@ -113,7 +113,10 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   if (Object.keys(patch).length > 0) {
     const admin = createAdminClient() as any
     const { error } = await admin.from('profiles').update(patch).eq('id', id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[admin/teachers/[id]]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
   }
   return NextResponse.json({ ok: true })
 }

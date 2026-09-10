@@ -16,10 +16,14 @@ export async function GET(request: NextRequest) {
       .eq('user_id', gate.user.id)
       .order('updated_at', { ascending: true })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[lesson/notes]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     return NextResponse.json(data ?? [])
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/notes]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
 
@@ -52,10 +56,14 @@ export async function POST(request: NextRequest) {
       .select('id, content, updated_at')
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[lesson/notes]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     return NextResponse.json(data)
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/notes]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
 
@@ -91,9 +99,13 @@ export async function PUT(request: NextRequest) {
       .select('id, content, updated_at')
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[lesson/notes]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     return NextResponse.json(data)
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/notes]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }

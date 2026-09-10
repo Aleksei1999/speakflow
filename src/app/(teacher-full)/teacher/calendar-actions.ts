@@ -1,30 +1,13 @@
 "use server"
 
-// ---------------------------------------------------------------------------
-// Server actions для Google Calendar-интеграции в teacher-дашборде.
-//
-// ВАЖНО (рефактор 2026-08-12):
-//   Раньше `fetchTeacherSchedule()` объединяла события Google Calendar
-//   (кеш `google_calendar_events`) с записями из `lessons`. Сейчас интеграция
-//   работает в одну сторону: мы ПИШЕМ уроки в Google (см. lesson-actions.ts
-//   → pushEventToGoogle), но НЕ читаем оттуда события обратно. Причины:
-//     • избегаем дубликатов и рассинхронизации таймзон;
-//     • источник истины теперь только `lessons`.
-//   Поэтому `fetchTeacherSchedule()` читает только `lessons`, а
-//   `syncGoogleCalendar()` оставлен как deprecated-стаб для отладки.
-//
-// Экспортируем:
-//   • fetchTeacherSchedule()    — только `lessons`, нормализованы в ScheduleItem.
-//   • syncGoogleCalendar()      — DEPRECATED: no-op стаб, {skipped: true}.
-//   • getCalendarConnection()   — статус подключения (для CTA-баннера).
-//   • disconnectGoogleCalendar()— удалить токены.
-// ---------------------------------------------------------------------------
+// Server actions Google Calendar-интеграции в teacher-дашборде.
+// Интеграция односторонняя: уроки ПИШЕМ в Google (lesson-actions.ts →
+// pushEventToGoogle), обратно события не читаем — источник истины только `lessons`.
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasGoogleCalendar } from '@/lib/google-calendar/client'
 import { requireTeacher, tryGetTeacher } from '@/lib/teacher/require'
 
-// google_calendar_tokens не в generated Database типах — свежая миграция.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedSupabase = any
 
@@ -49,7 +32,6 @@ export interface ScheduleItem {
 // Окно чтения расписания: -7 дней..+30 дней от сейчас.
 const SCHEDULE_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 const SCHEDULE_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000
-// ---------- Расписание из `lessons` ----------
 
 interface LessonRow {
   id: string
@@ -60,11 +42,7 @@ interface LessonRow {
   jitsi_room_name: string | null
 }
 
-/**
- * Возвращает расписание учителя за -7d..+30d.
- * Читаем только `lessons` (Google Calendar-события больше не мерджим — см.
- * заголовок файла). Если пользователь не залогинен (preview) — вернём [].
- */
+/** Расписание учителя за -7d..+30d из `lessons`. Не залогинен (preview) — []. */
 export async function fetchTeacherSchedule(): Promise<ScheduleItem[]> {
   const auth = await tryGetTeacher()
   if (!auth) return []
@@ -138,8 +116,6 @@ export async function fetchTeacherSchedule(): Promise<ScheduleItem[]> {
   return items
 }
 
-// ---------- Статус подключения ----------
-
 export interface CalendarConnection {
   connected: boolean
   googleEmail: string | null
@@ -155,8 +131,6 @@ export async function getCalendarConnection(): Promise<CalendarConnection> {
   if (!auth) return { connected: false, googleEmail: null, syncedAt: null }
   return hasGoogleCalendar(auth.userId)
 }
-
-// ---------- Отключение (bonus, минимальный) ----------
 
 export async function disconnectGoogleCalendar(): Promise<{ ok: true }> {
   const auth = await requireTeacher()

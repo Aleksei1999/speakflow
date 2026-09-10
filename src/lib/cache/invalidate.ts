@@ -29,7 +29,7 @@ import {
 import { studentDashboardTag } from '@/lib/dashboard/student'
 import { teacherDashboardTag } from '@/lib/dashboard/teacher'
 
-const PROFILE = 'default'
+const PROFILE = { expire: 0 }
 
 function safeRevalidate(tag: string, label: string): void {
   try {

@@ -1,26 +1,8 @@
 "use server"
 
-// ---------------------------------------------------------------------------
-// Server actions для создания/отмены уроков учителем.
-//
-// createLesson():
-//   1. Auth-гейт (requireTeacher).
-//   2. Валидация studentId + scheduledAt (ISO).
-//   3. Проверка занятости слота:
-//        a) пересечение с существующими lessons учителя (booked/in_progress/
-//           scheduled/confirmed) — жёсткий отказ 'slot_busy_lessons';
-//        b) если Google подключён — isSlotBusyInGoogle → 'slot_busy_google'.
-//   4. Insert в `lessons` (status='booked', duration=50, price=hourly_rate).
-//   5. Если у учителя подключён Google Calendar — push события, id сохраняем
-//      в lessons.google_event_id (нужен для cancelLesson → delete из Google).
-//   6. revalidateTag(...) — teacher-students + teacher-dashboard.
-//   7. Fail-soft: Google-push не откатывает БД-инсерт.
-//
-// cancelLesson():
-//   Проверяет owner (teacher_id === teacher_profiles.id текущего юзера),
-//   удаляет строку из lessons; если у урока был google_event_id — параллельно
-//   удаляет событие в Google (fail-soft).
-// ---------------------------------------------------------------------------
+// Server actions учителя: создание / отмена / перенос уроков с проверкой
+// занятости слота (lessons + Google Calendar) и зеркалированием в Google
+// (fail-soft: ошибки Google не откатывают БД).
 
 import { teacherHasStudent } from '@/lib/materials/access'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -39,7 +21,6 @@ import {
 } from '@/lib/cache/invalidate'
 import { notifyLessonRescheduled, notifyLessonCancelled } from '@/lib/notifications/booking'
 
-// google_calendar_* / lessons ещё не полностью в generated Database типах.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedSupabase = any
 
@@ -73,7 +54,6 @@ export type CreateLessonResult =
 export async function createLesson(
   input: CreateLessonInput,
 ): Promise<CreateLessonResult> {
-  // ---------- 1. Auth ----------
   let auth: Awaited<ReturnType<typeof requireTeacher>>
   try {
     auth = await requireTeacher()
@@ -85,7 +65,6 @@ export async function createLesson(
     }
   }
 
-  // ---------- 2. Validation ----------
   if (!input?.studentId || typeof input.studentId !== 'string') {
     return { ok: false, code: 'validation', error: 'Выберите ученика' }
   }
@@ -102,7 +81,6 @@ export async function createLesson(
 
   const admin = createAdminClient() as UntypedSupabase
 
-  // ---------- 3. Resolve teacher_profiles.id + hourly_rate ----------
   const tpRes = await admin
     .from('teacher_profiles')
     .select('id, hourly_rate')
@@ -119,7 +97,6 @@ export async function createLesson(
     ? teacherProfile.hourly_rate
     : FALLBACK_PRICE_KOPECKS
 
-  // ---------- 4. Slot busy: lessons ----------
   // Ищем любой урок этого учителя с активным статусом, что пересекается с
   // [startMs, endMs). Полу-открытый интервал: касание на границе — не конфликт.
   // Тянем окно ±duration от нашего слота, чтобы поймать урок, начавшийся ДО
@@ -158,7 +135,6 @@ export async function createLesson(
     }
   }
 
-  // ---------- 5. Resolve student full_name + email (для Google summary/attendees) ----------
   const stuRes = await admin
     .from('profiles')
     .select('id, full_name, email, role')
@@ -178,7 +154,6 @@ export async function createLesson(
     return { ok: false, code: 'validation', error: 'Это не ваш ученик — ученика назначает админ' }
   }
 
-  // ---------- 6. Slot busy: Google Calendar ----------
   // Ходим в Google ТОЛЬКО если подключён. Fail-soft внутри isSlotBusyInGoogle
   // (сетевые ошибки → false), поэтому падение API не блокирует пользователя.
   const conn = await hasGoogleCalendar(auth.userId)
@@ -193,7 +168,6 @@ export async function createLesson(
     }
   }
 
-  // ---------- 7. Insert lessons row ----------
   const insertRes = await admin
     .from('lessons')
     .insert({
@@ -215,7 +189,7 @@ export async function createLesson(
   }
   const lessonId = (insertRes.data as { id: string }).id
 
-  // ---------- 8. Mirror to Google Calendar (fail-soft) ----------
+  // Зеркалим в Google Calendar (fail-soft).
   if (conn.connected) {
     try {
       const summary = `Урок с ${student.full_name || 'учеником'}`
@@ -235,8 +209,7 @@ export async function createLesson(
         },
       })
       if (eventId) {
-        // Сохраняем event id в lessons.google_event_id, чтобы cancelLesson
-        // мог параллельно удалить событие в Google.
+        // google_event_id нужен cancelLesson, чтобы удалить событие в Google.
         const upd = await admin
           .from('lessons')
           .update({ google_event_id: eventId })
@@ -262,7 +235,6 @@ export async function createLesson(
     }
   }
 
-  // ---------- 9. Invalidate dashboard cache ----------
   invalidateTeacherStudents(auth.userId)
   invalidateTeacherDashboard(auth.userId)
   // Ученик тоже должен увидеть новый урок → сбрасываем его снапшот.
@@ -270,10 +242,6 @@ export async function createLesson(
 
   return { ok: true, lessonId }
 }
-
-// ---------------------------------------------------------------------------
-// cancelLesson
-// ---------------------------------------------------------------------------
 
 export interface CancelLessonInput {
   lessonId: string
@@ -374,16 +342,6 @@ export async function cancelLesson(
 
   return { ok: true }
 }
-
-// ---------------------------------------------------------------------------
-// rescheduleLesson
-//
-// Обновляет lessons.scheduled_at существующего урока. Owner-check по
-// teacher_profiles.id === lesson.teacher_id. Проверка занятости слота ИСКЛЮЧАЕТ
-// сам редактируемый урок (иначе он бы конфликтовал сам с собой).
-// Google Calendar event синхронизируется PATCH-ом (fail-soft) с sendUpdates=all
-// — ученику придёт email об изменении времени.
-// ---------------------------------------------------------------------------
 
 export interface RescheduleLessonInput {
   lessonId: string
@@ -521,19 +479,14 @@ export async function rescheduleLesson(
   if (conn.connected) {
     const gBusy = await isSlotBusyInGoogle(ownerUserId, startISO, endISO)
     if (gBusy) {
-      // Если событие принадлежит нам (google_event_id совпадает), Google вернёт
-      // его как busy — но это не конфликт, а сам урок. isSlotBusyInGoogle этого
-      // не знает; поэтому если у нас google_event_id есть и busy=true, доверяем
-      // тому что конфликт возможен и всё равно пропускаем: часто это сам урок.
-      // Fail-safe: не блокируем, если есть google_event_id (значит конфликт может
-      // быть с самим собой). Иначе — блокируем.
+      // Если у урока есть google_event_id, busy чаще всего — само событие урока
+      // (isSlotBusyInGoogle его не исключает), поэтому не блокируем.
       if (!lesson.google_event_id) {
         return { ok: false, code: 'slot_busy_google', error: 'В это время в вашем Google Calendar уже есть событие' }
       }
     }
   }
 
-  // Обновляем БД.
   const updRes = await admin
     .from('lessons')
     .update({ scheduled_at: startISO })

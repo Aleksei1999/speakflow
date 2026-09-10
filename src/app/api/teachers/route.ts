@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cacheStatic, REDIS_KEYS } from '@/lib/cache/redis-cache'
+import { initialsOf } from '@/lib/ui/initials'
+import { isNativeHeuristic } from '@/lib/teacher/native'
 
 // Map UI price bucket -> [min_kopecks, max_kopecks] (inclusive both sides)
 // Rates are stored in kopecks (1 RUB = 100 kopecks).
@@ -21,21 +23,6 @@ const querySchema = z.object({
   sort: z.enum(['rating', 'price_asc', 'reviews']).default('rating'),
   limit: z.coerce.number().int().min(1).max(100).default(60),
 })
-
-function buildInitials(fullName?: string | null): string {
-  if (!fullName) return ''
-  const parts = fullName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
-  if (parts.length === 0) return ''
-  return parts.map((p) => p.charAt(0).toUpperCase()).join('')
-}
-
-function isNativeHeuristic(languages: string[] | null | undefined): boolean {
-  if (!languages || languages.length === 0) return false
-  const hasEn = languages.some((l) => l.toLowerCase() === 'en')
-  const hasRu = languages.some((l) => l.toLowerCase() === 'ru')
-  return hasEn && !hasRu
-}
-
 // Дефолтная выборка для /student/teachers — sort=rating, без фильтров,
 // limit=60. Это hot path: страница открывается с этими параметрами,
 // до любой интеракции. Любые фильтры (поиск, спец, цена, language)
@@ -133,7 +120,7 @@ export async function GET(request: NextRequest) {
               user_id: row.user_id as string,
               full_name: fullName,
               avatar_url: (profile.avatar_url as string | null) ?? null,
-              initials: buildInitials(fullName),
+              initials: initialsOf(fullName, ''),
               bio: (row.bio as string | null) ?? null,
               specializations: (row.specializations as string[] | null) ?? [],
               experience_years: (row.experience_years as number | null) ?? null,
@@ -264,7 +251,7 @@ export async function GET(request: NextRequest) {
           user_id: row.user_id as string,
           full_name: fullName,
           avatar_url: (profile.avatar_url as string | null) ?? null,
-          initials: buildInitials(fullName),
+          initials: initialsOf(fullName, ''),
           bio: (row.bio as string | null) ?? null,
           specializations: (row.specializations as string[] | null) ?? [],
           experience_years: (row.experience_years as number | null) ?? null,

@@ -1,16 +1,8 @@
 "use client"
 
-// ---------------------------------------------------------------------------
-// AddLessonModal — pixel-perfect по Figma YSwlSQF1n6QIpGTOohlMOd:
-//   • 2208:2449 — empty (выбрать ученика, дата, время disabled)
-//   • 2208:2699 — student dropdown (скролл-список, жирный выбранный)
-//   • 2208:2489 — filled (можно нажать «Создать»)
-//   • 2208:685  — date+time iOS-style scroll picker (два столбца)
-//   • 2208:2509 — success (чек, ФИО+дата, таймер 0:59, красный ← back)
-//
-// Стили — в public/dashboard/raw-teacher.css (секция «Add Lesson Modal»
-// в самом конце файла).
-// ---------------------------------------------------------------------------
+// AddLessonModal — по Figma YSwlSQF1n6QIpGTOohlMOd: 2208:2449 empty,
+// 2208:2699 student dropdown, 2208:2489 filled, 2208:685 date+time picker,
+// 2208:2509 success. Стили — public/dashboard/raw-teacher.css («Add Lesson Modal»).
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -39,10 +31,8 @@ type ModalState =
   | 'success'
   | 'error'
 
-// -----------------------------------------------------------------------------
-// Date/time генерация. Дата — 30 дней вперёд от сегодня; время — 08:00..22:00,
-// шаг 30 мин. Русская локаль без внешних зависимостей: даты вида «2 апреля».
-// -----------------------------------------------------------------------------
+// Дата — 30 дней вперёд от сегодня; время — 08:00..22:00, шаг 30 мин.
+// Русская локаль без внешних зависимостей: даты вида «2 апреля».
 
 export const MONTHS_RU_GEN = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -94,11 +84,9 @@ export function buildTimeOptions(): TimeOption[] {
   }
   return out
 }
-// -----------------------------------------------------------------------------
 // PickerList (дата / время). Figma 2522:696: список 281×149 под белой шапкой 68,
 // ряд 72 + разделитель 1px (Line 4: 206 wide at x=83, black .26), обычный пункт
 // Inter 500 32, выбранный Inter 700 36; скроллбар 7×107 at (310,376) — top 14 / right 18.
-// -----------------------------------------------------------------------------
 
 const ROW_H = 73 // 72 + 1px разделитель
 
@@ -138,10 +126,6 @@ export function PickerList<T extends { key: string; label: string }>({
     </CustomScroll>
   )
 }
-
-// -----------------------------------------------------------------------------
-// Reusable UI-элементы
-// -----------------------------------------------------------------------------
 
 // Иконки — экспорты Figma (те же, что в модалке ученика 2522:2526): крестик Group 130, круг Ellipse 36 + стрелка Vector 42,
 // лаймовый круг Ellipse 37 + тёмная стрелка Vector 43, красный круг Ellipse 40 + белая стрелка Vector 46, галочка Ellipse 35 + Vector 38.
@@ -194,17 +178,12 @@ export function CheckIcon() {
   )
 }
 
-// -----------------------------------------------------------------------------
-// Основной компонент
-// -----------------------------------------------------------------------------
-
 export default function AddLessonModal({ students, onClose }: AddLessonModalProps) {
   const router = useRouter()
 
   const allDateOptions = useMemo(buildDateOptions, [])
   const allTimeOptions = useMemo(buildTimeOptions, [])
 
-  // ---- Стейт ----
   const [state, setState] = useState<ModalState>('empty')
   const [studentId, setStudentId] = useState<string | null>(null)
   const [dateKey, setDateKey] = useState<string | null>(null)
@@ -238,9 +217,8 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
 
   const canCreate = !!selectedStudent && !!selectedDate && !!selectedTime
 
-  // ---- ESC + body scroll lock ----
-  // ESC в success → закрываем модалку (не revert). Это соответствует
-  // логике «крестик X = закрыть», а revert доступен только через ←.
+  // ESC + body scroll lock. ESC в success → закрываем (не revert):
+  // «крестик X = закрыть», revert доступен только через ←.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -260,10 +238,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
     }
   }, [state, canCreate, onClose, router])
 
-  // ---- Success-таймер ----
-  // Таймер 60→0 просто отсчитывает окно, в котором пользователь может отменить
-  // урок и вернуться редактировать (кнопка ←). При 0 → кнопка ← становится
-  // disabled, но модалка остаётся открытой; пользователь сам закрывает её.
   useEffect(() => {
     if (state !== 'success') return
     setSuccessRemaining(59)
@@ -285,8 +259,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
     if (state === 'picking-student' || state === 'picking-datetime') return
     setState(canCreate ? 'filled' : 'empty')
   }, [canCreate, state])
-
-  // ---- Обработчики ----
 
   function openStudentPicker() {
     setErrorMsg(null)
@@ -351,9 +323,7 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
   // Отдельный ref, а не state — не хотим триггерить лишние ре-рендеры.
   const dirtyRef = useRef(false)
 
-  // ---- Revert из success → filled (кнопка ← пока таймер > 0) ----
-  // Удаляем урок из БД + Google (server action), возвращаемся в filled,
-  // чтобы пользователь мог отредактировать поля. Пока идёт RPC — блок кнопки.
+  // Revert из success → filled (← пока таймер > 0): удаляем урок из БД + Google.
   async function revertToFilled() {
     if (!createdLesson || successRemaining <= 0 || reverting) return
     setReverting(true)
@@ -383,8 +353,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
     onClose()
   }
 
-  // ---- Рендер ----
-
   const isSuccess = state === 'success'
   // Figma 2522:2756 «Выбор ученика» и 2522:696 «дата и время»: карточка 686×557 —
   // без кнопки «Создать» (возврат стрелкой в шапке пикера)
@@ -405,7 +373,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
         aria-modal="true"
         aria-labelledby="tr-add-lesson-title"
       >
-        {/* ─── Success timer top-center ─── */}
         {isSuccess && (
           <div className="tr-add-lesson-timer" aria-live="polite">
             {timerLabel}
@@ -421,7 +388,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
           <CloseIcon />
         </button>
 
-        {/* ─── SUCCESS ─── */}
         {isSuccess ? (
           <>
             <div className="tr-add-lesson-success-title">
@@ -460,7 +426,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
               Добавить новый урок
             </h2>
 
-            {/* ─── STUDENT ROW ─── */}
             {state === 'picking-student' ? (
               <div className="tr-add-lesson-dropdown">
                 <button
@@ -506,7 +471,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
               </button>
             )}
 
-            {/* ─── DATE + TIME ROW ─── */}
             {isPickingStudent ? null : state === 'picking-datetime' ? (
               <div className="tr-add-lesson-row tr-add-lesson-row--picker">
                 <div className="tr-add-lesson-half tr-add-lesson-half--picker">
@@ -577,7 +541,6 @@ export default function AddLessonModal({ students, onClose }: AddLessonModalProp
               </div>
             )}
 
-            {/* ─── CREATE BUTTON ─── */}
             {isPicking ? null : (
             <div className="tr-add-lesson-footer">
               {/* при отправке — чёрная с лаймовым текстом, подпись не меняется */}

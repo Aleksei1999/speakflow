@@ -14,7 +14,6 @@ import {
 import { sendNotification } from "@/lib/notifications/service"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
-import type { Json } from "@/types/database"
 
 type AdminClient = SupabaseClient<any, "public", any>
 
@@ -97,12 +96,11 @@ export async function generateLessonSummary(
 
   let summaryData: {
     summary_text: string
-    vocabulary: Json
-    grammar_points: Json
+    vocabulary: string[]
+    grammar_points: string[]
     homework: string | null
-    strengths: string | null
-    areas_to_improve: string | null
-    cefr_level: string | null
+    strengths: string[]
+    areas_to_improve: string[]
   }
   let tokensUsed: number | undefined
 
@@ -112,12 +110,11 @@ export async function generateLessonSummary(
     if (parsed) {
       summaryData = {
         summary_text: parsed.summary,
-        vocabulary: parsed.vocabulary as unknown as Json,
-        grammar_points: parsed.grammar_points as unknown as Json,
+        vocabulary: parsed.vocabulary.map((v) => `${v.word} — ${v.translation}: ${v.example}`),
+        grammar_points: parsed.grammar_points,
         homework: parsed.homework || homework || null,
-        strengths: parsed.strengths || null,
-        areas_to_improve: parsed.areas_to_improve || null,
-        cefr_level: null,
+        strengths: parsed.strengths ? [parsed.strengths] : [],
+        areas_to_improve: parsed.areas_to_improve ? [parsed.areas_to_improve] : [],
       }
     } else {
       summaryData = buildFallbackSummary(teacherInput, vocabulary, grammarPoints, homework)
@@ -174,7 +171,7 @@ async function callOpenAI(
       ],
       response_format: { type: "json_object" },
       temperature: 0.7,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     })
     const content = completion.choices[0]?.message?.content
     if (!content) return null
@@ -193,12 +190,11 @@ function buildFallbackSummary(
 ) {
   return {
     summary_text: teacherInput,
-    vocabulary: (vocabulary || []).map((word) => ({ word, translation: "", example: "" })) as unknown as Json,
-    grammar_points: (grammarPoints || []) as unknown as Json,
+    vocabulary: vocabulary || [],
+    grammar_points: grammarPoints || [],
     homework: homework || null,
-    strengths: null,
-    areas_to_improve: null,
-    cefr_level: null,
+    strengths: [] as string[],
+    areas_to_improve: [] as string[],
   }
 }
 

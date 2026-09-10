@@ -1,31 +1,9 @@
-// ============================================================
-// Global Redis cache (Upstash) — слой ПОВЕРХ loader'ов
-// ------------------------------------------------------------
-// Зачем нужен поверх unstable_cache:
-//   - unstable_cache работает per-region (Edge / Function) и
-//     сбрасывается после deploy. Это значит, что после каждого
-//     релиза первый клик в регионе == cold loader.
-//   - Upstash Redis — global, persistent: один прогрев виден
-//     всем serverless-инстансам и переживает deploy.
-//
-// Использовать ТОЛЬКО для статичных справочников:
-//   - achievement_definitions (меняется на миграции)
-//   - leaderboard_weekly (RPC `get_leaderboard`, TTL 60s)
-//   - teachers public listing — дефолтный (rating sort, без
-//     фильтров; кеш по конкретному key только)
-//
-// Per-user данные сюда НЕ кладём — там unstable_cache хватает
-// (тег-инвалидация и так точечная, а Redis-кеш per-user
-// требовал бы prefix-сканирования при write — слишком дорого).
-//
-// Fail-open. Если Redis недоступен / env пуст / тайм-аут —
-// просто пропускаем кеш и идём в loader. Сервис не должен
-// падать из-за инфраструктурной проблемы кеша.
-// ============================================================
+// Глобальный Redis-кеш (Upstash) поверх loader'ов: в отличие от unstable_cache
+// переживает deploy и общий для всех регионов. Только для статичных
+// справочников, per-user данные сюда не кладём. Fail-open: Redis недоступен → loader.
 import "server-only"
 import { Redis } from "@upstash/redis"
 
-// ---- Singleton init -----------------------------------------
 let _redis: Redis | null = null
 let _initFailed = false
 
@@ -105,9 +83,8 @@ export async function cacheStatic<T>(
   return fresh
 }
 /**
- * Invalidate all keys matching prefix wildcard. Используется редко —
- * KEYS на больших Redis блокирующая, поэтому только для admin-операций
- * (пересборка схемы достижений и т.п.).
+ * Инвалидация по префиксу. KEYS на больших Redis блокирующая — только для
+ * редких admin-операций.
  */
 export async function invalidateStaticPrefix(prefix: string): Promise<void> {
   const r = getRedis()
@@ -126,9 +103,7 @@ export async function invalidateStaticPrefix(prefix: string): Promise<void> {
   }
 }
 
-// ---- Standard keys для статичных справочников --------------
-// Держим в одном месте, чтобы invalidate-сайты не дублировали
-// строки и не дрейфовали.
+// Ключи в одном месте, чтобы invalidate-сайты не дрейфовали.
 export const REDIS_KEYS = {
   achievementDefs: "achievements:definitions",
   leaderboardWeeklyDefault: "leaderboard:weekly:default",

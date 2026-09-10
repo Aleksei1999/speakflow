@@ -36,11 +36,15 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      {
+      console.error('[lesson/materials]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     }
     return NextResponse.json(data ?? [])
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/materials]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
 
@@ -114,10 +118,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[lesson/materials POST] materials INSERT failed', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      {
+      console.error('[lesson/materials]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     }
     return NextResponse.json(data)
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/materials]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }

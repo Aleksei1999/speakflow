@@ -1,37 +1,14 @@
-// ============================================================
-// Dashboard layout + list-page cache
-// ------------------------------------------------------------
-// (dashboard)/layout.tsx is force-dynamic and runs on every
-// internal navigation under /student, /teacher, /admin. Each
-// render fires three Supabase round-trips (profile, progress,
-// teacher_profile) — historically +50–100 ms per click.
+// Кеш данных дашборда и list-страниц: `unstable_cache` по user.id с коротким
+// TTL и per-user тегами; мутации дёргают revalidateTag.
 //
-// We wrap those reads in `unstable_cache` keyed by user.id with
-// short TTLs and per-user tags, then `revalidateTag` from the
-// few mutation sites (settings save, teacher approval, lesson
-// completion, XP events, review insert). User can never see
-// stale data longer than the TTL even if a revalidate call is
-// missed somewhere — that's the safety floor.
-//
-// The same paradigm extends to list-page data loaders below
-// (homework, teacher students, clubs, admin students/trial
-// requests/etc). Their cache keys are the relevant user.id
-// (or a global key for admin-wide lists), with per-tag
-// invalidation hooks in mutation endpoints.
-//
-// IMPORTANT: `unstable_cache` callbacks must NOT touch the auth
-// cookie context (cookies()/auth.getUser()). We use the service
-// role admin client inside, and the userId argument is the
-// only cache key — RLS bypass is fine because the caller has
-// already authenticated upstream (the page does cookies()
-// + redirect("/login") BEFORE calling these loaders).
-// ============================================================
+// IMPORTANT: callbacks `unstable_cache` не должны трогать auth cookie context
+// (cookies()/auth.getUser()). Внутри — service-role admin client, поэтому
+// caller обязан аутентифицировать пользователя ДО вызова loader'ов.
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// --- Tag helpers --------------------------------------------
 export const profileTag = (userId: string) => `profile-${userId}`
 export const progressTag = (userId: string) => `progress-${userId}`
 export const teacherStatsTag = (userId: string) => `teacher-stats-${userId}`
@@ -49,7 +26,6 @@ export const adminTrialRequestsTag = () => `admin-trial-requests`
 export const adminStudentsTag = () => `admin-students`
 export const adminTeachersListTag = () => `admin-teachers-list`
 
-// --- Types --------------------------------------------------
 export type CachedProfile = {
   full_name: string | null
   avatar_url: string | null
@@ -57,7 +33,6 @@ export type CachedProfile = {
   email_verified: boolean | null
   language: 'ru' | 'en' | null
 } | null
-// --- Loaders (uncached) -------------------------------------
 async function loadProfile(userId: string): Promise<CachedProfile> {
   const admin = createAdminClient()
   const { data, error } = await (admin as any)
@@ -71,12 +46,7 @@ async function loadProfile(userId: string): Promise<CachedProfile> {
   }
   return (data as CachedProfile) ?? null
 }
-// --- Cached wrappers ----------------------------------------
-// `unstable_cache` requires the cache key to include all
-// inputs the callback closes over. We pass userId both as the
-// callback arg AND as part of the keyParts array so distinct
-// users get distinct cache entries.
-
+// userId входит и в keyParts, чтобы у разных пользователей были разные записи.
 export function getCachedProfile(userId: string): Promise<CachedProfile> {
   return unstable_cache(
     async (uid: string) => loadProfile(uid),
@@ -84,7 +54,6 @@ export function getCachedProfile(userId: string): Promise<CachedProfile> {
     { tags: [profileTag(userId)], revalidate: 60 }
   )(userId)
 }
-// --- Student materials --------------------------------------
 // Reproduces the visibility logic that RLS would apply for a
 // student: material is visible if
 //   public=true
@@ -105,33 +74,27 @@ async function loadStudentMaterials(
 ): Promise<CachedStudentMaterialsSnapshot> {
   const admin = createAdminClient()
 
-  // 1) Public materials.
   const publicQ = (admin as any)
     .from('materials')
     .select(MATERIALS_SELECT)
     .eq('is_public', true)
 
-  // 2) Materials attached to lessons the student participated in.
   const studentLessonsQ = (admin as any)
     .from('lessons')
     .select('id')
     .eq('student_id', userId)
 
-  // 3) Material shares targeting this student directly.
   const directSharesQ = (admin as any)
     .from('material_shares')
     .select('material_id')
     .eq('target_type', 'student')
     .eq('target_id', userId)
 
-  // 4) Material shares via this student's homework.
   const studentHwQ = (admin as any)
     .from('homework')
     .select('id')
     .eq('student_id', userId)
 
-  // 5) Material shares via groups containing this student.
-  // teacher_group_members.member_id -> group_id
   const groupMembershipQ = (admin as any)
     .from('teacher_group_members')
     .select('group_id')
@@ -151,7 +114,6 @@ async function loadStudentMaterials(
     rowsById.set(r.id, r)
   }
 
-  // Fetch materials linked to the student's lessons.
   const lessonIds = (lessonsRes.data ?? []).map((l: any) => l.id)
   if (lessonIds.length > 0) {
     const { data: lessonMats, error: lmErr } = await (admin as any)
@@ -167,7 +129,6 @@ async function loadStudentMaterials(
     }
   }
 
-  // Collect material_ids from share branches.
   const sharedIds = new Set<string>()
   for (const r of sharesDirectRes.data ?? []) sharedIds.add(r.material_id)
 
@@ -191,7 +152,6 @@ async function loadStudentMaterials(
     for (const r of gShares ?? []) sharedIds.add(r.material_id)
   }
 
-  // Resolve shared material rows we don't have yet.
   const missing = Array.from(sharedIds).filter((id) => !rowsById.has(id))
   if (missing.length > 0) {
     const { data: sharedMats } = await (admin as any)
@@ -222,7 +182,6 @@ export function getCachedStudentMaterials(
   )(userId)
 }
 
-// --- Teacher students (distinct via lessons) ----------------
 export type CachedTeacherStudentsSnapshot = {
   teacher_profile_id: string | null
   lessons: Array<{

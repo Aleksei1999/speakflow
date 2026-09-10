@@ -28,8 +28,8 @@
 //   if (verdict.verdict === "malicious") { ...reject... }
 // ---------------------------------------------------------------
 
-import { Redis } from "@upstash/redis"
 import * as Sentry from "@sentry/nextjs"
+import { getRedis } from "@/lib/redis"
 
 export type ScanVerdict = "clean" | "malicious" | "unknown"
 
@@ -45,39 +45,7 @@ const CACHE_PREFIX = "vt:"
 const CACHE_TTL_SECONDS = 7 * 24 * 3600 // 7 дней
 const VT_API_URL = "https://www.virustotal.com/api/v3/files/"
 const NETWORK_TIMEOUT_MS = 3000
-const MALICIOUS_THRESHOLD = 3 // ≥3 движков → реджектим
-
-// ---------------------------------------------------------------
-// Redis (re-uses the same Upstash creds as rate-limit.ts).
-// ---------------------------------------------------------------
-
-let _redisChecked = false
-let _redis: Redis | null = null
-
-function getRedis(): Redis | null {
-  if (_redisChecked) return _redis
-  _redisChecked = true
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN
-  if (!url || !token) {
-    _redis = null
-    return null
-  }
-  try {
-    _redis = new Redis({ url, token })
-    return _redis
-  } catch (e) {
-    console.warn(
-      "[virustotal] failed to init Upstash Redis:",
-      (e as Error)?.message
-    )
-    _redis = null
-    return null
-  }
-}
-
+const MALICIOUS_THRESHOLD = 3
 // ---------------------------------------------------------------
 // One-shot warning for missing API key
 // ---------------------------------------------------------------

@@ -12,9 +12,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
   StarRating,
   SPECIALIZATION_LABELS,
-  getInitials,
+  
 } from "@/components/teachers/teacher-card"
 import type { Database } from "@/types/database"
+import { initialsOf } from "@/lib/ui/initials"
 
 type TeacherProfile = Database["public"]["Tables"]["teacher_profiles"]["Row"]
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
@@ -41,7 +42,7 @@ export function TeacherProfileHeader({
           <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
         ) : null}
         <AvatarFallback className="text-3xl">
-          {getInitials(profile.full_name)}
+          {initialsOf(profile.full_name)}
         </AvatarFallback>
       </Avatar>
 

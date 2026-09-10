@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { initialsOf } from "@/lib/ui/initials"
 
 export interface TeacherCardData {
   id: string
@@ -30,16 +31,6 @@ const SPECIALIZATION_LABELS: Record<string, string> = {
   grammar: "Grammar",
   pronunciation: "Pronunciation",
 }
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-}
-
 function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
   const sizeClass = size === "sm" ? "size-4" : "size-5"
   return (
@@ -58,7 +49,7 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
   )
 }
 
-export { StarRating, SPECIALIZATION_LABELS, getInitials }
+export { StarRating, SPECIALIZATION_LABELS, initialsOf }
 
 export function TeacherCard({ teacher }: { teacher: TeacherCardData }) {
   const displaySpecs = teacher.specializations.slice(0, 3)
@@ -78,7 +69,7 @@ export function TeacherCard({ teacher }: { teacher: TeacherCardData }) {
                 <AvatarImage src={teacher.avatar_url} alt={teacher.full_name} />
               ) : null}
               <AvatarFallback className="text-lg">
-                {getInitials(teacher.full_name)}
+                {initialsOf(teacher.full_name)}
               </AvatarFallback>
             </Avatar>
 

@@ -12,6 +12,7 @@ import { sendTelegramMessage } from "@/lib/telegram/bot"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 import { protectPublic, validateEmailField } from "@/lib/api/arcjet"
 import { emailSchema, phoneIntlSchema } from "@/lib/validators/contact"
+import { escapeHtml } from "@/lib/html/escape"
 
 export const dynamic = "force-dynamic"
 
@@ -224,11 +225,5 @@ async function notifyAdmins(args: {
           parseMode: "HTML",
         }).catch(() => {})
       )
-  )
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;"
   )
 }

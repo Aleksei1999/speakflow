@@ -5,8 +5,9 @@ import { Separator } from "@/components/ui/separator"
 import { TeacherProfileHeader, TeacherBio, TeacherInfoCards, TeacherVideoIntro, TeacherPricingCard, TeacherAvailabilityPreview } from "@/components/teachers/teacher-profile"
 import { StarRating } from "@/components/teachers/teacher-card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { getInitials } from "@/components/teachers/teacher-card"
+
 import type { Database } from "@/types/database"
+import { initialsOf } from "@/lib/ui/initials"
 
 type TeacherProfile = Database["public"]["Tables"]["teacher_profiles"]["Row"]
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
@@ -274,7 +275,7 @@ function ReviewItem({ review }: { review: ReviewWithStudent }) {
         <div className="flex items-center gap-3">
           <Avatar className="size-9">
             <AvatarFallback className="text-xs">
-              {getInitials(studentName)}
+              {initialsOf(studentName)}
             </AvatarFallback>
           </Avatar>
           <div>

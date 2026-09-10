@@ -1,32 +1,6 @@
-// ---------------------------------------------------------------
-// Server-side rate limiter — Upstash Redis (preferred) with Postgres fallback.
-//
-// Why two backends:
-//   - Upstash Redis даёт sub-millisecond sliding-window счётчик, бесплатный
-//     dashboard через `analytics: true`, и survives холодные старты Vercel.
-//   - Postgres RPC `check_rate_limit` остаётся как fallback на случай, если
-//     env-переменные не выставлены (локалка без Upstash, smoke-test и т.п.)
-//     и для нулевого даунтайма при включении.
-//
-// Selection logic:
-//   if process.env.UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN
-//     -> Upstash (sliding window)
-//   else
-//     -> Postgres RPC (fixed-ish window, см. миграцию 20260510130000)
-//
-// Public API остаётся прежним — endpoint'ы дёргают enforceRateLimit /
-// enforceRateLimitStrict / getClientIp. Никакие route-файлы менять не надо.
-//
-// Usage in route:
-//   const limited = await enforceRateLimit(req, {
-//     name: "auth:signup",
-//     keyParts: [getClientIp(req)],
-//     max: 5,
-//     windowSeconds: 60 * 10,
-//   })
-//   if (limited) return limited  // already a NextResponse with 429
-//   ... продолжаем обработку
-// ---------------------------------------------------------------
+// Server-side rate limiter: Upstash Redis (sliding window), если заданы
+// env-переменные, иначе fallback на Postgres RPC `check_rate_limit`
+// (локалка без Upstash, smoke-тесты).
 
 import { NextRequest, NextResponse } from "next/server"
 import { Ratelimit } from "@upstash/ratelimit"
@@ -34,7 +8,7 @@ import { Redis } from "@upstash/redis"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export type RateLimitOptions = {
-  /** Logical bucket name, e.g. "auth:signup" or "jitsi:token". */
+  /** Logical bucket name, e.g. "auth:signup". */
   name: string
   /** Identity bits — IP + optional user_id / email. Joined into the bucket key. */
   keyParts: Array<string | null | undefined>
@@ -60,10 +34,6 @@ export function getClientIp(req: NextRequest): string {
   if (cf) return cf.trim()
   return "unknown"
 }
-
-// ---------------------------------------------------------------
-// Upstash plumbing (lazy, module-scoped)
-// ---------------------------------------------------------------
 
 /** Префикс для всех ключей. Изолируем от любых других @upstash/ratelimit
  *  instances, которые могут жить в том же Upstash аккаунте. */
@@ -136,10 +106,6 @@ function getLimiter(max: number, windowSeconds: number): Ratelimit | null {
   return limiter
 }
 
-// ---------------------------------------------------------------
-// Postgres fallback (existing implementation)
-// ---------------------------------------------------------------
-
 async function postgresCheck(
   bucketKey: string,
   max: number,
@@ -154,10 +120,6 @@ async function postgresCheck(
   if (error) return { allowed: true, error: `RPC error: ${error.message}` }
   return { allowed: data !== false }
 }
-
-// ---------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------
 
 /**
  * Returns null if the request is allowed.
@@ -187,7 +149,6 @@ export async function enforceRateLimit(
 
   const bucketKey = [opts.name, ...opts.keyParts.filter(Boolean)].join(":")
 
-  // ------- 1) Try Upstash -------
   const limiter = getLimiter(opts.max, opts.windowSeconds)
   if (limiter) {
     try {
@@ -219,7 +180,7 @@ export async function enforceRateLimit(
     }
   }
 
-  // ------- 2) Fallback to Postgres RPC -------
+  // Fallback: Postgres RPC
   try {
     const { allowed, error } = await postgresCheck(
       bucketKey,

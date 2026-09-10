@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { initialsOf } from '@/lib/ui/initials'
+import { isNativeHeuristic } from '@/lib/teacher/native'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function buildInitials(fullName?: string | null): string {
-  if (!fullName) return ''
-  const parts = fullName.trim().split(/\s+/).filter(Boolean).slice(0, 2)
-  if (parts.length === 0) return ''
-  return parts.map((p) => p.charAt(0).toUpperCase()).join('')
-}
-
-function isNativeHeuristic(languages: string[] | null | undefined): boolean {
-  if (!languages || languages.length === 0) return false
-  const hasEn = languages.some((l) => l.toLowerCase() === 'en')
-  const hasRu = languages.some((l) => l.toLowerCase() === 'ru')
-  return hasEn && !hasRu
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -98,7 +85,7 @@ export async function GET(
       user_id: data.user_id,
       full_name: fullName,
       avatar_url: (profile.avatar_url as string | null) ?? null,
-      initials: buildInitials(fullName),
+      initials: initialsOf(fullName, ''),
       bio: (data.bio as string | null) ?? null,
       specializations: (data.specializations as string[] | null) ?? [],
       experience_years: (data.experience_years as number | null) ?? null,

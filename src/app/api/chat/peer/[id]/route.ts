@@ -21,7 +21,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .select("id, full_name, first_name, last_name, avatar_url, role, city, timezone, occupation, english_goal, interests, created_at")
     .eq("id", id)
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+      console.error('[chat/peer/[id]]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
   if (!prof) return NextResponse.json({ error: "not found" }, { status: 404 })
   // Профиль собеседника отдаём только тем, кто может с ним переписываться.
   const { data: me } = await (supabase as any).from("profiles").select("role").eq("id", user.id).maybeSingle()

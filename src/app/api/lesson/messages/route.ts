@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
     .eq('student_id', peers.studentUserId)
     .order('created_at', { ascending: true })
     .limit(500)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+      console.error('[lesson/messages]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
   return NextResponse.json(toClient((data ?? []) as ChatRow[]))
 }
 
@@ -107,9 +110,13 @@ export async function POST(request: NextRequest) {
       })
       .select('id, teacher_id, student_id, sender_role, text, created_at')
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[lesson/messages]', error)
+      return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+    }
     return NextResponse.json(toClient([data as ChatRow])[0])
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message }, { status: 500 })
+    console.error('[lesson/messages]', e)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
