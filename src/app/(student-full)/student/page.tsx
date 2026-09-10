@@ -36,6 +36,7 @@ export default async function StudentNewPage() {
   let dashboard: Awaited<ReturnType<typeof getCachedStudentDashboard>> | null = null
   let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
   let balanceKopecks = 0
+  let balanceHistory: Array<{ id: string; kind: string; amountRub: number; comment: string | null; createdAt: string }> = []
   try {
     ;[dashboard, initialChats] = await Promise.all([
       getCachedStudentDashboard(user.id),
@@ -48,6 +49,20 @@ export default async function StudentNewPage() {
       .eq("user_id", user.id)
       .maybeSingle()
     if (balRow?.balance_kopecks) balanceKopecks = Number(balRow.balance_kopecks)
+    // Последние операции: пополнения, списания за уроки, возвраты (RLS — только свои).
+    const { data: txRows } = await supabase
+      .from("balance_transactions")
+      .select("id, kind, amount_kopecks, comment, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5)
+    balanceHistory = (txRows ?? []).map((t) => ({
+      id: t.id,
+      kind: t.kind,
+      amountRub: Math.round(Number(t.amount_kopecks) / 100),
+      comment: t.comment ?? null,
+      createdAt: t.created_at,
+    }))
   } catch (e) {
     console.error("[student] dashboard fetch failed", e)
   }
@@ -88,6 +103,7 @@ export default async function StudentNewPage() {
       englishLevel={englishLevel}
       currentStreak={currentStreak}
       balance={balance}
+      balanceHistory={balanceHistory}
       lessonsThisYear={stats.total_lessons}
       initialLessons={upcomingLessons.map((l) => ({
         id: l.id,

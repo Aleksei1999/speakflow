@@ -214,6 +214,8 @@ interface StudentRawDashboardProps {
   /** Кол-во дней подряд без пропусков; используем для «огоньков» (макс 6). */
   currentStreak?: number
   balance?: number
+  /** Последние операции по балансу: пополнения, списания за уроки, возвраты. */
+  balanceHistory?: Array<{ id: string; kind: string; amountRub: number; comment: string | null; createdAt: string }>
   lessonsThisYear?: number
   initialLessons?: Array<{
     id: string
@@ -242,6 +244,7 @@ export default function StudentRawDashboard({
   englishLevel = "Rare",
   currentStreak = 0,
   balance = 14500,
+  balanceHistory = [],
   lessonsThisYear = 25,
   initialLessons = [],
   initialChats,
@@ -1293,6 +1296,28 @@ export default function StudentRawDashboard({
                 <div className="st-bal-stat-value">2</div>
               </div>
             </div>
+
+            {balanceHistory.length > 0 && (
+              <ul className="st-bal-history" aria-label="Последние операции по балансу">
+                {balanceHistory.map((t) => {
+                  const label = t.kind === "topup" ? "Пополнение"
+                    : t.kind === "refund" ? "Возврат"
+                    : t.kind === "lesson_charge" ? "Урок"
+                    : "Корректировка"
+                  const d = new Date(t.createdAt)
+                  const date = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`
+                  return (
+                    <li key={t.id} className={`st-bal-op st-bal-op--${t.kind}`}>
+                      <span className="st-bal-op-date">{date}</span>
+                      <span className="st-bal-op-label" title={t.comment ?? undefined}>{label}</span>
+                      <span className="st-bal-op-sum">
+                        {t.amountRub > 0 ? "+" : t.amountRub < 0 ? "−" : ""}{Math.abs(t.amountRub).toLocaleString("ru-RU")} ₽
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
 
           </div>
 

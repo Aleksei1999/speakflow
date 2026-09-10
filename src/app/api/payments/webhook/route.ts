@@ -341,7 +341,8 @@ async function handleRefundSucceeded(
     .maybeSingle<{ id: string; lesson_id: string; status: string }>()
 
   if (!paymentRecord) {
-    console.error('[webhook] refund.succeeded: платёж не найден:', yookassaPaymentId)
+    // Не платёж за урок — возможно, возврат пополнения баланса.
+    await handleBalanceTopupRefunded(supabase, refund)
     return
   }
 
@@ -394,6 +395,78 @@ async function handleRefundSucceeded(
 // ---------------------------------------------------------------------------
 // Balance top-up handlers (metadata.kind === 'balance')
 // ---------------------------------------------------------------------------
+
+/**
+ * refund.succeeded по пополнению баланса: списываем сумму возврата с баланса
+ * ученика (не ниже нуля) и пишем строку журнала kind='refund'. Сумму и статус
+ * берём из API ЮKassa, идемпотентность — по id возврата (balance_transactions.external_id).
+ */
+async function handleBalanceTopupRefunded(
+  supabase: ReturnType<typeof createAdminClient>,
+  refund: YooKassaRefund
+) {
+  const yookassaPaymentId = refund.payment_id
+  const refundId = refund.id
+  // FIXME(types): balance_topups не в generated Database типах — cast to any.
+  const { data: topup } = await ((supabase as any).from('balance_topups'))
+    .select('id, user_id, amount_kopecks, status, refunded_kopecks')
+    .eq('yookassa_payment_id', yookassaPaymentId)
+    .maybeSingle() as { data: { id: string; user_id: string; amount_kopecks: number; status: string; refunded_kopecks: number | null } | null }
+  if (!topup) {
+    console.error('[webhook] refund.succeeded: ни платёж, ни пополнение не найдены:', yookassaPaymentId)
+    return
+  }
+  if (!refundId) {
+    console.warn('[webhook][topup] refund.succeeded без object.id — игнорируем:', yookassaPaymentId)
+    return
+  }
+  if (topup.status !== 'succeeded' && topup.status !== 'refunded') {
+    console.warn(`[webhook][topup] refund для пополнения со статусом ${topup.status}:`, topup.id)
+    return
+  }
+
+  // Не верим телу вебхука — подтверждаем возврат через API.
+  let apiRefund: YooKassaRefund
+  try {
+    apiRefund = await new YooKassaClient().getRefund(refundId)
+  } catch (e) {
+    console.error('[webhook][topup] getRefund failed:', refundId, e)
+    throw e
+  }
+  if (apiRefund.status !== 'succeeded' || apiRefund.payment_id !== yookassaPaymentId) {
+    console.warn(`[webhook][topup] refund ${refundId}: API status=${apiRefund.status} payment_id=${apiRefund.payment_id}`)
+    return
+  }
+  if (apiRefund.amount.currency !== 'RUB') {
+    console.error(`[webhook][topup] refund ${refundId}: валюта ${apiRefund.amount.currency}`)
+    return
+  }
+  const refundKopecks = Math.round(parseFloat(apiRefund.amount.value) * 100)
+  if (!Number.isFinite(refundKopecks) || refundKopecks <= 0) return
+
+  const { data: debited, error: debitErr } = await (supabase as any).rpc('debit_student_balance', {
+    uid: topup.user_id,
+    amount_sub: refundKopecks,
+    p_topup_id: topup.id,
+    p_external_id: `yookassa_refund:${refundId}`,
+    p_comment: `Возврат пополнения ${(refundKopecks / 100).toLocaleString('ru-RU')} ₽`,
+  })
+  if (debitErr) {
+    console.error('[webhook][topup] debit_student_balance failed:', debitErr)
+    throw debitErr
+  }
+  if (Number(debited ?? 0) === 0 && Number(topup.refunded_kopecks ?? 0) > 0) return // повтор вебхука
+
+  const totalRefunded = Number(topup.refunded_kopecks ?? 0) + refundKopecks
+  await ((supabase as any).from('balance_topups'))
+    .update({
+      refunded_kopecks: totalRefunded,
+      refunded_at: apiRefund.created_at ?? new Date().toISOString(),
+      status: totalRefunded >= topup.amount_kopecks ? ('refunded' as const) : topup.status,
+    })
+    .eq('id', topup.id)
+  invalidateStudentDashboard(topup.user_id)
+}
 
 async function handleBalanceTopupSucceeded(
   supabase: ReturnType<typeof createAdminClient>,

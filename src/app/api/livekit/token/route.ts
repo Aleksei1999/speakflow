@@ -75,10 +75,35 @@ export async function POST(req: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: bal } = await (gate.admin as any).from("student_balances").select("balance_kopecks").eq("user_id", gate.user.id).maybeSingle()
         const balance = Number((bal as { balance_kopecks: number | null } | null)?.balance_kopecks ?? 0)
-        if (balance < price) {
+        // Резерв: другие уроки ученика, которые уже идут, но ещё не списаны
+        // (списание — при завершении). Иначе с балансом на один урок можно
+        // зайти на два подряд, и второй пройдёт бесплатно.
+        const { data: running } = await gate.admin
+          .from("lessons")
+          .select("id, price")
+          .eq("student_id", gate.user.id)
+          .eq("status", "in_progress")
+          .neq("id", gate.lesson.id)
+        const runningRows = (running ?? []) as Array<{ id: string; price: number | null }>
+        let reserved = 0
+        if (runningRows.length > 0) {
+          const ids = runningRows.map((l) => l.id)
+          const [{ data: charged }, { data: paidRows }] = await Promise.all([
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (gate.admin as any).from("balance_transactions").select("lesson_id").in("lesson_id", ids).eq("kind", "lesson_charge"),
+            gate.admin.from("payments").select("lesson_id").in("lesson_id", ids).eq("status", "succeeded"),
+          ])
+          const settled = new Set<string>([
+            ...((charged ?? []) as Array<{ lesson_id: string }>).map((r) => r.lesson_id),
+            ...((paidRows ?? []) as Array<{ lesson_id: string }>).map((r) => r.lesson_id),
+          ])
+          reserved = runningRows.filter((l) => !settled.has(l.id)).reduce((s, l) => s + Math.max(0, Number(l.price ?? 0)), 0)
+        }
+        if (balance < price + reserved) {
           const rub = (n: number) => Math.round(n / 100).toLocaleString("ru-RU")
+          const reservedNote = reserved > 0 ? ` (из них ${rub(reserved)} ₽ зарезервировано под идущий урок)` : ""
           return NextResponse.json(
-            { error: `Недостаточно средств: урок стоит ${rub(price)} ₽, на балансе ${rub(balance)} ₽. Пополните баланс в кабинете.` },
+            { error: `Недостаточно средств: урок стоит ${rub(price)} ₽, на балансе ${rub(balance)} ₽${reservedNote}. Пополните баланс в кабинете.` },
             { status: 402 }
           )
         }
