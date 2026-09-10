@@ -94,7 +94,6 @@ export async function autoAssignTrial(args: {
   // 2) Try to assign a teacher when a slot was provided.
   let lessonId: string | null = null
   let teacherUserId: string | null = null
-  let teacherProfileIdAssigned: string | null = null
   let status: TrialAutoAssignResult["status"] = "pending"
 
   if (args.preferredSlot) {
@@ -180,7 +179,6 @@ export async function autoAssignTrial(args: {
 
       if (!lessonErr && lesson?.id) {
         lessonId = lesson.id
-        teacherProfileIdAssigned = teacherProfileId
         await admin
           .from("lessons")
           .update({ jitsi_room_name: `speakflow-${lesson.id}` })

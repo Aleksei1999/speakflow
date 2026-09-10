@@ -104,21 +104,6 @@ export async function cacheStatic<T>(
   }
   return fresh
 }
-
-/** Explicit invalidation by exact key. */
-export async function invalidateStatic(key: string): Promise<void> {
-  const r = getRedis()
-  if (!r) return
-  try {
-    await r.del(KEY_PREFIX + key)
-  } catch (e) {
-    console.warn(
-      `[redis-cache] del failed for ${key}:`,
-      (e as Error)?.message
-    )
-  }
-}
-
 /**
  * Invalidate all keys matching prefix wildcard. Используется редко —
  * KEYS на больших Redis блокирующая, поэтому только для admin-операций

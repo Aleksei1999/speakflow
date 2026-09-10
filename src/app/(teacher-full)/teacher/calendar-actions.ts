@@ -49,26 +49,6 @@ export interface ScheduleItem {
 // Окно чтения расписания: -7 дней..+30 дней от сейчас.
 const SCHEDULE_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 const SCHEDULE_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000
-
-// ---------- Google → БД ----------
-
-/**
- * DEPRECATED. Раньше тянул события учителя из Google и upsert-ил в кеш.
- * Сейчас чтение из Google выключено (см. заголовок файла). Оставлено как
- * no-op стаб, чтобы старые вызовы (например, ручной триггер из devtools)
- * не падали. Всегда возвращает `{skipped: true}`.
- */
-export async function syncGoogleCalendar(): Promise<{ synced: number } | { skipped: true }> {
-  // Проверим auth чтобы не быть открытым endpoint-ом, но реальную работу
-  // больше не делаем.
-  try {
-    await requireTeacher()
-  } catch {
-    /* даже auth-ошибку молча съедаем — это deprecated путь */
-  }
-  return { skipped: true }
-}
-
 // ---------- Расписание из `lessons` ----------
 
 interface LessonRow {

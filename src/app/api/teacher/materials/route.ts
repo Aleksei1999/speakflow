@@ -47,21 +47,6 @@ const getQuerySchema = z.object({
   section: z.enum(SECTION_ENUM).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
 })
-
-const postSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(2000).optional().nullable(),
-  level: z.enum(LEVELS_FOR_WRITE).optional().nullable(),
-  tags: z.array(z.string().trim().min(1).max(50)).max(20).default([]),
-  is_public: z.boolean().default(false),
-  lesson_id: z.string().uuid().optional().nullable(),
-})
-
-function safeFileName(name: string): string {
-  const base = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-  return base.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'file.bin'
-}
-
 function fileTypeFromName(name: string): string {
   const parts = name.split('.')
   return parts.length > 1 ? parts.pop()!.toLowerCase() : ''

@@ -191,20 +191,6 @@ export async function uploadAttachment({
   await signAttachmentUrlsInPlace(supabase, [msg])
   return msg
 }
-
-/**
- * Помечает все входящие в треде me↔peer как прочитанные мной. Идемпотентно.
- */
-export async function markThreadRead(peerId: string): Promise<void> {
-  if (!peerId) return
-  const auth = await tryGetUser()
-  if (!auth) return
-  const { supabase, userId, role } = auth
-  const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
-  const slots = computeSlots({ id: userId, role }, { id: peerId, role: peerRole })
-  await markThreadReadInternal(supabase as UntypedSupabase, userId, slots)
-}
-
 async function markThreadReadInternal(
   supabase: UntypedSupabase,
   myId: string,

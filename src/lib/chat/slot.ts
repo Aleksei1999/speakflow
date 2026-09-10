@@ -50,18 +50,6 @@ export function computeSlots(
     ? { slotAId: me.id, slotBId: peer.id, meSlot: 'a', peerSlot: 'b' }
     : { slotAId: peer.id, slotBId: me.id, meSlot: 'b', peerSlot: 'a' }
 }
-
-/**
- * Определяет мой слот, если известны только id обоих участников (из БД-row).
- * NB: если auth.uid() не совпадает ни с одним — вернёт null (сообщение мне
- * не принадлежит).
- */
-export function whichSlot(myId: string, slotAId: string, slotBId: string): 'a' | 'b' | null {
-  if (myId === slotAId) return 'a'
-  if (myId === slotBId) return 'b'
-  return null
-}
-
 /**
  * По моему слоту — имя колонки read_at, которую надо обновлять.
  */

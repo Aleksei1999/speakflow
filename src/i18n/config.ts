@@ -11,8 +11,7 @@
 // are based in Russia regardless of UI language.
 // ---------------------------------------------------------------------------
 
-export const locales = ['ru', 'en'] as const
-export type Locale = (typeof locales)[number]
+export type Locale = 'ru' | 'en'
 
 export const defaultLocale: Locale = 'ru'
 

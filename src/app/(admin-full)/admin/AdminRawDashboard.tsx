@@ -2,14 +2,11 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
-import { ArrowIcon } from "@/components/icons/ArrowIcon"
-
 const Q_PER_PAGE_ADMIN = 3
 import Link from "next/link"
 import CustomScroll from "@/components/dashboard/CustomScroll"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
-import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
 import ChatModal from "@/components/dashboard/ChatModal"
 import GroupChatModal from "@/components/dashboard/GroupChatModal"
 import { nb } from "@/lib/ru/typo"
@@ -41,16 +38,6 @@ const NAV = [
   { href: "#teachers", label: "Учителя" },
   { href: "#students", label: "Ученики" },
 ]
-
-/* Placeholder-заявки — если реальных из trial_requests нет, чтобы
-   визуально секция соответствовала Figma. */
-const APPLICATIONS_MOCK = [
-  { id: "a1", name: "Вадим Думович", level: "A1", test: false },
-  { id: "a2", name: "Кристина Кирова", level: "A2", test: true },
-  { id: "a3", name: "Вадим Думович", level: "A1", test: true },
-  { id: "a4", name: "Мария Петрова", level: "A2", test: true },
-  { id: "a5", name: "Алексей Смирнов", level: "A1", test: false },
-]
 const APPLICATIONS_VISIBLE = 3
 
 const STUDENTS_MOCK = [
@@ -67,43 +54,6 @@ const TEACHERS_MOCK = [
   { id: "t2", name: "Евгений Акцентов", avatar: null },
   { id: "t3", name: "Варвара Кистина", avatar: null },
 ]
-
-const CHATS = [
-  {
-    id: "c1",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c2",
-    name: "Кристина Кирова",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: null,
-    group: false,
-  },
-  {
-    id: "c3",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое прочитано",
-    unread: false,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c4",
-    name: "Группа 1",
-    preview: "Текст последнего сообщения, которое прочитано",
-    unread: false,
-    avatar: null,
-    group: true,
-    from: "Вы: ",
-  },
-]
-
 const SORT_OPTIONS = [
   { id: "az", label: "От А до Я" },
   { id: "time", label: "По времени добавления" },
@@ -145,11 +95,6 @@ function levelLabel(lvl: string) {
   if (lvl === "A2") return "А2"
   return lvl
 }
-
-function ArrowRight({ size = 32 }: { size?: number }) {
-  return <ArrowIcon direction="right" size={size} />
-}
-
 // Круглая стрелка ← 79×79 (лаймовая заливка + белая обводка), точно
 // по SVG из макета — используется в carousel учителей и в модалке.
 
@@ -287,7 +232,6 @@ export default function AdminRawDashboard({
     return () => document.removeEventListener("keydown", onKey)
   }, [hwPickerOpen])
   const [hwUploading, setHwUploading] = useState(false)
-  const hwFileRef = useRef<HTMLInputElement | null>(null)
   const [homeworkVersion, setHomeworkVersion] = useState(0)
   const [libraryVersion, setLibraryVersion] = useState(0)
   const [libraryUploading, setLibraryUploading] = useState(false)
@@ -1621,10 +1565,6 @@ export default function AdminRawDashboard({
           seedName={studentModal.name}
           seedAvatar={studentModal.avatar}
           onClose={() => setStudentModal(null)}
-          onOpenChat={(peer) => {
-            setChatPeer({ id: peer.id, role: "student", name: peer.name, avatar: peer.avatar })
-            setStudentModal(null)
-          }}
           onOpenSchedule={() => {
             setStudentModal(null)
             const el = typeof document !== "undefined" ? document.getElementById("schedule") : null
@@ -2215,5 +2155,4 @@ function EventPickerAndForms({
     </div></div>
   )
 }
-
 

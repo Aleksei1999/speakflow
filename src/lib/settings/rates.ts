@@ -30,10 +30,3 @@ export async function fetchTeacherRates(): Promise<TeacherRates> {
     rateGroupKopecks: kv.get("teacher_rate_group_kopecks") ?? 0,
   }
 }
-
-/** kopecks → «1 500» руб. Возвращает null для 0/undefined. */
-export function formatRateRub(kopecks: number): string | null {
-  if (!kopecks || kopecks < 0) return null
-  const rub = Math.round(kopecks / 100)
-  return rub.toLocaleString("ru-RU")
-}

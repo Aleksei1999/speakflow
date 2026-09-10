@@ -18,9 +18,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const SIGNED_URL_DEFAULT_TTL = 3600 // 1 hour
-export const SIGNED_URL_MIN_TTL = 60       // 1 minute
-export const SIGNED_URL_MAX_TTL = 3600     // 1 hour (HARD cap)
+const SIGNED_URL_DEFAULT_TTL = 3600 // 1 hour
+const SIGNED_URL_MIN_TTL = 60       // 1 minute
+const SIGNED_URL_MAX_TTL = 3600     // 1 hour (HARD cap)
 
 export interface CreateSignedUrlOptions {
   /** TTL в секундах. Clamped в [60, 3600]. По умолчанию 3600. */
@@ -82,7 +82,7 @@ export async function createSignedUrl(
  * Создать подписанные URL'ы для нескольких файлов одним батчем.
  * Wrapper над supabase.storage.from(bucket).createSignedUrls.
  */
-export async function createSignedUrls(
+async function createSignedUrls(
   client: SupabaseClient,
   bucket: string,
   paths: string[],

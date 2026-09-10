@@ -30,7 +30,7 @@ const DEFAULT_VISIBILITY = {
 // GET /api/settings/me
 // ---------------------------------------------------------------------------
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     const {

@@ -4,7 +4,7 @@ import { ipInCidr } from "@/lib/ip/cidr"
  * YooKassa webhook source IPs.
  * https://yookassa.ru/developers/using-api/webhooks#ip
  */
-export const YOOKASSA_ALLOWED_IPS = [
+const YOOKASSA_ALLOWED_IPS = [
   "185.71.76.0/27",
   "185.71.77.0/27",
   "77.75.153.0/25",

@@ -27,11 +27,10 @@ interface Lesson {
 }
 
 interface Props {
-  studentId: string
   initialLessons: Lesson[]
 }
 
-export default function StudentSchedulePage({ studentId, initialLessons }: Props) {
+export default function StudentSchedulePage({ initialLessons }: Props) {
   const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
 

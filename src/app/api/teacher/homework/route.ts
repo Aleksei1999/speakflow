@@ -8,29 +8,6 @@ import {
   invalidateStudentHomework,
   invalidateTeacherHomework,
 } from '@/lib/cache/invalidate'
-
-// ---------------------------------------------------------------
-// Homework table schema reference
-//   homework.teacher_id → profiles.id   (NOT teacher_profiles.id — legacy)
-//   homework.student_id → profiles.id
-//   homework.lesson_id  → lessons.id    (optional)
-//   status ∈ ('pending','in_progress','submitted','reviewed','overdue')
-//
-// UI status mapping:
-//   prototype "на проверке" = status='submitted'
-//   prototype "выдано"      = status IN ('pending','in_progress')
-//   prototype "просрочено"  = status='overdue' OR (status IN ('pending','in_progress') AND due_date < now())
-//   prototype "проверено"   = status='reviewed'
-// ---------------------------------------------------------------
-
-const STATUS_ENUM = [
-  'pending',
-  'in_progress',
-  'submitted',
-  'reviewed',
-  'overdue',
-] as const
-
 const FILTER_ENUM = [
   'all',
   'submitted',   // "на проверке"

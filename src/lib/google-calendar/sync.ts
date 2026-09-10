@@ -36,7 +36,7 @@ const LOOKBACK_MS = 24 * 60 * 60 * 1000
 const HORIZON_MS = 30 * 24 * 60 * 60 * 1000
 
 /** Синхронизирует календарь одного учителя (по user_id). Fail-soft: ошибки собираются в result.errors. */
-export async function syncTeacherFromGoogle(teacherUserId: string): Promise<TeacherSyncResult> {
+async function syncTeacherFromGoogle(teacherUserId: string): Promise<TeacherSyncResult> {
   const admin = createAdminClient() as Db
   const result: TeacherSyncResult = { teacherUserId, imported: 0, updated: 0, cancelled: 0, errors: [] }
 

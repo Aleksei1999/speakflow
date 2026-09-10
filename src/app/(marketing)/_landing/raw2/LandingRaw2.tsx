@@ -23,12 +23,6 @@ const CONTACT_HREF = "#contact";
 const ArrowRightFilled = () => (
   <ArrowIcon direction="right" size="100%" />
 );
-const Chevron = () => (
-  <svg width="30" height="20" viewBox="0 0 30 20" fill="none" className="chev" aria-hidden>
-    <path d="M3 4.5 15 15.5 27 4.5" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 /* ---------- data ---------- */
 const FEATURES = [
   { icon: "ic-bubble.svg", iconActive: "ic-bubble-red.svg", title: <>Разговорные<br />клубы</>, body: <>Speaking club<br /><b>с носителями</b><br />каждый день.</> },

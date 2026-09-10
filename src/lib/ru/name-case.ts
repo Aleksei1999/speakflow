@@ -31,7 +31,7 @@ function decline(fullName: string, kase: "genitive" | "instrumental"): string {
 }
 
 /** «Валерия Кратковская» → «Валерии Кратковской». Латиницу не трогает. */
-export function nameGenitive(fullName: string): string {
+function nameGenitive(fullName: string): string {
   return decline(fullName, "genitive")
 }
 

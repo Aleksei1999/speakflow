@@ -10,6 +10,3 @@ export function getOpenAI(): OpenAI {
   }
   return _openai
 }
-
-// Backward compat
-export const openai = undefined as unknown as OpenAI

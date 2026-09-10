@@ -19,8 +19,8 @@
 
 import type { NextRequest, NextResponse } from 'next/server'
 
-export const ROLE_COOKIE_NAME = 'rwen_role'
-export const ROLE_COOKIE_TTL_SECONDS = 10 * 60 // 10 minutes
+const ROLE_COOKIE_NAME = 'rwen_role'
+const ROLE_COOKIE_TTL_SECONDS = 10 * 60 // 10 minutes
 
 type RolePayload = {
   uid: string

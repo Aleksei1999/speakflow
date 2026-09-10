@@ -11,7 +11,6 @@ import { nb } from "@/lib/ru/typo"
 import EditLessonModal from "./EditLessonModal"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
-import { ApplicationRow } from "@/components/dashboard/ApplicationRow"
 import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
 import { listFolders, createFolder, renameFolder, deleteFolders } from "@/lib/materials/folders"
 import LessonRequestsModal from "./LessonRequestsModal"
@@ -64,43 +63,6 @@ const LESSONS = [
   { id: "l2", time: "13:00", date: "29.09.26", label: "Урок с учеником 2" },
   { id: "l3", time: "14:00", date: "29.09.26", label: "Урок с учеником 3" },
 ]
-
-const CHATS = [
-  {
-    id: "c1",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c2",
-    name: "Кристина Кирова",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: "/avatars/placeholder-female.jpg",
-    group: false,
-  },
-  {
-    id: "c3",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое прочитано",
-    unread: false,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c4",
-    name: "Группа 1",
-    preview: "Текст последнего сообщения, которое прочитано",
-    unread: false,
-    avatar: "/avatars/placeholder-female.jpg",
-    group: true,
-    from: "Вы: ",
-  },
-]
-
 const SORT_OPTIONS = [
   { id: "az", label: "От А до Я" },
   { id: "time", label: "По времени добавления" },

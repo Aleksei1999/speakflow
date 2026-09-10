@@ -10,20 +10,6 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-
-type Payload = {
-  new: {
-    id: string
-    scheduled_at: string
-    duration_minutes: number
-  }
-  old: {
-    id: string
-    scheduled_at?: string | null
-    duration_minutes?: number | null
-  }
-}
-
 export default function LessonRescheduleWatcher({
   userId,
   role,

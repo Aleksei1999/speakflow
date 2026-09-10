@@ -19,7 +19,7 @@ function homeForRole(role: string | null): string {
 }
 
 export async function proxy(request: NextRequest) {
-  const { user, role, supabase, supabaseResponse } = await updateSession(request)
+  const { user, role, supabaseResponse } = await updateSession(request)
   const path = request.nextUrl.pathname
 
   // Allow public routes, API, and static

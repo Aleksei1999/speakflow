@@ -49,7 +49,7 @@ export function preflightSize(
  * предупреждением (некоторые .txt без BOM, .csv и т.д. могут не иметь
  * сигнатуры).
  */
-export function detectMimeFromMagicBytes(buf: Uint8Array): string | null {
+function detectMimeFromMagicBytes(buf: Uint8Array): string | null {
   if (buf.length < 4) return null
 
   // Image
@@ -99,7 +99,7 @@ export function detectMimeFromMagicBytes(buf: Uint8Array): string | null {
 }
 
 /** Whitelist MIME → расширение. Используется для назначения ext если клиент соврал. */
-export const ALLOWED_FILE_MIMES = new Set([
+const ALLOWED_FILE_MIMES = new Set([
   "image/jpeg",
   "image/png",
   "image/gif",
@@ -173,7 +173,7 @@ export interface SafetyResult {
  *
  * Buffer extends Uint8Array, поэтому отдельной ветки для него не нужно.
  */
-export function sha256Hex(buf: Uint8Array | ArrayBuffer): string {
+function sha256Hex(buf: Uint8Array | ArrayBuffer): string {
   const view = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf
   const h = createHash("sha256")
   h.update(view)

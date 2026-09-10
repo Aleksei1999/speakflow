@@ -24,8 +24,3 @@ export function nameKey(raw: string | null | undefined): string {
     .join(" ")
   return out
 }
-
-export function sameName(a: string | null | undefined, b: string | null | undefined): boolean {
-  const ka = nameKey(a), kb = nameKey(b)
-  return !!ka && ka === kb
-}

@@ -340,4 +340,3 @@ function pluralizeYears(count: number): string {
   return "лет"
 }
 
-export { pluralizeReviews, pluralizeYears }

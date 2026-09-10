@@ -29,5 +29,5 @@ export default async function Page() {
     teacherName: l.teacher_name,
   }))
 
-  return <StudentSchedulePage studentId={user.id} initialLessons={upcoming} />
+  return <StudentSchedulePage initialLessons={upcoming} />
 }

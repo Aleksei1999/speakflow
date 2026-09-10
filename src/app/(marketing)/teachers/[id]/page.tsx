@@ -2,15 +2,7 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { Separator } from "@/components/ui/separator"
-import {
-  TeacherProfileHeader,
-  TeacherBio,
-  TeacherInfoCards,
-  TeacherVideoIntro,
-  TeacherPricingCard,
-  TeacherAvailabilityPreview,
-  pluralizeReviews,
-} from "@/components/teachers/teacher-profile"
+import { TeacherProfileHeader, TeacherBio, TeacherInfoCards, TeacherVideoIntro, TeacherPricingCard, TeacherAvailabilityPreview } from "@/components/teachers/teacher-profile"
 import { StarRating } from "@/components/teachers/teacher-card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { getInitials } from "@/components/teachers/teacher-card"

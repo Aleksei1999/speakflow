@@ -37,26 +37,11 @@ export function isValidEmail(raw: string | null | undefined): boolean {
   // Основной шаблон: не-пробельные, @, домен, точка, TLD.
   return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(trimmed)
 }
-
-/** Zod-schema для телефона (нормализует в +7XXXXXXXXXX или throws). */
-export const phoneRuSchema = z
-  .string()
-  .trim()
-  .min(1, 'Введите номер телефона')
-  .transform((v, ctx) => {
-    const normalized = normalizePhoneRu(v)
-    if (!normalized) {
-      ctx.addIssue({ code: 'custom', message: 'Некорректный номер телефона' })
-      return z.NEVER
-    }
-    return normalized
-  })
-
 /**
  * Международный вариант — принимает 10..15 цифр (E.164-ish), возвращает
  * `+<digits>`. Используется на лендинге где юзер может выбрать любую страну.
  */
-export function normalizePhoneIntl(raw: string | null | undefined): string | null {
+function normalizePhoneIntl(raw: string | null | undefined): string | null {
   if (!raw) return null
   const digits = raw.replace(/\D+/g, '')
   if (digits.length < 10 || digits.length > 15) return null

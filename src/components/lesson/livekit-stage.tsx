@@ -353,7 +353,6 @@ function StageInner({
         <LkChatPanel onClose={() => setLkChatOpen(false)} />
       )}
       <LiveKitControls
-        sidebarOn={sidebarOn}
         onToggleSidebar={onToggleSidebar}
         onFullscreen={onFullscreen}
         fullscreenSupported={fullscreenSupported}
@@ -477,7 +476,6 @@ function ScreenTile({ tr }: { tr: ReturnType<typeof useTracks>[number] }) {
 }
 
 interface ControlsProps {
-  sidebarOn: boolean
   onToggleSidebar: () => void
   onFullscreen?: () => void
   fullscreenSupported: boolean
@@ -491,7 +489,6 @@ interface ControlsProps {
 }
 
 function LiveKitControls({
-  sidebarOn,
   onToggleSidebar,
   onEnd,
   onOpenSettings,

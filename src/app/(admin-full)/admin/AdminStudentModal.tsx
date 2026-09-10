@@ -42,7 +42,6 @@ interface Props {
   seedName: string
   seedAvatar: string | null
   onClose: () => void
-  onOpenChat: (peer: { id: string; name: string; avatar: string | null }) => void
   onOpenSchedule: (studentId: string) => void
 }
 
@@ -68,7 +67,6 @@ export default function AdminStudentModal({
   seedName,
   seedAvatar,
   onClose,
-  onOpenChat,
   onOpenSchedule,
 }: Props) {
   const [data, setData] = useState<StudentDetails | null>(null)

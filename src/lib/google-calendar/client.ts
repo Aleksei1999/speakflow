@@ -20,7 +20,7 @@ const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3'
 // NB: старые токены, выданные с `.readonly`, будут падать при POST — pushEventToGoogle
 // ловит insufficientPermissions и кидает 'google-write-scope-missing'; UI должен
 // подсказать пользователю переподключить календарь (повторный OAuth flow).
-export const GOOGLE_OAUTH_SCOPES = [
+const GOOGLE_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'openid',
   'email',
@@ -239,7 +239,7 @@ async function refreshAccessToken(token: StoredToken): Promise<StoredToken> {
  * Возвращает валидный access_token, авто-refresh если истёк.
  * Возвращает null если у юзера вообще нет привязанного календаря.
  */
-export async function getAccessToken(userId: string): Promise<{
+async function getAccessToken(userId: string): Promise<{
   accessToken: string
   calendarId: string
   googleEmail: string | null

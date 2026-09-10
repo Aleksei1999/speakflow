@@ -14,7 +14,7 @@
 //
 // Иконки файлов подбираются по MIME/расширению (см. `fileTypeIcon`).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import CustomScroll from "@/components/dashboard/CustomScroll"
 
@@ -493,7 +493,7 @@ function FileTypeIcon({
 
 type FileKind = "pdf" | "word" | "excel" | "image" | "generic"
 
-export function fileTypeIcon(mime: string | null, ext: string | null, name?: string): FileKind {
+function fileTypeIcon(mime: string | null, ext: string | null, name?: string): FileKind {
   const extLower = (ext ?? name?.split(".").pop() ?? "").toLowerCase()
   const mimeLower = (mime ?? "").toLowerCase()
   if (mimeLower.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "heic"].includes(extLower)) {
@@ -535,7 +535,7 @@ function IconFileType({ kind }: { kind: FileKind }) {
 // ---------------------------------------------------------------------------
 export type FolderIconState = "default" | "open" | "loading" | "loaded"
 
-export function FolderIcon({ state = "default" }: { state?: FolderIconState }) {
+function FolderIcon({ state = "default" }: { state?: FolderIconState }) {
   return (
     <span className={`files-folder files-folder--${state}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}

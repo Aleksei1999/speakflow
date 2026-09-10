@@ -11,7 +11,6 @@ type LectureRow = {
 }
 import { fromLecturer } from "@/lib/ru/name-case"
 import Link from "next/link"
-import { ArrowIcon } from "@/components/icons/ArrowIcon"
 import { useRouter } from "next/navigation"
 import SiteFooter from "@/components/dashboard/SiteFooter"
 import { HwPillList } from "@/components/dashboard/HwPillList"
@@ -63,45 +62,6 @@ const NAV = [
   { href: "#chats", label: "Чаты" },
   { href: "#calls", label: "Звонки" },
 ]
-
-/* Placeholder-чаты — реального loader-а в снапшоте пока нет.
-   Оставляем моки, чтобы визуально секция соответствовала Figma. */
-const CHATS = [
-  {
-    id: "c1",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c2",
-    name: "Кристина Кирова",
-    preview: "Текст последнего сообщения от ученика, которое еще не прочитано",
-    unread: true,
-    avatar: "/avatars/placeholder-female.jpg",
-    group: false,
-  },
-  {
-    id: "c3",
-    name: "Вадим Думович",
-    preview: "Текст последнего сообщения от ученика, которое прочитано",
-    unread: false,
-    avatar: "/dashboard/avatar-male.jpg",
-    group: false,
-  },
-  {
-    id: "c4",
-    name: "Группа 1",
-    preview: "Текст последнего сообщения, которое прочитано",
-    unread: false,
-    avatar: "/avatars/placeholder-female.jpg",
-    group: true,
-    from: "Вы: ",
-  },
-]
-
 /* Placeholder-лекции — курсы/лекторий пока не завязаны на БД. */
 const LECTORY_MAIN = {
   title: "Как составить резюме",
@@ -143,11 +103,6 @@ function useClock() {
   }, [])
   return now
 }
-
-function ArrowRight({ size = 32 }: { size?: number }) {
-  return <ArrowIcon direction="right" size={size} />
-}
-
 const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2)
@@ -746,7 +701,7 @@ export default function StudentRawDashboard({
   }
 
   // Оба способа пока ведут в YooKassa (иностранные карты отдельным провайдером не подключены).
-  async function startPayment(_method: "mir" | "foreign") {
+  async function startPayment() {
     const amountRub = Number.parseInt(topupAmount.replace(/\s+/g, ''), 10)
     setTopupBusy(true)
     try {
@@ -1392,10 +1347,10 @@ export default function StudentRawDashboard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
             </button>
-            <button type="button" className="st-pay-option st-pay-option--mir" onClick={() => startPayment("mir")} disabled={topupBusy}>
+            <button type="button" className="st-pay-option st-pay-option--mir" onClick={() => startPayment()} disabled={topupBusy}>
               Картой МИР российского банка
             </button>
-            <button type="button" className="st-pay-option st-pay-option--foreign" onClick={() => startPayment("foreign")} disabled={topupBusy}>
+            <button type="button" className="st-pay-option st-pay-option--foreign" onClick={() => startPayment()} disabled={topupBusy}>
               Картой иностранного банка
             </button>
           </div>

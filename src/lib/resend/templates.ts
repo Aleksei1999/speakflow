@@ -10,8 +10,6 @@ const BRAND_COLOR_LIGHT = '#f3e8ea'
 const TEXT_COLOR = '#1a1a1a'
 const TEXT_SECONDARY = '#666666'
 const SUCCESS_COLOR = '#16a34a'
-const WARNING_COLOR = '#ea580c'
-
 function layout(title: string, content: string): string {
   return `<!DOCTYPE html>
 <html lang="ru">
