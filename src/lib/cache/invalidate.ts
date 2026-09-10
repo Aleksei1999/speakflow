@@ -20,13 +20,10 @@ import {
   studentMaterialsTag,
   studentHomeworkTag,
   teacherStudentsTag,
-  teacherClubsTag,
   teacherHomeworkTag,
   teacherMaterialsTag,
   adminTrialRequestsTag,
   adminStudentsTag,
-  adminClubsTag,
-  adminSupportTag,
   adminTeachersListTag,
 } from './dashboard'
 import { studentDashboardTag } from '@/lib/dashboard/student'
@@ -108,12 +105,6 @@ export function invalidateTeacherStudents(teacherUserId: string): void {
   safeRevalidate(teacherStudentsTag(teacherUserId), 'teacher-students')
 }
 
-/** Speaking clubs where this teacher is a host. */
-export function invalidateTeacherClubs(teacherUserId: string): void {
-  if (!teacherUserId) return
-  safeRevalidate(teacherClubsTag(teacherUserId), 'teacher-clubs')
-}
-
 /**
  * Homework rows assigned by a teacher.
  *
@@ -144,16 +135,6 @@ export function invalidateAdminTrialRequests(): void {
 /** Admin: students global list. */
 export function invalidateAdminStudents(): void {
   safeRevalidate(adminStudentsTag(), 'admin-students')
-}
-
-/** Admin: clubs global list. */
-export function invalidateAdminClubs(): void {
-  safeRevalidate(adminClubsTag(), 'admin-clubs')
-}
-
-/** Admin: support threads global list. */
-export function invalidateAdminSupport(): void {
-  safeRevalidate(adminSupportTag(), 'admin-support')
 }
 
 /** Admin: teachers dropdown source (used in admin/clubs UI etc). */

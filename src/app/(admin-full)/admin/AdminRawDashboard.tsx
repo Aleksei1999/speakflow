@@ -1303,7 +1303,7 @@ export default function AdminRawDashboard({
       </div>
 
       {/* ================== FOOTER ================== */}
-      <SiteFooter variant="admin" supportHref="/admin/support" />
+      <SiteFooter variant="admin" />
 
       {groupChat && adminUserId && (
         <GroupChatModal

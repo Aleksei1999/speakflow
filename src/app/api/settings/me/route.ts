@@ -12,11 +12,6 @@ import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from '@/i18n/config'
 
 const DEFAULT_NOTIFICATIONS = {
   lesson_reminders: true,
-  daily_challenge: true,
-  streak_warning: true,
-  new_clubs: true,
-  achievements: true,
-  leaderboard: false,
   email_digest: true,
   marketing: false,
   channel: 'telegram' as 'telegram' | 'email' | 'push' | 'sms',
@@ -24,13 +19,10 @@ const DEFAULT_NOTIFICATIONS = {
 
 const DEFAULT_UI = {
   theme: 'light' as 'light' | 'dark' | 'auto',
-  show_xp_bar: true,
   sounds: true,
-  confetti: true,
 }
 
 const DEFAULT_VISIBILITY = {
-  leaderboard_public: true,
   visible_to_teachers: true,
 }
 
@@ -118,11 +110,6 @@ export async function GET(_req: NextRequest) {
 const notificationsSchema = z
   .object({
     lesson_reminders: z.boolean().optional(),
-    daily_challenge: z.boolean().optional(),
-    streak_warning: z.boolean().optional(),
-    new_clubs: z.boolean().optional(),
-    achievements: z.boolean().optional(),
-    leaderboard: z.boolean().optional(),
     email_digest: z.boolean().optional(),
     marketing: z.boolean().optional(),
     channel: z.enum(['telegram', 'email', 'push', 'sms']).optional(),
@@ -132,15 +119,12 @@ const notificationsSchema = z
 const uiSchema = z
   .object({
     theme: z.enum(['light', 'dark', 'auto']).optional(),
-    show_xp_bar: z.boolean().optional(),
     sounds: z.boolean().optional(),
-    confetti: z.boolean().optional(),
   })
   .strict()
 
 const visibilitySchema = z
   .object({
-    leaderboard_public: z.boolean().optional(),
     visible_to_teachers: z.boolean().optional(),
   })
   .strict()

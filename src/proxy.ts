@@ -1,21 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const publicRoutes = ['/', '/teachers', '/teach', '/level-test', '/get-started', '/privacy', '/oferta', '/new', '/old', '/hero-copy']
-// Публичные префиксы (каталог преподавателей, превью лендингов)
-const publicPrefixes = ['/teachers', '/preview']
+const publicRoutes = ['/', '/teachers', '/teach', '/privacy', '/oferta']
+// Публичные префиксы (каталог преподавателей)
+const publicPrefixes = ['/teachers']
 const authRoutes = ['/login', '/register', '/forgot-password']
 // /forgot-password и /reset-password обязаны быть доступны и
 // залогиненным юзерам (смена пароля из /settings, recovery-flow при
 // активной сессии). Иначе middleware редиректит обратно на dashboard.
 const passwordFlowRoutes = ['/forgot-password', '/reset-password']
-
-// Soft-enforce MFA on /admin/* when this env flag is on. Keep it OFF in
-// production until at least one admin has completed TOTP enrollment via
-// /admin/settings — otherwise the admin will be redirected to settings,
-// enroll, and only then can reach /admin again. See migration 070 for the
-// RPC definition.
-const ADMIN_MFA_ENFORCE = process.env.ENABLE_ADMIN_MFA_ENFORCE === '1'
 
 function homeForRole(role: string | null): string {
   switch (role) {
@@ -34,7 +27,7 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Allow /teachers/* (catalog) and preview pages as public
+  // Allow /teachers/* (catalog) as public
   if (publicPrefixes.some((p) => path.startsWith(p))) {
     return supabaseResponse
   }
@@ -73,8 +66,7 @@ export async function proxy(request: NextRequest) {
   const userHome = rolePrefixes[userRole] ?? '/student'
 
   // Админ — суперпользователь: ему доступны все кабинеты (страницы /teacher и
-  // /student сами пускают admin), а /student/settings нужен для MFA-enrollment —
-  // иначе MFA-gate ниже зациклится с этим же редиректом.
+  // /student сами пускают admin).
   if (userRole !== 'admin') {
     for (const [routeRole, prefix] of Object.entries(rolePrefixes)) {
       if (path.startsWith(prefix) && routeRole !== userRole) {
@@ -82,45 +74,6 @@ export async function proxy(request: NextRequest) {
         url.pathname = userHome
         return NextResponse.redirect(url)
       }
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────
-  // MFA soft-enforcement for admin routes.
-  //
-  // Runs AFTER role-based protection so we only ever check MFA for
-  // admins who actually have access to /admin. The check is one
-  // PostgREST RPC call (`public.admin_has_mfa()`) which translates to a
-  // single index lookup on auth.mfa_factors — cheap enough for every
-  // /admin/* navigation.
-  //
-  // On miss we redirect INSIDE the dashboard (no logout, no clearing of
-  // cookies). The user lands on /student/settings?mfa=required where
-  // the MFA card is auto-scrolled into view with a red banner.
-  //
-  // Gated by env so we can deploy the enrollment UI first, let admins
-  // set up TOTP at their own pace, then flip the flag.
-  // ──────────────────────────────────────────────────────────────────────
-  if (ADMIN_MFA_ENFORCE && userRole === 'admin' && path.startsWith('/admin')) {
-    try {
-      const { data: hasMfa, error } = await supabase.rpc('admin_has_mfa')
-      if (error) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('error', 'mfa_check_failed')
-        return NextResponse.redirect(url)
-      }
-      if (hasMfa !== true) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/student/settings'
-        url.searchParams.set('mfa', 'required')
-        return NextResponse.redirect(url)
-      }
-    } catch {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('error', 'mfa_check_failed')
-      return NextResponse.redirect(url)
     }
   }
 

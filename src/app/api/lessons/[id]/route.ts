@@ -31,7 +31,6 @@ import {
   invalidateTeacherDashboard,
   invalidateTeacherStudents,
 } from '@/lib/cache/invalidate'
-import { notifyLessonCancelled } from '@/lib/notifications/subscription-events'
 
 const idSchema = z.string().uuid('Некорректный ID урока')
 const bodySchema = z

@@ -211,8 +211,6 @@ interface StudentRawDashboardProps {
   lastName?: string
   avatarUrl?: string | null
   englishLevel?: string
-  /** Кол-во дней подряд без пропусков; используем для «огоньков» (макс 6). */
-  currentStreak?: number
   balance?: number
   /** Последние операции по балансу: пополнения, списания за уроки, возвраты. */
   balanceHistory?: Array<{ id: string; kind: string; amountRub: number; comment: string | null; createdAt: string }>
@@ -242,7 +240,6 @@ export default function StudentRawDashboard({
   lastName = "Думович",
   avatarUrl,
   englishLevel = "Rare",
-  currentStreak = 0,
   balance = 14500,
   balanceHistory = [],
   lessonsThisYear = 25,

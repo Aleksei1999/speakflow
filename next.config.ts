@@ -41,9 +41,9 @@ const nextConfig: NextConfig = {
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://sb.raw-english.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://t.me",
       // локальный `livekit-server --dev` (ws://localhost:7880) — только вне production
-      `connect-src 'self' https://sb.raw-english.com wss://sb.raw-english.com https://*.supabase.co wss://*.supabase.co https://meet.raw-english.com wss://meet.raw-english.com https://vitals.vercel-insights.com https://*.ingest.sentry.io https://*.livekit.cloud wss://*.livekit.cloud${isProd ? "" : " ws://localhost:7880 http://localhost:7880"}`,
+      `connect-src 'self' https://sb.raw-english.com wss://sb.raw-english.com https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://*.ingest.sentry.io https://*.livekit.cloud wss://*.livekit.cloud${isProd ? "" : " ws://localhost:7880 http://localhost:7880"}`,
       "media-src 'self' blob: https://*.supabase.co https://sb.raw-english.com",
-      "frame-src 'self' https://meet.raw-english.com https://accounts.google.com https://challenges.cloudflare.com",
+      "frame-src 'self' https://accounts.google.com https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self' https://yoomoney.ru https://yookassa.ru",
@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
     const scriptSrcEnforce =
       "script-src 'self' 'unsafe-inline' " +
       (isProd ? "" : "'unsafe-eval' ") +
-      "https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com"
+      "https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com"
 
     const enforceDirectives = [
       ...commonDirectives,
@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
           ? "style-src 'self' https://fonts.googleapis.com"
           : d
       ),
-      "script-src 'self' https://meet.raw-english.com https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com",
+      "script-src 'self' https://accounts.google.com https://*.vercel-scripts.com https://challenges.cloudflare.com",
     ].join("; ")
 
     return [

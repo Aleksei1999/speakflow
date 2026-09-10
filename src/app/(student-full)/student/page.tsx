@@ -86,7 +86,6 @@ export default async function StudentNewPage() {
     month_total: 0,
   }
 
-  const currentStreak = dashboard?.progress?.current_streak ?? 0
 
   const calendarConnection = await getStudentCalendarConnection()
   // Лекторий и лекции в расписании — сразу с сервера, без мигания плейсхолдеров.
@@ -101,7 +100,6 @@ export default async function StudentNewPage() {
       lastName={lastName}
       avatarUrl={avatarUrl}
       englishLevel={englishLevel}
-      currentStreak={currentStreak}
       balance={balance}
       balanceHistory={balanceHistory}
       lessonsThisYear={stats.total_lessons}

@@ -13,7 +13,7 @@ interface Props {
   /** teacher — Figma 4033:232: та же раскладка, но фрейм 266 (контент с 52), а не 330 (с 101) */
   variant?: "default" | "teacher" | "admin"
 }
-export default function SiteFooter({ supportHref = "/support", onSupportClick, variant = "default" }: Props) {
+export default function SiteFooter({ supportHref, onSupportClick, variant = "default" }: Props) {
   return (
     <footer className={`sf-footer${variant === "teacher" ? " sf-footer--teacher" : variant === "admin" ? " sf-footer--admin" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-css-tags */}
@@ -35,9 +35,9 @@ export default function SiteFooter({ supportHref = "/support", onSupportClick, v
             <button type="button" className="sf-support" onClick={onSupportClick}>
               Написать в поддержку
             </button>
-          ) : (
+          ) : supportHref ? (
             <Link href={supportHref} className="sf-support">Написать в поддержку</Link>
-          )}
+          ) : null}
           <p className="sf-copy">By V. Kratkovskaya © 2026</p>
         </div>
 

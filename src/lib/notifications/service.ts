@@ -30,24 +30,7 @@ import {
   formatTelegramSummaryReady,
   formatTelegramPaymentReceipt,
 } from '@/lib/resend/templates'
-import {
-  dailyChallengeEmail,
-  streakWarningEmail,
-  newClubEmail,
-  achievementUnlockedEmail,
-  levelUpEmail,
-  leaderboardOvertakenEmail,
-  weeklyDigestEmail,
-  marketingPromoEmail,
-  formatTelegramDailyChallenge,
-  formatTelegramStreakWarning,
-  formatTelegramNewClub,
-  formatTelegramAchievementUnlocked,
-  formatTelegramLevelUp,
-  formatTelegramLeaderboardOvertaken,
-  formatTelegramWeeklyDigest,
-  formatTelegramMarketingPromo,
-} from '@/lib/resend/templates-extended'
+import { marketingPromoEmail, formatTelegramMarketingPromo } from '@/lib/resend/templates-extended'
 
 export type NotificationType =
   | 'welcome'
@@ -58,13 +41,6 @@ export type NotificationType =
   | 'lesson_reminder'
   | 'lesson_summary_ready'
   | 'payment_receipt'
-  | 'daily_challenge'
-  | 'streak_warning'
-  | 'new_club'
-  | 'achievement_unlocked'
-  | 'level_up'
-  | 'leaderboard_overtaken'
-  | 'weekly_digest'
   | 'marketing_promo'
 
 /**
@@ -91,13 +67,6 @@ const TRANSACTIONAL_TYPES: ReadonlySet<NotificationType> = new Set([
  */
 const PREF_KEY: Partial<Record<NotificationType, string>> = {
   lesson_reminder: 'lesson_reminders',
-  daily_challenge: 'daily_challenge',
-  streak_warning: 'streak_warning',
-  new_club: 'new_clubs',
-  achievement_unlocked: 'achievements',
-  level_up: 'achievements',
-  leaderboard_overtaken: 'leaderboard',
-  weekly_digest: 'email_digest',
   marketing_promo: 'marketing',
 }
 
@@ -105,12 +74,6 @@ type NotificationChannel = 'email' | 'telegram' | 'both'
 
 interface NotificationPrefs {
   lesson_reminders?: boolean
-  daily_challenge?: boolean
-  streak_warning?: boolean
-  new_clubs?: boolean
-  achievements?: boolean
-  leaderboard?: boolean
-  email_digest?: boolean
   marketing?: boolean
   channel?: NotificationChannel
   [key: string]: unknown
@@ -328,24 +291,6 @@ function formatMoscowDateTime(iso: unknown): string {
   }
 }
 
-function formatClubWhen(iso: unknown): string {
-  if (typeof iso !== 'string' || !iso) return ''
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return ''
-    const fmt = new Intl.DateTimeFormat('ru-RU', {
-      weekday: 'short',
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Moscow',
-    }).format(d)
-    return `${fmt} МСК`
-  } catch {
-    return ''
-  }
-}
 
 function buildEmailContent(
   type: NotificationType,
@@ -459,69 +404,6 @@ function buildEmailContent(
         data.description || 'Оплата урока'
       )
 
-    case 'daily_challenge':
-      return dailyChallengeEmail(
-        name,
-        data.challengeTitle || 'Ежедневный челлендж',
-        data.xpReward || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'streak_warning':
-      return streakWarningEmail(
-        name,
-        data.streakDays || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'new_club':
-      return newClubEmail(
-        name,
-        data.clubTitle || (data as any).title || 'Speaking Club',
-        data.whenStr ||
-          formatClubWhen((data as any).start_at) ||
-          '',
-        data.host || (data as any).host_name || 'Raw English',
-        data.ctaUrl || `${appUrl}/student/clubs`
-      )
-
-    case 'achievement_unlocked':
-      return achievementUnlockedEmail(
-        name,
-        data.title || 'Новая достижение',
-        data.description || '',
-        data.icon || '🏆',
-        data.xpReward || 0,
-        data.ctaUrl || `${appUrl}/student/profile`
-      )
-
-    case 'level_up':
-      return levelUpEmail(
-        name,
-        data.newLevel || 1,
-        data.levelTitle || '',
-        data.totalXp || 0,
-        data.ctaUrl || `${appUrl}/student/profile`
-      )
-
-    case 'leaderboard_overtaken':
-      return leaderboardOvertakenEmail(
-        name,
-        data.overtakenBy || 'Кто-то',
-        data.newRank || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'weekly_digest':
-      return weeklyDigestEmail(
-        name,
-        data.weekXp || 0,
-        data.lessonsAttended || 0,
-        data.topAchievement || '—',
-        data.streakDays || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
     case 'marketing_promo':
       return marketingPromoEmail(
         name,
@@ -618,69 +500,6 @@ function buildTelegramText(
         name,
         data.amount || 0,
         data.description || 'Оплата урока'
-      )
-
-    case 'daily_challenge':
-      return formatTelegramDailyChallenge(
-        name,
-        data.challengeTitle || 'Ежедневный челлендж',
-        data.xpReward || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'streak_warning':
-      return formatTelegramStreakWarning(
-        name,
-        data.streakDays || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'new_club':
-      return formatTelegramNewClub(
-        name,
-        data.clubTitle || (data as any).title || 'Speaking Club',
-        data.whenStr ||
-          formatClubWhen((data as any).start_at) ||
-          '',
-        data.host || (data as any).host_name || 'Raw English',
-        data.ctaUrl || `${appUrl}/student/clubs`
-      )
-
-    case 'achievement_unlocked':
-      return formatTelegramAchievementUnlocked(
-        name,
-        data.title || 'Новая достижение',
-        data.description || '',
-        data.icon || '🏆',
-        data.xpReward || 0,
-        data.ctaUrl || `${appUrl}/student/profile`
-      )
-
-    case 'level_up':
-      return formatTelegramLevelUp(
-        name,
-        data.newLevel || 1,
-        data.levelTitle || '',
-        data.totalXp || 0,
-        data.ctaUrl || `${appUrl}/student/profile`
-      )
-
-    case 'leaderboard_overtaken':
-      return formatTelegramLeaderboardOvertaken(
-        name,
-        data.overtakenBy || 'Кто-то',
-        data.newRank || 0,
-        data.ctaUrl || `${appUrl}/student`
-      )
-
-    case 'weekly_digest':
-      return formatTelegramWeeklyDigest(
-        name,
-        data.weekXp || 0,
-        data.lessonsAttended || 0,
-        data.topAchievement || '—',
-        data.streakDays || 0,
-        data.ctaUrl || `${appUrl}/student`
       )
 
     case 'marketing_promo':

@@ -13,7 +13,7 @@ const footerLinks: Array<{
       { href: "/teachers", label: "Преподаватели" },
       { href: "/#pricing", label: "Тарифы" },
       { href: "/#formats", label: "Speaking Clubs" },
-      { href: "/get-started", label: "Тест уровня" },
+      { href: "/#quiz", label: "Тест уровня" },
     ],
   },
   {

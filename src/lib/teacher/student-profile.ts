@@ -23,8 +23,7 @@
 // ---------------------------------------------------------------
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { LEVEL_XP_THRESHOLDS, xpToRoastLevel } from "@/lib/level-utils"
-import { getLevelCEFR } from "@/lib/level-utils"
+import { toRoastLevel } from "@/lib/levels/mapping"
 
 export type ViewerRole = "teacher" | "admin"
 
@@ -321,19 +320,10 @@ export async function loadTeacherStudentProfile(
     (progressRes.data as any) || {}
   const total_xp = up.total_xp || 0
   const streak = up.current_streak || 0
-  const roastLevel = xpToRoastLevel(total_xp)
-  const thresholds = LEVEL_XP_THRESHOLDS[roastLevel]
-  let level_progress_pct = 100
-  if (thresholds.next !== null) {
-    const span = thresholds.next - thresholds.min
-    const within = total_xp - thresholds.min
-    level_progress_pct =
-      span > 0 ? Math.max(0, Math.min(100, Math.round((within / span) * 100))) : 0
-  }
-
-  // CEFR: предпочитаем english_level из user_progress если есть, иначе
-  // выводим из roast-level.
-  const cefr = (up.english_level && String(up.english_level).trim()) || getLevelCEFR(roastLevel)
+  // Уровень — из user_progress.english_level (XP-геймификации в продукте нет).
+  const cefr = (up.english_level && String(up.english_level).trim()) || "A1"
+  const roastLevel = toRoastLevel(cefr)
+  const level_progress_pct = 100
 
   // ------- Rating -------
   const reviewRows: Array<{ rating: number | null }> = (reviewsRes.data || []) as any

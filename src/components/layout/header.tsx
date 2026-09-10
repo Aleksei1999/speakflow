@@ -76,7 +76,7 @@ export function MarketingHeader({
               <Button
                 size="sm"
                 className="bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
-                render={<Link href="/get-started" />}
+                render={<Link href="/register" />}
               >
                 Попробовать бесплатно
               </Button>
@@ -130,7 +130,7 @@ export function MarketingHeader({
                     </Button>
                     <Button
                       className="w-full bg-[#CC3A3A] text-white hover:bg-[#a32e2e]"
-                      render={<Link href="/get-started" />}
+                      render={<Link href="/register" />}
                       onClick={() => setOpen(false)}
                     >
                       Попробовать бесплатно
