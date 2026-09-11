@@ -26,8 +26,10 @@ export function reviewState(i: ReviewInput): ReviewState {
   if (i.status === "booked" || i.status === "pending_payment") {
     return { badge: "Урок не состоялся", tone: "none", text: "Ревью не будет: урок не был проведён." }
   }
-  if (i.transcriptStatus === "failed") return { badge: "Ревью нет", tone: "none", text: "Запись урока не удалось расшифровать." }
-  if (i.recordingStatus === "finalized" || i.recordingStatus === "recording" || i.transcriptStatus === "ok") {
+  if (i.transcriptStatus === "failed" || i.recordingStatus === "failed") {
+    return { badge: "Ревью нет", tone: "none", text: "Запись урока не удалось расшифровать." }
+  }
+  if (i.recordingStatus === "finalized" || i.recordingStatus === "recording" || i.recordingStatus === "transcribed" || i.transcriptStatus === "ok" || i.transcriptStatus === "summarized") {
     return { badge: "Ревью готовится", tone: "wait", text: "Запись урока обрабатывается. Обычно это занимает несколько минут после окончания занятия." }
   }
   return { badge: "Ревью нет", tone: "none", text: "Запись урока не велась, ревью для этого занятия не будет." }
@@ -53,6 +55,11 @@ export async function loadReviewSignals(
     admin.from("lesson_transcripts").select("lesson_id, status").in("lesson_id", lessonIds),
   ])
   for (const r of (recRes.data ?? []) as Array<{ lesson_id: string; status: string }>) recordingByLesson.set(r.lesson_id, r.status)
-  for (const t of (trRes.data ?? []) as Array<{ lesson_id: string; status: string }>) transcriptByLesson.set(t.lesson_id, t.status)
+  // У одной записи может быть несколько попыток расшифровки: удачная важнее неудачных.
+  const rank = (st: string) => (st === "summarized" ? 3 : st === "ok" ? 2 : st === "failed" ? 1 : 0)
+  for (const t of (trRes.data ?? []) as Array<{ lesson_id: string; status: string }>) {
+    const prev = transcriptByLesson.get(t.lesson_id)
+    if (!prev || rank(t.status) > rank(prev)) transcriptByLesson.set(t.lesson_id, t.status)
+  }
   return { recordingByLesson, transcriptByLesson }
 }

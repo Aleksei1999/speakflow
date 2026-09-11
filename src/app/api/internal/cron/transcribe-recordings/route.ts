@@ -212,6 +212,10 @@ export async function POST(req: NextRequest) {
         error_message: reason.slice(0, 1000),
         attempts: attemptsSoFar,
       })
+      // После последней попытки запись выходит из очереди, иначе она вечно занимает окно кандидатов.
+      if (attemptsSoFar >= MAX_ATTEMPTS) {
+        await admin.from("lesson_recordings").update({ status: "failed" }).eq("id", target.id).eq("status", "finalized")
+      }
       return NextResponse.json({ ok: false, reason: "transcribe_empty", attempts: attemptsSoFar })
     }
 
@@ -234,6 +238,10 @@ export async function POST(req: NextRequest) {
       console.error("[cron/transcribe] insert transcript failed:", insErr)
       return NextResponse.json({ error: "DB insert failed" }, { status: 500 })
     }
+
+    // Запись расшифрована — следующий проход крона её уже не выбирает.
+    const { error: stErr } = await admin.from("lesson_recordings").update({ status: "transcribed" }).eq("id", target.id).eq("status", "finalized")
+    if (stErr) console.error("[cron/transcribe] mark transcribed failed:", stErr)
 
     console.log(`[cron/transcribe] OK lesson=${target.lesson_id} chars=${fullText.length}`)
     return NextResponse.json({ ok: true, lessonId: target.lesson_id, chars: fullText.length })
