@@ -12,12 +12,17 @@ export type ReviewInput = {
   hasSummary: boolean
   recordingStatus: string | null
   transcriptStatus: string | null
+  /** Урок ещё идёт или только что закончился (крон ещё не выставил итоговый статус). */
+  stillOpen?: boolean
 }
 
 export function reviewState(i: ReviewInput): ReviewState {
   if (i.hasSummary) return { badge: "Ревью готово", tone: "ok", text: "" }
   if (i.status === "cancelled") return { badge: "Урок отменён", tone: "none", text: "Ревью не будет: урок не состоялся." }
   if (i.status === "no_show") return { badge: "Урок не состоялся", tone: "none", text: "Ревью не будет: на урок не пришли." }
+  if (i.status === "in_progress" || (i.stillOpen && (i.status === "booked" || i.status === "pending_payment"))) {
+    return { badge: "Урок идёт", tone: "wait", text: "Ревью появится после окончания урока." }
+  }
   if (i.status === "booked" || i.status === "pending_payment") {
     return { badge: "Урок не состоялся", tone: "none", text: "Ревью не будет: урок не был проведён." }
   }

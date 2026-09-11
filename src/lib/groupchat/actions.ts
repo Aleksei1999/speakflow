@@ -1,5 +1,8 @@
 'use server'
 
+import { NextResponse } from 'next/server'
+import { verifyFileType } from '@/lib/api/file-upload'
+
 // ---------------------------------------------------------------------------
 // Server actions для группового чата.
 //
@@ -184,6 +187,7 @@ export async function sendGroupMessage(
   const trimmed = text?.trim()
   if (!groupId) throw new Error('groupId required')
   if (!trimmed) throw new Error('Empty message')
+  if (trimmed.length > 4000) throw new Error('Сообщение длиннее 4000 символов')
   const { userId, role } = await requireUser()
 
   const admin = createAdminClient() as UntypedSupabase
@@ -239,10 +243,14 @@ interface UploadGroupAttachmentInput {
  * Возвращает сообщение с подписанным attachment URL для мгновенного рендера.
  */
 export async function uploadGroupAttachment(
-  { groupId, file, kind, text }: UploadGroupAttachmentInput,
+  { groupId, file, text }: UploadGroupAttachmentInput,
 ): Promise<GroupMessage> {
   if (!groupId) throw new Error('groupId required')
   if (!file) throw new Error('file required')
+  if (file.size > 25 * 1024 * 1024) throw new Error('Файл больше 25 МБ')
+  const verified = await verifyFileType(file)
+  if (verified instanceof NextResponse) throw new Error('Этот тип файла не поддерживается')
+  const kind: GroupAttachmentType = verified.mimeType.startsWith('image/') ? 'image' : verified.mimeType.startsWith('video/') ? 'video' : 'document'
   const { userId, role } = await requireUser()
 
   const admin = createAdminClient() as UntypedSupabase
@@ -255,7 +263,7 @@ export async function uploadGroupAttachment(
   const { error: upErr } = await supabase.storage
     .from(GROUP_ATTACHMENTS_BUCKET)
     .upload(objectPath, file, {
-      contentType: file.type || undefined,
+      contentType: verified.mimeType,
       upsert: false,
     })
   if (upErr) throw new Error(`uploadGroupAttachment: storage upload failed: ${upErr.message}`)

@@ -6,6 +6,7 @@ import { teacherHasStudent } from "@/lib/materials/access"
 import { logAuditEvent } from "@/lib/audit/log"
 import { invalidateTeacherStudents, invalidateStudentDashboard, invalidateTeacherDashboard } from "@/lib/cache/invalidate"
 import { notifyAdminsTelegram, notifyUserTelegram } from "@/lib/telegram/notify-admins"
+import { escapeHtml } from "@/lib/html/escape"
 
 // POST /api/teacher/students/[id]/transfer — передать ученика другому преподавателю.
 // Переносятся будущие уроки (booked / pending_payment) и активная пробная заявка.
@@ -19,6 +20,7 @@ const BodySchema = z.object({
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: studentId } = await ctx.params
+  if (!z.string().uuid().safeParse(studentId).success) return NextResponse.json({ error: "Некорректный id ученика" }, { status: 400 })
   const body = BodySchema.safeParse(await req.json().catch(() => null))
   if (!body.success) return NextResponse.json({ error: body.error.issues[0]?.message ?? "Некорректные данные" }, { status: 400 })
   const { toTeacherUserId, reason } = body.data
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     fromTpId = tp?.id ?? null
     if (!fromTpId || !(await teacherHasStudent(admin, fromTpId, studentId))) return NextResponse.json({ error: "Это не ваш ученик" }, { status: 403 })
   } else {
-    const { data: last } = await admin.from("lessons").select("teacher_id").eq("student_id", studentId).order("scheduled_at", { ascending: false }).limit(1).maybeSingle()
+    const { data: last } = await admin.from("lessons").select("teacher_id").eq("student_id", studentId).in("status", ["booked", "in_progress", "completed", "pending_payment"]).order("scheduled_at", { ascending: false }).limit(1).maybeSingle()
     fromTpId = last?.teacher_id ?? null
     if (!fromTpId) return NextResponse.json({ error: "У ученика нет преподавателя" }, { status: 400 })
   }
@@ -92,12 +94,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     payload: { student_id: studentId, from_teacher_id: fromTpId, to_teacher_id: toTp.id, lessons_moved: moved, lessons_cancelled: cancelled },
   })
 
+  const sName = escapeHtml(student?.full_name ?? "Ученик")
+  const toName = escapeHtml(toProfile.full_name ?? "преподаватель")
+  const fromName = escapeHtml(me.full_name ?? "преподаватель")
+  const safeReason = escapeHtml(reason)
   const text =
-    `🔁 <b>Передача ученика</b>\n${student?.full_name ?? "Ученик"} → ${toProfile.full_name ?? "преподаватель"}\n` +
-    `От: ${me.full_name ?? "преподаватель"}\nПричина: ${reason}\n` +
+    `🔁 <b>Передача ученика</b>\n${sName} → ${toName}\n` +
+    `От: ${fromName}\nПричина: ${safeReason}\n` +
     `Перенесено уроков: ${moved}${cancelled ? `, отменено из-за занятого времени: ${cancelled}` : ""}`
   void notifyAdminsTelegram(text)
-  void notifyUserTelegram(toTeacherUserId, `👋 Вам передан ученик: <b>${student?.full_name ?? "Ученик"}</b>\nПричина: ${reason}\nБудущих уроков перенесено: ${moved}`)
+  void notifyUserTelegram(toTeacherUserId, `👋 Вам передан ученик: <b>${sName}</b>\nПричина: ${safeReason}\nБудущих уроков перенесено: ${moved}`)
 
   return NextResponse.json({ ok: true, lessonsMoved: moved, lessonsCancelled: cancelled })
 }

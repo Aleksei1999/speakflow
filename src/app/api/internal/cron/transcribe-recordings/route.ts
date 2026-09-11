@@ -10,6 +10,7 @@
 // работает с этой записью, worker пропускает.
 
 import { NextRequest, NextResponse } from "next/server"
+import { isCronAuthorized } from "@/lib/api/cron-auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOpenAI } from "@/lib/openai/client"
 import {
@@ -28,9 +29,7 @@ const MAX_ATTEMPTS = 5
 const LOCK_TTL_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

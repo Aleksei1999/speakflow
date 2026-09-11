@@ -1,5 +1,5 @@
 /** Фильтр материалов по типу: pdf / ppt / doc / video / audio / img. */
-export const TYPE_MIME_MAP: Record<string, string[]> = {
+const TYPE_MIME_MAP: Record<string, string[]> = {
   pdf: ['application/pdf'],
   ppt: [
     'application/vnd.ms-powerpoint',

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from "@/lib/api/cron-auth"
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendNotification } from '@/lib/notifications/service'
 import {
@@ -20,10 +21,8 @@ export const dynamic = 'force-dynamic'
  * for (user_id, lesson_id) in the last 6 hours.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 // ---------------------------------------------------------------------------
 // GET /api/google/oauth/callback
 //
@@ -39,6 +40,11 @@ export async function GET(req: NextRequest) {
 
   const payload = verifyState(state)
   if (!payload) return redirectWith('error', 'invalid_state')
+  // Колбэк должен прийти в сессии того, кто начал подключение: иначе чужие
+  // Google-токены можно было бы привязать к своему аккаунту (CSRF привязки).
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== payload.userId) return redirectWith('error', 'session_mismatch')
 
   try {
     const tokens = await exchangeCodeForTokens(code)

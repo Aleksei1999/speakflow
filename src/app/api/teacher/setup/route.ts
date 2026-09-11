@@ -34,7 +34,13 @@ export async function POST(request: NextRequest) {
     const taken = /already|exists|registered/i.test(authErr.message ?? "")
     return NextResponse.json({ error: taken ? "Такая почта уже используется" : "Не удалось сохранить данные" }, { status: taken ? 409 : 500 })
   }
-  const { error: profErr } = await admin.from("profiles").update({ email, email_verified: true, credentials_pending: false }).eq("id", user.id)
+  const { data: flipped, error: profErr } = await admin
+    .from("profiles")
+    .update({ email, email_verified: true, credentials_pending: false })
+    .eq("id", user.id)
+    .eq("credentials_pending", true)
+    .select("id")
+  if (!profErr && (!flipped || flipped.length === 0)) return NextResponse.json({ error: "Данные для входа уже заданы" }, { status: 409 })
   if (profErr) {
     console.error("[teacher/setup] profile", profErr)
     return NextResponse.json({ error: "Не удалось сохранить профиль" }, { status: 500 })

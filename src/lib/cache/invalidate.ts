@@ -13,19 +13,7 @@
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
-import {
-  profileTag,
-  progressTag,
-  teacherStatsTag,
-  studentMaterialsTag,
-  studentHomeworkTag,
-  teacherStudentsTag,
-  teacherHomeworkTag,
-  teacherMaterialsTag,
-  adminTrialRequestsTag,
-  adminStudentsTag,
-  adminTeachersListTag,
-} from './dashboard'
+import { profileTag, progressTag, studentMaterialsTag, studentHomeworkTag, teacherStudentsTag, teacherHomeworkTag, teacherMaterialsTag, adminTrialRequestsTag, adminTeachersListTag } from './dashboard'
 import { studentDashboardTag } from '@/lib/dashboard/student'
 import { teacherDashboardTag } from '@/lib/dashboard/teacher'
 
@@ -51,13 +39,6 @@ export function invalidateUserProgress(userId: string): void {
   if (!userId) return
   safeRevalidate(progressTag(userId), 'progress')
 }
-
-/** Teacher hero stats: rating, total_reviews, experience_years. */
-export function invalidateTeacherStats(userId: string): void {
-  if (!userId) return
-  safeRevalidate(teacherStatsTag(userId), 'teacher-stats')
-}
-
 /**
  * Student dashboard JSONB snapshot (миграция 073, RPC get_student_dashboard).
  * Включает profile/progress/stats/upcoming_lessons/achievements/leaderboard/
@@ -131,12 +112,6 @@ export function invalidateTeacherMaterials(teacherUserId: string): void {
 export function invalidateAdminTrialRequests(): void {
   safeRevalidate(adminTrialRequestsTag(), 'admin-trial-requests')
 }
-
-/** Admin: students global list. */
-export function invalidateAdminStudents(): void {
-  safeRevalidate(adminStudentsTag(), 'admin-students')
-}
-
 /** Admin: teachers dropdown source (used in admin/clubs UI etc). */
 export function invalidateAdminTeachersList(): void {
   safeRevalidate(adminTeachersListTag(), 'admin-teachers-list')

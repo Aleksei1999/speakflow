@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
 
     const fd = await request.formData()
     const file = fd.get('file')
-    const folderId = String(fd.get('folder_id') ?? '') || null
+    const rawFolder = String(fd.get('folder_id') ?? '').trim()
+    let folderId: string | null = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawFolder) ? rawFolder : null
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Файл не передан' }, { status: 400 })
     }
@@ -94,6 +95,12 @@ export async function POST(request: NextRequest) {
         { error: 'В системе нет ни одного преподавателя — обратитесь к админу' },
         { status: 400 }
       )
+    }
+
+    // Папка должна принадлежать преподавателю, чей файл уже расшарен ученику; иначе кладём в корень.
+    if (folderId) {
+      const { data: folder } = await admin.from('material_folders').select('id, teacher_id').eq('id', folderId).maybeSingle()
+      if (!folder || folder.teacher_id !== teacherProfileId) folderId = null
     }
 
     // Upload to storage.

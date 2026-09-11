@@ -28,6 +28,7 @@ const AUTH_PATTERNS = [
 
 /** Intentionally public or specially protected routes. */
 const ALLOWLIST = new Set([
+  "src/app/api/geo/route.ts", // публичный GET: страна по IP для телефонной маски
   "src/app/api/auth/callback/route.ts",
   "src/app/api/booking/slots/route.ts",
   "src/app/api/clubs/route.ts",

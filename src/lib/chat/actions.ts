@@ -1,5 +1,8 @@
 'use server'
 
+import { NextResponse } from 'next/server'
+import { verifyFileType } from '@/lib/api/file-upload'
+
 // ---------------------------------------------------------------------------
 // Server actions чата — role-agnostic (teacher/student/admin).
 //
@@ -118,6 +121,7 @@ export async function sendMessage({ peerId, text }: SendMessageInput): Promise<C
   const trimmed = text?.trim()
   if (!peerId) throw new Error('peerId required')
   if (!trimmed) throw new Error('Empty message')
+  if (trimmed.length > 4000) throw new Error('Сообщение длиннее 4000 символов')
   const { supabase, userId, role } = await requireUser()
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
   await assertCanChat(userId, role, peerId, peerRole)
@@ -148,11 +152,14 @@ interface UploadAttachmentInput {
 export async function uploadAttachment({
   peerId,
   file,
-  kind,
   text,
 }: UploadAttachmentInput): Promise<ChatMessage> {
   if (!peerId) throw new Error('peerId required')
   if (!file) throw new Error('file required')
+  if (file.size > 25 * 1024 * 1024) throw new Error('Файл больше 25 МБ')
+  const verified = await verifyFileType(file)
+  if (verified instanceof NextResponse) throw new Error('Этот тип файла не поддерживается')
+  const kind: ChatAttachmentType = verified.mimeType.startsWith('image/') ? 'image' : verified.mimeType.startsWith('video/') ? 'video' : 'document'
   const { supabase, userId, role } = await requireUser()
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
   await assertCanChat(userId, role, peerId, peerRole)
@@ -165,7 +172,7 @@ export async function uploadAttachment({
   const { error: upErr } = await supabase.storage
     .from(CHAT_ATTACHMENTS_BUCKET)
     .upload(objectPath, file, {
-      contentType: file.type || undefined,
+      contentType: verified.mimeType,
       upsert: false,
     })
   if (upErr) throw new Error(`uploadAttachment: storage upload failed: ${upErr.message}`)

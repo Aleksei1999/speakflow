@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle()) as { data: { id: string; storage_prefix: string; status: 'recording' | 'finalized' | 'failed' } | null }
 
   if (!rec) return NextResponse.json({ error: "Recording не найден" }, { status: 404 })
-  if (rec.status === "finalized") {
+  if (rec.status !== "recording") {
     return NextResponse.json({ error: "Запись уже завершена" }, { status: 409 })
   }
 

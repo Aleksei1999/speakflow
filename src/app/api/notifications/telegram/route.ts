@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       await handleHelpCommand(chatId)
     } else {
       // Проверяем, не код ли это (6 цифр)
-      const codeMatch = text.match(/^\d{6}$/)
+      const codeMatch = text.toUpperCase().match(/^[A-Z2-9]{6}$/)
       if (codeMatch) {
         await handleLinkingCode(chatId, text, username)
       } else {
@@ -88,7 +88,7 @@ async function handleStartCommand(chatId: number, text: string, username?: strin
   const parts = text.split(' ')
   const code = parts[1]?.trim()
 
-  if (code && /^\d{6}$/.test(code)) {
+  if (code && /^[A-Z2-9]{6}$/i.test(code)) {
     await handleLinkingCode(chatId, code, username)
   } else {
     await sendTelegramMessage({

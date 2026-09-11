@@ -35,6 +35,8 @@ export interface LiveKitTokenArgs {
   scheduledAt?: string | null
   /** Длительность урока в минутах. */
   durationMinutes?: number | null
+  /** Может ли участник публиковать аудио/видео/данные (в лекции — только ведущий). */
+  canPublish?: boolean
 }
 
 export async function createLiveKitToken({
@@ -45,6 +47,7 @@ export async function createLiveKitToken({
   ttlSeconds,
   scheduledAt,
   durationMinutes,
+  canPublish = true,
 }: LiveKitTokenArgs): Promise<string> {
   // 1. Если caller явно указал ttlSeconds — берём его (с cap).
   // 2. Иначе если знаем расписание — считаем close-window from now.
@@ -80,9 +83,9 @@ export async function createLiveKitToken({
   at.addGrant({
     room: roomName,
     roomJoin: true,
-    canPublish: true,
+    canPublish,
     canSubscribe: true,
-    canPublishData: true,
+    canPublishData: canPublish,
     roomAdmin: isModerator,
     roomCreate: isModerator,
   })

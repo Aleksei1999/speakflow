@@ -5,6 +5,7 @@
 // Vercel Cron вызывает GET с заголовком Authorization: Bearer <CRON_SECRET>; POST — для ручного запуска.
 
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from "@/lib/api/cron-auth"
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
@@ -12,9 +13,7 @@ export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 async function purge(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

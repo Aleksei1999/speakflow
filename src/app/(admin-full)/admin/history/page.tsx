@@ -29,6 +29,7 @@ const STATUS_CLASS: Record<string, string> = {
 
 type LessonRow = { id: string; scheduled_at: string; status: string; student_id: string; teacher_id: string }
 type SummaryRow = {
+  source?: string | null
   lesson_id: string
   summary_text: string
   vocabulary: string[]
@@ -70,7 +71,7 @@ export default async function AdminHistoryPage() {
       admin.from("teacher_profiles").select("id, user:profiles!teacher_profiles_user_id_fkey ( full_name )").in("id", teacherIds),
       admin
         .from("lesson_summaries")
-        .select("lesson_id, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve")
+        .select("lesson_id, source, summary_text, vocabulary, grammar_points, homework, strengths, areas_to_improve")
         .in("lesson_id", lessonIds),
     ])
     for (const p of (sRes.data ?? []) as Array<{ id: string; full_name: string | null }>) {
@@ -80,7 +81,11 @@ export default async function AdminHistoryPage() {
       const u = Array.isArray(t.user) ? t.user[0] : t.user
       if (u?.full_name) teacherName.set(t.id, u.full_name)
     }
-    for (const s of (sumRes.data ?? []) as SummaryRow[]) summaryByLesson.set(s.lesson_id, s)
+    // Если у урока есть и ручное, и транскриптное саммари — показываем транскриптное.
+    for (const s of (sumRes.data ?? []) as SummaryRow[]) {
+      if (summaryByLesson.has(s.lesson_id) && s.source !== "recording") continue
+      summaryByLesson.set(s.lesson_id, s)
+    }
   }
 
   return (

@@ -9,6 +9,7 @@
 // на lesson_summaries(lesson_id) WHERE source='recording' как safety-net.
 
 import { NextRequest, NextResponse } from "next/server"
+import { isCronAuthorized } from "@/lib/api/cron-auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getOpenAI } from "@/lib/openai/client"
 import {
@@ -27,9 +28,7 @@ const MODEL = "gpt-4o-2024-08-06" // json_schema strict + русский/анг�
 const LOCK_TTL_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -37,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const { data: transcripts, error: tErr } = await admin
     .from("lesson_transcripts")
-    .select("id, lesson_id, recording_id, full_text, duration_sec, created_at, locked_at")
+    .select("id, lesson_id, recording_id, full_text, duration_sec, created_at, locked_at, summary_attempts")
     .eq("status", "ok")
     .order("created_at", { ascending: true })
     .limit(20)
@@ -144,7 +143,13 @@ async function runSummarize(admin: any, target: any) {
     parsed = summaryResponseSchema.parse(json)
   } catch (e: any) {
     console.error("[cron/summarize] OpenAI failed:", e?.message ?? e)
-    return NextResponse.json({ ok: false, reason: "openai_failed" }, { status: 502 })
+    // Считаем попытки: после третьей транскрипт помечаем failed, чтобы не жечь токены вечно.
+    const attempts = Number(target.summary_attempts ?? 0) + 1
+    await admin
+      .from("lesson_transcripts")
+      .update(attempts >= 3 ? { summary_attempts: attempts, status: "failed", error_message: `summary: ${String(e?.message ?? e).slice(0, 300)}` } : { summary_attempts: attempts })
+      .eq("id", target.id)
+    return NextResponse.json({ ok: false, reason: "openai_failed", attempts }, { status: 502 })
   }
 
   const { data: summary, error: sErr } = await admin
@@ -195,6 +200,8 @@ async function runSummarize(admin: any, target: any) {
     console.error("[cron/summarize] insert quiz failed:", qErr)
     // Саммари остаётся, квиз регенерируем вручную при необходимости.
   }
+
+  await admin.from("lesson_transcripts").update({ status: "summarized" }).eq("id", target.id)
 
   // Уведомление студента — ошибки игнорируем, саммари важнее.
   try {

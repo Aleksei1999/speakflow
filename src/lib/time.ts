@@ -180,12 +180,6 @@ const FORMATTERS: Record<TimeLocale, FormatterSetExt> = {
 function pickSet(locale?: TimeLocale): FormatterSetExt {
   return FORMATTERS[locale === "en" ? "en" : "ru"]
 }
-
-/** Map any string locale value to a strict TimeLocale union. */
-export function asTimeLocale(locale?: string | null): TimeLocale {
-  return locale === "en" ? "en" : "ru"
-}
-
 /**
  * "14:30" (ru, 24h) / "2:30 PM" (en, 12h) в Asia/Moscow.
  */
@@ -205,20 +199,6 @@ export function formatLessonDayLong(
   const d = input instanceof Date ? input : new Date(input)
   return pickSet(locale).dayLong.format(d)
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// Extra locale-aware helpers (used to replace hardcoded `locale: ru` calls
-// in dashboard surfaces — clubs, leaderboard, profile, booking modals etc.).
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** "пн, 18 мая" / "Mon, May 18" — short weekday + short date pill. */
-export function formatWeekdayShortDayMonthShort(
-  input: Date | string | number,
-  locale?: TimeLocale
-): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return pickSet(locale).weekdayShortDayMonthShort.format(d)
-}
-
 /** «HH:MM» → минуты от начала суток. */
 export function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)

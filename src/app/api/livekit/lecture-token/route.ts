@@ -96,7 +96,8 @@ export async function POST(req: NextRequest) {
       roomName,
       participantIdentity: user.id,
       participantName,
-      isModerator,
+      isModerator: isModerator || isHost,
+      canPublish: isModerator || isHost,
       scheduledAt: lecture.scheduled_at,
       durationMinutes: lecture.duration_minutes ?? 60,
     })

@@ -4,7 +4,7 @@ export function initialsOf(name: string | null | undefined, fallback = "?"): str
   return parts.map((p) => p.charAt(0).toUpperCase()).join("") || fallback
 }
 
-export const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
+const AVATAR_PALETTE = ["#b63f37", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
 
 /** Стабильный цвет заглушки аватара по строке (имя или id). */
 export function paletteFor(seed: string, palette: string[] = AVATAR_PALETTE): string {

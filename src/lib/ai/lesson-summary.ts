@@ -141,8 +141,9 @@ export async function generateLessonSummary(
     }
   }
 
-  // Уведомляем ученика. fire-and-forget.
-  if (lessonRow.student_id && lessonRow.scheduled_at) {
+  // Уведомляем ученика, если по уроку нет записи: иначе уведомление придёт с ревью по транскрипту.
+  const { data: rec } = await admin.from("lesson_recordings").select("id").eq("lesson_id", lessonId).maybeSingle<{ id: string }>()
+  if (!rec && lessonRow.student_id && lessonRow.scheduled_at) {
     void notifyStudent({
       admin,
       studentId: lessonRow.student_id,

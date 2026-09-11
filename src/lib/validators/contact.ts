@@ -40,29 +40,6 @@ export function isValidEmail(raw: string | null | undefined): boolean {
   // Основной шаблон: не-пробельные, @, домен, точка, TLD.
   return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(trimmed)
 }
-
-/**
- * Zod-schema телефона с опциональной подсказкой страны для номеров без «+».
- * `phoneIntlSchema` — без подсказки (ожидает международный формат или «+…»).
- */
-export function phoneSchemaWithCountry(defaultCountry?: string | null) {
-  return z
-    .string()
-    .trim()
-    .min(1, 'Введите номер телефона')
-    .max(30, 'Некорректный номер телефона')
-    .transform((v, ctx) => {
-      const normalized = normalizePhoneE164(v, defaultCountry)
-      if (!normalized) {
-        ctx.addIssue({ code: 'custom', message: 'Некорректный номер телефона' })
-        return z.NEVER
-      }
-      return normalized
-    })
-}
-
-export const phoneIntlSchema = phoneSchemaWithCountry()
-
 /** Zod-schema для email. */
 export const emailSchema = z
   .string()

@@ -31,6 +31,7 @@ import {
   formatTelegramPaymentReceipt,
 } from '@/lib/resend/templates'
 import { marketingPromoEmail, formatTelegramMarketingPromo } from '@/lib/resend/templates-extended'
+import { escapeHtml } from '@/lib/html/escape'
 
 export type NotificationType =
   | 'welcome'
@@ -297,7 +298,7 @@ function buildEmailContent(
   data: NotificationData,
   fullName: string
 ): { subject: string; html: string } | null {
-  const name = data.name || fullName
+  const name = escapeHtml(data.name || fullName)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://raw-english.com'
 
   switch (type) {
@@ -314,8 +315,8 @@ function buildEmailContent(
       )
 
     case 'lesson_cancelled': {
-      const reason = (data as any).reason
-      const cancelledBy = (data as any).cancelledByName || 'Собеседник'
+      const reason = (data as any).reason ? escapeHtml(String((data as any).reason)) : ''
+      const cancelledBy = escapeHtml((data as any).cancelledByName || 'Собеседник')
       const subject = `Урок отменён · ${data.date || ''}`
       const html = `
         <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px">
@@ -335,7 +336,7 @@ function buildEmailContent(
     case 'lesson_rescheduled': {
       const oldDate = (data as any).oldDate || '—'
       const oldTime = (data as any).oldTime || ''
-      const rescheduledBy = (data as any).rescheduledByName || 'Преподаватель'
+      const rescheduledBy = escapeHtml((data as any).rescheduledByName || 'Преподаватель')
       const subject = `Урок перенесён · было ${oldDate}, теперь ${data.date || ''}`
       const html = `
         <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px">
@@ -354,8 +355,8 @@ function buildEmailContent(
 
     case 'lesson_missed': {
       const role = (data as any).recipientRole === 'student' ? 'student' : 'teacher'
-      const studentName = data.studentName || 'Ученик'
-      const teacherName = data.teacherName || 'Преподаватель'
+      const studentName = escapeHtml(data.studentName || 'Ученик')
+      const teacherName = escapeHtml(data.teacherName || 'Преподаватель')
       const whenStr = formatMoscowDateTime((data as any).scheduled_at)
       const subject =
         role === 'teacher'
@@ -424,7 +425,7 @@ function buildTelegramText(
   data: NotificationData,
   fullName: string
 ): string | null {
-  const name = data.name || fullName
+  const name = escapeHtml(data.name || fullName)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://raw-english.com'
 
   switch (type) {
@@ -441,8 +442,8 @@ function buildTelegramText(
       )
 
     case 'lesson_cancelled': {
-      const reason = (data as any).reason
-      const cancelledBy = (data as any).cancelledByName || 'Собеседник'
+      const reason = (data as any).reason ? escapeHtml(String((data as any).reason)) : ''
+      const cancelledBy = escapeHtml((data as any).cancelledByName || 'Собеседник')
       const lines = [
         `❌ <b>Урок отменён</b>`,
         ``,
@@ -457,7 +458,7 @@ function buildTelegramText(
     case 'lesson_rescheduled': {
       const oldDate = (data as any).oldDate || '—'
       const oldTime = (data as any).oldTime || ''
-      const rescheduledBy = (data as any).rescheduledByName || 'Преподаватель'
+      const rescheduledBy = escapeHtml((data as any).rescheduledByName || 'Преподаватель')
       return [
         `🔄 <b>Время урока изменилось</b>`,
         ``,
@@ -470,8 +471,8 @@ function buildTelegramText(
 
     case 'lesson_missed': {
       const role = (data as any).recipientRole === 'student' ? 'student' : 'teacher'
-      const studentName = data.studentName || 'Ученик'
-      const teacherName = data.teacherName || 'Преподаватель'
+      const studentName = escapeHtml(data.studentName || 'Ученик')
+      const teacherName = escapeHtml(data.teacherName || 'Преподаватель')
       const whenStr = formatMoscowDateTime((data as any).scheduled_at)
       if (role === 'teacher') {
         return `⚠️ Ученик не пришёл на урок: <b>${studentName}</b>, было запланировано ${whenStr}. Урок помечен как пропущенный.`

@@ -105,7 +105,7 @@ export default async function TeacherSummariesPage() {
       lessonId: l.id,
       scheduledAt: l.scheduled_at,
       status: l.status,
-      review: reviewState({ status: l.status, hasSummary: sumById.has(l.id), recordingStatus: recordingByLesson.get(l.id) ?? null, transcriptStatus: transcriptByLesson.get(l.id) ?? null }),
+      review: reviewState({ status: l.status, hasSummary: sumById.has(l.id), recordingStatus: recordingByLesson.get(l.id) ?? null, transcriptStatus: transcriptByLesson.get(l.id) ?? null, stillOpen: Date.parse(l.scheduled_at) + 70 * 60_000 > Date.now() }),
       studentName: studentName.get(l.student_id) ?? null,
       summary: sumById.get(l.id) ?? null,
     }))
