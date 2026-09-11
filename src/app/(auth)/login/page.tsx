@@ -54,9 +54,9 @@ function LoginPageContent() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, language')
+        .select('role, language, credentials_pending')
         .eq('id', user.id)
-        .single<{ role: 'student' | 'teacher' | 'admin' | null; language: 'ru' | 'en' | null }>()
+        .single<{ role: 'student' | 'teacher' | 'admin' | null; language: 'ru' | 'en' | null; credentials_pending?: boolean | null }>()
 
       if (profile?.language === 'ru' || profile?.language === 'en') {
         try {
@@ -65,7 +65,8 @@ function LoginPageContent() {
       }
 
       // Только внутренние пути: «//evil.com» тоже начинается с «/».
-      if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) router.push(redirectTo)
+      if (profile?.role === 'teacher' && profile.credentials_pending) router.push('/teacher/setup')
+      else if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) router.push(redirectTo)
       else if (profile?.role === 'admin') router.push('/admin')
       else if (profile?.role === 'teacher') router.push('/teacher')
       else router.push('/student')

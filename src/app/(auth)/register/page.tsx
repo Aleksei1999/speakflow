@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState, type FormEvent } from 'react'
+import { Suspense, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -16,7 +16,6 @@ function RegisterPageContent() {
 
   const [role, setRole] = useState<'student' | 'teacher'>(initialRole)
   // Преподаватели регистрируются заявкой на /teach (одобряет админ), своего кабинета «с ходу» нет.
-  useEffect(() => { if (initialRole === 'teacher') router.replace('/teach') }, [initialRole, router])
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -98,11 +97,16 @@ function RegisterPageContent() {
 
         <div className="raw2-login-tabs">
           <button type="button" className={role === 'student' ? 'active' : ''} onClick={() => setRole('student')}>Ученик</button>
-          <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => router.push('/teach')}>Учитель</button>
+          <button type="button" className={role === 'teacher' ? 'active' : ''} onClick={() => setRole('teacher')}>Учитель</button>
         </div>
 
-        {(
-
+        {role === 'teacher' ? (
+          <div className="raw2-login-note">
+            <div className="raw2-login-title">Вход для преподавателей</div>
+            <p className="raw2-login-sub">Аккаунты преподавателей создаёт администратор школы и выдаёт логин с паролем. Если они у вас есть, войдите с ними.</p>
+            <Link href="/login" className="btn btn-red">Войти</Link>
+          </div>
+        ) : (
           <>
             <div className="raw2-login-title">Регистрация для входа в ЛК</div>
 

@@ -1303,6 +1303,14 @@
   outline: none;
 }
 .st-topup-input + .st-topup-input { margin-top: 25px; }
+/* телефон: общий PhoneInput (селект страны + инпут), вид как у поля суммы */
+.st-topup-input + .st-topup-phone { margin-top: 25px; }
+/* карточка узкая (~342px): селект компактный, инпут ужимаем, чтобы номер не обрезался */
+.st-topup-card .st-topup-select {
+  box-sizing: border-box; height: 68px; padding: 0 4px 0 12px; border-radius: 34px; border: none; background: var(--white);
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 16px; letter-spacing: -0.05em; color: rgba(30, 30, 30, .85); outline: none;
+}
+.st-topup-card .phone-input .st-topup-input { padding: 0 10px; font-size: 19px; }
 .st-topup-input::placeholder { color: rgba(30, 30, 30, .7); }
 .st-topup-hint {
   font-family: 'Inter', sans-serif;

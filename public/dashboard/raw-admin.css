@@ -1841,3 +1841,44 @@
 .ad .ad-tmodal-banned { position: absolute; left: 458px; top: 695px; width: 297px; font-family: 'Inter', sans-serif; font-size: 13px; letter-spacing: -0.3px; line-height: 1.15; color: #ff9c9c; text-align: center; }
 .ad-tcards .ad-teacher--banned .ad-teacher-photo, .ad-tcards .ad-teacher--banned .ad-teacher-body { opacity: .45; }
 .ad-tcards .ad-teacher-banned { position: absolute; left: 27px; top: 27px; z-index: 2; padding: 0 16px; height: 36px; display: inline-flex; align-items: center; border-radius: 18px; background: #CC3A3A; color: #fff; font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.8px; }
+
+/* Секция учителей: кнопка «Добавить преподавателя» справа от бейджа */
+.ad-badge-wrap--teachers { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; box-sizing: border-box; padding-right: 48px; }
+.ad-add-teacher {
+  height: 53px; padding: 0 28px; border: 0; border-radius: 34px; cursor: pointer;
+  background: var(--lime, #dfed8c); color: #1e1e1e;
+  font-family: 'Inter', sans-serif; font-size: 20px; letter-spacing: -1px; line-height: 0.975; white-space: nowrap;
+  transition: filter .18s;
+}
+.ad-add-teacher:hover { filter: brightness(.95); }
+
+/* Модалка «Новый преподаватель» */
+.ad-addt {
+  position: relative; width: min(686px, calc(100vw - 40px)); box-sizing: border-box;
+  background: #1e1e1e; color: #fff; border-radius: 29.5px; padding: 56px 54px 48px;
+  display: flex; flex-direction: column; gap: 18px;
+  font-family: 'Inter', sans-serif;
+}
+.ad-addt-title { font-weight: 700; font-size: 40px; letter-spacing: -2px; line-height: 0.975; color: var(--lime, #dfed8c); }
+.ad-addt-sub { margin: 0; font-size: 18px; line-height: 1.3; color: rgba(255,255,255,.75); max-width: 60ch; }
+.ad-addt-input {
+  height: 68px; padding: 0 28px; border: 0; border-radius: 34px; background: #fff; color: #1e1e1e;
+  font: inherit; font-size: 20px;
+}
+.ad-addt-input:focus { outline: 3px solid var(--lime, #dfed8c); outline-offset: 2px; }
+.ad-addt-error { margin: 0; color: #ff8c7d; font-weight: 600; }
+.ad-addt-submit, .ad-addt-done {
+  align-self: flex-start; display: inline-flex; align-items: center; justify-content: center;
+  width: auto; min-width: 240px; height: 68px; padding: 0 40px; border: 0; border-radius: 34px; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 22px; letter-spacing: -1px; line-height: 1; white-space: nowrap;
+}
+.ad-addt-submit { background: var(--red, #e0463a); color: #fff; }
+.ad-addt-submit:disabled { opacity: .5; cursor: default; }
+.ad-addt-done { background: var(--lime, #dfed8c); color: #1e1e1e; }
+.ad-addt-cred {
+  display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 16px;
+  padding: 14px 22px; border-radius: 22px; background: rgba(255,255,255,.08);
+}
+.ad-addt-cred-label { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.ad-addt-cred-value { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 20px; color: #fff; overflow-wrap: anywhere; }
+.ad-addt-copy { height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: #fff; color: #1e1e1e; cursor: pointer; font: inherit; font-size: 15px; white-space: nowrap; }

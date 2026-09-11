@@ -762,16 +762,40 @@ export default function TeacherRawDashboard({
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [transferOpen])
-  function submitTransfer() {
-    if (!studentModalData || !transferTeacher || !transferReason.trim()) return
-    const t = transferTeachers.find(x => x.id === transferTeacher)
-    // eslint-disable-next-line no-console
-    console.log(`[MOCK TRANSFER] ${studentModalData.name} → ${t?.name}. Причина: ${transferReason}`)
-    setStudentsState(prev => prev.filter(s => s.id !== studentModalData.id))
-    setTransferOpen(false)
-    setStudentModalId(null)
-    setTransferTeacher("")
-    setTransferReason("")
+  const [transferBusy, setTransferBusy] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
+  const [transferDone, setTransferDone] = useState<string | null>(null)
+  async function submitTransfer() {
+    if (!studentModalData || !transferTeacher || !transferReason.trim() || transferBusy) return
+    setTransferBusy(true)
+    setTransferError(null)
+    try {
+      const res = await fetch(`/api/teacher/students/${studentModalData.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toTeacherUserId: transferTeacher, reason: transferReason.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setTransferError(data.error || "Не удалось передать ученика"); return }
+      const t = transferTeachers.find(x => x.id === transferTeacher)
+      const moved = Number(data.lessonsMoved ?? 0)
+      const cancelled = Number(data.lessonsCancelled ?? 0)
+      setTransferDone(
+        `${studentModalData.name} передан${studentModalData.name.trim().endsWith("а") ? "а" : ""} ${t?.name ?? "преподавателю"}. ` +
+        (moved ? `Будущих уроков перенесено: ${moved}. ` : "") +
+        (cancelled ? `Отменено из-за занятого времени: ${cancelled}.` : ""),
+      )
+      setStudentsState(prev => prev.filter(s => s.id !== studentModalData.id))
+      setTransferOpen(false)
+      setStudentModalId(null)
+      setTransferTeacher("")
+      setTransferReason("")
+      router.refresh()
+    } catch {
+      setTransferError("Не удалось передать ученика. Попробуйте ещё раз.")
+    } finally {
+      setTransferBusy(false)
+    }
   }
   const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const
   async function changeStudentLevel(newLevel: string) {
@@ -1371,6 +1395,19 @@ export default function TeacherRawDashboard({
       )}
 
       {/* TRANSFER MODAL (передача ученика другому учителю) */}
+      {transferDone && (
+        <div className="tr-modal-backdrop tr-modal-backdrop--top" onClick={() => setTransferDone(null)}>
+          <div className="tr-modal tr-modal--transfer tr-modal--transfer-done" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={() => setTransferDone(null)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+            </button>
+            <h2 className="tr-tr-modal-title">Ученик передан</h2>
+            <p className="tr-tr-modal-done">{transferDone}</p>
+            <button type="button" className="tr-tr-modal-submit" onClick={() => setTransferDone(null)}>Ок</button>
+          </div>
+        </div>
+      )}
       {transferOpen && studentModalData && (
         <div className="tr-modal-backdrop tr-modal-backdrop--top" onClick={() => setTransferOpen(false)}>
           {/* Figma 2522:2456 «Передача ученика»: 686×706, заголовок 79 (2 строки), пилюля 578×68 на 202,
@@ -1403,13 +1440,14 @@ export default function TeacherRawDashboard({
               value={transferReason}
               onChange={(e) => setTransferReason(e.target.value)}
             />
+            {transferError && <p className="tr-tr-modal-error" role="alert">{transferError}</p>}
             <button
               type="button"
               className="tr-tr-modal-submit"
-              disabled={!transferTeacher || !transferReason.trim()}
+              disabled={!transferTeacher || !transferReason.trim() || transferBusy}
               onClick={submitTransfer}
             >
-              Передать
+              {transferBusy ? "Передаём…" : "Передать"}
             </button>
           </div>
         </div>

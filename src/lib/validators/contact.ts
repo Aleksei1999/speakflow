@@ -1,28 +1,31 @@
 // ---------------------------------------------------------------------------
-// Общая валидация телефона и email — используется во всех user-formах.
-// Строгий RU-формат телефона: +7 / 8 / 7 префиксы, нормализуется в +7XXXXXXXXXX.
+// Общая валидация телефона и email — используется во всех user-формах.
+// Телефон: любая страна, парсится libphonenumber-js, хранится в E.164 (+79991234567).
 // Email — RFC-ish + не-мусорный (min 3 chars local, valid domain shape).
 // ---------------------------------------------------------------------------
 
 import { z } from 'zod'
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/min'
 
 /**
- * Нормализация RU-номера. Принимает свободный ввод (`+7 (999) 123-45-67`,
- * `89991234567`, `7 999 123 45 67`), возвращает `+7XXXXXXXXXX` или null.
+ * Нормализация телефона в E.164. Принимает свободный ввод любой страны
+ * (`+7 (999) 123-45-67`, `8 999 123 45 67`, `+1 415 555 2671`).
+ * `defaultCountry` (ISO-3166 alpha-2) нужен для номеров без «+» — например
+ * «8 999…» для RU. Возвращает `+<digits>` или null, если номер невалиден.
  */
-export function normalizePhoneRu(raw: string | null | undefined): string | null {
+export function normalizePhoneE164(raw: string | null | undefined, defaultCountry?: string | null): string | null {
   if (!raw) return null
-  const digits = raw.replace(/\D+/g, '')
-  if (digits.length < 10) return null
-  let clean = digits
-  if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
-    clean = '7' + clean.slice(1)
-  } else if (clean.length === 10) {
-    clean = '7' + clean
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const country = defaultCountry && /^[A-Za-z]{2}$/.test(defaultCountry) ? (defaultCountry.toUpperCase() as CountryCode) : undefined
+  let parsed
+  try {
+    parsed = parsePhoneNumberFromString(trimmed, country)
+  } catch {
+    return null
   }
-  if (clean.length !== 11 || !clean.startsWith('7')) return null
-  // RU mobile codes: начинаются с 9. Если не с 9 — пропускаем (можно быть городской).
-  return `+${clean}`
+  if (!parsed || !parsed.isValid()) return null
+  return parsed.number
 }
 
 /**
@@ -37,29 +40,28 @@ export function isValidEmail(raw: string | null | undefined): boolean {
   // Основной шаблон: не-пробельные, @, домен, точка, TLD.
   return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(trimmed)
 }
+
 /**
- * Международный вариант — принимает 10..15 цифр (E.164-ish), возвращает
- * `+<digits>`. Используется на лендинге где юзер может выбрать любую страну.
+ * Zod-schema телефона с опциональной подсказкой страны для номеров без «+».
+ * `phoneIntlSchema` — без подсказки (ожидает международный формат или «+…»).
  */
-function normalizePhoneIntl(raw: string | null | undefined): string | null {
-  if (!raw) return null
-  const digits = raw.replace(/\D+/g, '')
-  if (digits.length < 10 || digits.length > 15) return null
-  return `+${digits}`
+export function phoneSchemaWithCountry(defaultCountry?: string | null) {
+  return z
+    .string()
+    .trim()
+    .min(1, 'Введите номер телефона')
+    .max(30, 'Некорректный номер телефона')
+    .transform((v, ctx) => {
+      const normalized = normalizePhoneE164(v, defaultCountry)
+      if (!normalized) {
+        ctx.addIssue({ code: 'custom', message: 'Некорректный номер телефона' })
+        return z.NEVER
+      }
+      return normalized
+    })
 }
 
-export const phoneIntlSchema = z
-  .string()
-  .trim()
-  .min(1, 'Введите номер телефона')
-  .transform((v, ctx) => {
-    const normalized = normalizePhoneIntl(v)
-    if (!normalized) {
-      ctx.addIssue({ code: 'custom', message: 'Некорректный номер телефона' })
-      return z.NEVER
-    }
-    return normalized
-  })
+export const phoneIntlSchema = phoneSchemaWithCountry()
 
 /** Zod-schema для email. */
 export const emailSchema = z

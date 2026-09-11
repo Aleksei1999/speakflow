@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { sendTelegramMessage } from "@/lib/telegram/bot"
 import { enforceRateLimitStrict, getClientIp } from "@/lib/api/rate-limit"
 import { protectPublic, validateEmailField } from "@/lib/api/arcjet"
-import { emailSchema, phoneIntlSchema } from "@/lib/validators/contact"
+import { emailSchema, normalizePhoneE164 } from "@/lib/validators/contact"
 import { escapeHtml } from "@/lib/html/escape"
 
 export const dynamic = "force-dynamic"
@@ -19,10 +19,11 @@ export const dynamic = "force-dynamic"
 const bodySchema = z.object({
   name: z.string().trim().min(1, "Укажи имя").max(100),
   email: emailSchema,
-  phone: phoneIntlSchema,
+  // Сырой ввод; нормализуется в E.164 ниже с учётом country.
+  phone: z.string().trim().min(1, "Введите номер телефона").max(30, "Некорректный номер телефона"),
   marketing_opt_in: z.boolean().optional().default(false),
   comment: z.string().trim().max(1000).optional(),
-  country: z.string().trim().length(2).optional(),
+  country: z.string().trim().length(2).toUpperCase().optional(),
   source: z.string().trim().max(50).optional().default("landing"),
   // Опциональный результат «Прожарки» с лендинга — сохраняем в level_tests
   // с этим же email, чтобы админ у заявки увидел тег «тест пройден».
@@ -74,7 +75,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const d = parsed.data
+    // Телефон любой страны → E.164; country с клиента — подсказка для номеров без «+».
+    const phone = normalizePhoneE164(parsed.data.phone, parsed.data.country)
+    if (!phone) {
+      return NextResponse.json({ error: "Некорректный номер телефона" }, { status: 400 })
+    }
+    const d = { ...parsed.data, phone }
 
     // Email-валидация через Arcjet (disposable / MX)
     const emailCheck = await validateEmailField(d.email)

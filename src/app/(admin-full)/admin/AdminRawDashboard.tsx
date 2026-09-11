@@ -17,6 +17,7 @@ import AdminAddLessonModal from "./AdminAddLessonModal"
 import AdminAddLectureModal from "./AdminAddLectureModal"
 import AdminStudentModal from "./AdminStudentModal"
 import AdminCreateGroupModal from "./AdminCreateGroupModal"
+import AdminAddTeacherModal from "./AdminAddTeacherModal"
 import EditLessonModal from "@/app/(teacher-full)/teacher/EditLessonModal"
 import { rescheduleLecture } from "./admin-actions"
 import { type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
@@ -222,6 +223,11 @@ export default function AdminRawDashboard({
   // Перенос урока/лекции из плашки расписания (карандаш) — модалка учителя EditLessonModal.
   // Полный календарь (все ученики и учителя) — по большому карандашу в панели расписания.
   const [calendarOpen, setCalendarOpen] = useState(false)
+  // Полный календарь можно открыть по одному учителю (карточка учителя, оверлей «Назначить учителя»).
+  const [calendarTeacher, setCalendarTeacher] = useState<{ userId: string; name: string } | null>(null)
+  const openTeacherCalendar = (userId: string, name: string) => { setCalendarTeacher({ userId, name }); setCalendarOpen(true) }
+  const closeCalendar = () => { setCalendarOpen(false); setCalendarTeacher(null) }
+  const [addTeacherOpen, setAddTeacherOpen] = useState(false)
   useEffect(() => {
     if (!calendarOpen) return
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCalendarOpen(false) }
@@ -860,11 +866,15 @@ export default function AdminRawDashboard({
 
       {/* TEACHERS (Figma 2208-62 / 2208-1406 / 2208-1408) */}
       <section id="teachers" className="ad-section">
-        <div className="ad-badge-wrap">
+        <div className="ad-badge-wrap ad-badge-wrap--teachers">
           <span className="ad-badge">
             СПИСОК <span className="c-red">УЧИТЕЛЕЙ</span>
           </span>
+          <button type="button" className="ad-add-teacher" onClick={() => setAddTeacherOpen(true)}>
+            Добавить преподавателя
+          </button>
         </div>
+        {addTeacherOpen && <AdminAddTeacherModal onClose={() => setAddTeacherOpen(false)} onCreated={() => router.refresh()} />}
         <div className="ad-teachers-wrap ad-tcards">
           {/* Figma 4053:291: обе стрелки видны всегда; когда листать некуда — приглушены */}
           <button
@@ -1386,6 +1396,7 @@ export default function AdminRawDashboard({
           fallbackName={teacherModal.name}
           fallbackAvatar={teacherModal.avatar}
           onSaved={(patch) => setTeacherEdits((prev) => ({ ...prev, [teacherModal.id]: { ...prev[teacherModal.id], ...patch } }))}
+          onOpenSchedule={() => { const t = teacherModal; setTeacherModal(null); openTeacherCalendar(t.id, t.name) }}
           onClose={() => setTeacherModal(null)}
         />
       )}
@@ -1438,7 +1449,7 @@ export default function AdminRawDashboard({
                         type="button"
                         className="ad-assign-chat"
                         aria-label={`Расписание учителя ${t.name}`}
-                        onClick={() => setCalendarOpen(true)}
+                        onClick={() => openTeacherCalendar(t.id, t.name)}
                       >
                         <img src="/dashboard/apps/assign-teacher-chat.svg" alt="" aria-hidden width={27} height={27} />
                       </button>
@@ -1523,20 +1534,27 @@ export default function AdminRawDashboard({
           затем открываем нужную модалку (UI полностью как у учителя). */}
       {/* Полный календарь: все ближайшие уроки и события всех учеников и учителей, листается */}
       {calendarOpen && (
-        <div className="ad-cal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setCalendarOpen(false) }}>
-            <div className="ad-cal" role="dialog" aria-modal="true" aria-label="Полное расписание">
-              <button type="button" className="ad-cal-close" aria-label="Закрыть" onClick={() => setCalendarOpen(false)}>
+        <div className="ad-cal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closeCalendar() }}>
+            <div className="ad-cal" role="dialog" aria-modal="true" aria-label={calendarTeacher ? `Расписание: ${calendarTeacher.name}` : "Полное расписание"}>
+              <button type="button" className="ad-cal-close" aria-label="Закрыть" onClick={closeCalendar}>
                 <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
               </button>
               <div className="ad-cal-title">Расписание</div>
-              <div className="ad-cal-sub">все ученики и учителя · {allScheduleView.length}</div>
-              {allScheduleView.length === 0 ? (
-                <div className="ad-cal-empty">Ближайших уроков и событий нет</div>
-              ) : (
-                <CustomScroll className="ad-cal-list" track={692} ariaLabel="Полное расписание">
-                  <div className="ad-schedule ad-schedule--cal">{allScheduleView.map(renderScheduleRow)}</div>
-                </CustomScroll>
-              )}
+              {(() => {
+                const rows = calendarTeacher ? allScheduleView.filter((l) => l.teacherUserId === calendarTeacher.userId) : allScheduleView
+                return (
+                  <>
+                    <div className="ad-cal-sub">{calendarTeacher ? `${calendarTeacher.name} · ${rows.length}` : `все ученики и учителя · ${rows.length}`}</div>
+                    {rows.length === 0 ? (
+                      <div className="ad-cal-empty">{calendarTeacher ? "У преподавателя нет ближайших уроков" : "Ближайших уроков и событий нет"}</div>
+                    ) : (
+                      <CustomScroll className="ad-cal-list" track={692} ariaLabel="Полное расписание">
+                        <div className="ad-schedule ad-schedule--cal">{rows.map(renderScheduleRow)}</div>
+                      </CustomScroll>
+                    )}
+                  </>
+                )
+              })()}
             </div>
         </div>
       )}
@@ -1807,6 +1825,7 @@ function TeacherDetailModal({
   fallbackAvatar,
   onClose,
   onSaved,
+  onOpenSchedule,
 }: {
   teacherId: string
   fallbackName: string
@@ -1814,6 +1833,8 @@ function TeacherDetailModal({
   onClose: () => void
   /** Сообщает родителю сохранённые правки, чтобы карточки в списке обновились сразу */
   onSaved?: (patch: { name?: string; bio?: string | null; avatar?: string | null; banned?: boolean }) => void
+  /** «Открыть расписание» — полный календарь, отфильтрованный по этому учителю */
+  onOpenSchedule: () => void
 }) {
   const [data, setData] = useState<{
     full_name: string | null
@@ -2005,9 +2026,9 @@ function TeacherDetailModal({
           <div className="ad-tmodal-stat-label">количество<br />уроков за год</div>
         </div>
 
-        <Link href={`/admin/teachers/${teacherId}`} className="ad-tmodal-btn ad-tmodal-btn--schedule">
+        <button type="button" className="ad-tmodal-btn ad-tmodal-btn--schedule" onClick={onOpenSchedule}>
           Открыть расписание
-        </Link>
+        </button>
         <button
           type="button"
           className={`ad-tmodal-btn ad-tmodal-btn--off${bannedAt ? " ad-tmodal-btn--off-active" : ""}`}

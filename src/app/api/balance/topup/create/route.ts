@@ -4,8 +4,9 @@
 //
 // Тело: { amountRub: number, phone: string }
 //   amountRub — целое число рублей (min 100, max 100_000).
-//   phone     — телефон плательщика (для receipt). Свободный формат,
-//               нормализуем в +7\d{10}.
+//   phone     — телефон плательщика (для receipt). Любая страна, свободный
+//               формат; нормализуем в E.164 (+79991234567).
+//   country   — ISO-3166 alpha-2, подсказка для номеров без «+» (опционально).
 // Email  берётся из profiles.email (fallback: auth.user.email).
 //
 // Flow:
@@ -27,7 +28,7 @@ import { getYooKassaClient } from '@/lib/yookassa/client'
 import { YooKassaError } from '@/lib/yookassa/types'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
-import { normalizePhoneRu, isValidEmail } from '@/lib/validators/contact'
+import { normalizePhoneE164, isValidEmail } from '@/lib/validators/contact'
 
 const MIN_AMOUNT_RUB = 100
 const MAX_AMOUNT_RUB = 100_000
@@ -39,6 +40,7 @@ const bodySchema = z.object({
     .min(MIN_AMOUNT_RUB, `Минимум ${MIN_AMOUNT_RUB} ₽`)
     .max(MAX_AMOUNT_RUB, `Максимум ${MAX_AMOUNT_RUB.toLocaleString('ru-RU')} ₽`),
   phone: z.string().min(5, 'Введите номер телефона').max(30),
+  country: z.string().trim().length(2).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -75,8 +77,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amountRub, phone } = parsed.data
-    const normalizedPhone = normalizePhoneRu(phone)
+    const { amountRub, phone, country } = parsed.data
+    const normalizedPhone = normalizePhoneE164(phone, country)
     if (!normalizedPhone) {
       return NextResponse.json({ error: 'Некорректный номер телефона' }, { status: 400 })
     }
@@ -124,7 +126,8 @@ export async function POST(request: NextRequest) {
     // (YOOKASSA_RECEIPT_ENABLED=1). Ставка НДС — YOOKASSA_VAT_CODE (1 = без НДС).
     const receipt = process.env.YOOKASSA_RECEIPT_ENABLED === '1'
       ? {
-          customer: { email, phone: normalizedPhone },
+          // ЮKassa ждёт телефон в E.164 без «+» (например 79991234567).
+          customer: { email, phone: normalizedPhone.replace(/^\+/, '') },
           items: [{
             description: `Пополнение баланса Raw English`,
             quantity: '1.00',

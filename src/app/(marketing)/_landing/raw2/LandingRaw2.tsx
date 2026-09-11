@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { PASSWORD_MIN } from "@/lib/validations";
 import RoastQuiz from "./RoastQuiz";
 import { ArrowIcon } from "@/components/icons/ArrowIcon";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 /* Лендинг RAW ENGLISH по Figma «Главная RAW english».
    Стили: /landing/raw2/raw2.css, фото: /landing/raw2/*.jpg */
@@ -114,7 +115,7 @@ export default function LandingRaw2() {
           data: {
             first_name: String(data.get("first_name") || "").trim(),
             last_name: String(data.get("last_name") || "").trim(),
-            role: loginRole,
+            role: "student",
             marketing_opt_in: !!data.get("marketing"),
           },
           emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/api/auth/callback` : undefined,
@@ -307,75 +308,11 @@ export default function LandingRaw2() {
     return () => { if (prevTheme) html.dataset.theme = prevTheme; };
   }, []);
 
-  // Phone masks per country. Fallback = generic international.
-  const PHONE_CONFIGS: Record<string, { code: string; mask: string; digits: number; placeholder: string }> = {
-    RU: { code: '+7',   mask: '(###) ###-##-##',    digits: 10, placeholder: '+7 (999) 123-45-67' },
-    KZ: { code: '+7',   mask: '(###) ###-##-##',    digits: 10, placeholder: '+7 (700) 123-45-67' },
-    US: { code: '+1',   mask: '(###) ###-####',     digits: 10, placeholder: '+1 (555) 123-4567' },
-    CA: { code: '+1',   mask: '(###) ###-####',     digits: 10, placeholder: '+1 (416) 123-4567' },
-    UA: { code: '+380', mask: '(##) ###-##-##',     digits: 9,  placeholder: '+380 (44) 123-45-67' },
-    BY: { code: '+375', mask: '(##) ###-##-##',     digits: 9,  placeholder: '+375 (29) 123-45-67' },
-    GB: { code: '+44',  mask: '#### ######',        digits: 10, placeholder: '+44 7911 123456' },
-    DE: { code: '+49',  mask: '### #######',        digits: 10, placeholder: '+49 151 23456789' },
-    FR: { code: '+33',  mask: '# ## ## ## ##',      digits: 9,  placeholder: '+33 6 12 34 56 78' },
-    IT: { code: '+39',  mask: '### ### ####',       digits: 10, placeholder: '+39 320 123 4567' },
-    ES: { code: '+34',  mask: '### ### ###',        digits: 9,  placeholder: '+34 612 345 678' },
-    DEFAULT: { code: '+', mask: '###############', digits: 15, placeholder: '+123456789012345' },
-  };
-
-  function detectCountry(): string {
-    if (typeof navigator === 'undefined') return 'RU';
-    const langs = [navigator.language, ...(navigator.languages || [])];
-    for (const l of langs) {
-      const region = (l.split('-')[1] || '').toUpperCase();
-      if (region && PHONE_CONFIGS[region]) return region;
-    }
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      if (/Moscow|Kaliningrad|Samara|Yekaterinburg|Novosibirsk|Vladivostok/i.test(tz)) return 'RU';
-      if (/New_York|Los_Angeles|Chicago|Denver|Anchorage|Honolulu/i.test(tz)) return 'US';
-      if (/Toronto|Vancouver|Montreal/i.test(tz)) return 'CA';
-      if (/London/i.test(tz)) return 'GB';
-      if (/Berlin|Frankfurt/i.test(tz)) return 'DE';
-      if (/Paris/i.test(tz)) return 'FR';
-      if (/Kiev|Kyiv/i.test(tz)) return 'UA';
-      if (/Minsk/i.test(tz)) return 'BY';
-      if (/Almaty|Aqtobe/i.test(tz)) return 'KZ';
-    } catch {}
-    return 'RU';
-  }
-
-  const [phoneCountry, setPhoneCountry] = useState<string>('RU');
+  // Телефоны: PhoneInput (src/components/ui/phone-input) отдаёт E.164 или ''
+  // пока номер невалиден, плюс выбранную страну — её шлём в лид как country.
   const [phoneValue, setPhoneValue] = useState<string>('');
-  useEffect(() => { setPhoneCountry(detectCountry()); }, []);
-
-  const phoneCfg = PHONE_CONFIGS[phoneCountry] || PHONE_CONFIGS.DEFAULT;
-
-  function formatPhone(rawDigits: string): string {
-    const digits = rawDigits.slice(0, phoneCfg.digits);
-    let out = phoneCfg.code + ' ';
-    let d = 0;
-    for (const ch of phoneCfg.mask) {
-      if (d >= digits.length) break;
-      if (ch === '#') { out += digits[d++]; } else { out += ch; }
-    }
-    return out;
-  }
-
-  function normalizePhoneInput(value: string): string {
-    // Оставляем только цифры, отбрасываем всё лишнее (включая код страны)
-    let digits = value.replace(/\D/g, '');
-    // Если начинается с кода страны — срезаем
-    const codeDigits = phoneCfg.code.replace(/\D/g, '');
-    if (codeDigits && digits.startsWith(codeDigits)) digits = digits.slice(codeDigits.length);
-    return formatPhone(digits);
-  }
-  function onPhoneChange(e: ChangeEvent<HTMLInputElement>) { setPhoneValue(normalizePhoneInput(e.target.value)); }
-  function onCtaPhoneChange(e: ChangeEvent<HTMLInputElement>) { setCtaPhone(normalizePhoneInput(e.target.value)); }
-  function isPhoneComplete(value: string): boolean {
-    const digits = value.replace(/\D/g, '').slice(phoneCfg.code.replace(/\D/g, '').length);
-    return digits.length === phoneCfg.digits;
-  }
+  const [phoneCountry, setPhoneCountry] = useState<string>('RU');
+  const [ctaPhoneCountry, setCtaPhoneCountry] = useState<string>('RU');
 
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitErr, setSubmitErr] = useState('');
@@ -407,13 +344,13 @@ export default function LandingRaw2() {
 
   // Общая отправка лида для секции #contact и модалки «Форма для связи».
   // Возвращает текст ошибки или null при успехе.
-  async function postLead(payload: { name: string; email: string; phone: string; marketing_opt_in: boolean; comment?: string; source: string }): Promise<string | null> {
+  async function postLead(payload: { name: string; email: string; phone: string; country: string; marketing_opt_in: boolean; comment?: string; source: string }): Promise<string | null> {
     const roastQuiz = readRoastQuiz();
     try {
       const res = await fetch('/api/landing/lead', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...payload, country: phoneCountry, ...(roastQuiz ? { roast_quiz: roastQuiz } : {}) }),
+        body: JSON.stringify({ ...payload, ...(roastQuiz ? { roast_quiz: roastQuiz } : {}) }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -428,9 +365,10 @@ export default function LandingRaw2() {
   }
 
   // Клиентская валидация email/телефона с подсветкой полей; true если всё ок.
+  // phone — E.164 из PhoneInput, пустая строка = невалидный номер.
   function validateLeadForm(form: HTMLFormElement, email: string, phone: string): boolean {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-    const phoneOk = isPhoneComplete(phone);
+    const phoneOk = phone.length > 0;
     const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement | null;
     const phoneInput = form.querySelector('input[name="phone"]') as HTMLInputElement | null;
     emailInput?.classList.toggle('invalid', !emailOk);
@@ -450,7 +388,7 @@ export default function LandingRaw2() {
     if (!validateLeadForm(form, email, phoneValue)) return;
 
     setSubmitBusy(true);
-    const err = await postLead({ name, email, phone: phoneValue, marketing_opt_in: marketing, source: 'landing_raw2' });
+    const err = await postLead({ name, email, phone: phoneValue, country: phoneCountry, marketing_opt_in: marketing, source: 'landing_raw2' });
     setSubmitBusy(false);
     if (err) { setSubmitErr(err); return; }
     form.reset();
@@ -469,7 +407,7 @@ export default function LandingRaw2() {
     if (!validateLeadForm(form, email, ctaPhone)) return;
 
     setCtaBusy(true);
-    const err = await postLead({ name, email, phone: ctaPhone, marketing_opt_in: false, ...(comment ? { comment } : {}), source: 'landing_raw2_modal' });
+    const err = await postLead({ name, email, phone: ctaPhone, country: ctaPhoneCountry, marketing_opt_in: false, ...(comment ? { comment } : {}), source: 'landing_raw2_modal' });
     setCtaBusy(false);
     if (err) { setCtaErr(err); return; }
     form.reset();
@@ -689,7 +627,7 @@ export default function LandingRaw2() {
           >
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
-            <input type="tel" name="phone" placeholder="номер телефона" value={phoneValue} onChange={onPhoneChange} inputMode="tel" autoComplete="tel" required />
+            <PhoneInput name="phone" selectClassName="raw2-phone-select" placeholder="номер телефона" value={phoneValue} onChange={(e164, meta) => { setPhoneValue(e164); setPhoneCountry(meta.country); }} required />
             <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
             <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>
             {submitErr && <p className="raw2-form-err">{submitErr}</p>}
@@ -763,6 +701,12 @@ export default function LandingRaw2() {
                   Ок
                 </button>
               </>
+            ) : loginRole === "teacher" ? (
+              <div className="raw2-login-note">
+                <div className="raw2-login-title">Вход для преподавателей</div>
+                <p className="raw2-login-sub">Аккаунты преподавателей создаёт администратор школы и выдаёт логин с паролем. Если они у вас есть, войдите с ними.</p>
+                <button type="button" className="btn btn-red" onClick={() => { setLoginErr(""); setAuthMode("login"); }}>Войти</button>
+              </div>
             ) : (
               <>
                 <div className="raw2-login-title">Регистрация для входа в ЛК</div>
@@ -801,7 +745,7 @@ export default function LandingRaw2() {
             >
               <input name="name" type="text" placeholder="имя" required autoComplete="name" />
               <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
-              <input name="phone" type="tel" placeholder="номер телефона" value={ctaPhone} onChange={onCtaPhoneChange} inputMode="tel" autoComplete="tel" required />
+              <PhoneInput name="phone" selectClassName="raw2-phone-select" placeholder="номер телефона" value={ctaPhone} onChange={(e164, meta) => { setCtaPhone(e164); setCtaPhoneCountry(meta.country); }} required />
               <input name="comment" type="text" placeholder="комментарий" maxLength={1000} autoComplete="off" />
               {ctaErr && <p className="raw2-form-err">{ctaErr}</p>}
               <button type="submit" className={`btn btn-red${ctaBusy ? " busy" : ""}`} disabled={ctaBusy || !ctaValid} aria-busy={ctaBusy}>Отправить</button>

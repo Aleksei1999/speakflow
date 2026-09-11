@@ -33,6 +33,10 @@ export default async function TeacherNewPage() {
     if (role === "student") redirect("/student")
     redirect("/login")
   }
+  if (role === "teacher") {
+    const { data: pend } = await supabase.from("profiles").select("credentials_pending").eq("id", user.id).maybeSingle<{ credentials_pending: boolean | null }>()
+    if (pend?.credentials_pending) redirect("/teacher/setup")
+  }
 
   // Используем кешированный loader из /lib/cache/dashboard.ts —
   // тот же источник, что применяется в существующих teacher-страницах.

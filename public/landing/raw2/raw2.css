@@ -531,6 +531,12 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
 .raw2-form input::placeholder { color: rgba(30,30,30,.7); }
 .raw2-form input:user-invalid { border-color: var(--red); }
 .raw2-form input.invalid { border-color: var(--red); }
+/* телефон: селект страны (флаг + код) + инпут — общий PhoneInput, вид как у соседних полей */
+.raw2-form .phone-input, .raw2-cta-form .phone-input { width: 100%; }
+.raw2-form .raw2-phone-select, .raw2-cta-form .raw2-phone-select {
+  box-sizing: border-box; height: 68px; padding: 0 16px 0 22px; border-radius: 34px; border: 2px solid transparent; background: #fff;
+  font-family: inherit; font-size: clamp(1rem,1.5vw,22px); font-weight: 500; letter-spacing: -1.1px; color: var(--ink); outline: none; transition: border-color .18s;
+}
 /* «Отправить»: 240×68, r 34, top 566 (39px под чекбоксами), Inter 700 32px / -1.6px, без тени */
 .raw2-form .submit-row { display: flex; justify-content: center; margin-top: 14px; }
 .raw2-form .submit-row .btn-red { text-transform: none; width: 240px; height: 68px; padding: 0; font-size: 32px; letter-spacing: -1.6px; box-shadow: none; }
@@ -773,3 +779,8 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
   .raw2-footer .fcol-links { align-items: center; }
   .raw2-footer .legal { text-align: center; }
 }
+
+/* Пояснение вместо формы (вкладка «Учитель» на регистрации, первый вход преподавателя) */
+.raw2-login-sub { margin: 0 0 32px; font-size: 1.1rem; line-height: 1.35; color: var(--ink); max-width: 52ch; }
+.raw2-login-note { display: flex; flex-direction: column; align-items: flex-start; }
+.raw2-login-note .btn-red { width: 240px; }

@@ -21,7 +21,7 @@ import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboa
 import { listFolders } from "@/lib/materials/folders"
 import type { ChatListItem } from "@/lib/chat/list"
 import { toRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
-import { normalizePhoneRu } from "@/lib/validators/contact"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { disconnectStudentGoogleCalendar } from "./calendar-actions"
 import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
 import StudentLectureModal, { type LectureForModal } from "@/components/dashboard/StudentLectureModal"
@@ -646,7 +646,9 @@ export default function StudentRawDashboard({
     })
 
   const [topupAmount, setTopupAmount] = useState("")
+  // topupPhone — E.164 из PhoneInput ("" пока номер невалиден); country — подсказка серверу.
   const [topupPhone, setTopupPhone] = useState("")
+  const [topupPhoneCountry, setTopupPhoneCountry] = useState("RU")
   const [topupBusy, setTopupBusy] = useState(false)
   const [topupError, setTopupError] = useState<string | null>(null)
 
@@ -658,9 +660,8 @@ export default function StudentRawDashboard({
       setTopupError('Введите сумму не меньше 100 ₽')
       return
     }
-    const normalizedPhone = normalizePhoneRu(topupPhone)
-    if (!normalizedPhone) {
-      setTopupError('Введите корректный номер телефона (11 цифр, +7…)')
+    if (!topupPhone) {
+      setTopupError('Введите корректный номер телефона')
       return
     }
     setPayMethodOpen(true)
@@ -674,7 +675,7 @@ export default function StudentRawDashboard({
       const res = await fetch('/api/balance/topup/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountRub, phone: topupPhone.trim() }),
+        body: JSON.stringify({ amountRub, phone: topupPhone, country: topupPhoneCountry }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -1230,17 +1231,18 @@ export default function StudentRawDashboard({
                 onChange={(e) => setTopupAmount(e.target.value.replace(/\D+/g, ''))}
                 disabled={topupBusy}
               />
-              <input
-                type="tel"
-                className="st-topup-input"
+              <PhoneInput
+                className="st-topup-phone"
+                inputClassName="st-topup-input"
+                selectClassName="st-topup-select"
                 placeholder="номер телефона"
                 value={topupPhone}
-                onChange={(e) => setTopupPhone(e.target.value)}
+                onChange={(e164, meta) => { setTopupPhone(e164); setTopupPhoneCountry(meta.country) }}
                 disabled={topupBusy}
               />
               {(() => {
                 const amountValid = Number.parseInt(topupAmount.replace(/\s+/g, ''), 10) >= 100
-                const phoneValid = !!normalizePhoneRu(topupPhone)
+                const phoneValid = !!topupPhone
                 const canSubmit = amountValid && phoneValid && !topupBusy
                 return (
                   <button

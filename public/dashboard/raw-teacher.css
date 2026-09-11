@@ -3903,3 +3903,7 @@
   color: rgba(30, 30, 30, 0.7);
   text-align: center;
 }
+
+/* Передача ученика: ошибка и итог */
+.tr-tr-modal-error { margin: 0 0 12px; color: var(--red, #e0463a); font-weight: 600; font-size: 18px; }
+.tr-modal--transfer-done .tr-tr-modal-done { margin: 0 0 32px; font-family: 'Inter', sans-serif; font-size: 22px; line-height: 1.3; color: #1e1e1e; }

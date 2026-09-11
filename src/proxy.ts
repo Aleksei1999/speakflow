@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const publicRoutes = ['/', '/teachers', '/teach', '/privacy', '/oferta']
+const publicRoutes = ['/', '/teachers', '/privacy', '/oferta']
 // Публичные префиксы (каталог преподавателей)
 const publicPrefixes = ['/teachers']
 const authRoutes = ['/login', '/register', '/forgot-password']
