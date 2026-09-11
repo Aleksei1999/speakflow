@@ -245,28 +245,22 @@ export function PhoneInput({
     emit(r.e164, c, r.valid);
   }
 
+  // Одно поле: селект страны лежит внутри пилюли инпута слева, инпут получает
+  // отступ по реальной ширине селекта.
+  const selectRef = useRef<HTMLSelectElement | null>(null);
+  const [selectWidth, setSelectWidth] = useState(96);
+  useEffect(() => {
+    const el = selectRef.current;
+    if (!el) return;
+    const measure = () => setSelectWidth(Math.ceil(el.getBoundingClientRect().width));
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [country]);
+
   return (
-    <div className={["phone-input", className].filter(Boolean).join(" ")} style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-      <select
-        className={selectClassName}
-        value={country}
-        onChange={onSelect}
-        disabled={disabled}
-        aria-label="Страна"
-        // Раскладка — всегда inline; косметика — только если форма не дала свой класс,
-        // иначе её CSS должен побеждать.
-        style={{
-          flex: "0 0 auto",
-          width: "auto",
-          height: "auto",
-          cursor: "pointer",
-          ...(selectClassName ? {} : { borderRadius: "inherit", background: "rgba(255,255,255,.85)", font: "inherit", border: "1px solid rgba(0,0,0,.15)", padding: "0 8px" }),
-        }}
-      >
-        {options.map((o) => (
-          <option key={o.code} value={o.code}>{o.label}</option>
-        ))}
-      </select>
+    <div className={["phone-input", className].filter(Boolean).join(" ")} style={{ position: "relative", display: "block", width: "100%" }}>
       <input
         id={id}
         name={name}
@@ -279,8 +273,36 @@ export function PhoneInput({
         onChange={onInput}
         required={required}
         disabled={disabled}
-        style={{ flex: "1 1 auto", minWidth: 0 }}
+        style={{ display: "block", width: "100%", boxSizing: "border-box", paddingLeft: selectWidth + 22 }}
       />
+      <select
+        ref={selectRef}
+        className={selectClassName}
+        value={country}
+        onChange={onSelect}
+        disabled={disabled}
+        aria-label="Страна"
+        style={{
+          position: "absolute",
+          left: 14,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: "auto",
+          height: "auto",
+          maxWidth: "45%",
+          margin: 0,
+          padding: "4px 2px 4px 6px",
+          border: 0,
+          background: "transparent",
+          font: "inherit",
+          cursor: "pointer",
+          outline: "none",
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.code} value={o.code}>{o.label}</option>
+        ))}
+      </select>
     </div>
   );
 }
