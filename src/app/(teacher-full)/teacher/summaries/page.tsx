@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { reviewState, reviewBadgeClass, loadReviewSignals } from "@/lib/summaries/review-state"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,7 @@ type Row = {
   lessonId: string
   scheduledAt: string
   status: string
+  review: ReturnType<typeof reviewState>
   studentName: string | null
   summary:
     | {
@@ -98,10 +100,12 @@ export default async function TeacherSummariesPage() {
     for (const p of (sRes.data ?? []) as Array<{ id: string; full_name: string | null }>) {
       if (p.full_name) studentName.set(p.id, p.full_name)
     }
+    const { recordingByLesson, transcriptByLesson } = await loadReviewSignals(admin, lessonIds)
     items = lessons.map((l) => ({
       lessonId: l.id,
       scheduledAt: l.scheduled_at,
       status: l.status,
+      review: reviewState({ status: l.status, hasSummary: sumById.has(l.id), recordingStatus: recordingByLesson.get(l.id) ?? null, transcriptStatus: transcriptByLesson.get(l.id) ?? null }),
       studentName: studentName.get(l.student_id) ?? null,
       summary: sumById.get(l.id) ?? null,
     }))
@@ -150,12 +154,10 @@ export default async function TeacherSummariesPage() {
                   <span
                     className={
                       "rounded-full px-3 py-1 text-xs font-medium " +
-                      (it.summary
-                        ? "bg-green-100 text-green-800"
-                        : "bg-neutral-100 text-neutral-500")
+                      reviewBadgeClass[it.review.tone]
                     }
                   >
-                    {it.summary ? "AI-ревью готово" : "Ревью формируется…"}
+                    {it.review.badge}
                   </span>
                 </div>
 
@@ -198,10 +200,7 @@ export default async function TeacherSummariesPage() {
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-neutral-500">
-                    Запись урока обрабатывается ИИ. Обычно занимает несколько минут после
-                    окончания занятия.
-                  </p>
+                  <p className="text-sm text-neutral-500">{it.review.text}</p>
                 )}
               </li>
             )

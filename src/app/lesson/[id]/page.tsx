@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { computeLessonAccess } from "@/lib/lesson-access"
 import LessonVideoRoom from "@/components/lesson/LessonVideoRoom"
+import LessonEnded from "./LessonEnded"
 
 export const dynamic = "force-dynamic"
 
@@ -85,6 +86,19 @@ export default async function LessonRoomPage({
   const teacherAvatar = tp?.data?.avatar_url ?? null
 
   const backHref = isTeacher || isAdmin ? "/teacher" : "/student"
+  const historyHref = isTeacher || isAdmin ? "/teacher/summaries" : "/student/summaries"
+  const peerName = isTeacher || isAdmin ? studentName : teacherName
+
+  // Подключаться нельзя: показываем понятный экран вместо ошибок соединения.
+  if (access.status === "expired" || lesson.status === "completed") {
+    return <LessonEnded kind="expired" scheduledAt={lesson.scheduled_at} peerName={peerName} backHref={backHref} historyHref={historyHref} />
+  }
+  if (access.status === "no_show") {
+    return <LessonEnded kind="no_show" scheduledAt={lesson.scheduled_at} peerName={peerName} backHref={backHref} historyHref={historyHref} />
+  }
+  if (access.status === "waiting") {
+    return <LessonEnded kind="waiting" scheduledAt={lesson.scheduled_at} peerName={peerName} backHref={backHref} historyHref={historyHref} openAtMs={access.openAtMs} />
+  }
 
   return (
     <LessonVideoRoom

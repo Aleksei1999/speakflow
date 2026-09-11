@@ -21,11 +21,11 @@ export default function SiteFooter({ supportHref, onSupportClick, variant = "def
 
       <div className="sf-inner">
         <div className="sf-col sf-col-links">
-          <a href="https://t.me/" target="_blank" rel="noreferrer" className="sf-tg">
+          <a href="https://t.me/valeriakrat" target="_blank" rel="noreferrer" className="sf-tg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/landing/raw2/ic-telegram.svg" alt="" aria-hidden />Telegram
           </a>
-          <a className="sf-mut" href="#">Связаться</a>
+          <Link className="sf-mut" href="/#contact">Связаться</Link>
           <Link className="sf-mut" href="/oferta">Договор-оферта</Link>
           <Link className="sf-mut" href="/privacy">Политика конфиденциальности</Link>
         </div>

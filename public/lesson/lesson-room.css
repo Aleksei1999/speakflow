@@ -989,3 +989,18 @@
   min-width: 40px;
   padding: 0 !important;
 }
+
+/* Экран «Урок завершён / не состоялся / ещё закрыт» вместо комнаты */
+.lvr-ended {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  padding: 40px 60px; gap: 18px; color: #fff; font-family: 'Inter', sans-serif;
+}
+.lvr-ended-title { margin: 0; font-weight: 700; font-size: 44px; letter-spacing: -2px; line-height: 1; }
+.lvr-ended-text { margin: 0; max-width: 620px; font-size: 20px; line-height: 1.35; color: rgba(255,255,255,.75); }
+.lvr-ended-actions { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+.lvr-ended-btn {
+  display: inline-flex; align-items: center; justify-content: center; height: 56px; padding: 0 30px; border-radius: 28px;
+  background: rgba(255,255,255,.12); color: #fff; text-decoration: none; font-weight: 600; font-size: 18px; letter-spacing: -0.5px;
+}
+.lvr-ended-btn--primary { background: #e0463a; }
+.lvr-ended-btn:hover { filter: brightness(1.08); }

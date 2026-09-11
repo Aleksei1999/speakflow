@@ -642,7 +642,7 @@ export default function LandingRaw2() {
         <div className="wrap">
           <div className="inner">
             <div className="fcol fcol-links">
-              <a href="https://t.me/" target="_blank" rel="noopener noreferrer" className="tg"><img src="/landing/raw2/ic-telegram.svg" alt="" aria-hidden />Telegram</a>
+              <a href="https://t.me/valeriakrat" target="_blank" rel="noopener noreferrer" className="tg"><img src="/landing/raw2/ic-telegram.svg" alt="" aria-hidden />Telegram</a>
               <a href={CONTACT_HREF} className="fmut" onClick={openCta}>Связаться</a>
               <Link href="/oferta" className="fmut">Договор-оферта</Link>
               <Link href="/privacy" className="fmut">Политика конфиденциальности</Link>
