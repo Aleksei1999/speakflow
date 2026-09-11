@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Единый телефонный инпут с выбором страны.
 //   • <select> стран (флаг + ISO + код), приоритетные страны сверху,
-//     остальные по алфавиту (названия через Intl.DisplayNames, ru).
+//     остальные по ISO-коду.
 //   • <input type="tel"> форматируется на лету через AsYouType(country).
 //   • Ввод «+7…» переключает страну по коду; «8 999…» для RU работает.
 //   • onChange отдаёт E.164 («+79991234567») когда номер валиден, иначе "".
@@ -134,11 +134,10 @@ function detectCountry(): Promise<CountryCode> {
 let countryOptionsCache: Array<{ code: CountryCode; label: string }> | null = null;
 function buildCountryOptions(): Array<{ code: CountryCode; label: string }> {
   if (countryOptionsCache) return countryOptionsCache;
-  let names: Intl.DisplayNames | null = null;
-  try { names = new Intl.DisplayNames(["ru"], { type: "region" }); } catch {}
-  const nameOf = (c: string) => { try { return names?.of(c) || c; } catch { return c; } };
+  // Порядок должен совпадать на сервере и в браузере (иначе гидратация ругается),
+  // поэтому без локальных названий: приоритетные страны, затем по ISO-коду.
   const all = getCountries();
-  const rest = all.filter((c) => !PRIORITY.includes(c)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), "ru"));
+  const rest = all.filter((c) => !PRIORITY.includes(c)).sort();
   const ordered = [...PRIORITY.filter((c) => all.includes(c)), ...rest];
   countryOptionsCache = ordered.map((code) => ({ code, label: `${flagFor(code)} ${code} +${getCountryCallingCode(code)}` }));
   return countryOptionsCache;
