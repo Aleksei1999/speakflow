@@ -49,7 +49,10 @@ async function syncTeacherFromGoogle(teacherUserId: string): Promise<TeacherSync
   try {
     events = await listEvents(teacherUserId, new Date(now - LOOKBACK_MS), new Date(now + HORIZON_MS), { includeCancelled: true })
   } catch (e) {
-    result.errors.push(`list: ${e instanceof Error ? e.message : String(e)}`)
+    const msg = e instanceof Error ? e.message : String(e)
+    result.errors.push(`list: ${msg}`)
+    // Токен отозван/протух: не повторяем при каждом открытии кабинета, следующая попытка через интервал.
+    if (/\b401\b|invalid_grant|UNAUTHENTICATED/i.test(msg)) await markSynced(teacherUserId).catch(() => {})
     return result
   }
 

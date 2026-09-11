@@ -57,9 +57,11 @@ export default async function AdminDashboardFullPage() {
     studentId: string | null
   }> = []
 
-  try {
-    const admin = createAdminClient() as any
+  const admin = createAdminClient() as any
 
+  // Независимые группы запросов идут параллельно: последовательная цепочка
+  // делала страницу медленной при большой задержке до базы.
+  const loadTeachers = async () => {
     // Teachers list — profiles.role = 'teacher'.
     const { data: tRows } = await admin
       .from("profiles")
@@ -80,6 +82,9 @@ export default async function AdminDashboardFullPage() {
       banned: r.is_active === false,
     }))
 
+    return teachers
+  }
+  const loadStudents = async () => {
     // Students list — profiles.role = 'student' + user_progress.english_level.
     const { data: sRows } = await admin
       .from("profiles")
@@ -110,6 +115,9 @@ export default async function AdminDashboardFullPage() {
       avatar: r.avatar_url ?? null,
     }))
 
+    return students
+  }
+  const loadApplications = async () => {
     // fromRoastLevel мапит Raw..Well Done обратно на A1..C2 для UI.
     const { fromRoastLevel } = await import("@/lib/levels/mapping")
     // Заявки для админа — объединяем два источника:
@@ -226,9 +234,9 @@ export default async function AdminDashboardFullPage() {
       b.createdAt.localeCompare(a.createdAt),
     )
 
-    // Google → платформа для всех подключённых учителей, у кого синхронизация старше 10 минут (не дольше 5 с)
-    await withTimeout(syncStaleTeachers(), 5000)
-
+    return applications
+  }
+  const loadSchedule = async () => {
     // Ближайшие уроки (все педагоги, статус scheduled/confirmed).
     const now = new Date().toISOString()
     const { data: lRows } = await admin
@@ -294,16 +302,25 @@ export default async function AdminDashboardFullPage() {
     // Мержим уроки+лекции, сортируем по scheduled_at.
     upcomingLessons = [...lessonEvents, ...lectureEvents]
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-  } catch (e) {
-    console.error("[admin] dashboard prefetch failed", e)
+    return upcomingLessons
   }
+  const loadChats = async () => fetchChatList({ includeGroups: true, allGroups: true })
+
+  // Google → платформа: синхронизация подключённых учителей в фоне, страницу не задерживает.
+  void withTimeout(syncStaleTeachers(), 15000)
 
   let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
-  try {
-    initialChats = await fetchChatList({ includeGroups: true, allGroups: true })
-  } catch (e) {
-    console.error("[admin] chat list fetch failed", e)
+  const settled = await Promise.allSettled([loadTeachers(), loadStudents(), loadApplications(), loadSchedule(), loadChats()])
+  const pick = <T,>(r: PromiseSettledResult<T>, label: string, fallback: T): T => {
+    if (r.status === "fulfilled") return r.value
+    console.error(`[admin] ${label} failed`, r.reason)
+    return fallback
   }
+  teachers = pick(settled[0], "teachers", teachers)
+  students = pick(settled[1], "students", students)
+  applications = pick(settled[2], "applications", applications)
+  upcomingLessons = pick(settled[3], "schedule", upcomingLessons)
+  initialChats = pick(settled[4], "chats", initialChats)
 
   return (
     <AdminRawDashboard
