@@ -1235,7 +1235,6 @@ export default function StudentRawDashboard({
                 className="st-topup-phone"
                 inputClassName="st-topup-input"
                 selectClassName="st-topup-select"
-                placeholder="номер телефона"
                 value={topupPhone}
                 onChange={(e164, meta) => { setTopupPhone(e164); setTopupPhoneCountry(meta.country) }}
                 disabled={topupBusy}

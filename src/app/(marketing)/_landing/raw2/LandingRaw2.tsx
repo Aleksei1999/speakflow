@@ -627,7 +627,7 @@ export default function LandingRaw2() {
           >
             <input type="text" name="name" placeholder="имя" required />
             <input type="email" name="email" placeholder="электронная почта" required />
-            <PhoneInput name="phone" selectClassName="raw2-phone-select" placeholder="номер телефона" value={phoneValue} onChange={(e164, meta) => { setPhoneValue(e164); setPhoneCountry(meta.country); }} required />
+            <PhoneInput name="phone" selectClassName="raw2-phone-select" value={phoneValue} onChange={(e164, meta) => { setPhoneValue(e164); setPhoneCountry(meta.country); }} required />
             <label className="raw2-check"><input type="checkbox" name="agree" required /><span>Подтверждаю согласие с <Link href="/oferta" target="_blank" rel="noopener noreferrer">пользовательским соглашением</Link>.</span></label>
             <label className="raw2-check"><input type="checkbox" name="marketing" /><span>Согласен получать рекламные материалы</span></label>
             {submitErr && <p className="raw2-form-err">{submitErr}</p>}
@@ -745,7 +745,7 @@ export default function LandingRaw2() {
             >
               <input name="name" type="text" placeholder="имя" required autoComplete="name" />
               <input name="email" type="email" placeholder="электронная почта" required autoComplete="email" />
-              <PhoneInput name="phone" selectClassName="raw2-phone-select" placeholder="номер телефона" value={ctaPhone} onChange={(e164, meta) => { setCtaPhone(e164); setCtaPhoneCountry(meta.country); }} required />
+              <PhoneInput name="phone" selectClassName="raw2-phone-select" value={ctaPhone} onChange={(e164, meta) => { setCtaPhone(e164); setCtaPhoneCountry(meta.country); }} required />
               <input name="comment" type="text" placeholder="комментарий" maxLength={1000} autoComplete="off" />
               {ctaErr && <p className="raw2-form-err">{ctaErr}</p>}
               <button type="submit" className={`btn btn-red${ctaBusy ? " busy" : ""}`} disabled={ctaBusy || !ctaValid} aria-busy={ctaBusy}>Отправить</button>

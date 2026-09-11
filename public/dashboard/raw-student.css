@@ -1307,6 +1307,7 @@
 .st-topup-input + .st-topup-phone { margin-top: 25px; }
 /* карточка узкая (~342px): селект компактный, инпут ужимаем, чтобы номер не обрезался */
 .st-topup-card .st-topup-select { font-family: 'Inter', sans-serif; font-size: 18px; color: #1e1e1e; }
+.st-topup-card .phone-input { width: 100%; }
 .st-topup-card .phone-input .st-topup-input { text-align: left; font-size: 19px; }
 .st-topup-input::placeholder { color: rgba(30, 30, 30, .7); }
 .st-topup-hint {

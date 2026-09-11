@@ -1,14 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { PhoneInput } from "@/components/ui/phone-input"
 
-// «Добавить преподавателя»: админ вводит имя и телефон, получает одноразовые
-// логин и пароль. Преподаватель при первом входе задаёт свою почту и пароль.
+// «Добавить учителя» — по макету регистрации Figma 2522:3001 (лаймовая модалка 686,
+// пилюля-заголовок 578×68 на 61, белые поля 578×68 с шагом 93 от 202, красная кнопка 386×68).
+// Админ вводит имя, фамилию и телефон, получает одноразовые логин и пароль;
+// преподаватель при первом входе задаёт свою почту и пароль.
 
 type Created = { login: string; password: string }
 
 export default function AdminAddTeacherModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,15 +25,17 @@ export default function AdminAddTeacherModal({ onClose, onCreated }: { onClose: 
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
 
+  const canSubmit = firstName.trim().length > 0 && lastName.trim().length > 0 && !busy
+
   async function submit() {
-    if (!name.trim() || busy) return
+    if (!canSubmit) return
     setBusy(true)
     setError(null)
     try {
       const res = await fetch("/api/admin/teachers/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: name.trim(), phone: phone.trim() || null }),
+        body: JSON.stringify({ fullName: `${firstName.trim()} ${lastName.trim()}`, phone: phone || null }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data.error || "Не удалось создать преподавателя"); return }
@@ -49,41 +55,40 @@ export default function AdminAddTeacherModal({ onClose, onCreated }: { onClose: 
   }
 
   return (
-    <div className="ad-cal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="ad-addt" role="dialog" aria-modal="true" aria-label="Добавить преподавателя">
-        <button type="button" className="ad-cal-close" aria-label="Закрыть" onClick={onClose}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
-        </button>
-        {!created ? (
-          <>
-            <div className="ad-addt-title">Новый преподаватель</div>
-            <p className="ad-addt-sub">Логин и пароль появятся после создания. Их нужно передать преподавателю: при первом входе он задаст свою почту и пароль.</p>
-            <input className="ad-addt-input" placeholder="имя и фамилия" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-            <input className="ad-addt-input" placeholder="телефон (необязательно)" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
-            {error && <p className="ad-addt-error" role="alert">{error}</p>}
-            <button type="button" className="ad-addt-submit" disabled={!name.trim() || busy} onClick={submit}>
-              {busy ? "Создаём…" : "Создать"}
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="ad-addt-title">Преподаватель создан</div>
-            <p className="ad-addt-sub">Передайте эти данные для первого входа. Показываются один раз.</p>
-            <div className="ad-addt-cred">
-              <span className="ad-addt-cred-label">логин</span>
-              <code className="ad-addt-cred-value">{created.login}</code>
-              <button type="button" className="ad-addt-copy" onClick={() => copy("login")}>{copied === "login" ? "Скопировано" : "Копировать"}</button>
-            </div>
-            <div className="ad-addt-cred">
-              <span className="ad-addt-cred-label">пароль</span>
-              <code className="ad-addt-cred-value">{created.password}</code>
-              <button type="button" className="ad-addt-copy" onClick={() => copy("password")}>{copied === "password" ? "Скопировано" : "Копировать"}</button>
-            </div>
-            <button type="button" className="ad-addt-submit" onClick={() => copy("all")}>{copied === "all" ? "Скопировано" : "Скопировать оба"}</button>
-            <button type="button" className="ad-addt-done" onClick={onClose}>Готово</button>
-          </>
-        )}
+    <div className="tr">
+      <div className="tr-modal-backdrop tr-modal-backdrop--top" onClick={onClose}>
+        <div className="tr-modal tr-modal--add-teacher" role="dialog" aria-modal="true" aria-labelledby="ad-addt-title" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="tr-modal-close tr-modal-close--dark" aria-label="Закрыть" onClick={onClose}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dashboard/ic-close-dark.svg" alt="" aria-hidden />
+          </button>
+          {!created ? (
+            <>
+              <h2 id="ad-addt-title" className="tr-at-title">Новый учитель</h2>
+              <input className="tr-at-input" placeholder="имя" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus autoComplete="off" />
+              <input className="tr-at-input" placeholder="фамилия" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
+              <PhoneInput className="tr-at-phone" inputClassName="tr-at-input tr-at-input--phone" placeholder="номер телефона" value={phone} onChange={(e164) => setPhone(e164)} />
+              {error && <p className="tr-at-error" role="alert">{error}</p>}
+              <button type="button" className="tr-at-submit" disabled={!canSubmit} onClick={submit}>
+                {busy ? "Создаём…" : "Создать"}
+              </button>
+              <p className="tr-at-hint">Логин и пароль появятся после создания. Их нужно передать учителю: при первом входе он задаст свою почту и пароль.</p>
+            </>
+          ) : (
+            <>
+              <h2 id="ad-addt-title" className="tr-at-title">Учитель создан</h2>
+              <button type="button" className="tr-at-input tr-at-cred" onClick={() => copy("login")} title="Скопировать логин">
+                <span className="tr-at-cred-label">логин</span>{created.login}<span className="tr-at-cred-copied">{copied === "login" ? "скопировано" : ""}</span>
+              </button>
+              <button type="button" className="tr-at-input tr-at-cred" onClick={() => copy("password")} title="Скопировать пароль">
+                <span className="tr-at-cred-label">пароль</span>{created.password}<span className="tr-at-cred-copied">{copied === "password" ? "скопировано" : ""}</span>
+              </button>
+              <button type="button" className="tr-at-submit" onClick={() => copy("all")}>{copied === "all" ? "Скопировано" : "Скопировать оба"}</button>
+              <p className="tr-at-hint">Показываются один раз. Передайте учителю: он войдёт с ними и задаст свою почту и пароль.</p>
+              <button type="button" className="tr-at-done" onClick={onClose}>Готово</button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

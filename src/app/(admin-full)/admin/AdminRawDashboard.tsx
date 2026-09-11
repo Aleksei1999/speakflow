@@ -866,13 +866,10 @@ export default function AdminRawDashboard({
 
       {/* TEACHERS (Figma 2208-62 / 2208-1406 / 2208-1408) */}
       <section id="teachers" className="ad-section">
-        <div className="ad-badge-wrap ad-badge-wrap--teachers">
+        <div className="ad-badge-wrap">
           <span className="ad-badge">
             СПИСОК <span className="c-red">УЧИТЕЛЕЙ</span>
           </span>
-          <button type="button" className="ad-add-teacher" onClick={() => setAddTeacherOpen(true)}>
-            Добавить преподавателя
-          </button>
         </div>
         {addTeacherOpen && <AdminAddTeacherModal onClose={() => setAddTeacherOpen(false)} onCreated={() => router.refresh()} />}
         <div className="ad-teachers-wrap ad-tcards">
@@ -934,6 +931,15 @@ export default function AdminRawDashboard({
             aria-label="Следующие"
           >
             <img src="/dashboard/ic-carousel-arrow.svg" alt="" aria-hidden width={79} height={79} style={{ transform: "scaleX(-1)" }} />
+          </button>
+        </div>
+        <div className="ad-hero-cta ad-hero-cta--teachers">
+          <button type="button" className="ad-sched-cta" onClick={() => setAddTeacherOpen(true)}>
+            Добавить учителя
+            <span className="ad-sched-cta-arrow" aria-hidden>
+              <img className="ad-sched-cta-arrow-circle" src="/dashboard/ic-arrow-circle-red.svg" alt="" width={67} height={68} />
+              <img className="ad-sched-cta-arrow-glyph" src="/dashboard/ic-arrow-white.svg" alt="" width={37} height={36.82} />
+            </span>
           </button>
         </div>
       </section>

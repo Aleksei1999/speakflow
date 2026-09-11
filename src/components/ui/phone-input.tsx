@@ -260,7 +260,7 @@ export function PhoneInput({
   }, [country]);
 
   return (
-    <div className={["phone-input", className].filter(Boolean).join(" ")} style={{ position: "relative", display: "block", width: "100%" }}>
+    <div className={["phone-input", className].filter(Boolean).join(" ")} style={{ position: "relative", display: "block" }}>
       <input
         id={id}
         name={name}
@@ -273,7 +273,7 @@ export function PhoneInput({
         onChange={onInput}
         required={required}
         disabled={disabled}
-        style={{ display: "block", width: "100%", boxSizing: "border-box", paddingLeft: selectWidth + 22 }}
+        style={{ display: "block", width: "100%", boxSizing: "border-box", paddingLeft: selectWidth + 16, textAlign: "left" }}
       />
       <select
         ref={selectRef}
@@ -284,14 +284,14 @@ export function PhoneInput({
         aria-label="Страна"
         style={{
           position: "absolute",
-          left: 14,
+          left: 12,
           top: "50%",
           transform: "translateY(-50%)",
           width: "auto",
           height: "auto",
           maxWidth: "45%",
           margin: 0,
-          padding: "4px 2px 4px 6px",
+          padding: "4px 0 4px 4px",
           border: 0,
           background: "transparent",
           font: "inherit",

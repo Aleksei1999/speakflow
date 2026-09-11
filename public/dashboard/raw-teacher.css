@@ -3907,3 +3907,62 @@
 /* Передача ученика: ошибка и итог */
 .tr-tr-modal-error { margin: 0 0 12px; color: var(--red, #e0463a); font-weight: 600; font-size: 18px; }
 .tr-modal--transfer-done .tr-tr-modal-done { margin: 0 0 32px; font-family: 'Inter', sans-serif; font-size: 22px; line-height: 1.3; color: #1e1e1e; }
+
+/* «Добавить учителя» (админ) — по Figma 2522:3001 «Регистрация»: лайм 686, пилюля-заголовок 578×68 на 61,
+   белые поля 578×68 от 202 с шагом 93, красная кнопка 386×68 через 72 после последнего поля */
+.tr-modal--add-teacher {
+  box-sizing: border-box;
+  width: 686px;
+  height: 740px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  background: #DFED8C;
+  color: #1E1E1E;
+  padding: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.tr-modal--add-teacher::-webkit-scrollbar { display: none; }
+.tr-modal--add-teacher .tr-modal-close--dark { color: #1E1E1E; top: 34px; right: 33.67px; }
+.tr-modal--add-teacher .tr-modal-close--dark:hover { opacity: .7; }
+.tr-at-title {
+  position: absolute; left: 54px; top: 61px; width: 578px; height: 68px; box-sizing: border-box; margin: 0;
+  border: 2px solid #1E1E1E; border-radius: 34px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 32px; letter-spacing: -1.6px; line-height: 0.975; color: #1E1E1E;
+}
+.tr-at-input {
+  position: absolute; left: 55px; width: 578px; height: 68px; box-sizing: border-box;
+  border: 0; border-radius: 34px; background: #fff; padding: 0 30px;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -1.2px; line-height: 0.975; color: #1E1E1E; text-align: center;
+}
+.tr-at-input::placeholder { color: rgba(30,30,30,.7); }
+.tr-at-input:focus { outline: 3px solid #1E1E1E; outline-offset: 2px; }
+.tr-modal--add-teacher > .tr-at-input:nth-of-type(1) { top: 202px; }
+.tr-modal--add-teacher > .tr-at-input:nth-of-type(2) { top: 295px; }
+.tr-at-phone { position: absolute; left: 55px; top: 388px; width: 578px; height: 68px; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -1.1px; color: #1E1E1E; }
+.tr-at-phone .tr-at-input--phone { position: static; width: 100%; height: 68px; text-align: left; }
+.tr-at-error { position: absolute; left: 55px; right: 55px; top: 470px; margin: 0; text-align: center; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 18px; color: #CC3A3A; }
+.tr-at-submit {
+  position: absolute; left: 150px; top: 528px; width: 386px; height: 68px;
+  border: 0; border-radius: 34px; background: #CC3A3A; color: #fff; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -1.6px; line-height: 0.805;
+  transition: filter .18s;
+}
+.tr-at-submit:hover { filter: brightness(.93); }
+.tr-at-submit:disabled { opacity: .45; cursor: default; }
+.tr-at-hint {
+  position: absolute; left: 131px; right: 131px; top: 622px; margin: 0;
+  font-family: 'Inter', sans-serif; font-weight: 400; font-size: 18px; letter-spacing: -0.9px; line-height: 1.1; color: #1E1E1E; text-align: center;
+}
+/* Экран «Учитель создан»: логин и пароль в тех же белых пилюлях, клик копирует */
+.tr-at-cred { cursor: pointer; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 22px; letter-spacing: 0; }
+.tr-at-cred:hover { background: #f4f7dc; }
+.tr-at-cred-label { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); font-family: 'Inter', sans-serif; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: rgba(30,30,30,.55); }
+.tr-at-cred-copied { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); font-family: 'Inter', sans-serif; font-size: 14px; color: #5e6b3a; }
+.tr-modal--add-teacher > .tr-at-cred:nth-of-type(2) { top: 295px; }
+.tr-at-done {
+  position: absolute; left: 50%; transform: translateX(-50%); top: 690px;
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -1.1px; color: #1E1E1E; text-decoration: underline;
+}
