@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/admin-guard"
 
 // GET /api/admin/students/[id] — сводка по ученику для админ-карточки.
-// TODO(audit): при появлении PATCH/DELETE — logAuditEvent(category 'admin', action 'student_<op>').
+// Сброс пароля — POST ./reset-password (с audit log).
 
 export const dynamic = "force-dynamic"
 
@@ -143,7 +143,7 @@ export async function GET(
       ? student.user_progress[0]
       : student.user_progress
 
-    // Заметка учителя об ученике (student_shared_notes) — источник для «Послений комментарий».
+    // Заметка учителя об ученике (student_shared_notes) — источник для «Последний комментарий об ученике».
     const bioRes = await (admin as any)
       .from("student_shared_notes")
       .select("content, updated_at, updated_by")
@@ -173,7 +173,14 @@ export async function GET(
       .in("status", ["completed", "confirmed", "done"])
       .gte("scheduled_at", yearStartIso)
 
-        const { data: balRow } = await (createAdminClient() as any)
+    // Лекции, на которые ученик записан (lecture_registrations; таблицы нет в types/database.ts).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: lecturesCount } = await (admin as any)
+      .from("lecture_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", id)
+
+    const { data: balRow } = await (createAdminClient() as any)
       .from("student_balances")
       .select("balance_kopecks")
       .eq("user_id", student.id)
@@ -207,6 +214,7 @@ export async function GET(
         bio_content: bioRow?.content ?? null,
         bio_author_name: bioAuthor,
         lessons_this_year: lessonsThisYear ?? 0,
+        lectures_count: lecturesCount ?? 0,
       },
     })
   } catch (err) {

@@ -13,13 +13,6 @@ export function useClock(): Date | null {
   return now
 }
 
-/** Уровень для UI: латинские A1/A2 в макете набраны кириллицей. */
-export function levelLabel(lvl: string): string {
-  if (lvl === "A1") return "А1"
-  if (lvl === "A2") return "А2"
-  return lvl
-}
-
 /** Копейки → «55.400» (рубли, разделитель тысяч — точка, как в макете). */
 export function formatRub(kopecks: number): string {
   const rub = Math.round(kopecks / 100)

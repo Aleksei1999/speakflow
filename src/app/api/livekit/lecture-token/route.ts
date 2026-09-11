@@ -5,6 +5,7 @@
 
 // @ts-nocheck
 import { nameKey } from "@/lib/ru/name-match"
+import { formatEta } from "@/lib/ru/eta"
 import { NextRequest, NextResponse } from "next/server"
 import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   const nowMs = Date.now()
   if (nowMs < startMs - LECTURE_JOIN_WINDOW_MIN * 60_000) {
     const minutes = Math.ceil((startMs - LECTURE_JOIN_WINDOW_MIN * 60_000 - nowMs) / 60000)
-    return NextResponse.json({ error: `Комната откроется за ${LECTURE_JOIN_WINDOW_MIN} мин до начала (через ~${minutes} мин)` }, { status: 425 })
+    return NextResponse.json({ error: `Комната откроется за ${LECTURE_JOIN_WINDOW_MIN} мин до начала (${formatEta(minutes)})` }, { status: 425 })
   }
   if (nowMs > endMs + LECTURE_POST_WINDOW_MIN * 60_000) {
     return NextResponse.json({ error: "Лекция уже закончилась" }, { status: 410 })

@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react"
 import { fromRoastLevel } from "@/lib/levels/mapping"
 import { initialsOf, paletteFor } from "@/lib/ui/initials"
+import { pluralize } from "@/lib/ru/plural"
 
 const AVATAR_PALETTE = ["#5f7a8b", "#8f5a2b", "#5e6b3a", "#3d5566", "#7a3a54", "#b58f2a"]
 function Avatar({ name, src }: { name: string; src?: string | null }) {
@@ -42,6 +43,7 @@ interface StudentDetails {
   current_streak: number
   lessons_completed: number
   lessons_this_year: number
+  lectures_count: number
   bio_content: string | null
   bio_author_name: string | null
 }
@@ -58,6 +60,10 @@ export default function AdminStudentModal({
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  // «Сбросить пароль»: новый пароль показываем один раз, пока открыта карточка.
+  const [resetState, setResetState] = useState<"idle" | "busy" | "done" | "error">("idle")
+  const [newPassword, setNewPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -113,10 +119,38 @@ export default function AdminStudentModal({
     }
   }
 
+  async function resetPassword() {
+    if (resetState === "busy") return
+    if (!window.confirm(`Сбросить пароль ученика ${data?.full_name || seedName}? Старый пароль перестанет работать.`)) return
+    setResetState("busy")
+    setCopied(false)
+    try {
+      const r = await fetch(`/api/admin/students/${studentId}/reset-password`, { method: "POST" })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || !j.password) throw new Error(j.error || "Не удалось сбросить пароль")
+      setNewPassword(j.password as string)
+      setResetState("done")
+    } catch {
+      setResetState("error")
+    }
+  }
+
+  async function copyPassword() {
+    if (!newPassword) return
+    try {
+      await navigator.clipboard.writeText(newPassword)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard недоступен — пароль всё равно виден в поле */
+    }
+  }
+
   const name = data?.full_name || seedName
   const avatar = avatarOverride ?? data?.avatar_url ?? seedAvatar
   const balance = data?.balance_rub ?? 0
   const lessonsYear = data?.lessons_this_year ?? 0
+  const lecturesCount = data?.lectures_count ?? 0
   const bio = data?.bio_content
   const bioAuthor = data?.bio_author_name
   // A1..C2 → 1..6 огоньков закрашено по уровню английского. english_level в
@@ -128,7 +162,7 @@ export default function AdminStudentModal({
 
   return (
     <div className="asm-backdrop" onClick={onClose}>
-      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260909-glass" />
+      <link rel="stylesheet" href="/dashboard/admin-student-modal.css?v=20260911-pass" />
       {/* Figma 2522:106 (Group 358): фото и контакты слева, имя / комментарий / статы / баланс / кнопка справа */}
       <div className="asm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={name}>
         <button type="button" className="asm-close" aria-label="Закрыть" onClick={onClose}>
@@ -176,11 +210,27 @@ export default function AdminStudentModal({
         </div>
         <div className="asm-field asm-field--pass">
           <div className="asm-contact-label">пароль</div>
-          <div className="asm-contact-val">••••••••</div>
+          {resetState === "done" && newPassword ? (
+            <div className="asm-pass-row">
+              <code className="asm-pass-val" title="Новый пароль — показан один раз">{newPassword}</code>
+              <button type="button" className="asm-pass-copy" onClick={copyPassword} aria-label="Скопировать пароль">
+                {copied ? "скопировано" : "копировать"}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="asm-pass-reset"
+              onClick={resetPassword}
+              disabled={resetState === "busy"}
+            >
+              {resetState === "busy" ? "Сбрасываем…" : resetState === "error" ? "Ошибка, попробовать ещё раз" : "Сбросить пароль"}
+            </button>
+          )}
         </div>
 
         <h2 className="asm-name">{name}</h2>
-        <div className="asm-bio-label">Послений комментарий о ученике</div>
+        <div className="asm-bio-label">Последний комментарий об ученике</div>
         {bio ? (
           <div className="asm-bio" title={bio}>{bio}</div>
         ) : (
@@ -193,18 +243,14 @@ export default function AdminStudentModal({
           <div className="asm-stat-label">количество<br />занятий с начала года</div>
         </div>
         <div className="asm-stat asm-stat--lectures">
-          <div className="asm-stat-num">0</div>
+          <div className="asm-stat-num">{lecturesCount}</div>
           <div className="asm-stat-label">количество<br />лекций</div>
         </div>
-        <div className="asm-stat asm-stat--clubs">
-          <div className="asm-stat-num">0</div>
-          <div className="asm-stat-label">участие в клубах<br />по интересам</div>
-        </div>
 
-        <div className="asm-balance-pill" aria-label={`Баланс: ${balance} рублей`}>
+        <div className="asm-balance-pill" aria-label={`Баланс: ${balance} ${pluralize(balance, "рубль", "рубля", "рублей")}`}>
           <span className="asm-balance-cap">баланс:</span>
           <span className="asm-balance-num">{balance.toLocaleString("ru-RU").replace(/\u00a0/g, ".")}</span>
-          <span className="asm-balance-unit">рублей</span>
+          <span className="asm-balance-unit">{pluralize(balance, "рубль", "рубля", "рублей")}</span>
         </div>
 
         <button type="button" className="asm-btn asm-btn--schedule" onClick={() => onOpenSchedule(studentId)}>

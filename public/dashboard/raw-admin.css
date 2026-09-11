@@ -93,7 +93,8 @@
   width: 171px; height: 98px;
 }
 .ad-brand img { display: block; width: 100%; height: auto; }
-/* пункты меню: x 340/569/720/818/927/1037, y 98, ширины 182/100/51/62/70/68, h 18 */
+/* пункты меню: x 340/569/720/818/927/1037, y 98, h 18; ширины по макету 182/100/51/62/70/68,
+   после переименования (Чаты / Учителя / Ученики / Заявки) боксы 4–6 подогнаны под новые слова */
 .ad-nav-links {
   position: absolute; left: 0; top: 35px; right: 0; height: 18px;
   list-style: none; padding: 0; margin: 0;
@@ -102,9 +103,9 @@
 .ad-nav-links li:nth-child(1) { left: 299px; width: 182px; }
 .ad-nav-links li:nth-child(2) { left: 528px; width: 100px; }
 .ad-nav-links li:nth-child(3) { left: 679px; width: 51px; }
-.ad-nav-links li:nth-child(4) { left: 777px; width: 62px; }
+.ad-nav-links li:nth-child(4) { left: 777px; width: 70px; }
 .ad-nav-links li:nth-child(5) { left: 886px; width: 70px; }
-.ad-nav-links li:nth-child(6) { left: 996px; width: 68px; }
+.ad-nav-links li:nth-child(6) { left: 996px; width: 62px; }
 /* ховер-пилюля как у учителя: lime, h48, r29.5, по центру текста (текст + 26px с каждой стороны) */
 .ad-nav-links a {
   display: flex; align-items: center; justify-content: center;
@@ -710,6 +711,8 @@
   line-height: 0.975;
   color: var(--white);
 }
+/* bio не заполнено — приглушённая подпись вместо текста */
+.ad-teacher-desc--empty { color: rgba(255, 255, 255, .55); }
 
 @media (max-width: 900px) {
   .ad-teachers { grid-template-columns: 1fr; }

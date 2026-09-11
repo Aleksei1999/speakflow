@@ -84,28 +84,19 @@
 .st-brand img { display: block; width: 100%; height: auto; }
 
 /* пункты меню: абсолютные боксы по макету (x относительно .st-nav, который начинается на 41px) */
+/* 6 пунктов (= секции страницы по порядку) между лого (…171) и аватаром (1068…): пилюли авто-ширины
+   (текст + 2×13px), между пилюлями 2px — весь ряд помещается до 1068 */
 .st-nav-links {
-  position: absolute; left: 236px; top: 39px;
-  display: flex; align-items: flex-start; gap: 0;
+  position: absolute; left: 200px; top: 39px;
+  display: flex; align-items: flex-start; gap: 2px;
   list-style: none; padding: 0; margin: 0;
 }
 .st-nav-links li { flex: 0 0 auto; }
-.st-nav-links li:nth-child(1) { width: 210px; }
-.st-nav-links li:nth-child(2) { width: 165px; margin-left: 35px; }
-.st-nav-links li:nth-child(3) { width: 106px; margin-left: 38px; }
-.st-nav-links li:nth-child(4) { width: 55px; margin-left: 47px; }
-.st-nav-links li:nth-child(5) { width: 71px; margin-left: 43px; }
-.st-nav-links li:nth-child(1) a { width: 243px; margin-left: -16.5px; }
-.st-nav-links li:nth-child(2) a { width: 197px; margin-left: -16px; }
-.st-nav-links li:nth-child(3) a { width: 143px; margin-left: -18.5px; }
-.st-nav-links li:nth-child(4) a { width: 102px; margin-left: -23.5px; }
-.st-nav-links li:nth-child(5) a { width: 102px; margin-left: -15.5px; }
-/* ховер-пилюли — Figma 2522:4066/4072/4075/4069/4078: lime, h48, r29.5, ширины 243/197/143/102/102,
-   центрированы на тексте пункта (li = ширина текстового бокса) */
+/* ховер-пилюли — Figma 2522:4066/4072/4075/4069/4078: lime, h48, r29.5, центрированы на тексте пункта */
 .st-nav-links a {
   display: flex; align-items: center; justify-content: center;
-  box-sizing: border-box; width: 100%; height: 48px; margin: -17px 0 0; /* пилюля 85…133, текст по центру */
-  padding: 0;
+  box-sizing: border-box; width: auto; height: 48px; margin: -17px 0 0; /* пилюля 85…133, текст по центру */
+  padding: 0 13px;
   border-radius: 29.5px;
   color: var(--white);
   background: transparent;
@@ -125,9 +116,14 @@
   outline: none;
 }
 /* справа: аватар at (1109,68) → left 1068, top 5; часы правым краем на 1355 → right 45, top 9 */
-.st-nav-right { position: absolute; left: 1068px; top: 5px; right: 45px; height: 93px; color: var(--white); }
+/* Ширина фиксирована (246 = 1359 − 1068 − 45), якорь справа: на узких окнах блок целиком сдвигается влево,
+   а часы стоят после аватара в потоке — не перекрывают его. */
+.st-nav-right {
+  position: absolute; right: 45px; top: 5px; width: 246px; height: 93px; color: var(--white);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
 .st-clock {
-  position: absolute; right: 0; top: 4px;
+  position: relative; flex: 0 0 auto; top: 4px;
   text-align: right;
   color: var(--white);
   font-family: 'Inter', sans-serif;
@@ -144,7 +140,7 @@
   font-size: 24px;
 }
 .st-nav-avatar {
-  position: absolute; left: 0; top: 0;
+  position: relative; flex: 0 0 auto;
   box-sizing: border-box;
   width: 93px;
   height: 93px;
@@ -715,13 +711,21 @@
   grid-row: 1;
   padding: 43px 38px 38px;
 }
-.st-lect-card.tall, .st-lectory-grid > .st-lect-card:nth-child(4) { padding-left: 35px; }
+.st-lect-card.tall { padding-left: 35px; }
 /* TALL: 3-я колонка, 2 строки */
 .st-lect-card.tall {
   grid-column: 3;
   grid-row: 1 / span 2;
 }
 .st-lect-card.red { background: var(--red); }
+/* Нижний ряд — явные слоты, чтобы сетка не зависела от порядка/наличия карточек. */
+.st-lect-card--small1 { grid-column: 1; grid-row: 2; }
+.st-lect-card--small2 { grid-column: 2; grid-row: 2; padding-left: 35px; }
+/* Лекций нет — одна тёмная плашка на всю ширину сетки, в стиле карточек. */
+.st-lectory-grid--empty { grid-template-rows: 365px; }
+.st-lect-card--empty { grid-column: 1 / -1; grid-row: 1; justify-content: center; text-align: center; cursor: default; }
+.st-lect-card--empty .st-lect-title { color: var(--lime); }
+.st-lect-card--empty .st-lect-desc { opacity: .85; }
 
 .st-lect-body {
   min-width: 0;
@@ -752,6 +756,11 @@
   margin: 0 0 28px;
   max-width: 387px;
 }
+/* «от Лектора» в боковых карточках — под названием, тем же цветом, что текст карточки */
+.st-lect-author--side {
+  font-weight: 500; font-size: 22px; line-height: 1.1; letter-spacing: -0.04em;
+  color: inherit; opacity: .9; margin: -8px 0 18px; max-width: none;
+}
 .st-lect-desc {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -763,6 +772,17 @@
   max-width: 320px;
 }
 .st-lect-card--main .st-lect-desc { line-height: 0.8782; max-width: 715px; }
+/* Нижние карточки (365px): реальные описания длиннее моков — ограничиваем 2 строками, чтобы текст не заходил
+   под плашки даты/времени в правом нижнем углу; название — не больше 2 строк. */
+.st-lect-card--small1 .st-lect-desc, .st-lect-card--small2 .st-lect-desc {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.st-lect-card--small1 .st-lect-title, .st-lect-card--small2 .st-lect-title {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.st-lect-card.tall .st-lect-desc {
+  display: -webkit-box; -webkit-line-clamp: 10; -webkit-box-orient: vertical; overflow: hidden;
+}
 
 /* Категория (CV / Travel / Marketing / Tecnolodgy) — top-left, без наклона,
    pill наполовину «наезжает» сверху на карточку (translateY(-50%)). */
@@ -775,7 +795,7 @@
 }
 .st-lect-card--main .st-lect-tag--top { top: -20px; }
 .st-lect-card.tall .st-lect-tag--top { top: -28px; left: 35px; }
-.st-lectory-grid > .st-lect-card:nth-child(4) .st-lect-tag--top { top: -27px; left: 35px; }
+.st-lect-card--small2 .st-lect-tag--top { top: -27px; left: 35px; }
 .st-lect-tag {
   display: inline-flex; align-items: center; justify-content: center;
   height: 52px;
@@ -921,6 +941,12 @@
   text-align: center; color: #1E1E1E;
 }
 .st-lvl-logo { position: absolute; top: 248px; left: 50%; transform: translateX(-50%); width: auto; display: block; }
+/* Расшифровка прожарки по CEFR — одна строка под логотипом */
+.st-lvl-cefr {
+  position: absolute; left: 40px; right: 40px; bottom: 34px; margin: 0;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 13px; letter-spacing: -0.3px; line-height: 1.3;
+  text-align: center; color: rgba(30, 30, 30, 0.75);
+}
 .st-lvl-close {
   position: absolute; top: 34px; right: 33.7px; width: 13.33px; height: 13.34px;
   padding: 0; border: none; background: none; cursor: pointer;
@@ -1182,6 +1208,12 @@
 .st-bal-stats {
   display: flex; flex-direction: column; gap: 38.5px;
   margin-top: 0;
+}
+/* ошибка загрузки аватара — под статистикой, inline вместо alert() */
+.st-avatar-error {
+  margin-top: 18px;
+  font-family: 'Inter', sans-serif; font-weight: 500; font-size: 18px; letter-spacing: -0.5px;
+  color: #ff8a80;
 }
 .st-bal-stat {
   box-sizing: border-box;
@@ -1462,6 +1494,8 @@
   }
   .st-lect-card--main { grid-column: 1; grid-row: auto; padding-right: 220px; }
   .st-lect-card.tall { grid-column: 1; grid-row: auto; min-height: 400px; }
+  .st-lect-card--small1, .st-lect-card--small2, .st-lect-card--empty { grid-column: 1; grid-row: auto; }
+  .st-lectory-grid--empty { grid-template-rows: minmax(320px, auto); }
 }
 @media (max-width: 780px) {
   .st-nav { height: auto; display: flex; justify-content: space-between; align-items: center; }

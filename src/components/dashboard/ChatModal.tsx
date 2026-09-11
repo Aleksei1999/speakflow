@@ -469,7 +469,7 @@ export default function ChatModal({
           {/* Уровень прячем при hideCallActions. */}
           {peerLevel && !isSupport && !hideCallActions && (
             <div className="tr-chat-lvl">
-              {peerLevel === "A1" ? "А1" : peerLevel === "A2" ? "А2" : peerLevel}
+              {peerLevel}
             </div>
           )}
           {variant === "dock" ? (

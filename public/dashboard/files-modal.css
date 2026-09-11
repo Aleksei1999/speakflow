@@ -170,6 +170,20 @@
 .files-folder .files-folder-arrow { display: block; position: absolute; left: 54px; top: 60.9px; width: 40px; height: 44.18px; transform: rotate(90deg); }
 
 /* подвал (2522:10458): «Добавить файл» 222×46 at (89,718); «Выбрать» 160 at 772, «Удалить» 160 at 957 (зазор 25); низ 73 */
+/* Ошибка операции (загрузка/удаление) — внутри модалки над подвалом, вместо alert() */
+.files-modal-error {
+  position: absolute;
+  left: 100px;
+  right: 100px;
+  bottom: 132px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  letter-spacing: -0.5px;
+  line-height: 1.3;
+  color: #B22222;
+  text-align: center;
+}
+.files-modal:not(.files-modal--with-footer) .files-modal-error { bottom: 30px; }
 .files-modal-footer {
   position: absolute;
   left: 89px;

@@ -65,6 +65,16 @@ interface FilesModalProps {
   onDeleteFiles?: (ids: string[]) => Promise<void> | void
   /** true → пользователь может создавать папки, добавлять/удалять файлы. */
   canManage?: boolean
+  /** Файлы без папки — показываем в корне после списка папок (например, работы ученика). */
+  rootFiles?: FileItem[]
+  /** true → кнопка «Добавить файл» есть и в корне (загрузка без папки). */
+  canAddAtRoot?: boolean
+  /** Текст пустого состояния корня (по умолчанию — про папки). */
+  emptyText?: string
+  /** Ошибка последней операции — рендерится внутри модалки, а не alert(). */
+  error?: string | null
+  /** true → данные ещё грузятся: вместо пустого состояния показываем «Загружаем…». */
+  loading?: boolean
   addLabel?: string
   selectLabel?: string
   deleteLabel?: string
@@ -88,6 +98,11 @@ export function FilesModal({
   multiple = false,
   onDeleteFiles,
   canManage = false,
+  rootFiles = [],
+  canAddAtRoot = false,
+  emptyText,
+  error = null,
+  loading = false,
   addLabel = "Добавить файл",
   selectLabel = "Выбрать",
   deleteLabel = "Удалить",
@@ -117,12 +132,12 @@ export function FilesModal({
   }, [effectiveFolderId])
 
   useEffect(() => {
-    const current = effectiveFolderId ? files : folders
-    if (current.length === 0 && selectMode) {
+    const currentLen = effectiveFolderId ? files.length : folders.length + rootFiles.length
+    if (currentLen === 0 && selectMode) {
       setSelectMode(false)
       setSelectedIds(new Set())
     }
-  }, [effectiveFolderId, files.length, folders.length, selectMode, files, folders])
+  }, [effectiveFolderId, files.length, folders.length, rootFiles.length, selectMode])
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -140,7 +155,12 @@ export function FilesModal({
       if (effectiveFolderId) {
         await onDeleteFiles?.(Array.from(selectedIds))
       } else {
-        await onDeleteFolders?.(Array.from(selectedIds))
+        // В корне выделены могут быть и папки, и файлы без папки — разводим по колбэкам.
+        const rootFileIds = new Set(rootFiles.map((f) => f.id))
+        const fileIds = Array.from(selectedIds).filter((id) => rootFileIds.has(id))
+        const folderIds = Array.from(selectedIds).filter((id) => !rootFileIds.has(id))
+        if (fileIds.length) await onDeleteFiles?.(fileIds)
+        if (folderIds.length) await onDeleteFolders?.(folderIds)
       }
       setSelectedIds(new Set())
       setSelectMode(false)
@@ -166,13 +186,18 @@ export function FilesModal({
 
   const inFolder = effectiveFolderId !== null
   const activeFolder = inFolder ? folders.find((f) => f.id === effectiveFolderId) ?? null : null
-  const hasItems = inFolder ? files.length > 0 : folders.length > 0
-  const canDelete = inFolder ? !!onDeleteFiles : !!onDeleteFolders
+  const hasItems = inFolder ? files.length > 0 : folders.length > 0 || rootFiles.length > 0
+  // В корне удалять можно папки (onDeleteFolders) и/или файлы без папки (onDeleteFiles).
+  const canSelectFolders = !inFolder && !!onDeleteFolders
+  const canDelete = inFolder
+    ? !!onDeleteFiles
+    : (!!onDeleteFolders && folders.length > 0) || (!!onDeleteFiles && rootFiles.length > 0)
   const showSelect = hasItems && canManage && canDelete
+  const showAddFile = canManage && !selectMode && (inFolder || (canAddAtRoot && !legacyMode))
   // Ученик (read-only) в корне: кнопок нет — подвал не рендерим (Figma 2522:10421 без кнопок).
   const showFooter =
     (canManage && !legacyMode && !inFolder && !selectMode && !!onCreateFolder) ||
-    (canManage && inFolder && !selectMode) ||
+    showAddFile ||
     showSelect ||
     selectMode
 
@@ -225,16 +250,31 @@ export function FilesModal({
         <div className="files-modal-grid">
           {!hasItems ? (
             <div className="files-modal-empty">
-              {inFolder
+              {loading
+                ? "Загружаем…"
+                : inFolder
                 ? canManage
                   ? "В этой папке пока нет файлов. Нажми «Добавить файл»."
                   : "В этой папке пока нет файлов."
-                : canManage
+                : emptyText ?? (canManage && onCreateFolder
                   ? "Пока нет ни одной папки. Нажми «Создать папку»."
-                  : "Здесь пока пусто."}
+                  : "Здесь пока пусто.")}
             </div>
-          ) : inFolder ? (
-            files.map((f) => {
+          ) : (
+            <>
+            {!inFolder && folders.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                selectMode={selectMode && canSelectFolders}
+                selected={selectedIds.has(folder.id)}
+                canManage={canManage}
+                onOpen={() => onOpenFolder(folder.id)}
+                onToggleSelect={() => toggleSelected(folder.id)}
+                onRename={onRenameFolder ? (name) => onRenameFolder(folder.id, name) : undefined}
+              />
+            ))}
+            {(inFolder ? files : rootFiles).map((f) => {
               const isSelected = selectedIds.has(f.id)
               const isLoading = f.status === "loading"
               return (
@@ -265,23 +305,15 @@ export function FilesModal({
                   <span className="files-item-name">{f.name}</span>
                 </button>
               )
-            })
-          ) : (
-            folders.map((folder) => (
-              <FolderCard
-                key={folder.id}
-                folder={folder}
-                selectMode={selectMode}
-                selected={selectedIds.has(folder.id)}
-                canManage={canManage}
-                onOpen={() => onOpenFolder(folder.id)}
-                onToggleSelect={() => toggleSelected(folder.id)}
-                onRename={onRenameFolder ? (name) => onRenameFolder(folder.id, name) : undefined}
-              />
-            ))
+            })}
+            </>
           )}
         </div>
         </CustomScroll>
+
+        {error && (
+          <div className="files-modal-error" role="alert">{error}</div>
+        )}
 
         {showFooter && (
         <div className="files-modal-footer">
@@ -297,8 +329,8 @@ export function FilesModal({
               {creating ? "Создаём…" : createFolderLabel}
             </button>
           )}
-          {/* «Добавить файл» 222×46 слева (2522:10458) */}
-          {canManage && inFolder && !selectMode && (
+          {/* «Добавить файл» 222×46 слева (2522:10458); с canAddAtRoot — и в корне */}
+          {showAddFile && (
             <button
               type="button"
               className="files-modal-btn files-modal-btn--add"

@@ -22,7 +22,7 @@ import { acceptTrialRequest, declineTrialRequest } from "./trial-request-actions
 import { useRouter } from "next/navigation"
 import { initialsOf, paletteFor } from "@/lib/ui/initials"
 import { pluralize } from "@/lib/ru/plural"
-import { useClock, levelLabel, formatRub } from "@/lib/dashboard-ui"
+import { useClock, formatRub } from "@/lib/dashboard-ui"
 
 /* Teacher Dashboard — Figma «Учитель RAW english» (file YSwlSQF1n6QIpGTOohlMOd, node 2208:955). */
 
@@ -66,12 +66,16 @@ const SORT_OPTIONS = [
   { id: "default", label: "По умолчанию\n(время до занятия)" },
 ] as const
 
+/** «рубль / рубля / рублей» по сумме в копейках (склоняем целые рубли). */
+const rubWord = (kopecks: number) => pluralize(Math.round(kopecks / 100), "рубль", "рубля", "рублей")
+
+// Порядок пунктов = порядок секций на странице (#students → #applications → #schedule → #income → #chats).
 const NAV = [
   { href: "#students", label: "Ученики" },
   { href: "#applications", label: "Входящие заявки" },
-  { href: "#schedule", label: "Звонки" },
+  { href: "#schedule", label: "Календарь" },
   { href: "#income", label: "Доход" },
-  { href: "#calendar", label: "Календарь" },
+  { href: "#chats", label: "Чаты" },
 ]
 
 // Макет кабинета нарисован под 1441px. На экранах шире масштабируем страницу пропорционально
@@ -512,7 +516,8 @@ export default function TeacherRawDashboard({
     const arr = [...studentsState]
     if (sortId === "az") arr.sort((a, b) => a.name.localeCompare(b.name, "ru"))
     else if (sortId === "time") arr.sort((a, b) => a.addedAt - b.addedAt)
-    else arr.sort((a, b) => a.nextLessonMin - b.nextLessonMin)
+    // без ближайшего урока nextLessonMin одинаковый (999 999) — добиваем алфавитом, чтобы порядок был стабильным
+    else arr.sort((a, b) => (a.nextLessonMin - b.nextLessonMin) || a.name.localeCompare(b.name, "ru"))
     return arr
   }, [sortId, studentsState])
   const [appsExpanded, setAppsExpanded] = useState(false)
@@ -762,6 +767,19 @@ export default function TeacherRawDashboard({
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [transferOpen])
+  // Esc закрывает «Как считается доход?» и «Домашние задания» (выбор ученика).
+  useEffect(() => {
+    if (!incomeInfoOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIncomeInfoOpen(false) }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [incomeInfoOpen])
+  useEffect(() => {
+    if (!hwPickerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setHwPickerOpen(false) }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [hwPickerOpen])
   const [transferBusy, setTransferBusy] = useState(false)
   const [transferError, setTransferError] = useState<string | null>(null)
   const [transferDone, setTransferDone] = useState<string | null>(null)
@@ -1041,7 +1059,7 @@ export default function TeacherRawDashboard({
     <div className="tr">
       {teacherId && <LessonRescheduleWatcher userId={teacherId} role="teacher" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260911-nav" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
@@ -1124,7 +1142,7 @@ export default function TeacherRawDashboard({
                         <span key={i} className="tr-stu-name-line">{part}</span>
                       ))}
                     </div>
-                    <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                    <span className="tr-stu-lvl">{s.level}</span>
                   </div>
                 ))}
               </div>
@@ -1186,7 +1204,7 @@ export default function TeacherRawDashboard({
                             <span key={i} className="tr-stu-name-line">{part}</span>
                           ))}
                         </div>
-                        <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                        <span className="tr-stu-lvl">{s.level}</span>
                       </div>
                     </button>
                   )
@@ -1320,7 +1338,7 @@ export default function TeacherRawDashboard({
                         role="radio"
                         aria-checked={studentModalData.level === lvl}
                       >
-                        {levelLabel(lvl)}
+                        {lvl}
                       </button>
                     ))}
                   </div>
@@ -1333,7 +1351,7 @@ export default function TeacherRawDashboard({
                 aria-label={`Изменить уровень (сейчас ${studentModalData.level})`}
                 onClick={() => setLevelPickerOpen(true)}
               >
-                {levelLabel(studentModalData.level)}
+                {studentModalData.level}
               </button>
             )}
 
@@ -1517,7 +1535,7 @@ export default function TeacherRawDashboard({
                   </span>
                 )}
                 <div className="tr-app-cap" aria-hidden />
-                <span className="tr-app-lvl">{levelLabel(a.level)}</span>
+                <span className="tr-app-lvl">{a.level}</span>
                 <button
                   type="button"
                   className="tr-app-arrow"
@@ -1784,7 +1802,7 @@ export default function TeacherRawDashboard({
                 <div className="stack">
                   <span className="caption red">за {incomeStats?.monthLabel ?? new Date().toLocaleDateString("ru", { month: "long" })}</span>
                   <div className="value">{formatRub(incomeStats?.earningsThisMonthKopecks ?? 0)}</div>
-                  <span className="label">рублей</span>
+                  <span className="label">{rubWord(incomeStats?.earningsThisMonthKopecks ?? 0)}</span>
                 </div>
               </div>
               <div className="tr-income-row tr-income-row--ytd">
@@ -1792,7 +1810,7 @@ export default function TeacherRawDashboard({
                 <div className="stack">
                   <span className="caption mut">с начала года</span>
                   <div className="value">{formatRub(incomeStats?.earningsYtdKopecks ?? 0)}</div>
-                  <span className="label">рублей</span>
+                  <span className="label">{rubWord(incomeStats?.earningsYtdKopecks ?? 0)}</span>
                 </div>
               </div>
             </div>
@@ -1963,7 +1981,8 @@ export default function TeacherRawDashboard({
             </button>
             <p className="tr-income-info-text" id="tr-inc-info-title">
               {(() => {
-                const fmt = (k?: number) => (k && k > 0 ? Math.round(k / 100).toLocaleString("ru-RU") : "______")
+                // «1 200 рублей» / «1 рубль» / «2 рубля»; без ставки — прочерк и «рублей»
+                const fmt = (k?: number) => (k && k > 0 ? `${Math.round(k / 100).toLocaleString("ru-RU")} ${rubWord(k)}` : "______ рублей")
                 const r60 = fmt(teacherRates?.rate60Kopecks)
                 const r90 = fmt(teacherRates?.rate90Kopecks)
                 const rG = fmt(teacherRates?.rateGroupKopecks)
@@ -1971,9 +1990,9 @@ export default function TeacherRawDashboard({
                   <>
                     {nb("Ваш доход считается исходя из кол-ва часов, которые вы провели с учениками.")}
                     <br />
-                    {nb(`Каждый проведенный урок на 1 час стоит ${r60} рублей, каждый проведенный урок`)}
+                    {nb(`Каждый проведенный урок на 1 час стоит ${r60}, каждый проведенный урок`)}
                     <br />
-                    {nb(`на 1,5 часа стоит ${r90} рублей, каждое занятие с группой стоит ${rG} рублей.`)}
+                    {nb(`на 1,5 часа стоит ${r90}, каждое занятие с группой стоит ${rG}.`)}
                   </>
                 )
               })()}
@@ -2111,7 +2130,7 @@ export default function TeacherRawDashboard({
                           <span key={i} className="tr-stu-name-line">{part}</span>
                         ))}
                       </div>
-                      <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                      <span className="tr-stu-lvl">{s.level}</span>
                     </div>
                   </button>
                 ))

@@ -20,7 +20,7 @@ import StudentAddLessonModal from "@/components/student/StudentAddLessonModal"
 import { FilesModal, type FileItem, type FolderItem } from "@/components/dashboard/FilesModal"
 import { listFolders } from "@/lib/materials/folders"
 import type { ChatListItem } from "@/lib/chat/list"
-import { toRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
+import { toRoastLevel, fromRoastLevel, ROAST_LEVELS } from "@/lib/levels/mapping"
 import { PhoneInput } from "@/components/ui/phone-input"
 import { disconnectStudentGoogleCalendar } from "./calendar-actions"
 import LessonRescheduleWatcher from "@/components/lesson/LessonRescheduleWatcher"
@@ -51,44 +51,17 @@ const ROAST_LEVEL_SVG: Record<string, string> = {
 
 /* Student Dashboard — Figma «Ученик RAW english» (file YSwlSQF1n6QIpGTOohlMOd, node 2208:1427). */
 
+// Пункты меню = секции страницы в порядке их следования (#schedule → #homework/#library → #chats → #lectory → #balance).
 const NAV = [
   { href: "#schedule", label: "Расписание и календарь" },
   { href: "#homework", label: "Домашние задания" },
   { href: "#library", label: "Библиотека" },
   { href: "#chats", label: "Чаты" },
-  { href: "#calls", label: "Звонки" },
+  { href: "#lectory", label: "Лекторий" },
+  { href: "#balance", label: "Баланс" },
 ]
-/* Placeholder-лекции — курсы/лекторий пока не завязаны на БД. */
-const LECTORY_MAIN = {
-  title: "Как составить резюме",
-  author: "от Валерии Кратковской",
-  desc: "Инструкция, как сделать так, чтобы было вот так, а не так, ведь важно, чтобы было именно вот так и никак иначе. Инструкция, как сделать так, чтобы было вот. Инструкция, как сделать так, чтобы было вот так, а не так, ведь важно, чтобы было именно вот так и никак иначе.",
-  time: "16:24",
-  date: "26.06.2026",
-  tag: "CV",
-}
-const LECTORY_TALL = {
-  title: "От Натальи Орейро",
-  author: "от Ксении Фроловой",
-  desc: "Путешествие — это целый мир, иногда, когда тебя спросят «A fork in the eye or once up the ass», лучше знать правильный ответ, находясь за границей. На этом курсе наш трэвел-блогер Ксения научит тебя путешествовать.",
-  time: "16:24",
-  date: "26.06.2026",
-  tag: "Travel",
-}
-const LECTORY_LEFT = {
-  title: "От Артура Гринина",
-  desc: "Как говорится, так говорится, текста тут мало, ведь много и не поместится.",
-  time: "12:20",
-  date: "07.07.2026",
-  tag: "Marketing",
-}
-const LECTORY_RIGHT = {
-  title: "От Натальи Орейро",
-  desc: "Как говорится, так говорится, текста тут мало, ведь много и не поместится.",
-  time: "12:20",
-  date: "07.07.2026",
-  tag: "Tecnolodgy",
-}
+// Подсказка «прожарка ↔ CEFR» — для tooltip на уровне и строки в модалке «уровень обновлён».
+const ROAST_CEFR_HINT = ROAST_LEVELS.map((r) => `${r} = ${fromRoastLevel(r)}`).join(", ")
 function Avatar({ name, src, className = "" }: { name: string; src?: string | null; className?: string }) {
   const [failed, setFailed] = useState(false)
   // Сбрасываем failed при изменении src (например после upload) — иначе
@@ -136,7 +109,10 @@ interface StudentRawDashboardProps {
   balance?: number
   /** Последние операции по балансу: пополнения, списания за уроки, возвраты. */
   balanceHistory?: Array<{ id: string; kind: string; amountRub: number; comment: string | null; createdAt: string }>
+  /** Завершённые занятия с начала календарного года. */
   lessonsThisYear?: number
+  /** Сколько лекций ученик записал на себя. */
+  lecturesCount?: number
   initialLessons?: Array<{
     id: string
     scheduledAt: string
@@ -158,13 +134,14 @@ interface StudentRawDashboardProps {
 
 export default function StudentRawDashboard({
   studentId,
-  firstName = "Вадим",
-  lastName = "Думович",
+  firstName = "",
+  lastName = "",
   avatarUrl,
-  englishLevel = "Rare",
-  balance = 14500,
+  englishLevel = "Raw",
+  balance = 0,
   balanceHistory = [],
-  lessonsThisYear = 25,
+  lessonsThisYear = 0,
+  lecturesCount = 0,
   initialLessons = [],
   initialChats,
   initialLectures = [],
@@ -186,8 +163,14 @@ export default function StudentRawDashboard({
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [homeworkOpen, setHomeworkOpen] = useState(false)
   const [homeworkFiles, setHomeworkFiles] = useState<FileItem[]>([])
+  // Работы ученика без папки (folder_id null) — лежат в корне модалки рядом с папками преподавателя.
+  const [hwRootFiles, setHwRootFiles] = useState<FileItem[]>([])
   const [homeworkVersion, setHomeworkVersion] = useState(0) // bump → refetch
   const [hwUploading, setHwUploading] = useState(false)
+  // Пока папки/корневые файлы ДЗ грузятся — модалка показывает «Загружаем…», а не пустое состояние.
+  const [hwLoading, setHwLoading] = useState(0)
+  // Ошибки загрузки/удаления показываем внутри модалки, а не alert().
+  const [hwError, setHwError] = useState<string | null>(null)
 
   // Папки Библиотеки и ДЗ — read-only для студента (нельзя создавать).
   const [libFolders, setLibFolders] = useState<FolderItem[]>([])
@@ -195,8 +178,8 @@ export default function StudentRawDashboard({
   const [hwFolders, setHwFolders] = useState<FolderItem[]>([])
   const [hwFolderId, setHwFolderId] = useState<string | null>(null)
 
-  // Реальные лекции из БД — приходят с сервера через /api/lectures.
-  // Если пусто — используем placeholder-моки (LECTORY_*), чтобы дизайн-превью не пустовало.
+  // Реальные лекции из БД — приходят с сервера через /api/lectures. Если пусто — честный
+  // empty state «Лекций пока нет» (никаких моков).
   const [lectures, setLectures] = useState<LectureRow[]>(initialLectures)
   const [openLecture, setOpenLecture] = useState<LectureForModal | null>(null)
   const [lecturesVersion, setLecturesVersion] = useState(0)
@@ -214,9 +197,25 @@ export default function StudentRawDashboard({
     })()
     return () => { cancelled = true }
   }, [lecturesVersion])
-  const lecMain  = lectures.find((l) => l.slot === 'main')
-  const lecTall  = lectures.find((l) => l.slot === 'tall')
-  const lecSmall = lectures.filter((l) => l.slot === 'small').slice(0, 2)
+  // Раскладка по 4 слотам сетки: сначала по своему slot, затем свободные слоты добираем
+  // оставшимися лекциями (по дате) — чтобы сетка не зияла, пока лекций мало.
+  const lectSlots = (() => {
+    const used = new Set<string>()
+    const take = (pred: (l: LectureRow) => boolean) => {
+      const l = lectures.find((x) => !used.has(x.id) && pred(x))
+      if (l) used.add(l.id)
+      return l ?? null
+    }
+    const main = take((l) => l.slot === 'main')
+    const tall = take((l) => l.slot === 'tall')
+    const small1 = take((l) => l.slot === 'small')
+    const small2 = take((l) => l.slot === 'small')
+    const any = () => take(() => true)
+    return { main: main ?? any(), tall: tall ?? any(), small1: small1 ?? any(), small2: small2 ?? any() }
+  })()
+  const lecMain = lectSlots.main
+  const lecTall = lectSlots.tall
+  const lecSmall = [lectSlots.small1, lectSlots.small2]
   const lecFmt = (iso: string) => {
     const d = new Date(iso)
     return {
@@ -225,30 +224,32 @@ export default function StudentRawDashboard({
     }
   }
 
+  // Ученик загружает работу и без папки (folder_id null → файл в корне модалки).
   async function handleStudentHwUpload(file: File) {
     if (!studentId) return
-    if (!hwFolderId) { alert("Сначала откройте папку"); return }
+    setHwError(null)
     if (file.size > 25 * 1024 * 1024) {
-      alert("Файл больше 25 МБ")
+      setHwError("Файл больше 25 МБ")
       return
     }
     setHwUploading(true)
     try {
       const fd = new FormData()
       fd.append("file", file)
-      fd.append("folder_id", hwFolderId)
+      if (hwFolderId) fd.append("folder_id", hwFolderId)
       const res = await fetch("/api/me/homework/upload", { method: "POST", body: fd })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`)
       setHomeworkVersion((v) => v + 1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Не удалось загрузить файл")
+      setHwError(e instanceof Error ? e.message : "Не удалось загрузить файл")
     } finally {
       setHwUploading(false)
     }
   }
   // Удаление своих загруженных работ (Figma 2522:10458: «Выбрать» + «Удалить» у ученика).
   async function handleStudentHwDelete(ids: string[]) {
+    setHwError(null)
     const failed: string[] = []
     for (const id of ids) {
       try {
@@ -260,11 +261,12 @@ export default function StudentRawDashboard({
       }
     }
     setHomeworkVersion((v) => v + 1)
-    if (failed.length) alert(failed[0])
+    if (failed.length) setHwError(failed[0])
   }
   // Аватар: локальный override после загрузки нового + upload state.
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
   const avatarInputRef = useRef<HTMLInputElement | null>(null)
   const effectiveAvatarUrl = avatarOverride ?? avatarUrl ?? null
   // Модалка «уровень обновлён» (Figma 2522:2631). Показываем, когда текущий уровень отличается от последнего,
@@ -323,10 +325,11 @@ export default function StudentRawDashboard({
 
   // Макет кабинета нарисован под 1441px. На экранах шире масштабируем страницу пропорционально
   // (zoom = ширина / 1441, потолок 1.4) — так же, как лендинг; иначе абсолютные px шапки разъезжаются.
+  // Уже 1441 (1280/1366) — масштабируем вниз (пол 0.85), чтобы шапка и сетки не наезжали друг на друга.
   useEffect(() => {
     const apply = () => {
       const w = window.innerWidth
-      const z = w > 1441 ? Math.min(w / 1441, 1.4) : 1
+      const z = w > 1441 ? Math.min(w / 1441, 1.4) : Math.max(w / 1441, 0.85)
       document.documentElement.style.setProperty("--raw2-zoom", z.toFixed(4))
     }
     apply()
@@ -338,8 +341,9 @@ export default function StudentRawDashboard({
     const file = e.target.files?.[0]
     e.target.value = ""
     if (!file || !studentId) return
+    setAvatarError(null)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Файл больше 5 МБ")
+      setAvatarError("Файл больше 5 МБ")
       return
     }
     setAvatarUploading(true)
@@ -365,7 +369,7 @@ export default function StudentRawDashboard({
       }
       setAvatarOverride(url)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Ошибка загрузки аватара")
+      setAvatarError(err instanceof Error ? err.message : "Ошибка загрузки аватара")
     } finally {
       setAvatarUploading(false)
     }
@@ -473,15 +477,45 @@ export default function StudentRawDashboard({
   useEffect(() => {
     if (!homeworkOpen) return
     let cancelled = false
+    setHwLoading((n) => n + 1)
     ;(async () => {
       try {
         const rows = await listFolders("homework")
         if (cancelled) return
         setHwFolders(rows.map((f) => ({ id: f.id, name: f.name, count: f.count })))
       } catch (e) { console.error("[homework folders]", e) }
+      finally { setHwLoading((n) => n - 1) }
     })()
     return () => { cancelled = true }
   }, [homeworkOpen])
+
+  // Работы ученика без папки — показываем в корне модалки ДЗ.
+  useEffect(() => {
+    if (!homeworkOpen || hwFolderId) return
+    let cancelled = false
+    setHwLoading((n) => n + 1)
+    ;(async () => {
+      try {
+        const res = await fetch("/api/me/homework?root=1", { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        type HwRow = { id: string; title: string; mime_type: string | null; signed_url: string | null }
+        setHwRootFiles(
+          ((data.materials ?? []) as HwRow[]).map((m) => ({
+            id: m.id,
+            name: m.title,
+            status: "loaded" as const,
+            mime: m.mime_type ?? null,
+            onOpen: m.signed_url ? () => window.open(m.signed_url as string, "_blank") : undefined,
+          })),
+        )
+      } catch (e) {
+        console.error("[homework root files] fetch failed", e)
+      } finally { setHwLoading((n) => n - 1) }
+    })()
+    return () => { cancelled = true }
+  }, [homeworkOpen, hwFolderId, homeworkVersion])
 
   // Файлы внутри открытой папки ДЗ.
   useEffect(() => {
@@ -700,7 +734,7 @@ export default function StudentRawDashboard({
     <div className="st">
       {studentId && <LessonRescheduleWatcher userId={studentId} role="student" scheduleHref="#schedule" />}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260908-lect2" />
+      <link rel="stylesheet" href="/dashboard/raw-student.css?v=20260911-lect3" />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
       {/* Подключаем teacher.css чтобы использовать блок .tr-chats-frame 1:1 — стили префиксированы .tr-*, коллизий со .st-* нет. */}
@@ -708,7 +742,7 @@ export default function StudentRawDashboard({
       <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
       {/* FilesModal — модалка «Библиотека / ДЗ». Без стилей плашки папок валятся в поток документа. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260908-figma" />
+      <link rel="stylesheet" href="/dashboard/files-modal.css?v=20260911-error" />
       {/* StudentAddLessonModal — модалка добавления урока. */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/student-add-lesson.css?v=20260908-success" />
@@ -728,7 +762,7 @@ export default function StudentRawDashboard({
           </ul>
           <div className="st-nav-right">
             <div className="st-nav-avatar">
-              <Avatar name={`${firstName} ${lastName}`} src={avatarUrl} />
+              <Avatar name={`${firstName} ${lastName}`} src={effectiveAvatarUrl ?? undefined} />
             </div>
             <div className="st-clock">
               <div className="time">{timeStr}</div>
@@ -1017,10 +1051,15 @@ export default function StudentRawDashboard({
           title="Домашние задания"
           folders={hwFolders}
           files={homeworkFiles}
+          rootFiles={hwRootFiles}
           activeFolderId={hwFolderId}
           onOpenFolder={setHwFolderId}
           canManage
-          onClose={() => { setHomeworkOpen(false); setHwFolderId(null) }}
+          canAddAtRoot
+          emptyText="Заданий пока нет. Когда преподаватель выдаст задание, оно появится здесь. Сюда же можно загрузить выполненную работу."
+          error={hwError}
+          loading={hwLoading > 0}
+          onClose={() => { setHomeworkOpen(false); setHwFolderId(null); setHwError(null) }}
           onFilePicked={handleStudentHwUpload}
           onDeleteFiles={handleStudentHwDelete}
           addLabel={hwUploading ? "Загружаем…" : "Загрузить работу"}
@@ -1028,24 +1067,34 @@ export default function StudentRawDashboard({
       )}
 
       {/* LECTORY (lime) */}
-      <section id="calls" className="st-lectory-section">
+      <section id="lectory" className="st-lectory-section">
         <div className="st-badge-wrap">
           <span className="st-badge on-light-dark-outline">
             РАСПИСАНИЕ <span className="c-red">ЛЕКТОРИЯ</span>
           </span>
         </div>
+        {lectures.length === 0 ? (
+          <div className="st-lectory-grid st-lectory-grid--empty">
+            <div className="st-lect-card st-lect-card--empty">
+              <div className="st-lect-body">
+                <div className="st-lect-title">Лекций пока нет</div>
+                <p className="st-lect-desc">{nb("Как только появится новая лекция, она будет здесь.")}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="st-lectory-grid">
           {/* MAIN — большая тёмная плашка (col 1-2, row 1) */}
-          {(() => {
+          {lecMain && (() => {
             const l = lecMain
-            const src = l ? { tag: l.tag ?? "", title: l.title, author: fromLecturer(l.host_name), desc: l.description ?? "", ...lecFmt(l.scheduled_at) } : LECTORY_MAIN
+            const src = { tag: l.tag ?? "", title: l.title, author: fromLecturer(l.host_name), desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
             return (
               <div
                 className="st-lect-card st-lect-card--main"
-                role={l ? "button" : undefined}
-                tabIndex={l ? 0 : undefined}
-                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
-                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenLecture(l as LectureForModal)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } }}
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
@@ -1061,22 +1110,27 @@ export default function StudentRawDashboard({
             )
           })()}
 
-          {/* TALL — правая колонка, spans 2 rows */}
-          {(() => {
-            const l = lecTall
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
-              : { tag: LECTORY_TALL.tag, title: LECTORY_TALL.author, desc: LECTORY_TALL.desc, time: LECTORY_TALL.time, date: LECTORY_TALL.date }
+          {/* TALL — правая колонка, spans 2 rows; SMALL 1/2 — нижний ряд. Во всех карточках — название лекции + «от Лектора». */}
+          {([
+            { l: lecTall, cls: "st-lect-card red tall" },
+            { l: lecSmall[0], cls: "st-lect-card red st-lect-card--small1" },
+            { l: lecSmall[1], cls: "st-lect-card st-lect-card--small2" },
+          ] as Array<{ l: LectureRow | null; cls: string }>).map(({ l, cls }) => {
+            if (!l) return null
+            const src = { tag: l.tag ?? "", title: l.title, author: fromLecturer(l.host_name), desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
             return (
               <div
-                className="st-lect-card red tall"
-                role={l ? "button" : undefined}
-                tabIndex={l ? 0 : undefined}
-                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
-                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
+                key={l.id}
+                className={cls}
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenLecture(l as LectureForModal)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } }}
               >
                 {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
                 <div className="st-lect-body">
                   <div className="st-lect-title">{nb(src.title)}</div>
+                  {src.author && <div className="st-lect-author st-lect-author--side">{src.author}</div>}
                   <p className="st-lect-desc">{nb(src.desc)}</p>
                 </div>
                 <div className="st-lect-foot">
@@ -1085,60 +1139,9 @@ export default function StudentRawDashboard({
                 </div>
               </div>
             )
-          })()}
-
-          {/* SMALL 1 — нижний левый */}
-          {(() => {
-            const l = lecSmall[0]
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
-              : { tag: LECTORY_LEFT.tag, title: LECTORY_LEFT.title, desc: LECTORY_LEFT.desc, time: LECTORY_LEFT.time, date: LECTORY_LEFT.date }
-            return (
-              <div
-                className="st-lect-card red"
-                role={l ? "button" : undefined}
-                tabIndex={l ? 0 : undefined}
-                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
-                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
-              >
-                {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
-                <div className="st-lect-body">
-                  <div className="st-lect-title">{nb(src.title)}</div>
-                  <p className="st-lect-desc">{nb(src.desc)}</p>
-                </div>
-                <div className="st-lect-foot">
-                  <span className="st-lect-date">{src.date}</span>
-                  <span className="st-lect-time">{src.time}</span>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* SMALL 2 — нижний средний (Figma: тёмная карточка, красный тег) */}
-          {(() => {
-            const l = lecSmall[1]
-            const src = l ? { tag: l.tag ?? "", title: l.host_name ? fromLecturer(l.host_name) : l.title, desc: l.description ?? "", ...lecFmt(l.scheduled_at) }
-              : { tag: LECTORY_RIGHT.tag, title: LECTORY_RIGHT.title, desc: LECTORY_RIGHT.desc, time: LECTORY_RIGHT.time, date: LECTORY_RIGHT.date }
-            return (
-              <div
-                className="st-lect-card"
-                role={l ? "button" : undefined}
-                tabIndex={l ? 0 : undefined}
-                onClick={l ? () => setOpenLecture(l as LectureForModal) : undefined}
-                onKeyDown={l ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenLecture(l as LectureForModal) } } : undefined}
-              >
-                {src.tag && <span className="st-lect-tag st-lect-tag--top">{src.tag}</span>}
-                <div className="st-lect-body">
-                  <div className="st-lect-title">{nb(src.title)}</div>
-                  <p className="st-lect-desc">{nb(src.desc)}</p>
-                </div>
-                <div className="st-lect-foot">
-                  <span className="st-lect-date">{src.date}</span>
-                  <span className="st-lect-time">{src.time}</span>
-                </div>
-              </div>
-            )
-          })()}
+          })}
         </div>
+        )}
       </section>
 
       {/* BALANCE + STATS */}
@@ -1169,7 +1172,11 @@ export default function StudentRawDashboard({
                   const roast = toRoastLevel(englishLevel)
                   const roastIdx = ROAST_LEVELS.indexOf(roast) + 1
                   return (
-                    <div className="st-flame-row" aria-label={`Уровень: ${roast} (${roastIdx} из 6)`}>
+                    <div
+                      className="st-flame-row"
+                      aria-label={`Уровень: ${roast} = ${fromRoastLevel(roast)} (${roastIdx} из 6)`}
+                      title={`Ваш уровень: ${roast} = ${fromRoastLevel(roast)}. ${ROAST_CEFR_HINT}`}
+                    >
                       {Array.from({ length: 6 }, (_, i) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -1208,13 +1215,12 @@ export default function StudentRawDashboard({
               </div>
               <div className="st-bal-stat">
                 <div className="st-bal-stat-label">Количество лекций</div>
-                <div className="st-bal-stat-value">3</div>
-              </div>
-              <div className="st-bal-stat">
-                <div className="st-bal-stat-label">Участие в клубах по интересам</div>
-                <div className="st-bal-stat-value">2</div>
+                <div className="st-bal-stat-value">{lecturesCount}</div>
               </div>
             </div>
+            {avatarError && (
+              <p className="st-avatar-error" role="alert">{avatarError}</p>
+            )}
 
 
           </div>
@@ -1273,7 +1279,12 @@ export default function StudentRawDashboard({
                 const src = ROAST_LEVEL_SVG[roast] ?? ROAST_LEVEL_SVG.Raw
                 return (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className="st-level-svg" src={src} alt={roast} />
+                  <img
+                    className="st-level-svg"
+                    src={src}
+                    alt={`${roast} = ${fromRoastLevel(roast)}`}
+                    title={`Ваш уровень: ${roast} = ${fromRoastLevel(roast)}. ${ROAST_CEFR_HINT}`}
+                  />
                 )
               })()}
             </div>
@@ -1336,6 +1347,9 @@ export default function StudentRawDashboard({
             <p className="st-lvl-text">В личном кабинете ваш статус прожарки обновлён на:</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="st-lvl-logo" src={(ROAST_LEVEL_MODAL[currentRoast] ?? ROAST_LEVEL_MODAL.Raw).src} alt={currentRoast} style={{ height: (ROAST_LEVEL_MODAL[currentRoast] ?? ROAST_LEVEL_MODAL.Raw).h }} />
+            <p className="st-lvl-cefr">
+              {currentRoast} = {fromRoastLevel(currentRoast)} по шкале CEFR. {ROAST_CEFR_HINT}.
+            </p>
           </div>
         </div>
       )}

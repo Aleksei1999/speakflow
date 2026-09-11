@@ -25,6 +25,8 @@ export async function GET(_request: NextRequest) {
 
     const admin = createAdminClient() as any
     const folderId = _request.nextUrl.searchParams.get('folder_id')
+    // root=1 → только файлы без папки (работы ученика, загруженные из корня модалки).
+    const rootOnly = _request.nextUrl.searchParams.get('root') === '1'
 
     const { data: shares } = await admin
       .from('material_shares')
@@ -44,6 +46,7 @@ export async function GET(_request: NextRequest) {
       .select('id, title, storage_path, file_url, mime_type, file_size, created_at, folder_id')
       .in('id', materialIds)
     if (folderId) matsQ = matsQ.eq('folder_id', folderId)
+    else if (rootOnly) matsQ = matsQ.is('folder_id', null)
     const { data: mats } = await matsQ
 
     const rows = (mats ?? []) as Array<{

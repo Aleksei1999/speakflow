@@ -3,6 +3,7 @@ import { ensureProfile } from "@/lib/auth/ensure-profile"
 import { ensureTrialRequest } from "@/lib/trial-lesson/ensure-request"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getCachedRole } from "@/lib/auth/get-role"
 import { getCachedStudentDashboard } from "@/lib/dashboard/student"
 import { fetchChatList } from "@/lib/chat/list"
@@ -77,15 +78,32 @@ export default async function StudentNewPage() {
   // Баланс в рублях (округляем копейки к рублю, для UI).
   const balance = Math.round(balanceKopecks / 100)
   const upcomingLessons = dashboard?.upcoming_lessons ?? []
-  const stats = dashboard?.stats ?? {
-    total_lessons: 0,
-    completed: 0,
-    cancelled: 0,
-    upcoming: 0,
-    completed_30d: 0,
-    month_total: 0,
-  }
 
+  // Статистика карточки баланса — считаем напрямую из таблиц, а не из RPC:
+  //   • занятия с начала года — только completed за текущий календарный год;
+  //   • лекции — сколько лекций ученик записал на себя (lecture_registrations).
+  let lessonsThisYear = 0
+  let lecturesCount = 0
+  try {
+    const admin = createAdminClient()
+    const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
+    const [{ count: lessonsCnt }, { count: lecturesCnt }] = await Promise.all([
+      admin
+        .from("lessons")
+        .select("id", { count: "exact", head: true })
+        .eq("student_id", user.id)
+        .eq("status", "completed")
+        .gte("scheduled_at", yearStart),
+      admin
+        .from("lecture_registrations")
+        .select("id", { count: "exact", head: true })
+        .eq("student_id", user.id),
+    ])
+    lessonsThisYear = lessonsCnt ?? 0
+    lecturesCount = lecturesCnt ?? 0
+  } catch (e) {
+    console.error("[student] stats counts", e)
+  }
 
   const calendarConnection = await getStudentCalendarConnection()
   // Лекторий и лекции в расписании — сразу с сервера, без мигания плейсхолдеров.
@@ -102,7 +120,8 @@ export default async function StudentNewPage() {
       englishLevel={englishLevel}
       balance={balance}
       balanceHistory={balanceHistory}
-      lessonsThisYear={stats.total_lessons}
+      lessonsThisYear={lessonsThisYear}
+      lecturesCount={lecturesCount}
       initialLessons={upcomingLessons.map((l) => ({
         id: l.id,
         scheduledAt: l.scheduled_at,

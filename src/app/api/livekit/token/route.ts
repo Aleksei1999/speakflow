@@ -1,6 +1,7 @@
 // POST /api/livekit/token  body: { lessonId: uuid } → { token, url, room, isModerator }
 
 import { NextRequest, NextResponse } from "next/server"
+import { formatEta } from "@/lib/ru/eta"
 import * as Sentry from "@sentry/nextjs"
 import { z } from "zod"
 import { requireLessonParticipant } from "@/lib/api/lesson-auth"
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (access.status === "waiting") {
     const minutesUntilJoin = Math.ceil((access.openAtMs - access.nowMs) / 60000)
     return NextResponse.json(
-      { error: `Комната откроется за ${LESSON_JOIN_WINDOW} мин до старта (через ~${minutesUntilJoin} мин)` },
+      { error: `Комната откроется за ${LESSON_JOIN_WINDOW} мин до старта (${formatEta(minutesUntilJoin)})` },
       { status: 425 }
     )
   }

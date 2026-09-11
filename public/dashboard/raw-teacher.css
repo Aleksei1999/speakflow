@@ -113,9 +113,9 @@
 .tr-nav-links li { flex: 0 0 auto; }
 .tr-nav-links li:nth-child(1) { width: 74px; }
 .tr-nav-links li:nth-child(2) { width: 150px; }
-.tr-nav-links li:nth-child(3) { width: 63px; }
+.tr-nav-links li:nth-child(3) { width: 96px; } /* «Календарь» (в макете 3-й — «Звонки» 63, 5-й — «Календарь» 96; пункты переставлены под порядок секций) */
 .tr-nav-links li:nth-child(4) { width: 58px; }
-.tr-nav-links li:nth-child(5) { width: 96px; }
+.tr-nav-links li:nth-child(5) { width: 63px; } /* «Чаты» */
 /* ховер-пилюля: lime, h48, r29.5, по центру текста (текст + 26px с каждой стороны) */
 .tr-nav-links a {
   display: flex; align-items: center; justify-content: center;

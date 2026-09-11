@@ -3,8 +3,8 @@
    Координаты от левого верха модалки (361,67 в макете):
      крестик lime 13.34 на (769,31); фото 366 на (57,57); кнопка «фото» 54 lime на (79,344) + камера 34.69×27.35 на (89,357);
      огоньки 22.5×30 на y 441, x 58 + i·27.27; контакты: подписи 15 на 537/591/645, значения 24 на +19;
-     имя 32/700 на (458,54) шириной 290; «Послений комментарий о ученике» на (458,137); комментарий 24 на (458,157) шириной 321;
-     «25» 40/700 на (457,252) + подпись на (458,295); «3» на (457,350) + подпись (458,393); «2» на (619,350) + подпись (624,393);
+     имя 32/700 на (458,54) шириной 290; «Последний комментарий об ученике» на (458,137); комментарий 24 на (458,157) шириной 321;
+     «25» 40/700 на (457,252) + подпись на (458,295); «3» на (457,350) + подпись (458,393); (клубы «2» на (619,350) убраны — нет данных);
      баланс 296×71 на (459,542): тёмная часть 130×71, «баланс:» 24 на (483,562), сумма 36/700 lime по центру 708 на 548, «рублей» 15 на (606,587);
      «Открыть расписание» 297×53 lime на (458,634)
    ============================================================ */
@@ -53,6 +53,14 @@
 .asm-field--pass { top: 645px; }
 .asm-contact-label { font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
 .asm-contact-val { margin-top: 4.4px; font-size: 24px; letter-spacing: -1.2px; line-height: 1.09; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* «пароль»: вместо декоративных точек — действие «Сбросить пароль» (тот же кегль, lime), после сброса — сам пароль + «копировать» */
+.asm-pass-reset { display: block; margin: 4.4px 0 0; padding: 0; border: 0; background: transparent; color: #DFED8C; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -1.2px; line-height: 1.09; white-space: nowrap; cursor: pointer; transition: opacity .18s; }
+.asm-pass-reset:hover:not(:disabled) { opacity: .8; }
+.asm-pass-reset:disabled { cursor: progress; opacity: .6; }
+.asm-pass-row { display: flex; align-items: baseline; gap: 14px; margin-top: 4.4px; white-space: nowrap; }
+.asm-pass-val { font-family: 'Inter', ui-monospace, monospace; font-weight: 600; font-size: 24px; letter-spacing: 0; line-height: 1.09; color: #DFED8C; user-select: all; }
+.asm-pass-copy { padding: 0; border: 0; background: transparent; color: rgba(255, 255, 255, .7); font-family: 'Inter', sans-serif; font-weight: 500; font-size: 15px; letter-spacing: -0.75px; cursor: pointer; }
+.asm-pass-copy:hover { color: #fff; }
 
 .asm-name { position: absolute; left: 458px; top: 54px; width: 290px; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -1.6px; line-height: 0.975; }
 .asm-bio-label { position: absolute; left: 458px; top: 137px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
@@ -63,10 +71,8 @@
 .asm-stat { position: absolute; }
 .asm-stat--year { left: 457px; top: 252px; }
 .asm-stat--lectures { left: 457px; top: 350px; }
-.asm-stat--clubs { left: 619px; top: 350px; }
 .asm-stat-num { height: 45px; font-size: 40px; font-weight: 700; letter-spacing: -2px; line-height: 0.8053; }
 .asm-stat-label { position: absolute; top: 43px; left: 1px; font-size: 15px; letter-spacing: -0.75px; line-height: 0.975; color: rgba(255, 255, 255, .7); white-space: nowrap; }
-.asm-stat--clubs .asm-stat-label { left: 5px; }
 
 .asm-balance-pill { position: absolute; left: 459px; top: 542px; width: 296px; height: 71px; border-radius: 29.5px; background: rgba(223, 237, 140, .36); }
 .asm-balance-cap { position: absolute; left: 0; top: 0; width: 130px; height: 71px; box-sizing: border-box; padding: 20px 0 0 24px; border-radius: 29.5px; background: rgba(30, 30, 30, .79); font-size: 24px; letter-spacing: -1.2px; line-height: 1.29; color: #fff; white-space: nowrap; }

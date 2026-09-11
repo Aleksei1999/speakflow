@@ -23,18 +23,19 @@ import { rescheduleLecture } from "./admin-actions"
 import { type AddLessonStudent, ArrowDown, CloseIcon } from "@/app/(teacher-full)/teacher/AddLessonModal"
 import { initialsOf, paletteFor } from "@/lib/ui/initials"
 import { pluralize } from "@/lib/ru/plural"
-import { useClock, levelLabel } from "@/lib/dashboard-ui"
+import { useClock } from "@/lib/dashboard-ui"
 
 /* Admin Dashboard — Figma «Администратор RAW english» (file YSwlSQF1n6QIpGTOohlMOd,
    node 2208:1206). CSS scope: `.ad`. */
 
+// Порядок пунктов = порядок секций на странице (#schedule → #library → #chats → #teachers → #students → #leads).
 const NAV = [
   { href: "#schedule", label: "Занятия и расписание" },
   { href: "#library", label: "Библиотека" },
-  { href: "#leads", label: "Лиды" },
-  { href: "#chats", label: "Звонки" },
+  { href: "#chats", label: "Чаты" },
   { href: "#teachers", label: "Учителя" },
   { href: "#students", label: "Ученики" },
+  { href: "#leads", label: "Заявки" },
 ]
 const APPLICATIONS_VISIBLE = 3
 
@@ -225,12 +226,15 @@ export default function AdminRawDashboard({
   const [calendarOpen, setCalendarOpen] = useState(false)
   // Полный календарь можно открыть по одному учителю (карточка учителя, оверлей «Назначить учителя»).
   const [calendarTeacher, setCalendarTeacher] = useState<{ userId: string; name: string } | null>(null)
-  const openTeacherCalendar = (userId: string, name: string) => { setCalendarTeacher({ userId, name }); setCalendarOpen(true) }
-  const closeCalendar = () => { setCalendarOpen(false); setCalendarTeacher(null) }
+  const openTeacherCalendar = (userId: string, name: string) => { setCalendarStudent(null); setCalendarTeacher({ userId, name }); setCalendarOpen(true) }
+  // …и по одному ученику (карточка ученика → «Открыть расписание»).
+  const [calendarStudent, setCalendarStudent] = useState<{ studentId: string; name: string } | null>(null)
+  const openStudentCalendar = (studentId: string, name: string) => { setCalendarTeacher(null); setCalendarStudent({ studentId, name }); setCalendarOpen(true) }
+  const closeCalendar = () => { setCalendarOpen(false); setCalendarTeacher(null); setCalendarStudent(null) }
   const [addTeacherOpen, setAddTeacherOpen] = useState(false)
   useEffect(() => {
     if (!calendarOpen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCalendarOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setCalendarOpen(false); setCalendarTeacher(null); setCalendarStudent(null) } }
     document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
@@ -650,7 +654,7 @@ export default function AdminRawDashboard({
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="/dashboard/raw-admin.css?v=20260909-ban"
+        href="/dashboard/raw-admin.css?v=20260911-nav"
       />
       {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link rel="stylesheet" href="/dashboard/shared-pills.css?v=20260908-arrow2" />
@@ -659,7 +663,7 @@ export default function AdminRawDashboard({
       {/* teacher-css нужен для .tr-add-lesson-* (модалка «Добавить событие»
           у админа переиспользует UI из teacher). */}
       {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260909-sort" />
+      <link rel="stylesheet" href="/dashboard/raw-teacher.css?v=20260911-nav" />
 
       {/* HERO: nav + dark card holding SCHEDULE */}
       <div className="ad-hero">
@@ -905,7 +909,7 @@ export default function AdminRawDashboard({
                       ))}
                     </div>
                     <div className="ad-teacher-meta">о преподавателе</div>
-                    <div className="ad-teacher-desc">{nb((t as { bio?: string | null }).bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
+                    <TeacherBio bio={(t as { bio?: string | null }).bio} />
                     <button
                       type="button"
                       className="ad-teacher-edit"
@@ -1004,7 +1008,7 @@ export default function AdminRawDashboard({
                         <span key={i} className="tr-stu-name-line">{part}</span>
                       ))}
                     </div>
-                    <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                    <span className="tr-stu-lvl">{s.level}</span>
                   </div>
                 ))}
               </div>
@@ -1093,7 +1097,7 @@ export default function AdminRawDashboard({
                               <img src="/dashboard/apps/edit-level-pencil-lime.svg" width={30} height={29.97} alt="" aria-hidden />
                             </button>
                           )}
-                          <span className="tr-app-lvl">{levelLabel(displayLevel)}</span>
+                          <span className="tr-app-lvl">{displayLevel}</span>
                         </>
                       )}
                       <button
@@ -1385,7 +1389,7 @@ export default function AdminRawDashboard({
                           <span key={i} className="tr-stu-name-line">{part}</span>
                         ))}
                       </div>
-                      <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                      <span className="tr-stu-lvl">{s.level}</span>
                     </div>
                   ))}
                 </div>
@@ -1449,7 +1453,7 @@ export default function AdminRawDashboard({
                           ))}
                         </div>
                         <div className="ad-teacher-meta">о преподавателе</div>
-                        <div className="ad-teacher-desc">{nb((t as { bio?: string | null }).bio || "Сколько учеников, какой доход, какая маржа, сколько уроков...")}</div>
+                        <TeacherBio bio={(t as { bio?: string | null }).bio} />
                       </div>
                       <button
                         type="button"
@@ -1528,10 +1532,10 @@ export default function AdminRawDashboard({
           seedName={studentModal.name}
           seedAvatar={studentModal.avatar}
           onClose={() => setStudentModal(null)}
-          onOpenSchedule={() => {
+          onOpenSchedule={(id) => {
+            const nm = studentModal.name
             setStudentModal(null)
-            const el = typeof document !== "undefined" ? document.getElementById("schedule") : null
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+            openStudentCalendar(id, nm)
           }}
         />
       )}
@@ -1541,18 +1545,23 @@ export default function AdminRawDashboard({
       {/* Полный календарь: все ближайшие уроки и события всех учеников и учителей, листается */}
       {calendarOpen && (
         <div className="ad-cal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closeCalendar() }}>
-            <div className="ad-cal" role="dialog" aria-modal="true" aria-label={calendarTeacher ? `Расписание: ${calendarTeacher.name}` : "Полное расписание"}>
+            <div className="ad-cal" role="dialog" aria-modal="true" aria-label={calendarTeacher ? `Расписание: ${calendarTeacher.name}` : calendarStudent ? `Расписание: ${calendarStudent.name}` : "Полное расписание"}>
               <button type="button" className="ad-cal-close" aria-label="Закрыть" onClick={closeCalendar}>
                 <img src="/dashboard/ic-close-lime.svg" alt="" aria-hidden />
               </button>
               <div className="ad-cal-title">Расписание</div>
               {(() => {
-                const rows = calendarTeacher ? allScheduleView.filter((l) => l.teacherUserId === calendarTeacher.userId) : allScheduleView
+                const rows = calendarTeacher
+                  ? allScheduleView.filter((l) => l.teacherUserId === calendarTeacher.userId)
+                  : calendarStudent
+                    ? allScheduleView.filter((l) => l.studentId === calendarStudent.studentId)
+                    : allScheduleView
+                const who = calendarTeacher?.name ?? calendarStudent?.name
                 return (
                   <>
-                    <div className="ad-cal-sub">{calendarTeacher ? `${calendarTeacher.name} · ${rows.length}` : `все ученики и учителя · ${rows.length}`}</div>
+                    <div className="ad-cal-sub">{who ? `${who} · ${rows.length}` : `все ученики и учителя · ${rows.length}`}</div>
                     {rows.length === 0 ? (
-                      <div className="ad-cal-empty">{calendarTeacher ? "У преподавателя нет ближайших уроков" : "Ближайших уроков и событий нет"}</div>
+                      <div className="ad-cal-empty">{calendarTeacher ? "У преподавателя нет ближайших уроков" : calendarStudent ? "У ученика нет ближайших уроков" : "Ближайших уроков и событий нет"}</div>
                     ) : (
                       <CustomScroll className="ad-cal-list" track={692} ariaLabel="Полное расписание">
                         <div className="ad-schedule ad-schedule--cal">{rows.map(renderScheduleRow)}</div>
@@ -1646,7 +1655,7 @@ export default function AdminRawDashboard({
                               <span key={i} className="tr-stu-name-line">{part}</span>
                             ))}
                           </div>
-                          <span className="tr-stu-lvl">{levelLabel(s.level)}</span>
+                          <span className="tr-stu-lvl">{s.level}</span>
                         </div>
                       </button>
                     )
@@ -1825,6 +1834,14 @@ export default function AdminRawDashboard({
  * фото (input type=file → Supabase Storage `avatars` → PATCH avatar_url).
  * Стрелки ← → переключают на соседнего учителя из carousel'а.
  */
+/** Описание преподавателя на карточке: пустое bio → приглушённое «Описание не заполнено» (никаких плейсхолдеров-заглушек). */
+function TeacherBio({ bio }: { bio?: string | null }) {
+  const text = (bio ?? "").trim()
+  return text
+    ? <div className="ad-teacher-desc">{nb(text)}</div>
+    : <div className="ad-teacher-desc ad-teacher-desc--empty">Описание не заполнено</div>
+}
+
 function TeacherDetailModal({
   teacherId,
   fallbackName,
@@ -1957,6 +1974,13 @@ function TeacherDetailModal({
     }
   }
 
+  // Esc → закрыть карточку учителя (как у остальных модалок).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
   const name = data?.full_name ?? fallbackName
   const avatar = avatarOverride ?? data?.avatar_url ?? fallbackAvatar
 
@@ -2010,7 +2034,7 @@ function TeacherDetailModal({
           ref={bioRef}
           className="ad-tmodal-desc ad-tmodal-edit"
           value={bioValue}
-          placeholder="Сколько учеников, какой доход, какая маржа, сколько уроков..."
+          placeholder="Описание не заполнено"
           onChange={(e) => setBioDraft(e.target.value.slice(0, 500))}
           onBlur={() => { const v = (bioDraft ?? data?.bio ?? "").trim(); setBioDraft(null); if (v !== (data?.bio ?? "")) void saveField("bio", v) }}
           aria-label="Описание преподавателя"
@@ -2070,6 +2094,14 @@ function EventPickerAndForms({
   onClose: () => void
 }) {
   const [stage, setStage] = useState<'initial' | 'picker' | 'lesson' | 'lecture'>('initial')
+
+  // Esc на стартовой модалке и на picker'е → закрыть весь флоу (формы урока/лекции ловят Esc сами).
+  useEffect(() => {
+    if (stage !== 'initial' && stage !== 'picker') return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [stage, onClose])
 
   if (stage === 'lesson') {
     return <AdminAddLessonModal students={students} onClose={onClose} />
