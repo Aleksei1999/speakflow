@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const publicRoutes = ['/', '/teachers', '/privacy', '/oferta']
-// Публичные префиксы (каталог преподавателей)
-const publicPrefixes = ['/teachers']
+const publicRoutes = ['/', '/privacy', '/oferta']
 const authRoutes = ['/login', '/register', '/forgot-password']
 // /forgot-password и /reset-password обязаны быть доступны и
 // залогиненным юзерам (смена пароля из /settings, recovery-flow при
@@ -24,11 +22,6 @@ export async function proxy(request: NextRequest) {
 
   // Allow public routes, API, and static
   if (publicRoutes.some(route => path === route) || path.startsWith('/api/')) {
-    return supabaseResponse
-  }
-
-  // Allow /teachers/* (catalog) as public
-  if (publicPrefixes.some((p) => path.startsWith(p))) {
     return supabaseResponse
   }
 
