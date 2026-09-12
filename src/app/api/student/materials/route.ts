@@ -132,12 +132,18 @@ export async function GET(request: NextRequest) {
     }
 
     const sliced = filtered.slice(0, limit)
-    const paths = sliced
+    const allPaths = sliced
       .map((r) => r.storage_path)
       .filter((p): p is string => !!p)
+    // Файлы, загруженные на уроке, лежат в приватном bucket lesson-files (пути lessons/<id>/…).
+    const paths = allPaths.filter((p) => !p.startsWith('lessons/'))
+    const lessonPaths = allPaths.filter((p) => p.startsWith('lessons/'))
 
     // Signed URLs via helper: TTL clamped to [60, 3600] (default 3600s).
-    const signedMap = await createSignedUrlMap(supabase, BUCKET, paths)
+    const signedMap = {
+      ...(await createSignedUrlMap(supabase, BUCKET, paths)),
+      ...(lessonPaths.length ? await createSignedUrlMap(supabase, 'lesson-files', lessonPaths) : {}),
+    }
 
     const materials = sliced.map((r) => ({
       id: r.id,

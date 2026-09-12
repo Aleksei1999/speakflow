@@ -20,6 +20,7 @@ import { verifyFileType } from '@/lib/api/file-upload'
 import { randomUUID } from 'node:crypto'
 
 import { createClient } from '@/lib/supabase/server'
+import { assertRateLimit, getClientIpFromHeaders } from '@/lib/api/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createSignedUrl } from '@/lib/supabase/signed-url'
 import type { GroupAttachmentType, GroupChatRole, GroupMessage, GroupMessageRow } from './types'
@@ -189,6 +190,7 @@ export async function sendGroupMessage(
   if (!trimmed) throw new Error('Empty message')
   if (trimmed.length > 4000) throw new Error('Сообщение длиннее 4000 символов')
   const { userId, role } = await requireUser()
+  await assertRateLimit({ name: 'groupchat:send', keyParts: [userId, await getClientIpFromHeaders()], max: 30, windowSeconds: 60, message: 'Слишком много сообщений. Подождите минуту.' })
 
   const admin = createAdminClient() as UntypedSupabase
   await assertParticipant(admin, groupId, userId)
@@ -252,6 +254,7 @@ export async function uploadGroupAttachment(
   if (verified instanceof NextResponse) throw new Error('Этот тип файла не поддерживается')
   const kind: GroupAttachmentType = verified.mimeType.startsWith('image/') ? 'image' : verified.mimeType.startsWith('video/') ? 'video' : 'document'
   const { userId, role } = await requireUser()
+  await assertRateLimit({ name: 'groupchat:upload', keyParts: [userId, await getClientIpFromHeaders()], max: 10, windowSeconds: 60, message: 'Слишком много файлов подряд. Подождите минуту.' })
 
   const admin = createAdminClient() as UntypedSupabase
   await assertParticipant(admin, groupId, userId)

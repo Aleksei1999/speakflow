@@ -33,7 +33,7 @@ function RegisterPageContent() {
 
     if (password.length < PASSWORD_MIN) { setErr(`Пароль должен быть не короче ${PASSWORD_MIN} символов`); return }
     if (password !== password2) { setErr('Пароли не совпадают'); return }
-    if (!agree) { setErr('Нужно согласие на обработку данных'); return }
+    if (!agree) { setErr('Нужно согласие с офертой, обработкой данных и записью занятий'); return }
 
     setBusy(true)
     try {
@@ -119,7 +119,7 @@ function RegisterPageContent() {
               <TurnstileWidget onToken={setCaptchaToken} />
               <button type="submit" className="btn btn-red" disabled={busy}>{busy ? 'Регистрируем…' : 'Зарегистрироваться'}</button>
               {err && <p className="raw2-login-err">{err}</p>}
-              <label className="raw2-check"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>Согласен с обработкой персональных данных</span></label>
+              <label className="raw2-check raw2-check--long"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>Согласен с <Link href="/oferta" target="_blank">офертой</Link>, <Link href="/privacy" target="_blank">обработкой данных</Link> и&nbsp;аудиозаписью занятий для&nbsp;конспекта</span></label>
               <label className="raw2-check"><input type="checkbox" checked={marketing} onChange={e => setMarketing(e.target.checked)} /><span>Согласен получать рекламные материалы</span></label>
               <Link href="/login" className="raw2-login-reg">Уже есть аккаунт? Войти</Link>
             </form>

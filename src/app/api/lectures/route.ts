@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
 
     const fd = await request.formData()
     const title = String(fd.get('title') ?? '').trim()
-    const hostName = String(fd.get('host_name') ?? '').trim() || null
+    let hostName = String(fd.get('host_name') ?? '').trim() || null
+    const hostUserIdRaw = String(fd.get('host_user_id') ?? '').trim() || null
     const description = String(fd.get('description') ?? '').trim() || null
     const tag = String(fd.get('tag') ?? '').trim() || null
     const scheduledAt = String(fd.get('scheduled_at') ?? '').trim()
@@ -55,6 +56,15 @@ export async function POST(request: NextRequest) {
     }
     if (duration < 15 || duration > 300) {
       return NextResponse.json({ error: 'Длительность от 15 до 300 минут' }, { status: 400 })
+    }
+    // Ведущий — конкретный преподаватель, а не строка с именем: по id выдаём права в комнате.
+    let hostUserId: string | null = null
+    if (hostUserIdRaw) {
+      if (!/^[0-9a-f-]{36}$/i.test(hostUserIdRaw)) return NextResponse.json({ error: 'Некорректный ведущий' }, { status: 400 })
+      const { data: hostProf } = await createAdminClient().from('profiles').select('id, full_name, role').eq('id', hostUserIdRaw).maybeSingle()
+      if (!hostProf || (hostProf as any).role !== 'teacher') return NextResponse.json({ error: 'Ведущий должен быть преподавателем' }, { status: 400 })
+      hostUserId = (hostProf as any).id
+      hostName = hostName ?? ((hostProf as any).full_name || null)
     }
     if (price < 0) {
       return NextResponse.json({ error: 'Цена не может быть отрицательной' }, { status: 400 })
@@ -88,6 +98,7 @@ export async function POST(request: NextRequest) {
       .insert({
         title,
         host_name: hostName,
+        host_user_id: hostUserId,
         description,
         tag,
         scheduled_at: new Date(scheduledAt).toISOString(),
@@ -108,9 +119,9 @@ export async function POST(request: NextRequest) {
 
     // Лекция в Google-календарь ведущего (учитель с таким именем и подключённым календарём), fail-soft
     try {
-      const hostUserId = await lectureHostUserId(hostName)
-      if (hostUserId) {
-        await pushLectureToGoogle(hostUserId, { id: inserted.id, title, host_name: hostName, scheduled_at: new Date(scheduledAt).toISOString(), duration_minutes: duration, tag })
+      const calendarHost = await lectureHostUserId({ host_name: hostName, host_user_id: hostUserId })
+      if (calendarHost) {
+        await pushLectureToGoogle(calendarHost, { id: inserted.id, title, host_name: hostName, host_user_id: hostUserId, scheduled_at: new Date(scheduledAt).toISOString(), duration_minutes: duration, tag })
       }
     } catch (e) {
       console.error('[lectures POST] Google push failed', e)

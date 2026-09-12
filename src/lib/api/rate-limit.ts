@@ -3,6 +3,7 @@
 // (локалка без Upstash, smoke-тесты).
 
 import { NextRequest, NextResponse } from "next/server"
+import { headers } from "next/headers"
 import { Ratelimit } from "@upstash/ratelimit"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getRedis } from "@/lib/redis"
@@ -93,6 +94,43 @@ async function postgresCheck(
   return { allowed: data !== false }
 }
 
+export type RateLimitCheck =
+  | { allowed: true }
+  | { allowed: false; retryAfterSec: number; limit: number; remaining: number; reset: number | null }
+  | { allowed: null; reason: string }
+
+/**
+ * Низкоуровневая проверка без привязки к NextRequest — для роутов и server actions.
+ * allowed: true — пропускаем; false — лимит исчерпан; null — инфраструктура лимитера недоступна
+ * (решение fail-open/closed принимает вызывающий).
+ */
+export async function checkRateLimit(opts: Omit<RateLimitOptions, "failMode">): Promise<RateLimitCheck> {
+  const bucketKey = [opts.name, ...opts.keyParts.filter(Boolean)].join(":")
+
+  const limiter = getLimiter(opts.max, opts.windowSeconds)
+  if (limiter) {
+    try {
+      const res = await limiter.limit(bucketKey)
+      if (res.success) return { allowed: true }
+      // `reset` — Unix ms timestamp когда лимит сбросится.
+      const retryAfterSec = Math.max(1, Math.ceil((res.reset - Date.now()) / 1000))
+      return { allowed: false, retryAfterSec, limit: res.limit, remaining: Math.max(0, res.remaining), reset: res.reset }
+    } catch (e: any) {
+      return { allowed: null, reason: `upstash crashed: ${e?.message ?? e}` }
+    }
+  }
+
+  // Fallback: Postgres RPC
+  try {
+    const { allowed, error } = await postgresCheck(bucketKey, opts.max, opts.windowSeconds)
+    if (error) return { allowed: null, reason: error }
+    if (allowed) return { allowed: true }
+    return { allowed: false, retryAfterSec: Math.ceil(opts.windowSeconds / 2), limit: opts.max, remaining: 0, reset: null }
+  } catch (e: any) {
+    return { allowed: null, reason: `postgres crashed: ${e?.message ?? e}` }
+  }
+}
+
 /**
  * Returns null if the request is allowed.
  * Returns a 429 NextResponse if the limit was exceeded — the caller should
@@ -107,78 +145,52 @@ export async function enforceRateLimit(
   opts: RateLimitOptions
 ): Promise<NextResponse | null> {
   const failMode = opts.failMode ?? "open"
-  const onFailure = (reason: string) => {
+  const res = await checkRateLimit(opts)
+  if (res.allowed === true) return null
+  if (res.allowed === null) {
     if (failMode === "open") {
-      console.warn(`[rate-limit] ${reason}, failing open (${opts.name})`)
+      console.warn(`[rate-limit] ${res.reason}, failing open (${opts.name})`)
       return null
     }
-    console.warn(`[rate-limit] ${reason}, failing closed (${opts.name})`)
+    console.warn(`[rate-limit] ${res.reason}, failing closed (${opts.name})`)
     return NextResponse.json(
       { error: "Сервис временно недоступен. Попробуй чуть позже." },
       { status: 503, headers: { "Retry-After": "30" } }
     )
   }
-
-  const bucketKey = [opts.name, ...opts.keyParts.filter(Boolean)].join(":")
-
-  const limiter = getLimiter(opts.max, opts.windowSeconds)
-  if (limiter) {
-    try {
-      const res = await limiter.limit(bucketKey)
-      if (res.success) return null
-      // Block. `reset` — Unix ms timestamp когда лимит сбросится.
-      const retryAfterSec = Math.max(
-        1,
-        Math.ceil((res.reset - Date.now()) / 1000)
-      )
-      return NextResponse.json(
-        {
-          error: "Слишком много попыток. Попробуй через минуту.",
-          retry_after: retryAfterSec,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSec),
-            "X-RateLimit-Limit": String(res.limit),
-            "X-RateLimit-Remaining": String(Math.max(0, res.remaining)),
-            "X-RateLimit-Reset": String(Math.floor(res.reset / 1000)),
-            "X-RateLimit-Window": String(opts.windowSeconds),
-          },
-        }
-      )
-    } catch (e: any) {
-      return onFailure(`upstash crashed: ${e?.message ?? e}`)
-    }
+  const headers: Record<string, string> = {
+    "Retry-After": String(res.retryAfterSec),
+    "X-RateLimit-Limit": String(res.limit),
+    "X-RateLimit-Remaining": String(res.remaining),
+    "X-RateLimit-Window": String(opts.windowSeconds),
   }
+  if (res.reset) headers["X-RateLimit-Reset"] = String(Math.floor(res.reset / 1000))
+  return NextResponse.json(
+    { error: "Слишком много попыток. Попробуй через минуту.", retry_after: res.retryAfterSec },
+    { status: 429, headers }
+  )
+}
 
-  // Fallback: Postgres RPC
-  try {
-    const { allowed, error } = await postgresCheck(
-      bucketKey,
-      opts.max,
-      opts.windowSeconds
-    )
-    if (error) return onFailure(error)
-    if (allowed) return null
-    const retryAfter = Math.ceil(opts.windowSeconds / 2)
-    return NextResponse.json(
-      {
-        error: "Слишком много попыток. Попробуй через минуту.",
-        retry_after: retryAfter,
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfter),
-          "X-RateLimit-Limit": String(opts.max),
-          "X-RateLimit-Window": String(opts.windowSeconds),
-        },
-      }
-    )
-  } catch (e: any) {
-    return onFailure(`postgres crashed: ${e?.message ?? e}`)
+/**
+ * Для server actions (нет NextRequest): бросает Error с человеческим текстом,
+ * когда лимит исчерпан. При недоступности лимитера — пропускает (fail-open).
+ */
+export async function assertRateLimit(opts: Omit<RateLimitOptions, "failMode"> & { message?: string }): Promise<void> {
+  const res = await checkRateLimit(opts)
+  if (res.allowed === true) return
+  if (res.allowed === null) {
+    console.warn(`[rate-limit] ${res.reason}, failing open (${opts.name})`)
+    return
   }
+  throw new Error(opts.message ?? "Слишком много запросов. Подождите минуту.")
+}
+
+/** IP клиента внутри server action — из заголовков запроса (next/headers). */
+export async function getClientIpFromHeaders(): Promise<string> {
+  const h = await headers()
+  const xff = h.get("x-forwarded-for")
+  if (xff) return xff.split(",")[0].trim()
+  return h.get("x-real-ip")?.trim() || h.get("cf-connecting-ip")?.trim() || "unknown"
 }
 
 /** Для security-critical (auth/payment/admin/cron) — fail-closed. */

@@ -1,6 +1,6 @@
 // Загрузка файла урока. IMPORTANT: userId/teacher_id берутся из гейта, не из
 // body; bucket должен существовать заранее (авто-создание из handler'а делало
-// его публичным); material row приватная (is_public: false), чтение — signed URL.
+// его публичным); bucket приватный, material row приватная (is_public: false), чтение — signed URL.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
@@ -12,6 +12,7 @@ import {
 } from '@/lib/api/file-upload'
 import { enforceRateLimitStrict, getClientIp } from '@/lib/api/rate-limit'
 import { logAuditEvent } from '@/lib/audit/log'
+import { createSignedUrl } from '@/lib/supabase/signed-url'
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 const BUCKET = 'lesson-files'
@@ -130,9 +131,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg || 'Upload failed' }, { status: 500 })
     }
 
-    // Public URL храним для parity с другими роутами; `is_public: false` держит row закрытой.
-    const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path)
-
     // teacher_id из гейта, не из body; admin — lesson.teacher_id.
     const teacherId = teacherProfileId ?? lesson.teacher_id
     if (!teacherId) {
@@ -147,7 +145,8 @@ export async function POST(request: NextRequest) {
       teacher_id: teacherId,
       title: title || safeName,
       description: `${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
-      file_url: urlData.publicUrl,
+      // Bucket приватный: ссылка строится подписью по storage_path при чтении.
+      file_url: '',
       storage_path: path,
       mime_type: resolvedMime,
       file_size: file.size ?? null,
@@ -165,7 +164,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: matError.message }, { status: 500 })
     }
 
-    return NextResponse.json(mat)
+    const { signedUrl } = await createSignedUrl(admin, BUCKET, path).catch(() => ({ signedUrl: null }))
+    return NextResponse.json({ ...mat, signed_url: signedUrl ?? null })
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || 'Upload failed' },

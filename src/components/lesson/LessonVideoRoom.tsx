@@ -10,7 +10,7 @@
    Никаких stats, sidebar, homework карточек.
    ============================================================ */
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 
@@ -21,6 +21,19 @@ import LessonNotesModal from "@/components/lesson/LessonNotesModal"
 import ChatModal, { CALL_MARKERS } from "@/components/dashboard/ChatModal"
 import { sendMessage as sendChatMessage } from "@/lib/chat/actions"
 import { useLessonRecorder } from "@/components/lesson/use-lesson-recorder"
+
+// Подтверждение уведомления о записи — в localStorage; в приватном режиме держим в памяти на время вкладки.
+const REC_NOTICE_KEY = "lvr:rec-notice-ack"
+let recNoticeAckedInMemory = false
+const recNoticeListeners = new Set<() => void>()
+function subscribeRecNotice(cb: () => void) {
+  recNoticeListeners.add(cb)
+  return () => { recNoticeListeners.delete(cb) }
+}
+function readRecNoticeOpen(): boolean {
+  if (recNoticeAckedInMemory) return false
+  try { return !localStorage.getItem(REC_NOTICE_KEY) } catch { return true }
+}
 
 const LiveKitLessonStage = dynamic(
   () => import("@/components/lesson/livekit-stage").then((m) => m.LiveKitLessonStage),
@@ -68,6 +81,13 @@ export default function LessonVideoRoom({
   const onRoom = useCallback((room: import("livekit-client").Room | null) => setLkRoom(room), [])
   const [left, setLeft] = useState(false)
   const [recRetry, setRecRetry] = useState(0)
+  // Уведомление о записи: показываем при первом входе в комнату, пока пользователь не нажмёт «Понятно».
+  const recNoticeOpen = useSyncExternalStore(subscribeRecNotice, readRecNoticeOpen, () => false)
+  const ackRecNotice = () => {
+    try { localStorage.setItem(REC_NOTICE_KEY, new Date().toISOString()) } catch { /* private mode */ }
+    recNoticeAckedInMemory = true
+    for (const l of recNoticeListeners) l()
+  }
   const recorder = useLessonRecorder({
     lessonId,
     isTeacher,
@@ -161,9 +181,16 @@ export default function LessonVideoRoom({
 
   return (
     <>
-      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260910-rec" />
+      <link rel="stylesheet" href="/lesson/lesson-room.css?v=20260912-notice" />
       <div className="lvr">
        <div className="lvr-canvas" style={{ zoom: roomZoom }}>
+        {recNoticeOpen && !left && (
+          <div className="lvr-notice" role="dialog" aria-live="polite" aria-label="Урок записывается">
+            <span className="lvr-rec-dot" aria-hidden />
+            <p>Урок записывается в аудио: по записи составляются конспект и ревью для вас и преподавателя. Аудио удаляется после подготовки конспекта.</p>
+            <button type="button" className="lvr-notice-btn" onClick={ackRecNotice}>Понятно</button>
+          </div>
+        )}
         <div className="lvr-topbar">
           <a href="/" className="lvr-logo" aria-label="Raw English">
             {/* eslint-disable-next-line @next/next/no-img-element */}

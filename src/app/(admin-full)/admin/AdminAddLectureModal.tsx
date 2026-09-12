@@ -45,9 +45,11 @@ export default function AdminAddLectureModal({ onClose }: Props) {
 
   const [state, setState] = useState<State>('empty')
   const [title, setTitle] = useState('')
-  // host — имя выбранного преподавателя (сохраняется в lectures.host_name).
+  // host — имя выбранного преподавателя (lectures.host_name), hostUserId — его id (lectures.host_user_id):
+  // по id ведущий получает права в комнате лекции.
   const [host, setHost] = useState('')
-  const [teachers, setTeachers] = useState<Array<{ key: string; label: string }>>([])
+  const [teachers, setTeachers] = useState<Array<{ key: string; label: string; userId: string }>>([])
+  const hostUserId = teachers.find((t) => t.key === host)?.userId ?? null
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -57,8 +59,8 @@ export default function AdminAddLectureModal({ onClose }: Props) {
         const j = await r.json()
         if (cancelled) return
         const rows = ((j.teachers ?? []) as any[])
-          .map((t) => ({ key: String(t.name ?? '').trim(), label: String(t.name ?? '').trim() }))
-          .filter((t) => t.key.length > 0)
+          .map((t) => ({ key: String(t.name ?? '').trim(), label: String(t.name ?? '').trim(), userId: String(t.userId ?? '') }))
+          .filter((t) => t.key.length > 0 && t.userId.length > 0)
         setTeachers(rows)
       } catch (e) { console.error('[lecture modal] teachers', e) }
     })()
@@ -137,6 +139,7 @@ export default function AdminAddLectureModal({ onClose }: Props) {
       const fd = new FormData()
       fd.append('title', title.trim())
       if (host.trim()) fd.append('host_name', host.trim())
+      if (hostUserId) fd.append('host_user_id', hostUserId)
       if (desc.trim()) fd.append('description', desc.trim())
       fd.append('scheduled_at', dt.toISOString())
       fd.append('slot', 'small')

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient() as any
   const { data: lecture } = await admin
     .from("lectures")
-    .select("id, scheduled_at, duration_minutes, is_published, host_name")
+    .select("id, scheduled_at, duration_minutes, is_published, host_name, host_user_id")
     .eq("id", lectureId)
     .maybeSingle()
   if (!lecture || lecture.is_published === false) {
@@ -76,7 +76,12 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   const isModerator = prof?.role === "admin"
   // Ученик заходит только по записи; учитель/админ — ведущие.
-  const isHost = prof?.role === "teacher" && !!lecture.host_name && nameKey(prof.full_name ?? "") === nameKey(lecture.host_name)
+  // Ведущий — по host_user_id; у старых лекций без него — по совпадению имени.
+  const isHost =
+    prof?.role === "teacher" &&
+    (lecture.host_user_id
+      ? lecture.host_user_id === user.id
+      : !!lecture.host_name && nameKey(prof.full_name ?? "") === nameKey(lecture.host_name))
   if (prof?.role !== "admin" && !isHost) {
     const { data: reg } = await admin
       .from("lecture_registrations")

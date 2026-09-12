@@ -35,7 +35,7 @@ export async function rescheduleLecture(input: {
   if (error) return { ok: false, error: `update lectures: ${error.message}` }
   // Двигаем событие лекции в календарях ведущего и записавшихся учеников (fail-soft)
   try {
-    const { data: lec } = await admin.from('lectures').select('id, title, host_name, scheduled_at, duration_minutes, tag').eq('id', input.lectureId).maybeSingle()
+    const { data: lec } = await admin.from('lectures').select('id, title, host_name, host_user_id, scheduled_at, duration_minutes, tag').eq('id', input.lectureId).maybeSingle()
     if (lec) await updateLectureInGoogle(lec)
   } catch (e) {
     console.error('[rescheduleLecture] Google update failed', e)
@@ -52,7 +52,7 @@ export async function deleteLecture(input: { lectureId: string }): Promise<Resch
   const admin = createAdminClient() as unknown as UntypedSupabase
   // Сначала убираем событие из календарей (после удаления строки уже не узнать ведущего и записавшихся)
   try {
-    const { data: lec } = await admin.from('lectures').select('id, title, host_name, scheduled_at, duration_minutes, tag').eq('id', input.lectureId).maybeSingle()
+    const { data: lec } = await admin.from('lectures').select('id, title, host_name, host_user_id, scheduled_at, duration_minutes, tag').eq('id', input.lectureId).maybeSingle()
     if (lec) await deleteLectureFromGoogle(lec)
   } catch (e) {
     console.error('[deleteLecture] Google delete failed', e)

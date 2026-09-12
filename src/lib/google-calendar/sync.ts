@@ -194,16 +194,22 @@ export function withTimeout<T>(p: Promise<T>, timeoutMs: number): Promise<T | nu
 
 // ------------------------------- Лекции -------------------------------
 
-interface LectureLike { id: string; title: string; host_name: string | null; scheduled_at: string; duration_minutes: number | null; tag?: string | null }
+interface LectureLike { id: string; title: string; host_name: string | null; host_user_id?: string | null; scheduled_at: string; duration_minutes: number | null; tag?: string | null }
 
-/** Учитель-ведущий лекции по host_name (у лекций нет id ведущего). Возвращает user_id, если календарь подключён. */
-export async function lectureHostUserId(hostName: string | null): Promise<string | null> {
-  if (!hostName) return null
+/** Учитель-ведущий лекции: по host_user_id, для старых лекций без него — по совпадению имени. */
+export async function resolveLectureHost(l: Pick<LectureLike, 'host_name' | 'host_user_id'>): Promise<string | null> {
+  if (l.host_user_id) return l.host_user_id
+  if (!l.host_name) return null
   const admin = createAdminClient() as Db
   // Имя ведущего сравниваем через nameKey (кириллица/латиница, порядок слов) — как в списке лекций.
   const { data } = await admin.from('profiles').select('id, full_name').eq('role', 'teacher')
-  const key = nameKey(hostName)
-  const userId = ((data ?? []) as Array<{ id: string; full_name: string | null }>).find((p) => nameKey(p.full_name ?? '') === key)?.id
+  const key = nameKey(l.host_name)
+  return ((data ?? []) as Array<{ id: string; full_name: string | null }>).find((p) => nameKey(p.full_name ?? '') === key)?.id ?? null
+}
+
+/** Ведущий лекции с подключённым Google-календарём (иначе null). */
+export async function lectureHostUserId(l: Pick<LectureLike, 'host_name' | 'host_user_id'>): Promise<string | null> {
+  const userId = await resolveLectureHost(l)
   if (!userId) return null
   const conn = await hasGoogleCalendar(userId)
   return conn.connected ? userId : null
@@ -238,7 +244,7 @@ async function findLectureEventIds(userId: string, lectureId: string): Promise<s
 async function lectureCalendarUsers(l: LectureLike): Promise<string[]> {
   const admin = createAdminClient() as Db
   const ids = new Set<string>()
-  const host = await lectureHostUserId(l.host_name)
+  const host = await lectureHostUserId(l)
   if (host) ids.add(host)
   const { data: regs } = await admin.from('lecture_registrations').select('student_id').eq('lecture_id', l.id)
   for (const r of (regs ?? []) as Array<{ student_id: string }>) {

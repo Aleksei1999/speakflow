@@ -695,6 +695,9 @@ html:has(.raw2) { scroll-behavior: smooth; scroll-padding-top: 120px; }
    Inter 400 20px / -1px / 97.5%; первый ряд 32px под кнопкой (gap 25 + 7), шаг рядов 34 (21 + 13) */
 .raw2-login-form .raw2-check { width: 424px; max-width: 100%; white-space: nowrap; justify-content: flex-start; margin-top: 7px; gap: 11px; font-size: 20px; font-weight: 400; letter-spacing: -1px; line-height: 0.975; }
 .raw2-login-form .raw2-check + .raw2-check { margin-top: -12px; }
+.raw2-login-form .raw2-check--long { white-space: normal; align-items: flex-start; line-height: 1.05; }
+.raw2-login-form .raw2-check--long input { margin-top: 2px; }
+.raw2-login-form .raw2-check--long a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .raw2-login-form .raw2-check input { flex-basis: 21px; width: 21px; height: 21px; border: none; }
 .raw2-login-form .raw2-check input:checked::after { left: 50%; top: 50%; width: 5px; height: 9px; transform: translate(-50%, -60%) rotate(45deg); }
 /* инпуты 578×68 r34, плейсхолдер Inter 500 24px / -1.2px / rgba(30,30,30,.7) */

@@ -14,6 +14,7 @@ export type LectureListItem = {
   title: string
   description: string | null
   host_name: string | null
+  host_user_id: string | null
   scheduled_at: string
   duration_minutes: number
   cover_url: string | null
@@ -32,7 +33,7 @@ export async function listLecturesForCurrentUser(): Promise<LectureListItem[]> {
 
   const { data, error } = await (supabase as any)
     .from('lectures')
-    .select('id, title, description, host_name, scheduled_at, duration_minutes, cover_url, tag, capacity, slot, price')
+    .select('id, title, description, host_name, host_user_id, scheduled_at, duration_minutes, cover_url, tag, capacity, slot, price')
     .eq('is_published', true)
     .gte('scheduled_at', nowIso)
     .order('scheduled_at', { ascending: true })
@@ -42,7 +43,8 @@ export async function listLecturesForCurrentUser(): Promise<LectureListItem[]> {
   // host_name → { avatar_url, bio } для карточки препода. Ключ — nameKey: host_name может быть
   // кириллицей («Дмитрий Кузин»), а профиль латиницей («Dmitrii Kuzin»).
   const teacherByName: Record<string, LectureTeacher> = {}
-  if (rows.some((l) => (l.host_name ?? '').trim())) {
+  const teacherById: Record<string, LectureTeacher> = {}
+  if (rows.some((l) => l.host_user_id || (l.host_name ?? '').trim())) {
     const { data: profs } = await admin
       .from('profiles')
       .select('id, full_name, avatar_url')
@@ -57,7 +59,9 @@ export async function listLecturesForCurrentUser(): Promise<LectureListItem[]> {
       for (const tp of (tps ?? []) as Array<{ user_id: string; bio: string | null }>) bioById[tp.user_id] = tp.bio ?? null
     }
     for (const p of profRows) {
-      teacherByName[nameKey(p.full_name)] = { name: p.full_name, avatar_url: p.avatar_url, bio: bioById[p.id] ?? null }
+      const card = { name: p.full_name, avatar_url: p.avatar_url, bio: bioById[p.id] ?? null }
+      teacherByName[nameKey(p.full_name)] = card
+      teacherById[p.id] = card
     }
   }
 
@@ -75,7 +79,7 @@ export async function listLecturesForCurrentUser(): Promise<LectureListItem[]> {
 
   return rows.map((l) => ({
     ...l,
-    teacher: teacherByName[nameKey(l.host_name)] ?? null,
+    teacher: (l.host_user_id && teacherById[l.host_user_id]) || teacherByName[nameKey(l.host_name)] || null,
     registered: registeredIds.has(l.id),
   }))
 }

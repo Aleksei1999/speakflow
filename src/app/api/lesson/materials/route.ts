@@ -3,6 +3,9 @@ import {
   requireLessonParticipant,
   requireLessonTeacherOrAdmin,
 } from '@/lib/api/lesson-auth'
+import { createSignedUrlMap } from '@/lib/supabase/signed-url'
+
+const LESSON_FILES_BUCKET = 'lesson-files'
 
 type MaterialBody = {
   lessonId?: string | null
@@ -41,7 +44,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
     }
     }
-    return NextResponse.json(data ?? [])
+    // Файлы урока лежат в приватном bucket lesson-files (пути lessons/<id>/…): отдаём подписанные ссылки.
+    const rows = (data ?? []) as Array<{ storage_path: string | null; [k: string]: unknown }>
+    const lessonPaths = rows.map((r) => r.storage_path).filter((p): p is string => !!p && p.startsWith('lessons/'))
+    const signed = await createSignedUrlMap(gate.admin, LESSON_FILES_BUCKET, lessonPaths)
+    return NextResponse.json(rows.map((r) => ({ ...r, signed_url: r.storage_path ? signed[r.storage_path] ?? null : null })))
   } catch (e: any) {
     console.error('[lesson/materials]', e)
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })

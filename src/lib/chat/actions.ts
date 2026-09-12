@@ -14,6 +14,7 @@ import { verifyFileType } from '@/lib/api/file-upload'
 import { randomUUID } from 'node:crypto'
 
 import { createClient } from '@/lib/supabase/server'
+import { assertRateLimit, getClientIpFromHeaders } from '@/lib/api/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canChat } from './access'
 import { createSignedUrl } from '@/lib/supabase/signed-url'
@@ -123,6 +124,7 @@ export async function sendMessage({ peerId, text }: SendMessageInput): Promise<C
   if (!trimmed) throw new Error('Empty message')
   if (trimmed.length > 4000) throw new Error('Сообщение длиннее 4000 символов')
   const { supabase, userId, role } = await requireUser()
+  await assertRateLimit({ name: 'chat:send', keyParts: [userId, await getClientIpFromHeaders()], max: 30, windowSeconds: 60, message: 'Слишком много сообщений. Подождите минуту.' })
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
   await assertCanChat(userId, role, peerId, peerRole)
   const slots = computeSlots({ id: userId, role }, { id: peerId, role: peerRole })
@@ -161,6 +163,7 @@ export async function uploadAttachment({
   if (verified instanceof NextResponse) throw new Error('Этот тип файла не поддерживается')
   const kind: ChatAttachmentType = verified.mimeType.startsWith('image/') ? 'image' : verified.mimeType.startsWith('video/') ? 'video' : 'document'
   const { supabase, userId, role } = await requireUser()
+  await assertRateLimit({ name: 'chat:upload', keyParts: [userId, await getClientIpFromHeaders()], max: 10, windowSeconds: 60, message: 'Слишком много файлов подряд. Подождите минуту.' })
   const peerRole = await loadPeerRole(supabase as UntypedSupabase, peerId)
   await assertCanChat(userId, role, peerId, peerRole)
   const slots = computeSlots({ id: userId, role }, { id: peerId, role: peerRole })
