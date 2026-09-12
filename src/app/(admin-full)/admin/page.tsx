@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server"
 import { getCachedRole } from "@/lib/auth/get-role"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchChatList } from "@/lib/chat/list"
-import { syncStaleTeachers, withTimeout } from "@/lib/google-calendar/sync"
 import AdminRawDashboard from "./AdminRawDashboard"
 
 export const dynamic = "force-dynamic"
@@ -307,7 +306,6 @@ export default async function AdminDashboardFullPage() {
   const loadChats = async () => fetchChatList({ includeGroups: true, allGroups: true })
 
   // Google → платформа: синхронизация подключённых учителей в фоне, страницу не задерживает.
-  void withTimeout(syncStaleTeachers(), 15000)
 
   let initialChats: Awaited<ReturnType<typeof fetchChatList>> = []
   const settled = await Promise.allSettled([loadTeachers(), loadStudents(), loadApplications(), loadSchedule(), loadChats()])

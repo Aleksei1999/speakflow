@@ -480,16 +480,6 @@ export async function deleteEventFromGoogle(userId: string, eventId: string): Pr
   }
 }
 
-/** Проставляет synced_at = now() после успешного sync. */
-export async function markSynced(userId: string): Promise<void> {
-  const admin = createAdminClient() as UntypedSupabase
-  const { error } = await admin
-    .from('google_calendar_tokens')
-    .update({ synced_at: new Date().toISOString() })
-    .eq('user_id', userId)
-  if (error) throw new Error(`markSynced: ${error.message}`)
-}
-
 /** Существует ли у юзера привязанный календарь. Дёшево (без чтения секретов). */
 export async function hasGoogleCalendar(userId: string): Promise<{
   connected: boolean
