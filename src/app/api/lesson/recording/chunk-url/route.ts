@@ -24,6 +24,13 @@ const ALLOWED_MIME = new Set([
 ])
 
 const MAX_SEQ = 50_000
+// Потолок стоимости: чанков не больше, чем помещается в длительность урока плюс 30 минут запаса
+// (20-секундные чанки → 3 в минуту). Зависшая вкладка не может лить аудио часами.
+const GRACE_MIN = 30
+const CHUNKS_PER_MIN = 3
+function maxChunksFor(durationMinutes: number | null): number {
+  return ((durationMinutes ?? 60) + GRACE_MIN) * CHUNKS_PER_MIN + 10
+}
 
 export async function POST(req: NextRequest) {
   let body: any = {}
@@ -72,6 +79,12 @@ export async function POST(req: NextRequest) {
 
   const roleTag = gate.role === "student" ? "S" : "T"
 
+  // После окончания урока (+запас) чанки не принимаем — запись должна быть финализирована.
+  if (gate.lesson.scheduled_at) {
+    const endMs = Date.parse(gate.lesson.scheduled_at) + ((gate.lesson.duration_minutes ?? 60) + GRACE_MIN) * 60_000
+    if (Date.now() > endMs) return NextResponse.json({ error: "Урок закончился, запись остановлена" }, { status: 409 })
+  }
+
   // Атомарное выделение seq через SECURITY DEFINER RPC — без гонок.
   const { data: assigned, error: rpcErr } = await (gate.admin.rpc as any)(
     "lesson_recordings_next_seq",
@@ -84,6 +97,9 @@ export async function POST(req: NextRequest) {
   const seq = Number(assigned)
   if (!Number.isFinite(seq) || seq < 0 || seq > MAX_SEQ) {
     return NextResponse.json({ error: "Seq overflow" }, { status: 409 })
+  }
+  if (seq >= maxChunksFor(gate.lesson.duration_minutes)) {
+    return NextResponse.json({ error: "Лимит записи для этого урока исчерпан" }, { status: 409 })
   }
 
   const ext = mimeType?.includes("mp4") ? "m4a" : mimeType?.includes("ogg") ? "ogg" : "webm"
